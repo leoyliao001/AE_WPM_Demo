@@ -1,0 +1,21 @@
+{
+  "name": "ae-wpm-demo-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite --port 3001",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@maersk-global/mds-components-core": "^2.170.3",
+    "axios": "^1.13.4",
+    "element-plus": "^2.4.4",
+    "handsontable": "^16.2.0",
+    "vue": "^3.3.8",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "vite": "^5.0.0"
+  }
+}

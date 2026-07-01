@@ -1,0 +1,30 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import Welcome from '../views/Welcome.vue'
+import MigrationIntake from '../views/MigrationIntake.vue'
+import MigrationDashboard from '../views/MigrationDashboard.vue'
+import LDDashboard from '../views/LDDashboard.vue'
+import ProjectDashboard from '../views/ProjectDashboard.vue'
+import ProjectMilestoneDetail from '../views/ProjectMilestoneDetail.vue'
+import MigrationChatbot from '../views/MigrationChatbot.vue'
+
+const routes = [
+  { path: '/', name: 'Welcome', component: Welcome },
+  { path: '/welcome', redirect: '/' },
+  { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
+  { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard },
+  { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
+  { path: '/project-dashboard', name: 'ProjectDashboard', component: ProjectDashboard },
+  {
+    path: '/project-dashboard/:section',
+    name: 'ProjectMilestoneDetail',
+    component: ProjectMilestoneDetail
+  },
+  { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+export default router
