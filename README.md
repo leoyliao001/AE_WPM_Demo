@@ -4,21 +4,18 @@ A full-stack Migration Portal demo with a separated frontend and backend: Vue 3 
 
 ---
 
-## Prerequisites
+## Prerequisites (Windows)
 
-Before starting the project, make sure the following tools are installed:
+This guide targets **Windows** with **Command Prompt (CMD)**. Install the following before you start:
 
 | Tool | Recommended version | Purpose |
-|------|-------------------|---------|
+|------|---------------------|---------|
 | **Python** | 3.10 – 3.13 (verified on 3.13.5) | Run the Django backend |
 | **pip** | Bundled with Python | Install Python dependencies |
 | **Node.js** | 18.x or 20.x LTS | Run the frontend dev server |
 | **npm** | Bundled with Node.js | Install frontend dependencies |
 
-Optional:
-
-- **Git** — clone and manage the codebase
-- **Virtual environment** (`venv` / Conda) — isolate Python dependencies (recommended)
+Optional: **Git** — clone and manage the codebase.
 
 > **Note:** The frontend depends on internal Maersk npm packages such as `@maersk-global/mds-components-core`. Make sure your corporate npm registry or `.npmrc` is configured; otherwise `npm install` may fail.
 
@@ -46,28 +43,25 @@ AE WPM Demo/
 
 ---
 
-## Backend — install and run
+## Setup (Windows)
 
-### 1. Install Python dependencies
+All commands below assume **CMD**. If your project path contains spaces, keep the quotes around the path.
 
-From the project root:
+### 1. Backend — install dependencies
 
-```bash
-# Enter the project root (keep quotes if the path contains spaces)
-cd "c:\fcous\AE WPM Demo"
+Open **Command Prompt** and run:
 
-# Recommended: create and activate a virtual environment (optional)
+```cmd
+REM Go to project root
+cd /d "c:\fcous\AE WPM Demo"
+
+REM Create and activate a virtual environment (recommended)
 python -m venv .venv
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# Windows CMD:
-# .venv\Scripts\activate.bat
+.venv\Scripts\activate.bat
 
-# Install dependencies
+REM Install Python packages
 pip install -r requirements.txt
 ```
-
-**`requirements.txt` includes:**
 
 | Package | Version range | Description |
 |---------|---------------|-------------|
@@ -75,37 +69,14 @@ pip install -r requirements.txt
 | djangorestframework | `>=3.16,<4` | REST API |
 | django-cors-headers | `>=4.0,<5` | CORS support (allows frontend on port 3001) |
 
-### 2. Start the backend
+### 2. Frontend — install dependencies
 
-```bash
-cd backend
-python manage.py runserver
-```
+In the same or a new CMD window:
 
-Default URL: **http://127.0.0.1:8000**
-
-### 3. Verify the backend
-
-Open the health check endpoint in a browser or via the command line:
-
-```bash
-curl http://127.0.0.1:8000/api/health/
-```
-
-Expected response (JSON), e.g. `{"status": "ok"}`
-
----
-
-## Frontend — install and run
-
-### 1. Install Node dependencies
-
-```bash
-cd "c:\fcous\AE WPM Demo\frontend"
+```cmd
+cd /d "c:\fcous\AE WPM Demo\frontend"
 npm install
 ```
-
-**Main `package.json` dependencies:**
 
 | Package | Description |
 |---------|-------------|
@@ -117,106 +88,138 @@ npm install
 
 > `element-plus` and `handsontable` are legacy dependencies from an earlier import and are not used by the current pages. They can be removed in a future cleanup.
 
-### 2. Start the frontend dev server
+### 3. Start the app (two CMD windows)
 
-```bash
+**Window 1 — Backend:**
+
+```cmd
+cd /d "c:\fcous\AE WPM Demo\backend"
+REM Activate venv if not already active
+..\.venv\Scripts\activate.bat
+python manage.py runserver
+```
+
+Backend URL: **http://127.0.0.1:8000**
+
+**Window 2 — Frontend:**
+
+```cmd
+cd /d "c:\fcous\AE WPM Demo\frontend"
 npm run dev
 ```
 
-Default URL: **http://localhost:3001**
+Frontend URL: **http://localhost:3001** — open this in your browser.
 
-### 3. Other frontend commands
+> Use **port 3001** as the main entry point. The backend on port 8000 serves APIs only; Vite proxies `/api` to `http://localhost:8000`.
 
-```bash
-# Production build (output to frontend/dist/)
+### 4. Verify the backend
+
+In CMD:
+
+```cmd
+curl http://127.0.0.1:8000/api/health/
+```
+
+Expected response (JSON): `{"status":"ok"}`
+
+### 5. Other frontend commands
+
+```cmd
+cd /d "c:\fcous\AE WPM Demo\frontend"
+
+REM Production build (output to frontend/dist/)
 npm run build
 
-# Preview the production build locally
+REM Preview the production build locally
 npm run preview
 ```
 
 ---
 
-## Full startup flow (development)
+## Application URLs
 
-Use **two terminals** — one for the backend, one for the frontend:
+When running locally with the default dev setup (`npm run dev` + `python manage.py runserver`), use these addresses:
 
-**Terminal 1 — Backend:**
+| Service | Base URL | Notes |
+|---------|----------|-------|
+| **Frontend (main entry)** | http://localhost:3001 | Open this in your browser |
+| **Backend API** | http://127.0.0.1:8000 | API only — not the UI |
 
-```bash
-cd "c:\fcous\AE WPM Demo\backend"
-python manage.py runserver
+The global `mc-top-bar` header links to the main pages. All frontend routes below are relative to `http://localhost:3001`.
+
+### Frontend pages
+
+| Page | URL | Description |
+|------|-----|-------------|
+| **Welcome** | http://localhost:3001/ | Landing page with tool cards and entry to the Project Attributes Database |
+| **Future Service Model** | http://localhost:3001/future-service-model | Cost, capability, and country-level analytics for GSC transition planning — includes expandable process and country task tables |
+| **Migration Intake** | http://localhost:3001/migration-intake | Submit a new migration request and capture intake details |
+| **Migration Dashboard** | http://localhost:3001/migration-dashboard | Product-level migration summary and tracking overview |
+| **L&D Dashboard** | http://localhost:3001/ld-dashboard | Learning, scoping tasks, and training timeline by project |
+| **Project Dashboard** | http://localhost:3001/project-dashboard | Individual project opportunity assessment and milestone hub |
+| **Milestone detail** | http://localhost:3001/project-dashboard/:section | Drill-down for a specific milestone (e.g. `gantt`, `approvals`, `business-case`, `cost`, `training`) |
+| **Migration Chatbot** | http://localhost:3001/migration-chatbot | Guided Q&A and migration support chatbot demo |
+
+### Redirects
+
+| From | To |
+|------|-----|
+| http://localhost:3001/welcome | http://localhost:3001/ |
+| http://localhost:3001/welcome2 | http://localhost:3001/future-service-model |
+
+### Backend API
+
+| Method | URL | Description |
+|--------|-----|-------------|
+| GET | http://127.0.0.1:8000/api/health/ | Health check — returns `{"status": "ok"}` when the backend is running |
+
+> In development, the frontend proxies `/api/*` to the backend (see `frontend/vite.config.js`). You can also call the health endpoint directly on port 8000.
+
+Most page content is driven by mock data under `frontend/src/data/`. Business APIs beyond the health check are not fully wired up yet.
+
+---
+
+## Troubleshooting (Windows)
+
+### 1. `cd` does not change drive or folder
+
+Use `cd /d` to switch drives and directories in CMD:
+
+```cmd
+cd /d "c:\fcous\AE WPM Demo\frontend"
 ```
 
-**Terminal 2 — Frontend:**
-
-```bash
-cd "c:\fcous\AE WPM Demo\frontend"
-npm run dev
-```
-
-Then open **http://localhost:3001** in your browser.
-
-> For day-to-day development, use **port 3001** as the main entry point. The backend on port 8000 serves APIs only; Vite proxies `/api` to `http://localhost:8000`.
-
----
-
-## Pages and routes
-
-| Page | Route |
-|------|-------|
-| Welcome | `/` |
-| Migration Intake Form | `/migration-intake` |
-| Migration Dashboard | `/migration-dashboard` |
-| L&D Dashboard | `/ld-dashboard` |
-| Individual Project Dashboard | `/project-dashboard` |
-| Milestone detail | `/project-dashboard/:section` |
-| Migration Chatbot | `/migration-chatbot` |
-
-The global `mc-top-bar` header provides navigation across all pages.
-
----
-
-## API reference
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health/` | Health check |
-
-Most page data currently comes from `frontend/src/data/mockData.js`. Business APIs are not fully wired up yet.
-
----
-
-## Troubleshooting
-
-### 1. PowerShell errors with paths that contain spaces
+### 2. Path contains spaces
 
 Wrap the path in quotes:
 
-```powershell
-cd "c:\fcous\AE WPM Demo\frontend"
+```cmd
+cd /d "c:\fcous\AE WPM Demo\frontend"
 ```
 
-### 2. 404 or Django page when visiting port 8000
+### 3. 404 or Django page when visiting port 8000
 
 Open the app at **http://localhost:3001**, not port 8000. Port 8000 is API-only.
 
-### 3. Port already in use
+### 4. Port already in use
 
 - Backend on a different port: `python manage.py runserver 8001` (also update the proxy `target` in `frontend/vite.config.js`)
 - Frontend on a different port: `npm run dev -- --port 3002` (also update `CORS_ALLOWED_ORIGINS` in `backend/config/settings.py`)
 
-### 4. `npm install` fails (MDS packages not found)
+### 5. `npm install` fails (MDS packages not found)
 
 Confirm you are logged into the corporate npm registry, or contact your team for `@maersk-global/*` package access.
 
-### 5. Python dependency install fails
+### 6. Python dependency install fails
 
-Verify Python ≥ 3.10 and use a virtual environment to avoid conflicts with system packages:
+Check your Python version and recreate the virtual environment:
 
-```bash
+```cmd
 python --version
+cd /d "c:\fcous\AE WPM Demo"
 python -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
 ```
 
 ---
