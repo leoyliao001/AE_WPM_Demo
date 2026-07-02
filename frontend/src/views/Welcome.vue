@@ -136,8 +136,12 @@ const menuItems = [
     route: '/project-dashboard'
   },
   {
-    id: 'placeholder',
-    empty: true
+    id: 'future-service-model',
+    title: 'Future Service Model',
+    description: 'Cost, readiness, and country-level analytics for GSC transition planning.',
+    icon: 'mi-chart-line-up',
+    accent: '#0F766E',
+    route: '/future-service-model'
   }
 ]
 
