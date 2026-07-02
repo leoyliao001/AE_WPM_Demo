@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Welcome from '../views/Welcome.vue'
+import Welcome2 from '../views/Welcome2.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
 import LDDashboard from '../views/LDDashboard.vue'
@@ -10,6 +11,7 @@ import MigrationChatbot from '../views/MigrationChatbot.vue'
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
   { path: '/welcome', redirect: '/' },
+  { path: '/welcome2', name: 'Welcome2', component: Welcome2 },
   { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
   { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard },
   { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },

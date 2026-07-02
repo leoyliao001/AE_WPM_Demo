@@ -6,8 +6,8 @@ import router from './router'
 
 if (typeof window !== 'undefined') {
   const iconBasePath = import.meta.env.DEV
-    ? '/node_modules/@maersk-global/icons/svg/24px/'
-    : '/node_modules/@maersk-global/icons/svg/24px/'
+    ? '/node_modules/'
+    : `${import.meta.env.BASE_URL}node_modules/`
 
   axios.defaults.baseURL = ''
   MdsConfig.iconsDynamicImportPath = iconBasePath
