@@ -34,6 +34,7 @@ const route = useRoute()
 
 const navItems = [
   { label: 'Welcome', to: '/', icon: 'mi-house' },
+  { label: 'Future Service Model', to: '/future-service-model', icon: 'mi-chart-line-up' },
   { label: 'Intake', to: '/migration-intake', icon: 'mi-file-arrows-square' },
   { label: 'Dashboard', to: '/migration-dashboard', icon: 'mi-chart-bars-vertical' },
   { label: 'L&D', to: '/ld-dashboard', icon: 'mi-monitor' },
