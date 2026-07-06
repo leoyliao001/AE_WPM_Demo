@@ -11,7 +11,7 @@
 
     <div class="ci-review__body">
       <header class="ci-review__intro">
-        <router-link v-if="embedded" class="ci-review__back" to="/">
+        <a v-if="embedded" class="ci-review__back" href="/">
           <mc-button
             appearance="neutral"
             variant="plain"
@@ -19,7 +19,7 @@
             label="Back to Welcome"
             icon="mi-arrow-left"
           />
-        </router-link>
+        </a>
         <mc-tag appearance="info" fit="small" label="CI Governance" />
         <h1>Final CI Review</h1>
         <p>Review automation initiatives, track approvals, and capture value realisation.</p>
