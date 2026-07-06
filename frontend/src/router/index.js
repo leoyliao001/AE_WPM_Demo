@@ -7,6 +7,7 @@ import LDDashboard from '../views/LDDashboard.vue'
 import ProjectDashboard from '../views/ProjectDashboard.vue'
 import ProjectMilestoneDetail from '../views/ProjectMilestoneDetail.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
+import FinalCiReview from '../views/FinalCiReview.vue'
 
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
@@ -22,7 +23,8 @@ const routes = [
     name: 'ProjectMilestoneDetail',
     component: ProjectMilestoneDetail
   },
-  { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot }
+  { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
+  { path: '/final-ci-review', name: 'FinalCiReview', component: FinalCiReview }
 ]
 
 const router = createRouter({

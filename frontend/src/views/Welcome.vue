@@ -142,6 +142,14 @@ const menuItems = [
     icon: 'mi-chart-line-up',
     accent: '#0F766E',
     route: '/future-service-model'
+  },
+  {
+    id: 'final-ci-review',
+    title: 'Final CI Review',
+    description: 'Review automation initiatives, track approvals, and capture value realisation.',
+    icon: 'mi-flow',
+    accent: '#5A9FD4',
+    route: '/final-ci-review'
   }
 ]
 
