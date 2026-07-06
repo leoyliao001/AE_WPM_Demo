@@ -1,0 +1,11 @@
+{
+  "name": "final-ci-review-mds",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../frontend/node_modules/vite/bin/vite.js",
+    "build": "node ../../frontend/node_modules/vite/bin/vite.js build",
+    "preview": "node ../../frontend/node_modules/vite/bin/vite.js preview --port 3002"
+  },
+  "description": "Standalone Final CI Review MDS prototype — uses frontend/node_modules (run npm install in frontend first)"
+}
