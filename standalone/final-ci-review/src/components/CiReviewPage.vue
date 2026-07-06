@@ -1,6 +1,6 @@
 <template>
   <div class="ci-review">
-    <header class="ci-review__bar">
+    <header v-if="!embedded" class="ci-review__bar">
       <mc-top-bar product="Automation Excellence" productshort="AE" logosize="auto">
         <nav slot="actions" class="ci-review__nav">
           <span class="ci-review__nav-link ci-review__nav-link--active">Final CI Review</span>
@@ -11,6 +11,15 @@
 
     <div class="ci-review__body">
       <header class="ci-review__intro">
+        <a v-if="embedded" class="ci-review__back" href="/">
+          <mc-button
+            appearance="neutral"
+            variant="plain"
+            fit="small"
+            label="Back to Welcome"
+            icon="mi-arrow-left"
+          />
+        </a>
         <mc-tag appearance="info" fit="small" label="CI Governance" />
         <h1>Final CI Review</h1>
         <p>Review automation initiatives, track approvals, and capture value realisation.</p>
@@ -261,6 +270,10 @@ import { useFinalCiReview } from '../composables/useFinalCiReview'
 import CiStageDetail from './CiStageDetail.vue'
 import StageTable from './StageTable.vue'
 
+defineProps({
+  embedded: { type: Boolean, default: false }
+})
+
 const {
   selectedProject,
   searchTerm,
@@ -404,6 +417,12 @@ function openDoc(url) {
 .ci-review__intro {
   margin-bottom: 32px;
   max-width: 560px;
+}
+
+.ci-review__back {
+  display: inline-block;
+  margin-bottom: 12px;
+  text-decoration: none;
 }
 
 .ci-review__intro h1 {

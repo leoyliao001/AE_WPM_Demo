@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "node ../../frontend/node_modules/vite/bin/vite.js",
     "build": "node ../../frontend/node_modules/vite/bin/vite.js build",
+    "build:export": "node ../../frontend/node_modules/vite/bin/vite.js build --config vite.export.config.js",
+    "build:singlefile": "node ../../frontend/node_modules/vite/bin/vite.js build --config vite.singlefile.config.js",
     "preview": "node ../../frontend/node_modules/vite/bin/vite.js preview --port 3002"
   },
   "description": "Standalone Final CI Review MDS prototype — uses frontend/node_modules (run npm install in frontend first)"
