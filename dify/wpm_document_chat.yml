@@ -1,0 +1,219 @@
+app:
+  description: WPM Demo - 支持 API 上传 Excel/PDF 等文档并自动提取分析的 Chatflow
+  icon: 📊
+  icon_background: '#E4FBCC'
+  mode: advanced-chat
+  name: wpm_document_chat
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/azure_openai:0.0.59@a9647cf37c3feb96197bcc0992d6b15eb357f4087a3c3cd27cab4a15d1369ba8
+    version: null
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      - document
+      allowed_file_upload_methods:
+      - remote_url
+      - local_file
+      enabled: true
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 50
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 5
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: 你好！我可以阅读你上传的 Excel、PDF 等文档并提取关键信息。请上传文件或直接提问。
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 请总结附件中的关键信息
+    - 按负责人统计记录数量
+    - 这份数据有哪些异常需要关注？
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        sourceType: llm
+        targetType: answer
+      id: llm-answer
+      source: llm
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: document-extractor
+      id: start-doc-target
+      source: '2000000000001'
+      sourceHandle: source
+      target: '2000000000002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: llm
+      id: doc-llm-target
+      source: '2000000000002'
+      sourceHandle: source
+      target: llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收用户消息与上传文件（API 通过 files 字段传入 sys.files）
+        selected: false
+        title: 用户输入
+        type: start
+        variables: []
+      height: 101
+      id: '2000000000001'
+      position:
+        x: 80
+        y: 280
+      positionAbsolute:
+        x: 80
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        is_array_file: true
+        selected: false
+        title: 文档提取器
+        type: document-extractor
+        variable_selector:
+        - sys
+        - files
+      height: 104
+      id: '2000000000002'
+      position:
+        x: 400
+        y: 280
+      positionAbsolute:
+        x: 400
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '2000000000002'
+          - text
+        desc: 基于文档内容与对话历史生成回答
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 10
+        model:
+          completion_params: {}
+          mode: chat
+          name: dev-gpt-5.2-ed-shared
+          provider: langgenius/azure_openai/azure_openai
+        prompt_config:
+          jinja2_variables: []
+        prompt_template:
+        - edition_type: basic
+          id: wpm-system-prompt-001
+          role: system
+          text: "你是一名专业、严谨的企业文档与数据分析助手。\n\n## 文档内容（来自用户上传）\n{{#2000000000002.text#}}\n\
+            \n## 行为规则\n1. 当上方「文档内容」非空时，必须直接基于文档回答，**不要**要求用户再次上传文件，也**不要**反问「\
+            需要分析什么」——除非用户的问题本身与文档无关。\n2. 当用户要求总结、提取、分析文档时，**立即**输出结构化结果，建议包含：\n\
+            \   - 文档概览（主题、记录数、时间范围）\n   - 关键发现（3-8 条）\n   - 维度统计（表格或列表）\n   -\
+            \ 数据质量观察与建议（如有）\n3. 对 Excel/表格：按列理解数据，给出准确的计数与分组统计。\n4. 当文档内容为空时，按普通对话\
+            回答用户问题。\n5. 回答清晰、客观；不确定时明确说明，不编造数据。\n\n默认使用中文回答（除非用户指定其他语言）。"
+        selected: false
+        title: LLM
+        type: llm
+        vision:
+          enabled: false
+      height: 148
+      id: llm
+      position:
+        x: 720
+        y: 280
+      positionAbsolute:
+        x: 720
+        y: 280
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        answer: '{{#llm.text#}}'
+        desc: 输出回复给用户
+        selected: false
+        title: 直接回复
+        type: answer
+        variables: []
+      height: 104
+      id: answer
+      position:
+        x: 1040
+        y: 280
+      positionAbsolute:
+        x: 1040
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+  rag_pipeline_variables: []

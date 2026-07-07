@@ -1,3 +1,8 @@
 Django>=5.2,<6
 djangorestframework>=3.16,<4
 django-cors-headers>=4.0,<5
+requests>=2.31,<3
+openpyxl>=3.1,<4
+pandas>=2.0,<3
+PyYAML>=6.0,<7
+pymupdf>=1.24,<2
