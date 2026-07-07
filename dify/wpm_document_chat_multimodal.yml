@@ -1,0 +1,189 @@
+app:
+  description: WPM Demo - 扫描件 PDF（需先转图片）/图片 Vision OCR；Excel/文本 PDF 请用 wpm_document_chat 应用
+  icon: 📄
+  icon_background: '#D5F5F6'
+  mode: advanced-chat
+  name: wpm_document_chat_multimodal
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/azure_openai:0.0.59@a9647cf37c3feb96197bcc0992d6b15eb357f4087a3c3cd27cab4a15d1369ba8
+    version: null
+kind: app
+version: 0.5.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      - document
+      allowed_file_upload_methods:
+      - remote_url
+      - local_file
+      enabled: true
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 50
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 5
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: true
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: 你好！我可以识别图片中的文字（含扫描件 PDF 页面图）。请上传图片或页面截图。
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 请总结附件中的关键信息
+    - 这是扫描件 PDF，请识别并提取文字
+    - 这份表格有哪些异常需要关注？
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        sourceType: llm
+        targetType: answer
+      id: llm-answer
+      source: llm
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+      type: custom
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-llm-target
+      source: '3000000000001'
+      sourceHandle: source
+      target: llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收用户消息与上传文件（API 通过 files 传入 sys.files）
+        selected: false
+        title: 用户输入
+        type: start
+        variables: []
+      height: 101
+      id: '3000000000001'
+      position:
+        x: 80
+        y: 280
+      positionAbsolute:
+        x: 80
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 扫描件/图片走 Vision；不含文档提取器（避免 PNG 被提取器拒绝）
+        memory:
+          query_prompt_template: '{{#sys.query#}}'
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 10
+        model:
+          completion_params: {}
+          mode: chat
+          name: dev-gpt-5.2-ed-shared
+          provider: langgenius/azure_openai/azure_openai
+        prompt_config:
+          jinja2_variables: []
+        prompt_template:
+        - edition_type: basic
+          id: wpm-multimodal-system-001
+          role: system
+          text: "你是一名专业、严谨的企业文档 OCR 与图像分析助手，通过 Vision 阅读用户上传的**图片**（含扫描件 PDF 转成的页面图）。\n\
+            \n## 输入说明\n附件经 sys.files 以图像形式送入 Vision。你必须根据所见内容进行 OCR 式阅读与分析，**禁止**声称「没有收到文件」或要求用户重复上传（除非确实零附件）。\n\
+            \n## 行为规则\n1. 用户要求总结/提取/分析时，**立即**输出结构化结果：\n   - 文档概览（类型、页数、时间范围、涉及单位）\n\
+            \   - 全量提取（逐页可见文字、表格行列、印章/签名/手写批注）\n   - 关键发现（3-8 条）\n   - 数据质量与建议（低置信度字段标注）\n\
+            2. 多页图片按页码顺序处理并汇总。\n3. 确实无任何附件时，正常对话。\n4. 不确定处明确标注，不编造。\n\n默认使用中文回答（除非用户指定其他语言）。"
+        selected: false
+        title: LLM
+        type: llm
+        vision:
+          configs:
+            detail: high
+            variable_selector:
+            - sys
+            - files
+          enabled: true
+      height: 148
+      id: llm
+      position:
+        x: 720
+        y: 280
+      positionAbsolute:
+        x: 720
+        y: 280
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        answer: '{{#llm.text#}}'
+        desc: 输出回复给用户
+        selected: false
+        title: 直接回复
+        type: answer
+        variables: []
+      height: 104
+      id: answer
+      position:
+        x: 1040
+        y: 280
+      positionAbsolute:
+        x: 1040
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+  rag_pipeline_variables: []
