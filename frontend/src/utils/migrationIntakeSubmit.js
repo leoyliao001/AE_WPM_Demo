@@ -36,7 +36,11 @@ export const collectValidationErrors = ({
   if (!form.region) missing.push('Region')
   if (!form.areas.length) missing.push('Area')
   if (!form.locationStrategies.length) missing.push('Location Strategy')
-  if (!form.supportingGscSites.length) missing.push('Supporting GSC Sites')
+  const defaultSites = form.defaultSupportingGscSites ?? []
+  const customSites = form.customSupportingGscSites ?? []
+  const activeSites = form.supportingGscSitesCustom ? customSites : defaultSites
+
+  if (!activeSites.length) missing.push('Supporting GSC Sites')
   if (form.supportingGscSitesCustom && !form.customSupportingJustification.trim()) {
     missing.push('Custom supporting GSC sites — Justification')
   }
@@ -81,7 +85,12 @@ export const buildSubmissionPreview = ({
     areas: [...form.areas],
     locationStrategies: [...form.locationStrategies],
     areaLocationPairs: buildAreaLocationPairs(form.areas, form.locationStrategies),
-    supportingGscSites: [...form.supportingGscSites],
+    defaultSupportingGscSites: form.supportingGscSitesCustom
+      ? []
+      : [...(form.defaultSupportingGscSites ?? [])],
+    customSupportingGscSites: form.supportingGscSitesCustom
+      ? [...(form.customSupportingGscSites ?? [])]
+      : [],
     supportingGscSitesCustom: form.supportingGscSitesCustom,
     customSupportingJustification: form.customSupportingJustification.trim(),
     customApprovalFile: customApprovalFileMeta.name
@@ -126,7 +135,18 @@ export const previewSections = (preview) => [
           .map((pair) => `${pair.area} → ${pair.locationStrategy}`)
           .join('; ')
       },
-      { label: 'Supporting GSC Sites', value: preview.supportingGscSites.join(', ') },
+      {
+        label: 'Default Supporting GSC Sites',
+        value: preview.defaultSupportingGscSites.length
+          ? preview.defaultSupportingGscSites.join(', ')
+          : '—'
+      },
+      {
+        label: 'Custom Supporting GSC Sites',
+        value: preview.customSupportingGscSites.length
+          ? preview.customSupportingGscSites.join(', ')
+          : '—'
+      },
       {
         label: 'Supporting GSC Sites mode',
         value: preview.supportingGscSitesCustom ? 'Custom' : 'Default'
