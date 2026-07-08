@@ -63,7 +63,7 @@
               @input="onTextInput('projectName', $event)"
             />
 
-            <div class="field-row">
+            <div class="field-row field-row--two">
               <mc-select
                 ref="migrationTypeRef"
                 label="Migration type"
@@ -95,55 +95,276 @@
               >
                 <mc-option v-for="r in regions" :key="r" :value="r">{{ r }}</mc-option>
               </mc-select>
-
-              <mc-select
-                ref="areaRef"
-                label="Area"
-                placeholder="Select area"
-                :value="form.area"
-                width="full-width"
-                @optionselected="onSelect('area', $event)"
-                @opened="onDropdownOpened('project-details')"
-                @closed="onDropdownClosed('project-details')"
-              >
-                <mc-option v-for="a in areas" :key="a" :value="a">{{ a }}</mc-option>
-              </mc-select>
             </div>
+
+            <div v-if="form.region" class="field-row field-row--two area-strategy-row">
+              <div class="area-field">
+                <mc-checkbox-group
+                  :key="`areas-${form.region}`"
+                  legend="Area"
+                  hint="Select one or more areas. Options are filtered by region."
+                  orientation="vertical"
+                  name="areas"
+                  :value.prop="areaCheckboxValue"
+                  @change="onAreasChange"
+                >
+                  <mc-checkbox
+                    v-for="area in filteredAreas"
+                    :key="area"
+                    name="areas"
+                    :value="area"
+                    :label="area"
+                  />
+                </mc-checkbox-group>
+              </div>
+
+              <div class="location-strategy-field">
+                <mc-checkbox-group
+                  v-if="form.areas.length"
+                  :key="`location-strategies-${form.areas.join('|')}`"
+                  legend="Location Strategy"
+                  hint="Filtered by selected areas. Each option maps to your area selection."
+                  orientation="vertical"
+                  name="locationStrategies"
+                  :value.prop="locationStrategyCheckboxValue"
+                  @change="onLocationStrategiesChange"
+                >
+                  <mc-checkbox
+                    v-for="option in locationStrategyOptions"
+                    :key="option.value"
+                    name="locationStrategies"
+                    :value="option.value"
+                    :label="option.label"
+                  />
+                </mc-checkbox-group>
+                <p v-else class="location-strategy-placeholder">
+                  Select one or more areas to configure location strategy.
+                </p>
+              </div>
+            </div>
+
+            <div v-if="form.locationStrategies.length" class="supporting-sites-panel">
+              <div class="supporting-sites-head">
+                <span class="supporting-sites-label">Supporting GSC Sites</span>
+                <mc-tag
+                  v-if="form.supportingGscSitesCustom"
+                  appearance="warning"
+                  fit="small"
+                  label="Custom"
+                />
+              </div>
+
+              <template v-if="!form.supportingGscSitesCustom">
+                <p class="supporting-sites-hint">Default sites for selected areas. Select all that apply.</p>
+                <mc-checkbox-group
+                  :key="`default-sites-${activeAreas.join('|')}`"
+                  legend="Supporting GSC Sites"
+                  hiddenlegend
+                  orientation="vertical"
+                  name="supportingGscSites"
+                  :value.prop="defaultSitesCheckboxValue"
+                  @change="onDefaultSupportingSitesChange"
+                >
+                  <mc-checkbox
+                    v-for="site in defaultSupportingSites"
+                    :key="site"
+                    name="supportingGscSites"
+                    :value="site"
+                    :label="site"
+                  />
+                </mc-checkbox-group>
+              </template>
+
+              <template v-else>
+                <p class="supporting-sites-hint">
+                  Custom selection:
+                  {{ form.supportingGscSites.length ? form.supportingGscSites.join(', ') : 'None selected' }}
+                </p>
+                <p v-if="form.customSupportingJustification" class="custom-summary">
+                  Justification provided.
+                </p>
+                <p v-if="customApprovalFileMeta.name" class="custom-summary">
+                  Approval file: {{ customApprovalFileMeta.name }}
+                </p>
+              </template>
+
+              <div class="supporting-sites-actions custom-sites-cta">
+                <p class="custom-sites-cta-note">
+                  Need a non-default site mix? Custom selection requires justification and approval.
+                </p>
+                <mc-button
+                  v-if="!form.supportingGscSitesCustom"
+                  class="custom-sites-cta-btn"
+                  type="button"
+                  appearance="secondary"
+                  variant="filled"
+                  fit="medium"
+                  width="full-width"
+                  label="Use custom supporting GSC sites"
+                  icon="mi-pencil"
+                  @click="openCustomSitesDialog"
+                />
+                <template v-else>
+                  <mc-button
+                    type="button"
+                    appearance="neutral"
+                    variant="outlined"
+                    fit="small"
+                    label="Edit custom selection"
+                    @click="openCustomSitesDialog"
+                  />
+                  <mc-button
+                    type="button"
+                    appearance="neutral"
+                    variant="plain"
+                    fit="small"
+                    label="Use defaults"
+                    @click="resetToDefaultSupportingSites"
+                  />
+                </template>
+              </div>
+            </div>
+
+            <mc-dialog
+              :open="customSitesDialogOpen"
+              heading="Custom Supporting GSC Sites"
+              dimension="medium"
+              showclosebutton
+              @closing="onCustomDialogClosing"
+            >
+              <div class="custom-sites-dialog-body">
+                <p class="custom-sites-dialog-desc">
+                  Select supporting GSC sites, provide justification, and upload approval documentation
+                  (email, Word, or image — max 4 MB).
+                </p>
+
+                <mc-checkbox-group
+                  legend="Custom supporting GSC sites"
+                  orientation="vertical"
+                  name="customSupportingGscSites"
+                  :value.prop="customSitesDialogSelection"
+                  @change="onCustomSitesDialogSelectionChange"
+                >
+                  <mc-checkbox
+                    v-for="site in customGscSiteOptions"
+                    :key="site"
+                    name="customSupportingGscSites"
+                    :value="site"
+                    :label="site"
+                  />
+                </mc-checkbox-group>
+
+                <mc-textarea
+                  label="Justification"
+                  placeholder="Explain why custom supporting GSC sites are required..."
+                  hint="Required when using custom supporting GSC sites."
+                  rows="4"
+                  width="full-width"
+                  :value="customSitesDialogJustification"
+                  :invalid="customDialogErrors.justification"
+                  :errormessage="customDialogErrors.justification ? 'Justification is required.' : ''"
+                  @input="onCustomJustificationInput"
+                />
+
+                <div class="approval-upload-field">
+                  <label class="approval-upload-label">Approval attachment</label>
+                  <input
+                    ref="approvalFileInputRef"
+                    class="approval-upload-input"
+                    type="file"
+                    :accept="approvalFileAccept"
+                    @change="onApprovalFileChange"
+                  />
+                  <p class="approval-upload-hint">
+                    Supported: email (.eml, .msg), Word (.doc, .docx), PDF, or images. Max 4 MB.
+                  </p>
+                  <p v-if="customSitesDialogFile" class="approval-upload-name">
+                    Selected: {{ customSitesDialogFile.name }}
+                    ({{ formatFileSize(customSitesDialogFile.size) }})
+                  </p>
+                  <p v-else-if="customApprovalFileMeta.name" class="approval-upload-name">
+                    Current file: {{ customApprovalFileMeta.name }}
+                    ({{ formatFileSize(customApprovalFileMeta.size) }})
+                  </p>
+                  <p v-if="customDialogErrors.file" class="approval-upload-error">
+                    {{ customDialogErrors.file }}
+                  </p>
+                </div>
+              </div>
+
+              <div slot="footer" class="custom-sites-dialog-footer">
+                <mc-button
+                  type="button"
+                  appearance="neutral"
+                  variant="outlined"
+                  fit="medium"
+                  label="Cancel"
+                  @click="closeCustomSitesDialog"
+                />
+                <mc-button
+                  type="button"
+                  appearance="primary"
+                  variant="filled"
+                  fit="medium"
+                  label="Apply custom selection"
+                  @click="applyCustomSupportingSites"
+                />
+              </div>
+            </mc-dialog>
 
             <mc-select
               ref="functionRef"
               label="Function"
               placeholder="Select function"
-              hint="AIR, OCE, or HBDS"
+              hint="Select an activity function to filter available products."
               :value="form.function"
               width="full-width"
               @optionselected="onSelect('function', $event)"
               @opened="onDropdownOpened('project-details')"
               @closed="onDropdownClosed('project-details')"
             >
-              <mc-option value="AIR">AIR</mc-option>
-              <mc-option value="OCE">OCE</mc-option>
-              <mc-option value="HBDS">HBDS</mc-option>
+              <mc-option v-for="fn in functions" :key="fn" :value="fn">{{ fn }}</mc-option>
             </mc-select>
 
             <div class="product-field">
-              <mc-multi-select
-                :key="productSelectKey"
-                ref="productsRef"
+              <mc-input
+                v-if="!form.function"
                 label="Product"
-                placeholder="Select one or more products"
+                placeholder="Select function first"
                 hint="Choose all products involved in this migration."
-                listsearch
-                filtertype="contains"
-                optionsheight="360px"
-                optionswidth="trigger"
                 width="full-width"
-                :data.prop="productData"
-                :value.prop="form.products"
-                @input="onProductsChange"
-                @opened="onDropdownOpened('project-details')"
-                @closed="onDropdownClosed('project-details')"
+                disabled
               />
+
+              <template v-else>
+                <mc-input
+                  v-if="filteredProducts.length > 8"
+                  label="Filter products"
+                  hiddenlabel
+                  placeholder="Filter products..."
+                  :value="productFilter"
+                  width="full-width"
+                  @input="onProductFilterInput"
+                />
+
+                <mc-checkbox-group
+                  :key="`products-${form.function}`"
+                  legend="Product"
+                  hint="Choose all products involved in this migration."
+                  orientation="vertical"
+                  name="products"
+                  :value.prop="productCheckboxValue"
+                  @change="onProductsChange"
+                >
+                  <mc-checkbox
+                    v-for="product in visibleProducts"
+                    :key="product"
+                    name="products"
+                    :value="product"
+                    :label="product"
+                  />
+                </mc-checkbox-group>
+              </template>
             </div>
           </div>
         </section>
@@ -183,58 +404,185 @@
           </div>
 
           <div class="section-body">
-            <div class="field-row field-row--two">
-              <mc-input
-                ref="languageRef"
-                label="Language dependency"
-                placeholder="e.g. English proficiency required"
-                hint="Indicate justification and proficiency level."
-                :value="form.languageDependency"
-                width="full-width"
-                @input="onTextInput('languageDependency', $event)"
-              />
+            <div class="workforce-language-layout">
+              <div class="language-field">
+                <mc-input
+                  label="Filter languages"
+                  hiddenlabel
+                  placeholder="Search languages..."
+                  :value="languageFilter"
+                  width="full-width"
+                  @input="onLanguageFilterInput"
+                />
+                <mc-checkbox-group
+                  legend="Language dependency"
+                  hint="Select all languages required for this migration."
+                  orientation="vertical"
+                  name="languageDependencies"
+                  :value.prop="languageCheckboxValue"
+                  @change="onLanguageDependenciesChange"
+                >
+                  <mc-checkbox
+                    v-for="lang in visibleLanguages"
+                    :key="lang"
+                    name="languageDependencies"
+                    :value="lang"
+                    :label="lang"
+                  />
+                </mc-checkbox-group>
+                <p v-if="form.languageDependencies.length" class="language-selection-summary">
+                  {{ form.languageDependencies.length }} language{{ form.languageDependencies.length === 1 ? '' : 's' }} selected
+                </p>
+              </div>
 
-              <mc-input
-                ref="fteRef"
-                label="FTE number"
-                placeholder="e.g. 12"
-                hint="Value may change during scoping."
-                inputmode="numeric"
-                :value="form.fteNumber"
-                width="full-width"
-                @input="onTextInput('fteNumber', $event)"
-              />
+              <aside class="workforce-sizing-panel" aria-label="Workforce sizing">
+                <div class="workforce-sizing-head">
+                  <span class="workforce-sizing-title">Workforce sizing</span>
+                  <p class="workforce-sizing-desc">FTE and job level counts. Values may change during scoping.</p>
+                </div>
+
+                <mc-input
+                  ref="fteRef"
+                  label="FTE number"
+                  placeholder="e.g. 12"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="3"
+                  :value="form.fteNumber"
+                  :invalid="showWorkforceMismatchHint"
+                  width="full-width"
+                  @keydown="onNumericKeydown('fteNumber', $event)"
+                  @beforeinput="onBeforeNumericInput('fteNumber', $event)"
+                  @paste="onNumericPaste('fteNumber', $event)"
+                  @compositionstart="blockNumericComposition"
+                  @input="onNumericInput('fteNumber', $event)"
+                />
+
+                <div class="job-level-grid">
+                  <mc-input
+                    label="JL2"
+                    placeholder="Count"
+                    hint="Job Level 2"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="3"
+                    :value="form.jl2"
+                    :invalid="showWorkforceMismatchHint"
+                    width="full-width"
+                    @keydown="onNumericKeydown('jl2', $event)"
+                    @beforeinput="onBeforeNumericInput('jl2', $event)"
+                    @paste="onNumericPaste('jl2', $event)"
+                    @compositionstart="blockNumericComposition"
+                    @input="onNumericInput('jl2', $event)"
+                  />
+                  <mc-input
+                    label="JL3"
+                    placeholder="Count"
+                    hint="Job Level 3"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="3"
+                    :value="form.jl3"
+                    :invalid="showWorkforceMismatchHint"
+                    width="full-width"
+                    @keydown="onNumericKeydown('jl3', $event)"
+                    @beforeinput="onBeforeNumericInput('jl3', $event)"
+                    @paste="onNumericPaste('jl3', $event)"
+                    @compositionstart="blockNumericComposition"
+                    @input="onNumericInput('jl3', $event)"
+                  />
+                  <mc-input
+                    label="JL4"
+                    placeholder="Count"
+                    hint="Job Level 4"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="3"
+                    :value="form.jl4"
+                    :invalid="showWorkforceMismatchHint"
+                    width="full-width"
+                    @keydown="onNumericKeydown('jl4', $event)"
+                    @beforeinput="onBeforeNumericInput('jl4', $event)"
+                    @paste="onNumericPaste('jl4', $event)"
+                    @compositionstart="blockNumericComposition"
+                    @input="onNumericInput('jl4', $event)"
+                  />
+                </div>
+
+                <div v-if="hasWorkforceInput" class="workforce-balance-tracker">
+                  <span>FTE: <strong>{{ form.fteNumber || 0 }}</strong></span>
+                  <span class="workforce-balance-tracker-sep">·</span>
+                  <span>
+                    JL2 + JL3 + JL4:
+                    <strong>{{ jobLevelTotal }}</strong>
+                    ({{ form.jl2 || 0 }} + {{ form.jl3 || 0 }} + {{ form.jl4 || 0 }})
+                  </span>
+                </div>
+
+                <div
+                  v-if="showWorkforceMismatchHint"
+                  class="workforce-balance-alert workforce-balance-alert--error"
+                  role="alert"
+                  aria-live="polite"
+                >
+                  <mc-icon icon="mi-exclamation-triangle" size="20" />
+                  <div>
+                    <p class="workforce-balance-alert-title">Totals do not match</p>
+                    <p class="workforce-balance-alert-body">
+                      JL2 + JL3 + JL4 must equal FTE number. {{ workforceMismatchDetail }}
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  v-else-if="showWorkforceBalancedHint"
+                  class="workforce-balance-alert workforce-balance-alert--success"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <mc-icon icon="mi-check-circle" size="20" />
+                  <div>
+                    <p class="workforce-balance-alert-title">Totals match</p>
+                    <p class="workforce-balance-alert-body">
+                      Job level counts add up to the FTE number.
+                    </p>
+                  </div>
+                </div>
+              </aside>
             </div>
 
-            <div class="field-row field-row--three">
-              <mc-input
-                label="JL2"
-                placeholder="Count"
-                hint="Job Level 2"
-                inputmode="numeric"
-                :value="form.jl2"
-                width="full-width"
-                @input="onTextInput('jl2', $event)"
-              />
-              <mc-input
-                label="JL3"
-                placeholder="Count"
-                hint="Job Level 3"
-                inputmode="numeric"
-                :value="form.jl3"
-                width="full-width"
-                @input="onTextInput('jl3', $event)"
-              />
-              <mc-input
-                label="JL4"
-                placeholder="Count"
-                hint="Job Level 4"
-                inputmode="numeric"
-                :value="form.jl4"
-                width="full-width"
-                @input="onTextInput('jl4', $event)"
-              />
-            </div>
+            <mc-dialog
+              :open="workforceMismatchDialogOpen"
+              heading="Workforce totals do not match"
+              dimension="small"
+              showclosebutton
+              @closing="onWorkforceMismatchDialogClosing"
+            >
+              <div class="workforce-mismatch-dialog-body">
+                <p class="workforce-mismatch-dialog-desc">
+                  JL2 + JL3 + JL4 must equal the FTE number before you can submit.
+                </p>
+                <ul class="workforce-mismatch-summary">
+                  <li><strong>FTE number:</strong> {{ form.fteNumber || 0 }}</li>
+                  <li>
+                    <strong>JL2 + JL3 + JL4:</strong>
+                    {{ jobLevelTotal }}
+                    ({{ form.jl2 || 0 }} + {{ form.jl3 || 0 }} + {{ form.jl4 || 0 }})
+                  </li>
+                </ul>
+              </div>
+
+              <div slot="footer" class="workforce-mismatch-dialog-footer">
+                <mc-button
+                  type="button"
+                  appearance="primary"
+                  variant="filled"
+                  fit="medium"
+                  label="OK"
+                  @click="closeWorkforceMismatchDialog"
+                />
+              </div>
+            </mc-dialog>
           </div>
         </section>
 
@@ -273,26 +621,100 @@
 
           <div class="footer-actions">
             <mc-button
-              type="button"
-              appearance="neutral"
-              variant="outlined"
-              fit="medium"
-              label="Save Draft"
-              icon="mi-floppy-disk"
-              :loading="saving"
-              @click="onSaveDraft"
-            />
-            <mc-button
               appearance="primary"
               variant="filled"
               fit="medium"
-              label="Submit"
+              label="Review and Submit"
               trailingicon="mi-arrow-right"
-              :loading="submitting"
-              @click="onSubmit"
+              @click="onReviewAndSubmit"
             />
           </div>
         </footer>
+
+        <mc-dialog
+          :open="validationDialogOpen"
+          heading="Please complete required fields"
+          dimension="medium"
+          showclosebutton
+          @closing="onValidationDialogClosing"
+        >
+          <div class="validation-dialog-body">
+            <p class="validation-dialog-desc">
+              The following required items are missing or invalid. Please complete them before submitting.
+            </p>
+            <ul class="validation-dialog-list">
+              <li v-for="item in validationErrors" :key="item">{{ item }}</li>
+            </ul>
+          </div>
+
+          <div slot="footer" class="validation-dialog-footer">
+            <mc-button
+              type="button"
+              appearance="primary"
+              variant="filled"
+              fit="medium"
+              label="OK"
+              @click="closeValidationDialog"
+            />
+          </div>
+        </mc-dialog>
+
+        <mc-dialog
+          :open="previewDialogOpen"
+          heading="Review migration request"
+          dimension="large"
+          showclosebutton
+          @closing="onPreviewDialogClosing"
+        >
+          <div v-if="submissionPreview" class="preview-dialog-shell">
+            <div class="preview-dialog-body">
+              <div class="preview-dialog-intro">
+                <mc-tag appearance="info" fit="small" label="Preview" />
+                <p>Please review all information below, then click Submit to confirm.</p>
+              </div>
+
+              <section
+                v-for="section in previewSectionGroups"
+                :key="section.id"
+                class="preview-section"
+              >
+                <h3 class="preview-section-title">{{ section.title }}</h3>
+                <dl class="preview-grid">
+                  <div
+                    v-for="item in section.items"
+                    :key="`${section.id}-${item.label}`"
+                    class="preview-row"
+                    :class="{ 'preview-row--multiline': item.multiline }"
+                  >
+                    <dt class="preview-label">{{ item.label }}</dt>
+                    <dd class="preview-value">{{ item.value }}</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+
+            <div class="preview-dialog-footer">
+              <mc-button
+                type="button"
+                appearance="neutral"
+                variant="outlined"
+                fit="medium"
+                label="Back to edit"
+                @click="closePreviewDialog"
+              />
+              <mc-button
+                type="button"
+                appearance="primary"
+                variant="filled"
+                fit="medium"
+                label="Submit"
+                trailingicon="mi-arrow-right"
+                :loading="submitting"
+                @click="onSubmit"
+              />
+            </div>
+          </div>
+        </mc-dialog>
 
         <mc-notification
           v-if="notice.message"
@@ -309,16 +731,37 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getAreasForRegion, regions } from '../data/regionAreaMapping'
+import {
+  APPROVAL_FILE_ACCEPT,
+  MAX_APPROVAL_FILE_BYTES,
+  buildAreaLocationPairs,
+  customGscSiteOptions,
+  filterAreasByLocationStrategies,
+  filterValidLocationStrategies,
+  getAreasForLocationStrategy,
+  getDefaultSupportingSitesForAreasAndStrategies,
+  getLocationStrategiesForAreas
+} from '../data/areaLocationStrategyMapping'
+import { languageOptions } from '../data/languageOptions'
+import { functions, getProductsForFunction } from '../data/functionProductMapping'
+import {
+  buildSubmissionPreview,
+  collectValidationErrors,
+  previewSections
+} from '../utils/migrationIntakeSubmit'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-input'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
-import '@maersk-global/mds-components-core/mc-multi-select'
+import '@maersk-global/mds-components-core/mc-checkbox'
+import '@maersk-global/mds-components-core/mc-checkbox-group'
 import '@maersk-global/mds-components-core/mc-textarea'
 import '@maersk-global/mds-components-core/mc-notification'
+import '@maersk-global/mds-components-core/mc-dialog'
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
 
@@ -327,43 +770,112 @@ const migrationTypes = [
   { value: 'new-additional', label: 'New/Additional work, tasks or activities' }
 ]
 
-const regions = ['Asia Pacific', 'Europe', 'Americas', 'Africa', 'Middle East']
-const areas = ['North', 'South', 'East', 'West', 'Central']
+const filteredAreas = computed(() => getAreasForRegion(form.region))
+const filteredProducts = computed(() => getProductsForFunction(form.function))
+const productCheckboxValue = computed(() => [...form.products])
+const productFilter = ref('')
+const languageFilter = ref('')
+const languageCheckboxValue = computed(() => [...form.languageDependencies])
 
-const productOptions = [
-  'Lead Logistics',
-  'Customs',
-  'Landside Transportation',
-  'Ground Freight',
-  'LCL',
-  'Ocean OTCY',
-  'Ocean OPS',
-  'E-commerce',
-  'Contract Logistics',
-  'Project Logistics',
-  'Air',
-  'Cold Chain',
-  'Depots',
-  'LTA',
-  'OTC',
-  'STP',
-  'ATR'
-]
+const visibleLanguages = computed(() => {
+  const query = languageFilter.value.trim().toLowerCase()
+  if (!query) return languageOptions
+  return languageOptions.filter((lang) => lang.toLowerCase().includes(query))
+})
 
-const productData = productOptions.map((name) => ({
-  label: name,
-  value: name
-}))
+const visibleProducts = computed(() => {
+  const query = productFilter.value.trim().toLowerCase()
+  if (!query) return filteredProducts.value
+  return filteredProducts.value.filter((product) => product.toLowerCase().includes(query))
+})
+
+const locationStrategiesForAreas = computed(() => getLocationStrategiesForAreas(form.areas))
+const activeAreas = computed(() =>
+  filterAreasByLocationStrategies(form.areas, form.locationStrategies)
+)
+const defaultSupportingSites = computed(() =>
+  getDefaultSupportingSitesForAreasAndStrategies(form.areas, form.locationStrategies)
+)
+const locationStrategyOptions = computed(() =>
+  locationStrategiesForAreas.value.map((strategy) => {
+    const areas = getAreasForLocationStrategy(form.areas, strategy)
+    return {
+      value: strategy,
+      label: areas.length ? `${strategy} (${areas.join(', ')})` : strategy
+    }
+  })
+)
+const areaCheckboxValue = computed(() => [...form.areas])
+const locationStrategyCheckboxValue = computed(() => [...form.locationStrategies])
+const defaultSitesCheckboxValue = computed(() =>
+  form.supportingGscSitesCustom ? [] : [...form.supportingGscSites]
+)
+
+const jobLevelTotal = computed(
+  () => Number(form.jl2 || 0) + Number(form.jl3 || 0) + Number(form.jl4 || 0)
+)
+
+const hasWorkforceInput = computed(() =>
+  Boolean(form.fteNumber || form.jl2 || form.jl3 || form.jl4)
+)
+
+const isWorkforceBalanced = computed(
+  () => Number(form.fteNumber || 0) === jobLevelTotal.value
+)
+
+const showWorkforceMismatchHint = computed(
+  () => hasWorkforceInput.value && !isWorkforceBalanced.value
+)
+
+const showWorkforceBalancedHint = computed(
+  () => Boolean(form.fteNumber) && isWorkforceBalanced.value
+)
+
+const workforceMismatchDetail = computed(() => {
+  const fte = Number(form.fteNumber || 0)
+  const total = jobLevelTotal.value
+  const diff = Math.abs(fte - total)
+
+  if (total > fte) {
+    return `Job level total exceeds FTE number by ${diff}.`
+  }
+  if (total < fte) {
+    return `Job level total is ${diff} less than FTE number.`
+  }
+  return ''
+})
+
+const previewSectionGroups = computed(() =>
+  submissionPreview.value ? previewSections(submissionPreview.value) : []
+)
+
+const approvalFileAccept = APPROVAL_FILE_ACCEPT
+const customSitesDialogOpen = ref(false)
+const customSitesDialogSelection = ref([])
+const customSitesDialogJustification = ref('')
+const customSitesDialogFile = ref(null)
+const approvalFileInputRef = ref(null)
+const customDialogErrors = reactive({ justification: false, file: '' })
+const customApprovalFileMeta = reactive({ name: '', size: 0, type: '' })
+const workforceMismatchDialogOpen = ref(false)
+const validationDialogOpen = ref(false)
+const validationErrors = ref([])
+const previewDialogOpen = ref(false)
+const submissionPreview = ref(null)
 
 const form = reactive({
   projectName: '',
   migrationType: '',
   region: '',
-  area: '',
+  areas: [],
+  locationStrategies: [],
+  supportingGscSites: [],
+  supportingGscSitesCustom: false,
+  customSupportingJustification: '',
   products: [],
   function: '',
   proposedScope: '',
-  languageDependency: '',
+  languageDependencies: [],
   fteNumber: '',
   jl2: '',
   jl3: '',
@@ -371,10 +883,8 @@ const form = reactive({
   risks: ''
 })
 
-const productSelectKey = ref(0)
 const elevatedSection = ref(null)
 const openDropdownCount = ref(0)
-const saving = ref(false)
 const submitting = ref(false)
 const notice = reactive({ type: 'success', title: '', message: '' })
 
@@ -383,17 +893,352 @@ const readEventValue = (event) => {
   return target?.value ?? event?.detail?.value ?? ''
 }
 
+const MAX_WORKFORCE_DIGITS = 3
+
+const NUMERIC_ALLOWED_KEYS = new Set([
+  'Backspace',
+  'Delete',
+  'Tab',
+  'Escape',
+  'Enter',
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End'
+])
+
+const sanitizeNumericInput = (value) =>
+  String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, MAX_WORKFORCE_DIGITS)
+
+const onNumericKeydown = (field, event) => {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+
+  if (NUMERIC_ALLOWED_KEYS.has(event.key)) return
+
+  if (/^\d$/.test(event.key)) {
+    if (form[field].length >= MAX_WORKFORCE_DIGITS) {
+      event.preventDefault()
+    }
+    return
+  }
+
+  event.preventDefault()
+}
+
+const onBeforeNumericInput = (field, event) => {
+  const inputType = event.inputType ?? ''
+
+  if (inputType.startsWith('delete') || inputType === 'historyUndo' || inputType === 'historyRedo') {
+    return
+  }
+
+  if (inputType === 'insertFromPaste') {
+    event.preventDefault()
+    return
+  }
+
+  const data = event.data ?? ''
+  if (!data) return
+
+  if (!/^\d+$/.test(data)) {
+    event.preventDefault()
+    return
+  }
+
+  if (form[field].length + data.length > MAX_WORKFORCE_DIGITS) {
+    event.preventDefault()
+  }
+}
+
+const getInputElement = (event) => {
+  const path = event.composedPath?.() ?? []
+  for (const node of path) {
+    if (node instanceof HTMLInputElement) return node
+  }
+  return null
+}
+
+const onNumericPaste = (field, event) => {
+  event.preventDefault()
+  const pasted = sanitizeNumericInput(event.clipboardData?.getData('text') ?? '')
+  if (!pasted) return
+
+  const input = getInputElement(event)
+  if (input && input.selectionStart != null && input.selectionEnd != null) {
+    const value = form[field]
+    const next = value.slice(0, input.selectionStart) + pasted + value.slice(input.selectionEnd)
+    form[field] = sanitizeNumericInput(next)
+    return
+  }
+
+  const remaining = MAX_WORKFORCE_DIGITS - form[field].length
+  if (remaining <= 0) return
+
+  form[field] = `${form[field]}${pasted}`.slice(0, MAX_WORKFORCE_DIGITS)
+}
+
+const blockNumericComposition = (event) => {
+  event.preventDefault()
+}
+
 const onTextInput = (field, event) => {
   form[field] = readEventValue(event)
 }
 
+const onNumericInput = (field, event) => {
+  form[field] = sanitizeNumericInput(readEventValue(event))
+}
+
+const closeWorkforceMismatchDialog = () => {
+  workforceMismatchDialogOpen.value = false
+}
+
+const onWorkforceMismatchDialogClosing = () => {
+  workforceMismatchDialogOpen.value = false
+}
+
+const closeValidationDialog = () => {
+  validationDialogOpen.value = false
+}
+
+const onValidationDialogClosing = () => {
+  validationDialogOpen.value = false
+}
+
+const closePreviewDialog = () => {
+  if (submitting.value) return
+  previewDialogOpen.value = false
+}
+
+const onPreviewDialogClosing = () => {
+  if (submitting.value) return
+  previewDialogOpen.value = false
+}
+
+const openSubmissionPreview = () => {
+  submissionPreview.value = buildSubmissionPreview({
+    form,
+    customApprovalFileMeta,
+    migrationTypes
+  })
+  previewDialogOpen.value = true
+}
+
+const resetSupportingSitesState = () => {
+  form.locationStrategies = []
+  form.supportingGscSites = []
+  form.supportingGscSitesCustom = false
+  form.customSupportingJustification = ''
+  customApprovalFileMeta.name = ''
+  customApprovalFileMeta.size = 0
+  customApprovalFileMeta.type = ''
+}
+
+const syncDefaultSupportingSites = () => {
+  const defaultSites = getDefaultSupportingSitesForAreasAndStrategies(
+    form.areas,
+    form.locationStrategies
+  )
+  form.supportingGscSites = form.supportingGscSites.filter((site) => defaultSites.includes(site))
+  if (!form.supportingGscSites.length && defaultSites.length) {
+    form.supportingGscSites = [...defaultSites]
+  }
+}
+
+const syncLocationStrategiesFromAreas = () => {
+  const validStrategies = getLocationStrategiesForAreas(form.areas)
+  form.locationStrategies = filterValidLocationStrategies(form.areas, form.locationStrategies)
+  for (const strategy of validStrategies) {
+    if (!form.locationStrategies.includes(strategy)) {
+      form.locationStrategies.push(strategy)
+    }
+  }
+}
+
+const formatFileSize = (bytes) => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+}
+
+const validateApprovalFile = (file) => {
+  if (!file) return 'Approval attachment is required.'
+  if (file.size > MAX_APPROVAL_FILE_BYTES) {
+    return `File must not exceed ${formatFileSize(MAX_APPROVAL_FILE_BYTES)}.`
+  }
+  return ''
+}
+
 const onSelect = (field, event) => {
-  form[field] = event?.detail?.value ?? readEventValue(event)
+  const value = event?.detail?.value ?? readEventValue(event)
+  if (field === 'region') {
+    form.region = value
+    const validAreas = getAreasForRegion(value)
+    form.areas = form.areas.filter((area) => validAreas.includes(area))
+    if (!form.areas.length) {
+      resetSupportingSitesState()
+    } else {
+      syncLocationStrategiesFromAreas()
+      if (!form.supportingGscSitesCustom) {
+        syncDefaultSupportingSites()
+      }
+    }
+    return
+  }
+  if (field === 'function') {
+    form.function = value
+    const validProducts = getProductsForFunction(value)
+    form.products = form.products.filter((p) => validProducts.includes(p))
+    productFilter.value = ''
+    return
+  }
+  form[field] = value
+}
+
+const onAreasChange = (event) => {
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
+  form.areas = Array.isArray(value) ? [...value] : []
+  if (!form.areas.length) {
+    resetSupportingSitesState()
+    return
+  }
+  syncLocationStrategiesFromAreas()
+  if (!form.supportingGscSitesCustom) {
+    syncDefaultSupportingSites()
+  }
+}
+
+const onLocationStrategiesChange = (event) => {
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
+  const selected = Array.isArray(value) ? [...value] : []
+  form.locationStrategies = filterValidLocationStrategies(form.areas, selected)
+  form.areas = filterAreasByLocationStrategies(form.areas, form.locationStrategies)
+  if (!form.locationStrategies.length || !form.areas.length) {
+    form.supportingGscSites = []
+    form.supportingGscSitesCustom = false
+    if (!form.areas.length) {
+      form.locationStrategies = []
+    }
+    return
+  }
+  if (!form.supportingGscSitesCustom) {
+    syncDefaultSupportingSites()
+  }
+}
+
+const onProductFilterInput = (event) => {
+  productFilter.value = readEventValue(event)
+}
+
+const onLanguageFilterInput = (event) => {
+  languageFilter.value = readEventValue(event)
+}
+
+const onLanguageDependenciesChange = (event) => {
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
+  form.languageDependencies = Array.isArray(value) ? [...value] : []
 }
 
 const onProductsChange = (event) => {
-  const value = event?.detail?.value ?? event?.target?.value
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
   form.products = Array.isArray(value) ? [...value] : []
+}
+
+const onDefaultSupportingSitesChange = (event) => {
+  if (form.supportingGscSitesCustom) return
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
+  form.supportingGscSites = Array.isArray(value) ? [...value] : []
+}
+
+const openCustomSitesDialog = () => {
+  customSitesDialogSelection.value = form.supportingGscSitesCustom
+    ? [...form.supportingGscSites]
+    : []
+  customSitesDialogJustification.value = form.customSupportingJustification
+  customSitesDialogFile.value = null
+  customDialogErrors.justification = false
+  customDialogErrors.file = ''
+  if (approvalFileInputRef.value) {
+    approvalFileInputRef.value.value = ''
+  }
+  customSitesDialogOpen.value = true
+}
+
+const closeCustomSitesDialog = () => {
+  customSitesDialogOpen.value = false
+}
+
+const onCustomDialogClosing = () => {
+  customSitesDialogOpen.value = false
+}
+
+const onCustomSitesDialogSelectionChange = (event) => {
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
+  customSitesDialogSelection.value = Array.isArray(value) ? [...value] : []
+}
+
+const onCustomJustificationInput = (event) => {
+  customSitesDialogJustification.value = readEventValue(event)
+  if (customSitesDialogJustification.value.trim()) {
+    customDialogErrors.justification = false
+  }
+}
+
+const onApprovalFileChange = (event) => {
+  const file = event?.target?.files?.[0] ?? null
+  customSitesDialogFile.value = file
+  customDialogErrors.file = file ? validateApprovalFile(file) : ''
+}
+
+const applyCustomSupportingSites = () => {
+  const justification = customSitesDialogJustification.value.trim()
+  customDialogErrors.justification = !justification
+
+  const hasExistingFile = Boolean(customApprovalFileMeta.name)
+  const fileError = customSitesDialogFile.value
+    ? validateApprovalFile(customSitesDialogFile.value)
+    : hasExistingFile
+      ? ''
+      : 'Approval attachment is required.'
+
+  if (!customSitesDialogSelection.value.length) {
+    customDialogErrors.file = fileError || 'Select at least one supporting GSC site.'
+  } else {
+    customDialogErrors.file = fileError
+  }
+
+  if (
+    customDialogErrors.justification ||
+    customDialogErrors.file ||
+    !customSitesDialogSelection.value.length
+  ) {
+    return
+  }
+
+  form.supportingGscSitesCustom = true
+  form.supportingGscSites = [...customSitesDialogSelection.value]
+  form.customSupportingJustification = justification
+  if (customSitesDialogFile.value) {
+    customApprovalFileMeta.name = customSitesDialogFile.value.name
+    customApprovalFileMeta.size = customSitesDialogFile.value.size
+    customApprovalFileMeta.type = customSitesDialogFile.value.type
+  }
+  customSitesDialogOpen.value = false
+}
+
+const resetToDefaultSupportingSites = () => {
+  form.supportingGscSitesCustom = false
+  form.customSupportingJustification = ''
+  customApprovalFileMeta.name = ''
+  customApprovalFileMeta.size = 0
+  customApprovalFileMeta.type = ''
+  form.supportingGscSites = [
+    ...getDefaultSupportingSitesForAreasAndStrategies(form.areas, form.locationStrategies)
+  ]
 }
 
 const onDropdownOpened = (sectionId) => {
@@ -408,7 +1253,18 @@ const onDropdownClosed = (sectionId) => {
   }
 }
 
-const collectForm = () => ({ ...form, products: [...form.products] })
+const collectForm = () => ({
+  ...form,
+  products: [...form.products],
+  languageDependencies: [...form.languageDependencies],
+  areas: [...form.areas],
+  locationStrategies: [...form.locationStrategies],
+  areaLocationPairs: buildAreaLocationPairs(form.areas, form.locationStrategies),
+  supportingGscSites: [...form.supportingGscSites],
+  customApprovalFile: customApprovalFileMeta.name
+    ? { ...customApprovalFileMeta }
+    : null
+})
 
 const loadDraft = () => {
   try {
@@ -418,19 +1274,77 @@ const loadDraft = () => {
     Object.assign(form, {
       projectName: saved.projectName ?? '',
       migrationType: saved.migrationType ?? '',
-      region: saved.region ?? '',
-      area: saved.area ?? '',
-      products: Array.isArray(saved.products) ? saved.products : [],
-      function: saved.function ?? '',
+      region: regions.includes(saved.region) ? saved.region : '',
+      areas: [],
+      locationStrategies: [],
+      supportingGscSites: [],
+      supportingGscSitesCustom: false,
+      customSupportingJustification: '',
+      products: [],
+      function: functions.includes(saved.function) ? saved.function : '',
       proposedScope: saved.proposedScope ?? '',
-      languageDependency: saved.languageDependency ?? '',
-      fteNumber: saved.fteNumber ?? '',
-      jl2: saved.jl2 ?? '',
-      jl3: saved.jl3 ?? '',
-      jl4: saved.jl4 ?? '',
+      languageDependencies: [],
+      fteNumber: sanitizeNumericInput(saved.fteNumber ?? ''),
+      jl2: sanitizeNumericInput(saved.jl2 ?? ''),
+      jl3: sanitizeNumericInput(saved.jl3 ?? ''),
+      jl4: sanitizeNumericInput(saved.jl4 ?? ''),
       risks: saved.risks ?? ''
     })
-    productSelectKey.value += 1
+    customApprovalFileMeta.name = ''
+    customApprovalFileMeta.size = 0
+    customApprovalFileMeta.type = ''
+    if (form.region) {
+      const validAreas = getAreasForRegion(form.region)
+      const savedAreas = Array.isArray(saved.areas)
+        ? saved.areas
+        : saved.area
+          ? [saved.area]
+          : []
+      form.areas = savedAreas.filter((area) => validAreas.includes(area))
+    }
+    if (form.areas.length) {
+      const validStrategies = getLocationStrategiesForAreas(form.areas)
+      const savedStrategies = Array.isArray(saved.locationStrategies)
+        ? saved.locationStrategies
+        : saved.locationStrategy
+          ? [saved.locationStrategy]
+          : []
+      form.locationStrategies = savedStrategies.filter((strategy) => validStrategies.includes(strategy))
+      if (!form.locationStrategies.length) {
+        form.locationStrategies = [...validStrategies]
+      }
+      const defaultSites = getDefaultSupportingSitesForAreasAndStrategies(
+        form.areas,
+        form.locationStrategies
+      )
+      const savedSites = Array.isArray(saved.supportingGscSites) ? saved.supportingGscSites : []
+      form.supportingGscSitesCustom = Boolean(saved.supportingGscSitesCustom)
+      form.customSupportingJustification = saved.customSupportingJustification ?? ''
+      if (form.supportingGscSitesCustom) {
+        form.supportingGscSites = savedSites
+        if (saved.customApprovalFile?.name) {
+          customApprovalFileMeta.name = saved.customApprovalFile.name
+          customApprovalFileMeta.size = saved.customApprovalFile.size ?? 0
+          customApprovalFileMeta.type = saved.customApprovalFile.type ?? ''
+        }
+      } else {
+        form.supportingGscSites = savedSites.filter((site) => defaultSites.includes(site))
+        if (!form.supportingGscSites.length) {
+          form.supportingGscSites = [...defaultSites]
+        }
+      }
+    }
+    if (form.function) {
+      const validProducts = getProductsForFunction(form.function)
+      const savedProducts = Array.isArray(saved.products) ? saved.products : []
+      form.products = savedProducts.filter((p) => validProducts.includes(p))
+    }
+    const savedLanguages = Array.isArray(saved.languageDependencies)
+      ? saved.languageDependencies
+      : saved.languageDependency
+        ? [saved.languageDependency]
+        : []
+    form.languageDependencies = savedLanguages.filter((lang) => languageOptions.includes(lang))
   } catch {
     // ignore corrupt draft
   }
@@ -446,50 +1360,41 @@ const clearNotice = () => {
   notice.message = ''
 }
 
-const validate = () => {
-  if (!form.projectName.trim()) return 'Project name is required.'
-  if (!form.migrationType) return 'Migration type is required.'
-  if (!form.region) return 'Region is required.'
-  if (!form.area) return 'Area is required.'
-  if (!form.products.length) return 'Please select at least one product.'
-  if (!form.function) return 'Function is required.'
-  if (!form.proposedScope.trim()) return 'Proposed scope is required.'
-  if (!form.languageDependency.trim()) return 'Language dependency is required.'
-  if (!form.fteNumber.trim()) return 'FTE number is required.'
-  return ''
-}
+const validateForm = () =>
+  collectValidationErrors({
+    form,
+    customApprovalFileMeta,
+    isWorkforceBalanced: isWorkforceBalanced.value
+  })
 
-const onSaveDraft = async () => {
-  saving.value = true
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(collectForm()))
-    showNotice('success', 'Draft saved', 'Your progress has been saved locally. You can continue later.')
-  } catch {
-    showNotice('error', 'Save failed', 'Could not save draft to local storage.')
-  } finally {
-    saving.value = false
-  }
-}
-
-const onSubmit = async () => {
-  const error = validate()
-  if (error) {
-    showNotice('error', 'Validation error', error)
+const onReviewAndSubmit = () => {
+  clearNotice()
+  const missing = validateForm()
+  if (missing.length) {
+    validationErrors.value = missing
+    validationDialogOpen.value = true
     return
   }
 
+  openSubmissionPreview()
+}
+
+const onSubmit = async () => {
+  if (!submissionPreview.value) return
+
   submitting.value = true
   try {
-    // 预留：POST /api/migration-intake/
+    // Virtual submit — replace with POST /api/migration-intake/submit/ when backend is ready
     await new Promise((resolve) => setTimeout(resolve, 600))
     localStorage.removeItem(DRAFT_KEY)
+    previewDialogOpen.value = false
     showNotice(
       'success',
       'Submitted successfully',
-      'Your migration request has been recorded and will sync to the Project Attributes Database.'
+      `Migration request ${submissionPreview.value.migrationRequestId} has been recorded and will sync to the Project Attributes Database.`
     )
   } catch {
-    showNotice('error', 'Submit failed', 'Unable to submit the form. Please try again.')
+    showNotice('error', 'Submit failed', 'Unable to submit the request. Please try again.')
   } finally {
     submitting.value = false
   }
@@ -688,13 +1593,466 @@ onMounted(loadDraft)
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.area-strategy-row {
+  align-items: start;
+}
+
+.location-strategy-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.location-strategy-placeholder {
+  border: 1px dashed rgba(22, 22, 22, 0.12);
+  border-radius: 12px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 28px 0 0;
+  padding: 16px;
+}
+
+.supporting-sites-panel {
+  background: rgba(0, 119, 184, 0.04);
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 16px 18px;
+  width: 100%;
+}
+
+.supporting-sites-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.supporting-sites-label {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.supporting-sites-hint {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.custom-summary {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 13px;
+  margin: 0;
+}
+
+.supporting-sites-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(0, 119, 184, 0.25);
+}
+
+.custom-sites-cta {
+  background: linear-gradient(180deg, rgba(243, 136, 14, 0.1) 0%, rgba(243, 136, 14, 0.04) 100%);
+  border: 1px solid rgba(243, 136, 14, 0.35);
+  border-radius: 10px;
+  border-top: 1px solid rgba(243, 136, 14, 0.35);
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
+  width: 100%;
+}
+
+.custom-sites-cta-note {
+  color: #9a5b00;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.custom-sites-cta-btn {
+  width: 100%;
+}
+
+.custom-sites-cta-btn::part(button) {
+  background-color: #f3880e;
+  border-color: #f3880e;
+  color: #fff;
+}
+
+.custom-sites-cta-btn::part(button):hover {
+  background-color: #d9770c;
+  border-color: #d9770c;
+}
+
+.custom-sites-cta-btn::part(icon) {
+  fill: #fff;
+}
+
+.supporting-sites-panel mc-checkbox-group::part(fieldset-container) {
+  border: none;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.custom-sites-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.custom-sites-dialog-desc {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.custom-sites-dialog-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.approval-upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.approval-upload-label {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.approval-upload-input {
+  font-size: 13px;
+}
+
+.approval-upload-hint {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  margin: 0;
+}
+
+.approval-upload-name {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 13px;
+  margin: 0;
+}
+
+.approval-upload-error {
+  color: #c4000a;
+  font-size: 12px;
+  margin: 0;
+}
+
 .product-field {
   overflow: visible;
   position: relative;
   width: 100%;
 }
 
-.form-section--elevated mc-multi-select::part(popover-content),
+.product-field mc-checkbox-group::part(fieldset-container) {
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.workforce-language-layout {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+}
+
+.language-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.language-selection-summary {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.language-field mc-checkbox-group::part(fieldset-container) {
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.workforce-sizing-panel {
+  background: rgba(109, 170, 40, 0.06);
+  border: 1px solid rgba(109, 170, 40, 0.18);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.workforce-sizing-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workforce-sizing-title {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.workforce-sizing-desc {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.job-level-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workforce-balance-tracker {
+  background: rgba(22, 22, 22, 0.03);
+  border-radius: 8px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+  line-height: 1.5;
+  padding: 8px 10px;
+}
+
+.workforce-balance-tracker strong {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+}
+
+.workforce-balance-tracker-sep {
+  opacity: 0.5;
+}
+
+.workforce-balance-alert {
+  align-items: flex-start;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.workforce-balance-alert--error {
+  background: rgba(196, 0, 10, 0.06);
+  border: 1px solid rgba(196, 0, 10, 0.2);
+  color: #9b0010;
+}
+
+.workforce-balance-alert--success {
+  background: rgba(109, 170, 40, 0.1);
+  border: 1px solid rgba(109, 170, 40, 0.25);
+  color: #4a7a18;
+}
+
+.workforce-balance-alert-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.workforce-balance-alert-body {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 4px 0 0;
+  opacity: 0.92;
+}
+
+.workforce-mismatch-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workforce-mismatch-dialog-desc {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.workforce-mismatch-summary {
+  background: rgba(243, 136, 14, 0.08);
+  border: 1px solid rgba(243, 136, 14, 0.25);
+  border-radius: 10px;
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.6;
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.workforce-mismatch-summary li + li {
+  margin-top: 8px;
+}
+
+.workforce-mismatch-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.validation-dialog-body,
+.preview-dialog-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-dialog-shell {
+  max-height: min(75vh, 720px);
+}
+
+.preview-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.preview-dialog-footer {
+  background: #fff;
+  border-top: 1px solid rgba(22, 22, 22, 0.08);
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 16px;
+}
+
+.validation-dialog-desc,
+.preview-dialog-intro p {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.validation-dialog-list {
+  background: rgba(196, 0, 10, 0.06);
+  border: 1px solid rgba(196, 0, 10, 0.18);
+  border-radius: 10px;
+  color: #9b0010;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 12px 14px 12px 28px;
+}
+
+.validation-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.preview-dialog-intro {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.preview-section + .preview-section {
+  border-top: 1px solid rgba(22, 22, 22, 0.08);
+  margin-top: 4px;
+  padding-top: 16px;
+}
+
+.preview-section-title {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.preview-grid {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.preview-row {
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+}
+
+.preview-row--multiline .preview-value {
+  white-space: pre-wrap;
+}
+
+.preview-label {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.preview-value {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .preview-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.area-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.area-field mc-checkbox-group::part(fieldset-container),
+.location-strategy-field mc-checkbox-group::part(fieldset-container) {
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
 .form-section--elevated mc-select::part(popover-content) {
   z-index: 300;
 }
@@ -756,6 +2114,14 @@ onMounted(loadDraft)
     grid-template-columns: 1fr;
   }
 
+  .workforce-language-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .job-level-grid {
+    grid-template-columns: 1fr;
+  }
+
   .flow-strip {
     flex-direction: column;
     align-items: flex-start;
@@ -782,7 +2148,6 @@ onMounted(loadDraft)
 
 <style>
 /* MDS 下拉层需穿透 shadow DOM，且层级高于后续表单区块 */
-mc-multi-select::part(popover-content),
 mc-select::part(popover-content) {
   z-index: 10000;
 }
