@@ -7,6 +7,7 @@
     "build:final-ci-export": "vite build --config ../standalone/final-ci-review/vite.export.config.js",
     "build:final-ci-html": "vite build --config ../standalone/final-ci-review/vite.singlefile.config.js",
     "build": "vite build",
+    "build:migration-intake-html": "vite build --config ../standalone/migration-intake/vite.singlefile.config.js",
     "preview": "vite preview"
   },
   "dependencies": {

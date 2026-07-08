@@ -178,7 +178,7 @@
               <template v-else>
                 <p class="supporting-sites-hint">
                   Custom selection:
-                  {{ form.supportingGscSites.length ? form.supportingGscSites.join(', ') : 'None selected' }}
+                  {{ form.customSupportingGscSites.length ? form.customSupportingGscSites.join(', ') : 'None selected' }}
                 </p>
                 <p v-if="form.customSupportingJustification" class="custom-summary">
                   Justification provided.
@@ -290,25 +290,25 @@
                     {{ customDialogErrors.file }}
                   </p>
                 </div>
-              </div>
 
-              <div slot="footer" class="custom-sites-dialog-footer">
-                <mc-button
-                  type="button"
-                  appearance="neutral"
-                  variant="outlined"
-                  fit="medium"
-                  label="Cancel"
-                  @click="closeCustomSitesDialog"
-                />
-                <mc-button
-                  type="button"
-                  appearance="primary"
-                  variant="filled"
-                  fit="medium"
-                  label="Apply custom selection"
-                  @click="applyCustomSupportingSites"
-                />
+                <div class="custom-sites-dialog-footer">
+                  <mc-button
+                    type="button"
+                    appearance="neutral"
+                    variant="outlined"
+                    fit="medium"
+                    label="Cancel"
+                    @click="closeCustomSitesDialog"
+                  />
+                  <mc-button
+                    type="button"
+                    appearance="primary"
+                    variant="filled"
+                    fit="medium"
+                    label="Confirm"
+                    @click="applyCustomSupportingSites"
+                  />
+                </div>
               </div>
             </mc-dialog>
 
@@ -808,7 +808,7 @@ const locationStrategyOptions = computed(() =>
 const areaCheckboxValue = computed(() => [...form.areas])
 const locationStrategyCheckboxValue = computed(() => [...form.locationStrategies])
 const defaultSitesCheckboxValue = computed(() =>
-  form.supportingGscSitesCustom ? [] : [...form.supportingGscSites]
+  form.supportingGscSitesCustom ? [] : [...form.defaultSupportingGscSites]
 )
 
 const jobLevelTotal = computed(
@@ -869,7 +869,8 @@ const form = reactive({
   region: '',
   areas: [],
   locationStrategies: [],
-  supportingGscSites: [],
+  defaultSupportingGscSites: [],
+  customSupportingGscSites: [],
   supportingGscSitesCustom: false,
   customSupportingJustification: '',
   products: [],
@@ -1025,12 +1026,23 @@ const openSubmissionPreview = () => {
     customApprovalFileMeta,
     migrationTypes
   })
+  logSupportingGscSitesState('review-preview')
+  console.log('[Migration Intake] Submission preview payload', submissionPreview.value)
   previewDialogOpen.value = true
+}
+
+const logSupportingGscSitesState = (source) => {
+  console.log(`[Migration Intake] Supporting GSC Sites (${source})`, {
+    mode: form.supportingGscSitesCustom ? 'custom' : 'default',
+    defaultSupportingGscSites: [...form.defaultSupportingGscSites],
+    customSupportingGscSites: [...form.customSupportingGscSites]
+  })
 }
 
 const resetSupportingSitesState = () => {
   form.locationStrategies = []
-  form.supportingGscSites = []
+  form.defaultSupportingGscSites = []
+  form.customSupportingGscSites = []
   form.supportingGscSitesCustom = false
   form.customSupportingJustification = ''
   customApprovalFileMeta.name = ''
@@ -1039,14 +1051,20 @@ const resetSupportingSitesState = () => {
 }
 
 const syncDefaultSupportingSites = () => {
+  if (form.supportingGscSitesCustom) return
+
   const defaultSites = getDefaultSupportingSitesForAreasAndStrategies(
     form.areas,
     form.locationStrategies
   )
-  form.supportingGscSites = form.supportingGscSites.filter((site) => defaultSites.includes(site))
-  if (!form.supportingGscSites.length && defaultSites.length) {
-    form.supportingGscSites = [...defaultSites]
+  form.defaultSupportingGscSites = form.defaultSupportingGscSites.filter((site) =>
+    defaultSites.includes(site)
+  )
+  if (!form.defaultSupportingGscSites.length && defaultSites.length) {
+    form.defaultSupportingGscSites = [...defaultSites]
   }
+  form.customSupportingGscSites = []
+  logSupportingGscSitesState('sync-default')
 }
 
 const syncLocationStrategiesFromAreas = () => {
@@ -1118,7 +1136,8 @@ const onLocationStrategiesChange = (event) => {
   form.locationStrategies = filterValidLocationStrategies(form.areas, selected)
   form.areas = filterAreasByLocationStrategies(form.areas, form.locationStrategies)
   if (!form.locationStrategies.length || !form.areas.length) {
-    form.supportingGscSites = []
+    form.defaultSupportingGscSites = []
+    form.customSupportingGscSites = []
     form.supportingGscSitesCustom = false
     if (!form.areas.length) {
       form.locationStrategies = []
@@ -1151,12 +1170,14 @@ const onProductsChange = (event) => {
 const onDefaultSupportingSitesChange = (event) => {
   if (form.supportingGscSitesCustom) return
   const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
-  form.supportingGscSites = Array.isArray(value) ? [...value] : []
+  form.defaultSupportingGscSites = Array.isArray(value) ? [...value] : []
+  form.customSupportingGscSites = []
+  logSupportingGscSitesState('default-change')
 }
 
 const openCustomSitesDialog = () => {
   customSitesDialogSelection.value = form.supportingGscSitesCustom
-    ? [...form.supportingGscSites]
+    ? [...form.customSupportingGscSites]
     : []
   customSitesDialogJustification.value = form.customSupportingJustification
   customSitesDialogFile.value = null
@@ -1220,7 +1241,8 @@ const applyCustomSupportingSites = () => {
   }
 
   form.supportingGscSitesCustom = true
-  form.supportingGscSites = [...customSitesDialogSelection.value]
+  form.customSupportingGscSites = [...customSitesDialogSelection.value]
+  form.defaultSupportingGscSites = []
   form.customSupportingJustification = justification
   if (customSitesDialogFile.value) {
     customApprovalFileMeta.name = customSitesDialogFile.value.name
@@ -1228,17 +1250,20 @@ const applyCustomSupportingSites = () => {
     customApprovalFileMeta.type = customSitesDialogFile.value.type
   }
   customSitesDialogOpen.value = false
+  logSupportingGscSitesState('custom-confirm')
 }
 
 const resetToDefaultSupportingSites = () => {
   form.supportingGscSitesCustom = false
+  form.customSupportingGscSites = []
   form.customSupportingJustification = ''
   customApprovalFileMeta.name = ''
   customApprovalFileMeta.size = 0
   customApprovalFileMeta.type = ''
-  form.supportingGscSites = [
+  form.defaultSupportingGscSites = [
     ...getDefaultSupportingSitesForAreasAndStrategies(form.areas, form.locationStrategies)
   ]
+  logSupportingGscSitesState('reset-to-default')
 }
 
 const onDropdownOpened = (sectionId) => {
@@ -1260,7 +1285,8 @@ const collectForm = () => ({
   areas: [...form.areas],
   locationStrategies: [...form.locationStrategies],
   areaLocationPairs: buildAreaLocationPairs(form.areas, form.locationStrategies),
-  supportingGscSites: [...form.supportingGscSites],
+  defaultSupportingGscSites: [...form.defaultSupportingGscSites],
+  customSupportingGscSites: [...form.customSupportingGscSites],
   customApprovalFile: customApprovalFileMeta.name
     ? { ...customApprovalFileMeta }
     : null
@@ -1277,7 +1303,8 @@ const loadDraft = () => {
       region: regions.includes(saved.region) ? saved.region : '',
       areas: [],
       locationStrategies: [],
-      supportingGscSites: [],
+      defaultSupportingGscSites: [],
+      customSupportingGscSites: [],
       supportingGscSitesCustom: false,
       customSupportingJustification: '',
       products: [],
@@ -1317,22 +1344,33 @@ const loadDraft = () => {
         form.areas,
         form.locationStrategies
       )
-      const savedSites = Array.isArray(saved.supportingGscSites) ? saved.supportingGscSites : []
+      const savedDefaultSites = Array.isArray(saved.defaultSupportingGscSites)
+        ? saved.defaultSupportingGscSites
+        : []
+      const savedCustomSites = Array.isArray(saved.customSupportingGscSites)
+        ? saved.customSupportingGscSites
+        : []
+      const legacySites = Array.isArray(saved.supportingGscSites) ? saved.supportingGscSites : []
       form.supportingGscSitesCustom = Boolean(saved.supportingGscSitesCustom)
       form.customSupportingJustification = saved.customSupportingJustification ?? ''
       if (form.supportingGscSitesCustom) {
-        form.supportingGscSites = savedSites
+        form.customSupportingGscSites = savedCustomSites.length ? savedCustomSites : legacySites
+        form.defaultSupportingGscSites = []
         if (saved.customApprovalFile?.name) {
           customApprovalFileMeta.name = saved.customApprovalFile.name
           customApprovalFileMeta.size = saved.customApprovalFile.size ?? 0
           customApprovalFileMeta.type = saved.customApprovalFile.type ?? ''
         }
       } else {
-        form.supportingGscSites = savedSites.filter((site) => defaultSites.includes(site))
-        if (!form.supportingGscSites.length) {
-          form.supportingGscSites = [...defaultSites]
+        form.customSupportingGscSites = []
+        form.defaultSupportingGscSites = savedDefaultSites.length
+          ? savedDefaultSites.filter((site) => defaultSites.includes(site))
+          : legacySites.filter((site) => defaultSites.includes(site))
+        if (!form.defaultSupportingGscSites.length) {
+          form.defaultSupportingGscSites = [...defaultSites]
         }
       }
+      logSupportingGscSitesState('load-draft')
     }
     if (form.function) {
       const validProducts = getProductsForFunction(form.function)
@@ -1381,6 +1419,9 @@ const onReviewAndSubmit = () => {
 
 const onSubmit = async () => {
   if (!submissionPreview.value) return
+
+  logSupportingGscSitesState('submit')
+  console.log('[Migration Intake] Submit payload', submissionPreview.value)
 
   submitting.value = true
   try {
@@ -1720,9 +1761,13 @@ onMounted(loadDraft)
 }
 
 .custom-sites-dialog-footer {
+  border-top: 1px solid rgba(22, 22, 22, 0.08);
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 16px;
 }
 
 .approval-upload-field {
