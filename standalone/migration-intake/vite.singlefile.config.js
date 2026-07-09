@@ -51,7 +51,7 @@ function finalizeSingleFile() {
         /<link rel="stylesheet" href="https:\/\/assets\.maerskline\.com\/mds\/[^"]+">\s*/g,
         ''
       )
-      const readme = `<!--\r\n  Migration Project Intake Form — single-file export\r\n  Usage: double-click this HTML to open in Chrome or Edge.\r\n  Styles are embedded; icons require internet on first load.\r\n  Drafts: localStorage key ae-wpm-migration-intake-draft\r\n  Rebuild: cd frontend && npm run build:migration-intake-html\r\n-->\r\n`
+      const readme = `<!--\r\n  Migration Project Intake Form — single-file export\r\n  Usage: double-click this HTML to open in Chrome or Edge.\r\n  Styles are embedded; icons require internet on first load.\r\n  Drafts: localStorage key ae-wpm-migration-intake-draft\r\n  Rebuild: cd frontend && npm run build:migration-intake-html\r\n  Note: If the page looks blank, use Chrome/Edge (not IE) and allow local file scripts.\r\n-->\r\n`
       if (!html.startsWith('<!--')) {
         html = readme + html
       }
