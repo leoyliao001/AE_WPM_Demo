@@ -1,8 +1,13 @@
 import { createApp } from 'vue'
 import axios from 'axios'
 import { MdsConfig } from '@maersk-global/mds-config'
+import '@maersk-global/mds-components-core/mc-icon'
+import { McIcon } from '@maersk-global/mds-components-core-icon'
+import { patchMcIconComponent } from './utils/mdsIcon.js'
 import App from './App.vue'
 import router from './router'
+
+patchMcIconComponent(McIcon)
 
 if (typeof window !== 'undefined') {
   const iconBasePath = import.meta.env.DEV

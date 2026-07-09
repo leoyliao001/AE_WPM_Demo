@@ -17,73 +17,139 @@
     <div v-else-if="loading" class="loading-state">Loading project details…</div>
 
     <template v-else-if="project">
-      <section class="hero-panel">
-        <div class="hero-main">
-          <div class="hero-tags">
-            <mc-tag appearance="info" fit="small" :label="project.migrationRequestId" />
-            <mc-tag
-              :appearance="statusAppearance(project.status)"
-              fit="small"
-              :label="formatStatusLabel(project.status)"
-            />
-          </div>
-          <p class="hero-meta">
-            {{ project.requestor }} · {{ project.requestedDate }} · {{ project.region }} ·
-            {{ project.migrationType }}
-          </p>
-        </div>
+      <mc-card class="summary-card" variant="bordered" fit="medium" contentalignment="left">
+        <div class="summary-card__content">
+          <div class="summary-header">
+            <div class="summary-header__main">
+              <p class="summary-region">{{ regionLabel }}</p>
+              <div class="summary-title-row">
+                <h2 class="summary-title">{{ project.projectName }}</h2>
+                <div class="summary-tags">
+                  <mc-tag appearance="neutral" fit="small" :label="`#${project.id}`" />
+                  <mc-tag
+                    :appearance="statusAppearance(project.status)"
+                    fit="small"
+                    :label="formatStatusLabel(project.status)"
+                  />
+                </div>
+              </div>
+              <p class="summary-meta">
+                {{ project.migrationRequestId }} · {{ project.requestor }} ·
+                {{ project.requestedDate }} · {{ project.migrationType }}
+              </p>
+            </div>
 
-        <div class="hero-progress">
-          <div class="hero-progress-head">
-            <span>Overall progress</span>
-            <strong>{{ progressPct }}%</strong>
+            <div class="summary-donut" :style="{ '--donut-pct': progressPct }">
+              <div class="summary-donut__ring" aria-hidden="true" />
+              <div class="summary-donut__label">
+                <strong>{{ progressPct }}%</strong>
+                <span>Complete</span>
+              </div>
+            </div>
           </div>
-          <div class="progress-track progress-track--large">
-            <div class="progress-fill" :style="{ width: `${progressPct}%` }" />
+
+          <div class="milestone-stepper" role="list">
+            <div
+              v-for="(item, index) in migrationMilestones"
+              :key="item.id"
+              class="milestone-stepper__item"
+              :class="`milestone-stepper__item--${item.state}`"
+              role="listitem"
+            >
+              <div
+                v-if="index > 0"
+                class="milestone-stepper__connector"
+                :class="{
+                  'milestone-stepper__connector--complete':
+                    item.state === 'complete' || item.state === 'active'
+                }"
+              />
+              <div class="milestone-stepper__node">
+                <mc-icon
+                  v-if="item.state === 'complete'"
+                  icon="mi-check"
+                  size="14"
+                />
+                <mc-icon
+                  v-else-if="item.state === 'at_risk'"
+                  icon="mi-exclamation-triangle"
+                  size="14"
+                />
+                <mc-icon v-else :icon="item.icon" size="14" />
+              </div>
+              <span class="milestone-stepper__label">{{ item.shortLabel }}</span>
+            </div>
+          </div>
+
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span class="summary-stat__label">Est. FTE saving</span>
+              <strong class="summary-stat__value">{{ estimatedFteSaving }}</strong>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-stat__label">Final FTE</span>
+              <strong class="summary-stat__value">{{ project.fteNumber || '—' }}</strong>
+            </div>
+            <div class="summary-stat summary-stat--progress">
+              <span class="summary-stat__label">Stages complete</span>
+              <div class="summary-stat__progress-row">
+                <strong class="summary-stat__value summary-stat__value--success">
+                  {{ completedStages }}/{{ migrationMilestoneTotal }}
+                </strong>
+                <div class="summary-stat__track">
+                  <div
+                    class="summary-stat__fill"
+                    :style="{ width: `${stageProgressPct}%` }"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
+      </mc-card>
 
       <section class="progress-panel">
         <div class="panel-head">
           <h2>Migration Progress</h2>
-          <p>High-level milestone tracking for this project (demo — derived from current status).</p>
+          <p>Select a milestone to review status and next actions for this project.</p>
         </div>
 
-        <ol class="progress-steps">
-          <li
-            v-for="(step, index) in progressSteps"
-            :key="step.id"
-            class="progress-step"
-            :class="`progress-step--${step.state}`"
+        <div class="milestone-grid">
+          <mc-card
+            v-for="item in migrationMilestones"
+            :key="item.id"
+            class="milestone-card"
+            :class="`milestone-card--${item.state}`"
+            :style="{ '--card-accent': item.accent }"
+            variant="bordered"
+            fit="medium"
+            contentalignment="middle"
+            clickable
+            :heading="item.label"
+            :body="milestoneCardBody(item)"
+            @click="onMilestoneClick(item)"
           >
-            <div class="step-marker">
-              <mc-icon
-                v-if="step.state === 'complete'"
-                icon="mi-check"
-                size="16"
-              />
-              <span v-else>{{ index + 1 }}</span>
+            <div slot="image" class="milestone-card__icon">
+              <mc-icon :icon="item.icon" size="24" />
             </div>
-            <div class="step-content">
-              <strong>{{ step.label }}</strong>
-              <p>{{ step.description }}</p>
+
+            <div slot="actions" class="milestone-card__actions">
               <mc-tag
-                v-if="step.state === 'active'"
-                appearance="info"
+                :appearance="item.tagAppearance"
                 fit="small"
-                label="In progress"
+                :label="item.statusLabel"
               />
-              <mc-tag
-                v-else-if="step.state === 'complete'"
-                appearance="success"
+              <mc-button
+                appearance="neutral"
+                variant="plain"
                 fit="small"
-                label="Complete"
+                label="View"
+                trailingicon="mi-arrow-right"
+                tabindex="-1"
               />
-              <mc-tag v-else appearance="neutral" fit="small" label="Pending" />
             </div>
-          </li>
-        </ol>
+          </mc-card>
+        </div>
       </section>
 
       <section
@@ -122,14 +188,26 @@ import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import {
   buildDetailSections,
-  buildProgressSteps,
+  buildMigrationMilestones,
+  countCompletedMilestones,
   formatStatusLabel,
+  migrationMilestoneTotal,
   overallProgress,
   statusAppearance
 } from '../utils/migrationDashboardProgress.js'
+import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-icon'
+import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-notification'
+
+const REGION_LABELS = {
+  APA: 'Asia Pacific region',
+  EUR: 'Europe region',
+  IMEA: 'IMEA region',
+  LAM: 'Latin America region',
+  NAM: 'North America region'
+}
 
 const route = useRoute()
 const loading = ref(true)
@@ -137,10 +215,31 @@ const loadError = ref('')
 const project = ref(null)
 
 const progressPct = computed(() => overallProgress(project.value?.status))
-const progressSteps = computed(() => buildProgressSteps(project.value?.status ?? 'new'))
+const migrationMilestones = computed(() =>
+  buildMigrationMilestones(project.value?.status ?? 'new')
+)
 const detailSections = computed(() =>
   project.value ? buildDetailSections(project.value) : []
 )
+
+const regionLabel = computed(() => {
+  const region = project.value?.region ?? ''
+  return (REGION_LABELS[region] ?? `${region} region`).toUpperCase()
+})
+
+const completedStages = computed(() =>
+  countCompletedMilestones(project.value?.status ?? 'new')
+)
+
+const stageProgressPct = computed(() =>
+  Math.round((completedStages.value / migrationMilestoneTotal) * 100)
+)
+
+const estimatedFteSaving = computed(() => {
+  const fte = Number.parseInt(project.value?.fteNumber ?? '', 10)
+  if (!Number.isFinite(fte) || fte <= 0) return 'N/A'
+  return String(Math.max(1, Math.round(fte * 0.18)))
+})
 
 const detailSubtitle = computed(() => {
   if (project.value) {
@@ -148,6 +247,17 @@ const detailSubtitle = computed(() => {
   }
   return 'Detailed intake data and migration progress.'
 })
+
+const milestoneCardBody = (item) => {
+  if (item.state === 'complete') return 'Milestone completed for this project.'
+  if (item.state === 'active') return 'Currently up to date — review artifacts and owners.'
+  if (item.state === 'at_risk') return 'Needs attention — review blockers and recovery plan.'
+  return 'Not started yet — will unlock after prior stages.'
+}
+
+const onMilestoneClick = (item) => {
+  console.log('[Migration Project] Milestone selected', item.id)
+}
 
 const loadProject = async () => {
   loading.value = true
@@ -176,54 +286,248 @@ watch(() => route.params.id, loadProject)
   padding: 24px 0;
 }
 
-.hero-panel {
-  background: linear-gradient(135deg, #0077b8 0%, #003f6e 100%);
+.summary-card {
+  width: 100%;
+}
+
+.summary-card::part(container) {
   border-radius: 16px;
-  color: #fff;
-  display: grid;
-  gap: 20px;
-  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
-  padding: 24px;
-}
-
-.hero-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.hero-meta {
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
-  opacity: 0.92;
-}
-
-.hero-progress-head {
-  display: flex;
-  font-size: 13px;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.hero-progress-head strong {
-  font-size: 24px;
-}
-
-.progress-track {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  height: 8px;
   overflow: hidden;
 }
 
-.progress-track--large {
-  height: 10px;
+.summary-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
-.progress-fill {
-  background: linear-gradient(90deg, #ffffff, #42b0d5);
+.summary-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.summary-region {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px;
+}
+
+.summary-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.summary-title {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.summary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-meta {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.summary-donut {
+  --donut-pct: 0;
+  flex-shrink: 0;
+  height: 88px;
+  position: relative;
+  width: 88px;
+}
+
+.summary-donut__ring {
+  background: conic-gradient(
+    #0077b8 calc(var(--donut-pct) * 1%),
+    #e8edf2 0
+  );
+  border-radius: 50%;
+  height: 100%;
+  position: relative;
+  width: 100%;
+}
+
+.summary-donut__ring::after {
+  background: #fff;
+  border-radius: 50%;
+  content: '';
+  height: 68px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 68px;
+}
+
+.summary-donut__label {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  justify-content: center;
+  position: absolute;
+  text-align: center;
+}
+
+.summary-donut__label strong {
+  color: #161616;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.summary-donut__label span {
+  color: #6c757d;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.milestone-stepper {
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.milestone-stepper__item {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 72px;
+  position: relative;
+}
+
+.milestone-stepper__connector {
+  background: #d7dde3;
+  height: 2px;
+  left: calc(-50% + 16px);
+  position: absolute;
+  top: 15px;
+  width: calc(100% - 32px);
+  z-index: 0;
+}
+
+.milestone-stepper__connector--complete {
+  background: #6daa28;
+}
+
+.milestone-stepper__node {
+  align-items: center;
+  background: #fff;
+  border: 2px solid #d7dde3;
+  border-radius: 999px;
+  color: #6c757d;
+  display: flex;
+  height: 32px;
+  justify-content: center;
+  position: relative;
+  width: 32px;
+  z-index: 1;
+}
+
+.milestone-stepper__item--complete .milestone-stepper__node {
+  background: #eef8e8;
+  border-color: #6daa28;
+  color: #6daa28;
+}
+
+.milestone-stepper__item--active .milestone-stepper__node {
+  background: #eef6fb;
+  border-color: #0077b8;
+  color: #0077b8;
+}
+
+.milestone-stepper__item--at_risk .milestone-stepper__node {
+  background: #fff1f1;
+  border-color: #e85454;
+  color: #e85454;
+}
+
+.milestone-stepper__label {
+  color: #6c757d;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.milestone-stepper__item--complete .milestone-stepper__label {
+  color: #6daa28;
+}
+
+.milestone-stepper__item--active .milestone-stepper__label {
+  color: #0077b8;
+  font-weight: 600;
+}
+
+.milestone-stepper__item--at_risk .milestone-stepper__label {
+  color: #e85454;
+  font-weight: 600;
+}
+
+.summary-stats {
+  background: #f6f7f9;
+  border-radius: 12px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px 18px;
+}
+
+.summary-stat__label {
+  color: #6c757d;
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.summary-stat__value {
+  color: #161616;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.summary-stat__value--success {
+  color: #6daa28;
+}
+
+.summary-stat__progress-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-stat__track {
+  background: #e2e8ee;
+  border-radius: 999px;
+  flex: 1;
+  height: 6px;
+  min-width: 80px;
+  overflow: hidden;
+}
+
+.summary-stat__fill {
+  background: linear-gradient(90deg, #6daa28, #8cc63f);
   border-radius: 999px;
   height: 100%;
 }
@@ -263,58 +567,56 @@ watch(() => route.params.id, loadProject)
   color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
   font-size: 13px;
   line-height: 1.5;
-  margin: 0 0 16px;
+  margin: 0 0 18px;
 }
 
-.progress-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.milestone-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.progress-step {
-  align-items: flex-start;
-  display: flex;
-  gap: 14px;
+.milestone-card {
+  --card-accent: #0077b8;
+  min-height: 188px;
 }
 
-.step-marker {
-  align-items: center;
-  background: rgba(22, 22, 22, 0.06);
-  border-radius: 999px;
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+.milestone-card::part(container) {
+  border-radius: 14px;
+  height: 100%;
+  position: relative;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.milestone-card::part(container)::before {
+  background: var(--card-accent);
+  content: '';
+  height: 3px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.milestone-card:hover::part(container) {
+  box-shadow: 0 8px 22px rgba(22, 22, 22, 0.08);
+  transform: translateY(-1px);
+}
+
+.milestone-card__icon {
+  color: var(--card-accent);
   display: flex;
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 700;
-  height: 32px;
   justify-content: center;
-  width: 32px;
+  padding: 6px 0 4px;
 }
 
-.progress-step--complete .step-marker {
-  background: rgba(0, 119, 184, 0.12);
-  color: #0077b8;
-}
-
-.progress-step--active .step-marker {
-  background: #0077b8;
-  color: #fff;
-}
-
-.step-content strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.step-content p {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0 0 8px;
+.milestone-card__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .section-head {
@@ -365,9 +667,44 @@ watch(() => route.params.id, loadProject)
 }
 
 @media (max-width: 960px) {
-  .hero-panel,
+  .summary-header {
+    flex-direction: column;
+  }
+
+  .summary-donut {
+    align-self: flex-start;
+  }
+
+  .summary-stats,
   .detail-grid {
     grid-template-columns: 1fr;
   }
+
+  .milestone-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .milestone-stepper {
+    grid-template-columns: repeat(7, minmax(84px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .milestone-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<style>
+.milestone-card::part(heading) {
+  text-align: center;
+}
+
+.milestone-card::part(body) {
+  color: #6c757d;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
 }
 </style>
