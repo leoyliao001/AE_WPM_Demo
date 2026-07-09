@@ -246,47 +246,103 @@
             v-for="project in filteredProjects"
             :key="project.id"
             class="project-card"
+            :class="`project-card--${project.status}`"
             variant="bordered"
             fit="medium"
             clickable
-            :heading="project.projectName"
-            :body="project.migrationRequestId"
             @click="openProject(project.id)"
           >
-            <div slot="image" class="project-card-icon">
-              <mc-icon icon="mi-file-arrows-square" size="24" />
-            </div>
-
-            <div class="project-card-meta">
-              <mc-tag
-                :appearance="statusAppearance(project.status)"
-                fit="small"
-                :label="formatStatusLabel(project.status)"
-              />
-              <span>{{ project.region }} · {{ project.migrationType }}</span>
-              <span>FTE {{ project.fteNumber }} · {{ project.requestor }}</span>
-              <span>{{ project.requestedDate }}</span>
-            </div>
-
-            <div class="progress-inline">
-              <div class="progress-track">
-                <div
-                  class="progress-fill"
-                  :style="{ width: `${overallProgress(project.status)}%` }"
+            <div class="project-card__shell">
+              <div class="project-card__header">
+                <div class="project-card-icon">
+                  <mc-icon icon="mi-file-arrows-square" size="22" />
+                </div>
+                <div class="project-card__title-block">
+                  <h3 class="project-card__title">{{ project.projectName }}</h3>
+                  <p class="project-card__id">{{ project.migrationRequestId }}</p>
+                </div>
+                <mc-tag
+                  class="project-card__status"
+                  :appearance="statusAppearance(project.status)"
+                  fit="small"
+                  :label="formatStatusLabel(project.status)"
                 />
               </div>
-              <span class="progress-label">{{ overallProgress(project.status) }}% overall</span>
-            </div>
 
-            <mc-button
-              slot="actions"
-              appearance="neutral"
-              variant="plain"
-              fit="small"
-              label="View details"
-              trailingicon="mi-arrow-right"
-              tabindex="-1"
-            />
+              <div class="project-card__chips">
+                <span class="project-card__chip">
+                  <mc-icon icon="mi-globe" size="14" />
+                  {{ project.region }}
+                </span>
+                <span class="project-card__chip">
+                  <mc-icon icon="mi-users" size="14" />
+                  {{ project.fteNumber || '—' }} FTE
+                </span>
+                <span v-if="project.areasCount" class="project-card__chip">
+                  {{ project.areasCount }} area{{ project.areasCount === 1 ? '' : 's' }}
+                </span>
+                <span v-if="project.function" class="project-card__chip project-card__chip--muted">
+                  {{ project.function }}
+                </span>
+              </div>
+
+              <p v-if="project.productsPreview" class="project-card__products">
+                {{ project.productsPreview }}
+              </p>
+
+              <div class="project-card__stage">
+                <div class="project-card__stage-head">
+                  <span class="project-card__stage-label">Current stage</span>
+                  <strong class="project-card__stage-name">{{ activeStageLabel(project.status) }}</strong>
+                </div>
+                <div
+                  class="project-card__dots"
+                  :aria-label="`${countCompletedMilestones(project.status)} of ${migrationMilestoneTotal} stages complete`"
+                >
+                  <span
+                    v-for="milestone in buildMigrationMilestones(project.status)"
+                    :key="milestone.id"
+                    class="project-card__dot"
+                    :class="`project-card__dot--${milestone.state}`"
+                    :title="milestone.shortLabel"
+                  />
+                </div>
+                <span class="project-card__stage-count">
+                  {{ countCompletedMilestones(project.status) }}/{{ migrationMilestoneTotal }} stages
+                </span>
+              </div>
+
+              <div class="project-card__progress">
+                <div class="project-card__progress-head">
+                  <span>Overall progress</span>
+                  <strong>{{ overallProgress(project.status) }}%</strong>
+                </div>
+                <div class="progress-track">
+                  <div
+                    class="progress-fill"
+                    :style="{ width: `${overallProgress(project.status)}%` }"
+                  />
+                </div>
+              </div>
+
+              <div class="project-card__footer">
+                <div class="project-card__meta">
+                  <span>{{ project.migrationType }}</span>
+                  <span class="project-card__meta-sep">·</span>
+                  <span>{{ project.requestor }}</span>
+                  <span class="project-card__meta-sep">·</span>
+                  <span>{{ project.requestedDate }}</span>
+                </div>
+                <mc-button
+                  appearance="neutral"
+                  variant="plain"
+                  fit="small"
+                  label="View details"
+                  trailingicon="mi-arrow-right"
+                  tabindex="-1"
+                />
+              </div>
+            </div>
           </mc-card>
         </div>
       </section>
@@ -302,7 +358,10 @@ import PageShell from '../components/PageShell.vue'
 import MigrationProjectsTable from '../components/MigrationProjectsTable.vue'
 import { regions } from '../data/regionAreaMapping.js'
 import {
+  buildMigrationMilestones,
+  countCompletedMilestones,
   formatStatusLabel,
+  migrationMilestoneTotal,
   overallProgress,
   statusAppearance
 } from '../utils/migrationDashboardProgress.js'
@@ -534,6 +593,13 @@ const openProject = (id) => {
   router.push(`/migration-dashboard/${id}`)
 }
 
+const activeStageLabel = (status) => {
+  const milestones = buildMigrationMilestones(status)
+  if (status === 'completed') return 'All milestones complete'
+  const current = milestones.find((item) => item.state === 'active' || item.state === 'at_risk')
+  return current?.label ?? milestones[0]?.label ?? '—'
+}
+
 const loadProjects = async () => {
   loading.value = true
   loadError.value = ''
@@ -721,47 +787,284 @@ onMounted(loadProjects)
 
 .project-cards {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.project-card {
+  height: 100%;
+}
+
 .project-card::part(container) {
-  border-radius: 12px;
+  border-radius: 14px;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.project-card::part(container)::before {
+  background: linear-gradient(90deg, #0077b8, #42b0d5);
+  content: '';
+  height: 3px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.project-card--completed::part(container)::before {
+  background: #6daa28;
+}
+
+.project-card--completed::part(container) {
+  background: linear-gradient(180deg, rgba(109, 170, 40, 0.04) 0%, #fff 72px);
+}
+
+.project-card--at_risk::part(container)::before {
+  background: #e85454;
+}
+
+.project-card--at_risk::part(container) {
+  background: linear-gradient(180deg, rgba(232, 84, 84, 0.05) 0%, #fff 72px);
+}
+
+.project-card--in_progress::part(container),
+.project-card--in_review::part(container) {
+  background: linear-gradient(180deg, rgba(0, 119, 184, 0.05) 0%, #fff 72px);
+}
+
+.project-card:hover::part(container) {
+  box-shadow: 0 10px 28px rgba(22, 22, 22, 0.09);
+  transform: translateY(-2px);
+}
+
+.project-card__shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+}
+
+.project-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
 }
 
 .project-card-icon {
   align-items: center;
-  background: color-mix(in srgb, #0077b8 12%, white);
+  background: rgba(0, 119, 184, 0.1);
   border-radius: 12px;
   color: #0077b8;
   display: flex;
+  flex-shrink: 0;
   height: 44px;
   justify-content: center;
   width: 44px;
 }
 
-.project-card-meta {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
-  display: flex;
-  flex-direction: column;
-  font-size: 13px;
-  gap: 6px;
-  margin-top: 8px;
+.project-card--completed .project-card-icon {
+  background: rgba(109, 170, 40, 0.12);
+  color: #6daa28;
 }
 
-.progress-inline {
-  align-items: center;
+.project-card--at_risk .project-card-icon {
+  background: rgba(232, 84, 84, 0.1);
+  color: #e85454;
+}
+
+.project-card__title-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-card__title {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0 0 4px;
+}
+
+.project-card__id {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  word-break: break-all;
+}
+
+.project-card__status {
+  flex-shrink: 0;
+}
+
+.project-card__chips {
   display: flex;
-  gap: 10px;
-  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.project-card__chip {
+  align-items: center;
+  background: #f4f6f8;
+  border-radius: 999px;
+  color: #4a5560;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 5px;
+  line-height: 1;
+  padding: 5px 10px;
+}
+
+.project-card__chip--muted {
+  background: rgba(0, 119, 184, 0.07);
+  color: #0077b8;
+}
+
+.project-card__products {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  display: -webkit-box;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+}
+
+.project-card__stage {
+  background: rgba(22, 22, 22, 0.025);
+  border: 1px solid rgba(22, 22, 22, 0.06);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.project-card__stage-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  justify-content: space-between;
+}
+
+.project-card__stage-label {
+  color: #6c757d;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.project-card__stage-name {
+  color: #161616;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.project-card__dots {
+  display: flex;
+  gap: 6px;
+}
+
+.project-card__dot {
+  background: #fff;
+  border: 1.5px solid #d0d7de;
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
+}
+
+.project-card__dot--complete {
+  background: #6daa28;
+  border-color: #6daa28;
+}
+
+.project-card__dot--active {
+  background: #0077b8;
+  border-color: #0077b8;
+  box-shadow: 0 0 0 3px rgba(0, 119, 184, 0.18);
+  height: 10px;
+  width: 10px;
+}
+
+.project-card__dot--at_risk {
+  background: #e85454;
+  border-color: #e85454;
+  box-shadow: 0 0 0 3px rgba(232, 84, 84, 0.16);
+  height: 10px;
+  width: 10px;
+}
+
+.project-card__stage-count {
+  color: #6c757d;
+  font-size: 11px;
+}
+
+.project-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.project-card__progress-head {
+  align-items: center;
+  color: #6c757d;
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+}
+
+.project-card__progress-head strong {
+  color: #0077b8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.project-card--completed .project-card__progress-head strong {
+  color: #6daa28;
+}
+
+.project-card--at_risk .project-card__progress-head strong {
+  color: #e85454;
+}
+
+.project-card__footer {
+  align-items: center;
+  border-top: 1px solid rgba(22, 22, 22, 0.06);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.project-card__meta {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 4px;
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.project-card__meta-sep {
+  opacity: 0.55;
 }
 
 .progress-track {
   background: rgba(22, 22, 22, 0.08);
   border-radius: 999px;
-  flex: 1;
-  height: 8px;
+  height: 4px;
   overflow: hidden;
+  width: 100%;
 }
 
 .progress-fill {
@@ -770,11 +1073,12 @@ onMounted(loadProjects)
   height: 100%;
 }
 
-.progress-label {
-  color: #0077b8;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+.project-card--completed .progress-fill {
+  background: linear-gradient(90deg, #6daa28, #8cc63f);
+}
+
+.project-card--at_risk .progress-fill {
+  background: linear-gradient(90deg, #e85454, #f3880e);
 }
 
 @media (max-width: 1100px) {
