@@ -780,6 +780,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
 import {
   buildAreaCountryPairs,
@@ -1515,17 +1516,20 @@ const onSubmit = async () => {
 
   submitting.value = true
   try {
-    // Virtual submit — replace with POST /api/migration-intake/submit/ when backend is ready
-    await new Promise((resolve) => setTimeout(resolve, 600))
+    const { data } = await axios.post('/api/migration-intake/submit/', submissionPreview.value)
     localStorage.removeItem(DRAFT_KEY)
     previewDialogOpen.value = false
     showNotice(
       'success',
       'Submitted successfully',
-      `Migration request ${submissionPreview.value.migrationRequestId} has been recorded and will sync to the Project Attributes Database.`
+      data.message ??
+        `Migration request ${submissionPreview.value.migrationRequestId} has been saved to the database.`
     )
-  } catch {
-    showNotice('error', 'Submit failed', 'Unable to submit the request. Please try again.')
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ??
+      'Unable to submit the request. Please try again.'
+    showNotice('error', 'Submit failed', message)
   } finally {
     submitting.value = false
   }
