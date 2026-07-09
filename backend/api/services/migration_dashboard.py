@@ -37,6 +37,7 @@ def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
         "areasCount": len(submission.areas or []),
         "countriesCount": len(submission.countries or []),
         "productsPreview": _join_preview(submission.products),
+        "products": submission.products or [],
         "areasPreview": _join_preview(submission.areas),
         "createdAt": submission.created_at.isoformat() if submission.created_at else "",
     }
@@ -70,23 +71,42 @@ def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
     return overview
 
 
+def _parse_fte(value) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _add_bucket(bucket: dict, key: str, fte: int) -> None:
+    if not key:
+        return
+    entry = bucket.get(key, {"count": 0, "fte": 0})
+    entry["count"] += 1
+    entry["fte"] += fte
+    bucket[key] = entry
+
+
 def build_dashboard_summary(submissions) -> dict:
     total_fte = 0
     by_status = {}
     by_region = {}
+    by_product = {}
 
     for submission in submissions:
-        by_status[submission.status] = by_status.get(submission.status, 0) + 1
-        if submission.region:
-            by_region[submission.region] = by_region.get(submission.region, 0) + 1
-        try:
-            total_fte += int(submission.fte_number or 0)
-        except ValueError:
-            pass
+        fte = _parse_fte(submission.fte_number)
+        total_fte += fte
+        _add_bucket(by_status, submission.status, fte)
+        _add_bucket(by_region, submission.region, fte)
+        for product in submission.products or []:
+            product_name = str(product).strip()
+            if product_name:
+                _add_bucket(by_product, product_name, fte)
 
     return {
         "totalProjects": len(submissions),
         "totalFte": total_fte,
         "byStatus": by_status,
         "byRegion": by_region,
+        "byProduct": by_product,
     }

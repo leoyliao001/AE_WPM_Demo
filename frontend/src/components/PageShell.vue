@@ -4,6 +4,7 @@
       <header v-if="showHeader" class="page-header">
         <router-link v-if="backTo" class="back-link" :to="backTo">
           <mc-button
+            class="back-button"
             appearance="neutral"
             variant="plain"
             fit="small"
@@ -59,14 +60,25 @@ defineProps({
   z-index: 1;
 }
 
+.page-header {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  width: 100%;
+}
+
 .back-link {
-  display: inline-block;
+  align-self: flex-start;
+  display: inline-flex;
+  justify-content: flex-start;
   margin-bottom: 20px;
   text-decoration: none;
 }
 
 .header-main {
   margin-bottom: 28px;
+  width: 100%;
 }
 
 .page-title {
@@ -91,5 +103,14 @@ defineProps({
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+}
+</style>
+
+<style>
+.page-shell .back-link mc-button.back-button::part(button) {
+  justify-content: flex-start;
+  padding-inline-start: 0;
+  text-align: left;
 }
 </style>
