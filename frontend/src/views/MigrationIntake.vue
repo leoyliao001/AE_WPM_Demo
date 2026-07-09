@@ -39,6 +39,11 @@
       </header>
 
       <div class="intake-form">
+        <p class="required-fields-legend">
+          <RequiredMark />
+          <span>Required field</span>
+        </p>
+
         <!-- Section 1 -->
         <section
           class="form-section"
@@ -56,6 +61,7 @@
           <div class="section-body">
             <mc-input
               ref="projectNameRef"
+              class="field-required"
               label="Project name"
               placeholder="Enter project name"
               :value="form.projectName"
@@ -66,6 +72,7 @@
             <div class="field-row field-row--two">
               <mc-select
                 ref="migrationTypeRef"
+                class="field-required"
                 label="Migration type"
                 placeholder="Select migration type"
                 :value="form.migrationType"
@@ -85,6 +92,7 @@
 
               <mc-select
                 ref="regionRef"
+                class="field-required"
                 label="Region"
                 placeholder="Select region"
                 :value="form.region"
@@ -100,7 +108,7 @@
             <div v-if="form.region" class="area-panel">
               <div class="area-panel-head">
                 <div>
-                  <span class="area-panel-title">Area</span>
+                  <span class="area-panel-title">Area<RequiredMark /></span>
                   <p class="area-panel-desc">
                     Select one or more areas. Options are filtered by region.
                   </p>
@@ -135,7 +143,7 @@
             <div v-if="form.areas.length" class="country-panel">
               <div class="country-panel-head">
                 <div>
-                  <span class="country-panel-title">Country</span>
+                  <span class="country-panel-title">Country<RequiredMark /></span>
                   <p class="country-panel-desc">
                     Select one or more countries. Options are filtered by your area selection.
                   </p>
@@ -182,7 +190,7 @@
 
             <div v-if="form.areas.length" class="location-strategy-panel">
               <div class="location-strategy-head">
-                <span class="location-strategy-label">Location Strategy</span>
+                <span class="location-strategy-label">Location Strategy<RequiredMark /></span>
                 <mc-tag
                   v-if="form.locationStrategyCustom"
                   appearance="warning"
@@ -277,12 +285,12 @@
                   </p>
 
                   <mc-checkbox-group
-                    legend="Custom location strategy"
                     orientation="vertical"
                     name="customLocationStrategies"
                     :value.prop="customLocationStrategyDialogSelection"
                     @change="onCustomLocationStrategyDialogSelectionChange"
                   >
+                    <span slot="legend">Custom location strategy<RequiredMark /></span>
                     <mc-checkbox
                       v-for="site in customLocationStrategyOptions"
                       :key="site"
@@ -293,6 +301,7 @@
                   </mc-checkbox-group>
 
                   <mc-textarea
+                    class="field-required"
                     label="Justification"
                     placeholder="Explain why custom location strategy is required..."
                     hint="Required when using custom location strategy."
@@ -305,7 +314,7 @@
                   />
 
                   <div class="approval-upload-field">
-                    <label class="approval-upload-label">Approval attachment</label>
+                    <label class="approval-upload-label">Approval attachment<RequiredMark /></label>
                     <input
                       ref="approvalFileInputRef"
                       class="approval-upload-input"
@@ -353,6 +362,7 @@
 
             <mc-select
               ref="functionRef"
+              class="field-required"
               label="Function"
               placeholder="Select function"
               hint="Select an activity function to filter available products."
@@ -368,6 +378,7 @@
             <div class="product-field">
               <mc-input
                 v-if="!form.function"
+                class="field-required"
                 label="Product"
                 placeholder="Select function first"
                 hint="Choose all products involved in this migration."
@@ -388,13 +399,13 @@
 
                 <mc-checkbox-group
                   :key="`products-${form.function}`"
-                  legend="Product"
                   hint="Choose all products involved in this migration."
                   orientation="vertical"
                   name="products"
                   :value.prop="productCheckboxValue"
                   @change="onProductsChange"
                 >
+                  <span slot="legend">Product<RequiredMark /></span>
                   <mc-checkbox
                     v-for="product in visibleProducts"
                     :key="product"
@@ -421,6 +432,7 @@
           <div class="section-body">
             <mc-textarea
               ref="scopeRef"
+              class="field-required"
               label="Proposed scope of the project"
               placeholder="Describe processes, FTEs, job levels, and activities..."
               hint="Provide a high-level description of the processes, FTEs, job levels, and activities."
@@ -454,13 +466,13 @@
                   @input="onLanguageFilterInput"
                 />
                 <mc-checkbox-group
-                  legend="Language dependency"
                   hint="Select all languages required for this migration."
                   orientation="vertical"
                   name="languageDependencies"
                   :value.prop="languageCheckboxValue"
                   @change="onLanguageDependenciesChange"
                 >
+                  <span slot="legend">Language dependency<RequiredMark /></span>
                   <mc-checkbox
                     v-for="lang in visibleLanguages"
                     :key="lang"
@@ -482,6 +494,7 @@
 
                 <mc-input
                   ref="fteRef"
+                  class="field-required"
                   label="FTE number"
                   placeholder="e.g. 12"
                   inputmode="numeric"
@@ -499,6 +512,7 @@
 
                 <div class="job-level-grid">
                   <mc-input
+                    class="field-required"
                     label="JL2"
                     placeholder="Count"
                     hint="Job Level 2"
@@ -515,6 +529,7 @@
                     @input="onNumericInput('jl2', $event)"
                   />
                   <mc-input
+                    class="field-required"
                     label="JL3"
                     placeholder="Count"
                     hint="Job Level 3"
@@ -531,6 +546,7 @@
                     @input="onNumericInput('jl3', $event)"
                   />
                   <mc-input
+                    class="field-required"
                     label="JL4"
                     placeholder="Count"
                     hint="Job Level 4"
@@ -771,6 +787,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import RequiredMark from '../components/RequiredMark.vue'
 import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
 import {
@@ -1557,6 +1574,21 @@ onMounted(loadDraft)
   flex-direction: column;
   gap: 24px;
   margin-top: 32px;
+}
+
+.required-fields-legend {
+  align-items: center;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  display: flex;
+  font-size: 13px;
+  gap: 4px;
+  margin: 0;
+}
+
+.field-required::part(label)::after {
+  color: #c4000a;
+  content: ' *';
+  font-weight: 600;
 }
 
 .form-section {
