@@ -16,14 +16,12 @@ class MigrationIntakeSubmission(models.Model):
 
     areas = models.JSONField(default=list)
     countries = models.JSONField(default=list)
-    location_strategies = models.JSONField(default=list)
-    area_location_pairs = models.JSONField(default=list)
     area_country_pairs = models.JSONField(default=list)
 
-    default_supporting_gsc_sites = models.JSONField(default=list)
-    custom_supporting_gsc_sites = models.JSONField(default=list)
-    supporting_gsc_sites_custom = models.BooleanField(default=False)
-    custom_supporting_justification = models.TextField(blank=True)
+    default_location_strategies = models.JSONField(default=list)
+    custom_location_strategies = models.JSONField(default=list)
+    location_strategy_custom = models.BooleanField(default=False)
+    custom_location_strategy_justification = models.TextField(blank=True)
     custom_approval_file_name = models.CharField(max_length=255, blank=True)
     custom_approval_file_size = models.PositiveIntegerField(null=True, blank=True)
     custom_approval_file_type = models.CharField(max_length=128, blank=True)

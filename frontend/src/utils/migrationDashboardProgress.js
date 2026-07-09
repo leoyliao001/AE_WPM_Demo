@@ -91,26 +91,12 @@ export const buildDetailSections = (project) => [
           ? project.areaCountryPairs.map((pair) => `${pair.area} → ${pair.country}`).join('; ')
           : '—'
       },
-      { label: 'Location Strategy', value: (project.locationStrategies ?? []).join(', ') || '—' },
+      { label: 'Location Strategy', value: (project.locationStrategyCustom
+        ? project.customLocationStrategies
+        : project.defaultLocationStrategies ?? []).join(', ') || '—' },
       {
-        label: 'Area ↔ Location Strategy',
-        value: (project.areaLocationPairs ?? []).length
-          ? project.areaLocationPairs
-              .map((pair) => `${pair.area} → ${pair.locationStrategy}`)
-              .join('; ')
-          : '—'
-      },
-      {
-        label: 'Default Supporting GSC Sites',
-        value: (project.defaultSupportingGscSites ?? []).join(', ') || '—'
-      },
-      {
-        label: 'Custom Supporting GSC Sites',
-        value: (project.customSupportingGscSites ?? []).join(', ') || '—'
-      },
-      {
-        label: 'Supporting GSC Sites mode',
-        value: project.supportingGscSitesCustom ? 'Custom' : 'Default'
+        label: 'Location Strategy mode',
+        value: project.locationStrategyCustom ? 'Custom' : 'Default'
       }
     ]
   },

@@ -97,50 +97,39 @@
               </mc-select>
             </div>
 
-            <div v-if="form.region" class="field-row field-row--two area-strategy-row">
-              <div class="area-field">
-                <mc-checkbox-group
-                  :key="`areas-${form.region}`"
-                  legend="Area"
-                  hint="Select one or more areas. Options are filtered by region."
-                  orientation="vertical"
-                  name="areas"
-                  :value.prop="areaCheckboxValue"
-                  @change="onAreasChange"
-                >
-                  <mc-checkbox
-                    v-for="area in filteredAreas"
-                    :key="area"
-                    name="areas"
-                    :value="area"
-                    :label="area"
-                  />
-                </mc-checkbox-group>
+            <div v-if="form.region" class="area-panel">
+              <div class="area-panel-head">
+                <div>
+                  <span class="area-panel-title">Area</span>
+                  <p class="area-panel-desc">
+                    Select one or more areas. Options are filtered by region.
+                  </p>
+                </div>
+                <mc-tag
+                  v-if="form.areas.length"
+                  appearance="info"
+                  fit="small"
+                  :label="`${form.areas.length} selected`"
+                />
               </div>
 
-              <div class="location-strategy-field">
-                <mc-checkbox-group
-                  v-if="form.areas.length"
-                  :key="`location-strategies-${form.areas.join('|')}`"
-                  legend="Location Strategy"
-                  hint="Filtered by selected areas. Each option maps to your area selection."
-                  orientation="vertical"
-                  name="locationStrategies"
-                  :value.prop="locationStrategyCheckboxValue"
-                  @change="onLocationStrategiesChange"
-                >
-                  <mc-checkbox
-                    v-for="option in locationStrategyOptions"
-                    :key="option.value"
-                    name="locationStrategies"
-                    :value="option.value"
-                    :label="option.label"
-                  />
-                </mc-checkbox-group>
-                <p v-else class="location-strategy-placeholder">
-                  Select one or more areas to configure location strategy.
-                </p>
-              </div>
+              <mc-checkbox-group
+                :key="`areas-${form.region}`"
+                legend="Area"
+                hiddenlegend
+                orientation="vertical"
+                name="areas"
+                :value.prop="areaCheckboxValue"
+                @change="onAreasChange"
+              >
+                <mc-checkbox
+                  v-for="area in filteredAreas"
+                  :key="area"
+                  name="areas"
+                  :value="area"
+                  :label="area"
+                />
+              </mc-checkbox-group>
             </div>
 
             <div v-if="form.areas.length" class="country-panel">
@@ -191,32 +180,32 @@
               </p>
             </div>
 
-            <div v-if="form.locationStrategies.length" class="supporting-sites-panel">
-              <div class="supporting-sites-head">
-                <span class="supporting-sites-label">Supporting GSC Sites</span>
+            <div v-if="form.areas.length" class="location-strategy-panel">
+              <div class="location-strategy-head">
+                <span class="location-strategy-label">Location Strategy</span>
                 <mc-tag
-                  v-if="form.supportingGscSitesCustom"
+                  v-if="form.locationStrategyCustom"
                   appearance="warning"
                   fit="small"
                   label="Custom"
                 />
               </div>
 
-              <template v-if="!form.supportingGscSitesCustom">
-                <p class="supporting-sites-hint">Default sites for selected areas. Select all that apply.</p>
+              <template v-if="!form.locationStrategyCustom">
+                <p class="location-strategy-hint">Default options for selected areas. Select all that apply.</p>
                 <mc-checkbox-group
-                  :key="`default-sites-${activeAreas.join('|')}`"
-                  legend="Supporting GSC Sites"
+                  :key="`default-location-strategies-${form.areas.join('|')}`"
+                  legend="Location Strategy"
                   hiddenlegend
                   orientation="vertical"
-                  name="supportingGscSites"
-                  :value.prop="defaultSitesCheckboxValue"
-                  @change="onDefaultSupportingSitesChange"
+                  name="defaultLocationStrategies"
+                  :value.prop="defaultLocationStrategiesCheckboxValue"
+                  @change="onDefaultLocationStrategiesChange"
                 >
                   <mc-checkbox
-                    v-for="site in defaultSupportingSites"
+                    v-for="site in defaultLocationStrategyOptions"
                     :key="site"
-                    name="supportingGscSites"
+                    name="defaultLocationStrategies"
                     :value="site"
                     :label="site"
                   />
@@ -224,11 +213,11 @@
               </template>
 
               <template v-else>
-                <p class="supporting-sites-hint">
+                <p class="location-strategy-hint">
                   Custom selection:
-                  {{ form.customSupportingGscSites.length ? form.customSupportingGscSites.join(', ') : 'None selected' }}
+                  {{ form.customLocationStrategies.length ? form.customLocationStrategies.join(', ') : 'None selected' }}
                 </p>
-                <p v-if="form.customSupportingJustification" class="custom-summary">
+                <p v-if="form.customLocationStrategyJustification" class="custom-summary">
                   Justification provided.
                 </p>
                 <p v-if="customApprovalFileMeta.name" class="custom-summary">
@@ -236,21 +225,21 @@
                 </p>
               </template>
 
-              <div class="supporting-sites-actions custom-sites-cta">
+              <div class="location-strategy-actions custom-sites-cta">
                 <p class="custom-sites-cta-note">
-                  Need a non-default site mix? Custom selection requires justification and approval.
+                  Need a non-default mix? Custom selection requires justification and approval.
                 </p>
                 <mc-button
-                  v-if="!form.supportingGscSitesCustom"
+                  v-if="!form.locationStrategyCustom"
                   class="custom-sites-cta-btn"
                   type="button"
                   appearance="secondary"
                   variant="filled"
                   fit="medium"
                   width="full-width"
-                  label="Use custom supporting GSC sites"
+                  label="Use custom location strategy"
                   icon="mi-pencil"
-                  @click="openCustomSitesDialog"
+                  @click="openCustomLocationStrategyDialog"
                 />
                 <template v-else>
                   <mc-button
@@ -259,7 +248,7 @@
                     variant="outlined"
                     fit="small"
                     label="Edit custom selection"
-                    @click="openCustomSitesDialog"
+                    @click="openCustomLocationStrategyDialog"
                   />
                   <mc-button
                     type="button"
@@ -267,76 +256,78 @@
                     variant="plain"
                     fit="small"
                     label="Use defaults"
-                    @click="resetToDefaultSupportingSites"
+                    @click="resetToDefaultLocationStrategies"
                   />
                 </template>
               </div>
             </div>
 
             <mc-dialog
-              :open="customSitesDialogOpen"
-              heading="Custom Supporting GSC Sites"
+              :open="customLocationStrategyDialogOpen"
+              heading="Custom Location Strategy"
               dimension="medium"
               showclosebutton
               @closing="onCustomDialogClosing"
             >
               <div class="custom-sites-dialog-body">
-                <p class="custom-sites-dialog-desc">
-                  Select supporting GSC sites, provide justification, and upload approval documentation
-                  (email, Word, or image — max 4 MB).
-                </p>
+                <div class="custom-sites-dialog-scroll">
+                  <p class="custom-sites-dialog-desc">
+                    Select location strategy options, provide justification, and upload approval documentation
+                    (email, Word, or image — max 4 MB).
+                  </p>
 
-                <mc-checkbox-group
-                  legend="Custom supporting GSC sites"
-                  orientation="vertical"
-                  name="customSupportingGscSites"
-                  :value.prop="customSitesDialogSelection"
-                  @change="onCustomSitesDialogSelectionChange"
-                >
-                  <mc-checkbox
-                    v-for="site in customGscSiteOptions"
-                    :key="site"
-                    name="customSupportingGscSites"
-                    :value="site"
-                    :label="site"
+                  <mc-checkbox-group
+                    legend="Custom location strategy"
+                    orientation="vertical"
+                    name="customLocationStrategies"
+                    :value.prop="customLocationStrategyDialogSelection"
+                    @change="onCustomLocationStrategyDialogSelectionChange"
+                  >
+                    <mc-checkbox
+                      v-for="site in customLocationStrategyOptions"
+                      :key="site"
+                      name="customLocationStrategies"
+                      :value="site"
+                      :label="site"
+                    />
+                  </mc-checkbox-group>
+
+                  <mc-textarea
+                    label="Justification"
+                    placeholder="Explain why custom location strategy is required..."
+                    hint="Required when using custom location strategy."
+                    rows="4"
+                    width="full-width"
+                    :value="customSitesDialogJustification"
+                    :invalid="customDialogErrors.justification"
+                    :errormessage="customDialogErrors.justification ? 'Justification is required.' : ''"
+                    @input="onCustomJustificationInput"
                   />
-                </mc-checkbox-group>
 
-                <mc-textarea
-                  label="Justification"
-                  placeholder="Explain why custom supporting GSC sites are required..."
-                  hint="Required when using custom supporting GSC sites."
-                  rows="4"
-                  width="full-width"
-                  :value="customSitesDialogJustification"
-                  :invalid="customDialogErrors.justification"
-                  :errormessage="customDialogErrors.justification ? 'Justification is required.' : ''"
-                  @input="onCustomJustificationInput"
-                />
-
-                <div class="approval-upload-field">
-                  <label class="approval-upload-label">Approval attachment</label>
-                  <input
-                    ref="approvalFileInputRef"
-                    class="approval-upload-input"
-                    type="file"
-                    :accept="approvalFileAccept"
-                    @change="onApprovalFileChange"
-                  />
-                  <p class="approval-upload-hint">
-                    Supported: email (.eml, .msg), Word (.doc, .docx), PDF, or images. Max 4 MB.
-                  </p>
-                  <p v-if="customSitesDialogFile" class="approval-upload-name">
-                    Selected: {{ customSitesDialogFile.name }}
-                    ({{ formatFileSize(customSitesDialogFile.size) }})
-                  </p>
-                  <p v-else-if="customApprovalFileMeta.name" class="approval-upload-name">
-                    Current file: {{ customApprovalFileMeta.name }}
-                    ({{ formatFileSize(customApprovalFileMeta.size) }})
-                  </p>
-                  <p v-if="customDialogErrors.file" class="approval-upload-error">
-                    {{ customDialogErrors.file }}
-                  </p>
+                  <div class="approval-upload-field">
+                    <label class="approval-upload-label">Approval attachment</label>
+                    <input
+                      ref="approvalFileInputRef"
+                      class="approval-upload-input"
+                      type="file"
+                      :accept="approvalFileAccept"
+                      @change="onApprovalFileChange"
+                    />
+                    <p class="approval-upload-hint">
+                      Supported: email (.eml, .msg), Word (.doc, .docx), PDF, or images. Max 4 MB.
+                    </p>
+                    <p v-if="customSitesDialogFile" class="approval-upload-name">
+                      Selected: {{ customSitesDialogFile.name }}
+                      ({{ formatFileSize(customSitesDialogFile.size) }})
+                    </p>
+                    <p v-else-if="customApprovalFileMeta.name" class="approval-upload-name">
+                      Current file: {{ customApprovalFileMeta.name }}
+                      ({{ formatFileSize(customApprovalFileMeta.size) }})
+                    </p>
+                    <p v-if="customDialogErrors.file" class="approval-upload-error">
+                      {{ customDialogErrors.file }}
+                    </p>
+                  </div>
                 </div>
 
                 <div class="custom-sites-dialog-footer">
@@ -346,7 +337,7 @@
                     variant="outlined"
                     fit="medium"
                     label="Cancel"
-                    @click="closeCustomSitesDialog"
+                    @click="closeCustomLocationStrategyDialog"
                   />
                   <mc-button
                     type="button"
@@ -354,7 +345,7 @@
                     variant="filled"
                     fit="medium"
                     label="Confirm"
-                    @click="applyCustomSupportingSites"
+                    @click="applyCustomLocationStrategy"
                   />
                 </div>
               </div>
@@ -790,13 +781,8 @@ import {
 import {
   APPROVAL_FILE_ACCEPT,
   MAX_APPROVAL_FILE_BYTES,
-  buildAreaLocationPairs,
-  customGscSiteOptions,
-  filterAreasByLocationStrategies,
-  filterValidLocationStrategies,
-  getAreasForLocationStrategy,
-  getDefaultSupportingSitesForAreasAndStrategies,
-  getLocationStrategiesForAreas
+  customLocationStrategyOptions,
+  getDefaultLocationStrategiesForAreas
 } from '../data/areaLocationStrategyMapping'
 import { languageOptions } from '../data/languageOptions'
 import { functions, getProductsForFunction } from '../data/functionProductMapping'
@@ -852,26 +838,12 @@ const visibleProducts = computed(() => {
   return filteredProducts.value.filter((product) => product.toLowerCase().includes(query))
 })
 
-const locationStrategiesForAreas = computed(() => getLocationStrategiesForAreas(form.areas))
-const activeAreas = computed(() =>
-  filterAreasByLocationStrategies(form.areas, form.locationStrategies)
-)
-const defaultSupportingSites = computed(() =>
-  getDefaultSupportingSitesForAreasAndStrategies(form.areas, form.locationStrategies)
-)
-const locationStrategyOptions = computed(() =>
-  locationStrategiesForAreas.value.map((strategy) => {
-    const areas = getAreasForLocationStrategy(form.areas, strategy)
-    return {
-      value: strategy,
-      label: areas.length ? `${strategy} (${areas.join(', ')})` : strategy
-    }
-  })
+const defaultLocationStrategyOptions = computed(() =>
+  getDefaultLocationStrategiesForAreas(form.areas)
 )
 const areaCheckboxValue = computed(() => [...form.areas])
-const locationStrategyCheckboxValue = computed(() => [...form.locationStrategies])
-const defaultSitesCheckboxValue = computed(() =>
-  form.supportingGscSitesCustom ? [] : [...form.defaultSupportingGscSites]
+const defaultLocationStrategiesCheckboxValue = computed(() =>
+  form.locationStrategyCustom ? [] : [...form.defaultLocationStrategies]
 )
 
 const jobLevelTotal = computed(
@@ -913,8 +885,8 @@ const previewSectionGroups = computed(() =>
 )
 
 const approvalFileAccept = APPROVAL_FILE_ACCEPT
-const customSitesDialogOpen = ref(false)
-const customSitesDialogSelection = ref([])
+const customLocationStrategyDialogOpen = ref(false)
+const customLocationStrategyDialogSelection = ref([])
 const customSitesDialogJustification = ref('')
 const customSitesDialogFile = ref(null)
 const approvalFileInputRef = ref(null)
@@ -932,11 +904,10 @@ const form = reactive({
   region: '',
   areas: [],
   countries: [],
-  locationStrategies: [],
-  defaultSupportingGscSites: [],
-  customSupportingGscSites: [],
-  supportingGscSitesCustom: false,
-  customSupportingJustification: '',
+  defaultLocationStrategies: [],
+  customLocationStrategies: [],
+  locationStrategyCustom: false,
+  customLocationStrategyJustification: '',
   products: [],
   function: '',
   proposedScope: '',
@@ -1090,26 +1061,25 @@ const openSubmissionPreview = () => {
     customApprovalFileMeta,
     migrationTypes
   })
-  logSupportingGscSitesState('review-preview')
+  logLocationStrategyState('review-preview')
   console.log('[Migration Intake] Submission preview payload', submissionPreview.value)
   previewDialogOpen.value = true
 }
 
-const logSupportingGscSitesState = (source) => {
-  console.log(`[Migration Intake] Supporting GSC Sites (${source})`, {
-    mode: form.supportingGscSitesCustom ? 'custom' : 'default',
-    defaultSupportingGscSites: [...form.defaultSupportingGscSites],
-    customSupportingGscSites: [...form.customSupportingGscSites]
+const logLocationStrategyState = (source) => {
+  console.log(`[Migration Intake] Location Strategy (${source})`, {
+    mode: form.locationStrategyCustom ? 'custom' : 'default',
+    defaultLocationStrategies: [...form.defaultLocationStrategies],
+    customLocationStrategies: [...form.customLocationStrategies]
   })
 }
 
-const resetSupportingSitesState = () => {
-  form.locationStrategies = []
+const resetLocationStrategyState = () => {
   form.countries = []
-  form.defaultSupportingGscSites = []
-  form.customSupportingGscSites = []
-  form.supportingGscSitesCustom = false
-  form.customSupportingJustification = ''
+  form.defaultLocationStrategies = []
+  form.customLocationStrategies = []
+  form.locationStrategyCustom = false
+  form.customLocationStrategyJustification = ''
   customApprovalFileMeta.name = ''
   customApprovalFileMeta.size = 0
   customApprovalFileMeta.type = ''
@@ -1120,31 +1090,18 @@ const syncCountriesFromAreas = () => {
   countryFilter.value = ''
 }
 
-const syncDefaultSupportingSites = () => {
-  if (form.supportingGscSitesCustom) return
+const syncDefaultLocationStrategies = () => {
+  if (form.locationStrategyCustom) return
 
-  const defaultSites = getDefaultSupportingSitesForAreasAndStrategies(
-    form.areas,
-    form.locationStrategies
+  const defaultOptions = getDefaultLocationStrategiesForAreas(form.areas)
+  form.defaultLocationStrategies = form.defaultLocationStrategies.filter((site) =>
+    defaultOptions.includes(site)
   )
-  form.defaultSupportingGscSites = form.defaultSupportingGscSites.filter((site) =>
-    defaultSites.includes(site)
-  )
-  if (!form.defaultSupportingGscSites.length && defaultSites.length) {
-    form.defaultSupportingGscSites = [...defaultSites]
+  if (!form.defaultLocationStrategies.length && defaultOptions.length) {
+    form.defaultLocationStrategies = [...defaultOptions]
   }
-  form.customSupportingGscSites = []
-  logSupportingGscSitesState('sync-default')
-}
-
-const syncLocationStrategiesFromAreas = () => {
-  const validStrategies = getLocationStrategiesForAreas(form.areas)
-  form.locationStrategies = filterValidLocationStrategies(form.areas, form.locationStrategies)
-  for (const strategy of validStrategies) {
-    if (!form.locationStrategies.includes(strategy)) {
-      form.locationStrategies.push(strategy)
-    }
-  }
+  form.customLocationStrategies = []
+  logLocationStrategyState('sync-default')
 }
 
 const formatFileSize = (bytes) => {
@@ -1168,12 +1125,11 @@ const onSelect = (field, event) => {
     const validAreas = getAreasForRegion(value)
     form.areas = form.areas.filter((area) => validAreas.includes(area))
     if (!form.areas.length) {
-      resetSupportingSitesState()
+      resetLocationStrategyState()
     } else {
-      syncLocationStrategiesFromAreas()
       syncCountriesFromAreas()
-      if (!form.supportingGscSitesCustom) {
-        syncDefaultSupportingSites()
+      if (!form.locationStrategyCustom) {
+        syncDefaultLocationStrategies()
       }
     }
     return
@@ -1192,34 +1148,12 @@ const onAreasChange = (event) => {
   const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
   form.areas = Array.isArray(value) ? [...value] : []
   if (!form.areas.length) {
-    resetSupportingSitesState()
+    resetLocationStrategyState()
     return
   }
-  syncLocationStrategiesFromAreas()
   syncCountriesFromAreas()
-  if (!form.supportingGscSitesCustom) {
-    syncDefaultSupportingSites()
-  }
-}
-
-const onLocationStrategiesChange = (event) => {
-  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
-  const selected = Array.isArray(value) ? [...value] : []
-  form.locationStrategies = filterValidLocationStrategies(form.areas, selected)
-  form.areas = filterAreasByLocationStrategies(form.areas, form.locationStrategies)
-  syncCountriesFromAreas()
-  if (!form.locationStrategies.length || !form.areas.length) {
-    form.defaultSupportingGscSites = []
-    form.customSupportingGscSites = []
-    form.supportingGscSitesCustom = false
-    if (!form.areas.length) {
-      form.locationStrategies = []
-      form.countries = []
-    }
-    return
-  }
-  if (!form.supportingGscSitesCustom) {
-    syncDefaultSupportingSites()
+  if (!form.locationStrategyCustom) {
+    syncDefaultLocationStrategies()
   }
 }
 
@@ -1253,39 +1187,39 @@ const onProductsChange = (event) => {
   form.products = Array.isArray(value) ? [...value] : []
 }
 
-const onDefaultSupportingSitesChange = (event) => {
-  if (form.supportingGscSitesCustom) return
+const onDefaultLocationStrategiesChange = (event) => {
+  if (form.locationStrategyCustom) return
   const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
-  form.defaultSupportingGscSites = Array.isArray(value) ? [...value] : []
-  form.customSupportingGscSites = []
-  logSupportingGscSitesState('default-change')
+  form.defaultLocationStrategies = Array.isArray(value) ? [...value] : []
+  form.customLocationStrategies = []
+  logLocationStrategyState('default-change')
 }
 
-const openCustomSitesDialog = () => {
-  customSitesDialogSelection.value = form.supportingGscSitesCustom
-    ? [...form.customSupportingGscSites]
+const openCustomLocationStrategyDialog = () => {
+  customLocationStrategyDialogSelection.value = form.locationStrategyCustom
+    ? [...form.customLocationStrategies]
     : []
-  customSitesDialogJustification.value = form.customSupportingJustification
+  customSitesDialogJustification.value = form.customLocationStrategyJustification
   customSitesDialogFile.value = null
   customDialogErrors.justification = false
   customDialogErrors.file = ''
   if (approvalFileInputRef.value) {
     approvalFileInputRef.value.value = ''
   }
-  customSitesDialogOpen.value = true
+  customLocationStrategyDialogOpen.value = true
 }
 
-const closeCustomSitesDialog = () => {
-  customSitesDialogOpen.value = false
+const closeCustomLocationStrategyDialog = () => {
+  customLocationStrategyDialogOpen.value = false
 }
 
 const onCustomDialogClosing = () => {
-  customSitesDialogOpen.value = false
+  customLocationStrategyDialogOpen.value = false
 }
 
-const onCustomSitesDialogSelectionChange = (event) => {
+const onCustomLocationStrategyDialogSelectionChange = (event) => {
   const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
-  customSitesDialogSelection.value = Array.isArray(value) ? [...value] : []
+  customLocationStrategyDialogSelection.value = Array.isArray(value) ? [...value] : []
 }
 
 const onCustomJustificationInput = (event) => {
@@ -1301,7 +1235,7 @@ const onApprovalFileChange = (event) => {
   customDialogErrors.file = file ? validateApprovalFile(file) : ''
 }
 
-const applyCustomSupportingSites = () => {
+const applyCustomLocationStrategy = () => {
   const justification = customSitesDialogJustification.value.trim()
   customDialogErrors.justification = !justification
 
@@ -1312,8 +1246,8 @@ const applyCustomSupportingSites = () => {
       ? ''
       : 'Approval attachment is required.'
 
-  if (!customSitesDialogSelection.value.length) {
-    customDialogErrors.file = fileError || 'Select at least one supporting GSC site.'
+  if (!customLocationStrategyDialogSelection.value.length) {
+    customDialogErrors.file = fileError || 'Select at least one location strategy option.'
   } else {
     customDialogErrors.file = fileError
   }
@@ -1321,35 +1255,33 @@ const applyCustomSupportingSites = () => {
   if (
     customDialogErrors.justification ||
     customDialogErrors.file ||
-    !customSitesDialogSelection.value.length
+    !customLocationStrategyDialogSelection.value.length
   ) {
     return
   }
 
-  form.supportingGscSitesCustom = true
-  form.customSupportingGscSites = [...customSitesDialogSelection.value]
-  form.defaultSupportingGscSites = []
-  form.customSupportingJustification = justification
+  form.locationStrategyCustom = true
+  form.customLocationStrategies = [...customLocationStrategyDialogSelection.value]
+  form.defaultLocationStrategies = []
+  form.customLocationStrategyJustification = justification
   if (customSitesDialogFile.value) {
     customApprovalFileMeta.name = customSitesDialogFile.value.name
     customApprovalFileMeta.size = customSitesDialogFile.value.size
     customApprovalFileMeta.type = customSitesDialogFile.value.type
   }
-  customSitesDialogOpen.value = false
-  logSupportingGscSitesState('custom-confirm')
+  customLocationStrategyDialogOpen.value = false
+  logLocationStrategyState('custom-confirm')
 }
 
-const resetToDefaultSupportingSites = () => {
-  form.supportingGscSitesCustom = false
-  form.customSupportingGscSites = []
-  form.customSupportingJustification = ''
+const resetToDefaultLocationStrategies = () => {
+  form.locationStrategyCustom = false
+  form.customLocationStrategies = []
+  form.customLocationStrategyJustification = ''
   customApprovalFileMeta.name = ''
   customApprovalFileMeta.size = 0
   customApprovalFileMeta.type = ''
-  form.defaultSupportingGscSites = [
-    ...getDefaultSupportingSitesForAreasAndStrategies(form.areas, form.locationStrategies)
-  ]
-  logSupportingGscSitesState('reset-to-default')
+  form.defaultLocationStrategies = [...getDefaultLocationStrategiesForAreas(form.areas)]
+  logLocationStrategyState('reset-to-default')
 }
 
 const onDropdownOpened = (sectionId) => {
@@ -1370,11 +1302,9 @@ const collectForm = () => ({
   languageDependencies: [...form.languageDependencies],
   areas: [...form.areas],
   countries: [...form.countries],
-  locationStrategies: [...form.locationStrategies],
-  areaLocationPairs: buildAreaLocationPairs(form.areas, form.locationStrategies),
   areaCountryPairs: buildAreaCountryPairs(form.areas, form.countries),
-  defaultSupportingGscSites: [...form.defaultSupportingGscSites],
-  customSupportingGscSites: [...form.customSupportingGscSites],
+  defaultLocationStrategies: [...form.defaultLocationStrategies],
+  customLocationStrategies: [...form.customLocationStrategies],
   customApprovalFile: customApprovalFileMeta.name
     ? { ...customApprovalFileMeta }
     : null
@@ -1391,11 +1321,10 @@ const loadDraft = () => {
       region: regions.includes(saved.region) ? saved.region : '',
       areas: [],
       countries: [],
-      locationStrategies: [],
-      defaultSupportingGscSites: [],
-      customSupportingGscSites: [],
-      supportingGscSitesCustom: false,
-      customSupportingJustification: '',
+      defaultLocationStrategies: [],
+      customLocationStrategies: [],
+      locationStrategyCustom: false,
+      customLocationStrategyJustification: '',
       products: [],
       function: functions.includes(saved.function) ? saved.function : '',
       proposedScope: saved.proposedScope ?? '',
@@ -1421,47 +1350,41 @@ const loadDraft = () => {
       form.countries = filterValidCountries(form.areas, savedCountries)
     }
     if (form.areas.length) {
-      const validStrategies = getLocationStrategiesForAreas(form.areas)
-      const savedStrategies = Array.isArray(saved.locationStrategies)
-        ? saved.locationStrategies
-        : saved.locationStrategy
-          ? [saved.locationStrategy]
+      const defaultOptions = getDefaultLocationStrategiesForAreas(form.areas)
+      const savedDefault = Array.isArray(saved.defaultLocationStrategies)
+        ? saved.defaultLocationStrategies
+        : Array.isArray(saved.defaultSupportingGscSites)
+          ? saved.defaultSupportingGscSites
           : []
-      form.locationStrategies = savedStrategies.filter((strategy) => validStrategies.includes(strategy))
-      if (!form.locationStrategies.length) {
-        form.locationStrategies = [...validStrategies]
-      }
-      const defaultSites = getDefaultSupportingSitesForAreasAndStrategies(
-        form.areas,
-        form.locationStrategies
-      )
-      const savedDefaultSites = Array.isArray(saved.defaultSupportingGscSites)
-        ? saved.defaultSupportingGscSites
-        : []
-      const savedCustomSites = Array.isArray(saved.customSupportingGscSites)
-        ? saved.customSupportingGscSites
-        : []
+      const savedCustom = Array.isArray(saved.customLocationStrategies)
+        ? saved.customLocationStrategies
+        : Array.isArray(saved.customSupportingGscSites)
+          ? saved.customSupportingGscSites
+          : []
       const legacySites = Array.isArray(saved.supportingGscSites) ? saved.supportingGscSites : []
-      form.supportingGscSitesCustom = Boolean(saved.supportingGscSitesCustom)
-      form.customSupportingJustification = saved.customSupportingJustification ?? ''
-      if (form.supportingGscSitesCustom) {
-        form.customSupportingGscSites = savedCustomSites.length ? savedCustomSites : legacySites
-        form.defaultSupportingGscSites = []
+      form.locationStrategyCustom = Boolean(
+        saved.locationStrategyCustom ?? saved.supportingGscSitesCustom
+      )
+      form.customLocationStrategyJustification =
+        saved.customLocationStrategyJustification ?? saved.customSupportingJustification ?? ''
+      if (form.locationStrategyCustom) {
+        form.customLocationStrategies = savedCustom.length ? savedCustom : legacySites
+        form.defaultLocationStrategies = []
         if (saved.customApprovalFile?.name) {
           customApprovalFileMeta.name = saved.customApprovalFile.name
           customApprovalFileMeta.size = saved.customApprovalFile.size ?? 0
           customApprovalFileMeta.type = saved.customApprovalFile.type ?? ''
         }
       } else {
-        form.customSupportingGscSites = []
-        form.defaultSupportingGscSites = savedDefaultSites.length
-          ? savedDefaultSites.filter((site) => defaultSites.includes(site))
-          : legacySites.filter((site) => defaultSites.includes(site))
-        if (!form.defaultSupportingGscSites.length) {
-          form.defaultSupportingGscSites = [...defaultSites]
+        form.customLocationStrategies = []
+        form.defaultLocationStrategies = savedDefault.length
+          ? savedDefault.filter((site) => defaultOptions.includes(site))
+          : legacySites.filter((site) => defaultOptions.includes(site))
+        if (!form.defaultLocationStrategies.length) {
+          form.defaultLocationStrategies = [...defaultOptions]
         }
       }
-      logSupportingGscSitesState('load-draft')
+      logLocationStrategyState('load-draft')
     }
     if (form.function) {
       const validProducts = getProductsForFunction(form.function)
@@ -1511,7 +1434,7 @@ const onReviewAndSubmit = () => {
 const onSubmit = async () => {
   if (!submissionPreview.value) return
 
-  logSupportingGscSitesState('submit')
+  logLocationStrategyState('submit')
   console.log('[Migration Intake] Submit payload', submissionPreview.value)
 
   submitting.value = true
@@ -1732,6 +1655,7 @@ onMounted(loadDraft)
   align-items: start;
 }
 
+.area-panel,
 .country-panel {
   background: rgba(0, 119, 184, 0.03);
   border: 1px solid rgba(22, 22, 22, 0.08);
@@ -1742,6 +1666,7 @@ onMounted(loadDraft)
   padding: 16px 18px;
 }
 
+.area-panel-head,
 .country-panel-head {
   align-items: flex-start;
   display: flex;
@@ -1749,6 +1674,7 @@ onMounted(loadDraft)
   justify-content: space-between;
 }
 
+.area-panel-title,
 .country-panel-title {
   color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
   display: block;
@@ -1757,6 +1683,7 @@ onMounted(loadDraft)
   margin-bottom: 4px;
 }
 
+.area-panel-desc,
 .country-panel-desc {
   color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
   font-size: 12px;
@@ -1764,6 +1691,7 @@ onMounted(loadDraft)
   margin: 0;
 }
 
+.area-panel mc-checkbox-group::part(fieldset-container),
 .country-panel mc-checkbox-group::part(fieldset-container) {
   border: 1px solid rgba(22, 22, 22, 0.08);
   border-radius: 12px;
@@ -1796,7 +1724,7 @@ onMounted(loadDraft)
   padding: 16px;
 }
 
-.supporting-sites-panel {
+.location-strategy-panel {
   background: rgba(0, 119, 184, 0.04);
   border: 1px solid rgba(22, 22, 22, 0.08);
   border-radius: 12px;
@@ -1808,20 +1736,20 @@ onMounted(loadDraft)
   width: 100%;
 }
 
-.supporting-sites-head {
+.location-strategy-head {
   align-items: center;
   display: flex;
   gap: 8px;
   justify-content: space-between;
 }
 
-.supporting-sites-label {
+.location-strategy-label {
   color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
   font-size: 14px;
   font-weight: 600;
 }
 
-.supporting-sites-hint {
+.location-strategy-hint {
   color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
   font-size: 12px;
   line-height: 1.5;
@@ -1834,7 +1762,7 @@ onMounted(loadDraft)
   margin: 0;
 }
 
-.supporting-sites-actions {
+.location-strategy-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -1881,7 +1809,7 @@ onMounted(loadDraft)
   fill: #fff;
 }
 
-.supporting-sites-panel mc-checkbox-group::part(fieldset-container) {
+.location-strategy-panel mc-checkbox-group::part(fieldset-container) {
   border: none;
   max-height: 200px;
   overflow-y: auto;
@@ -1891,7 +1819,24 @@ onMounted(loadDraft)
 .custom-sites-dialog-body {
   display: flex;
   flex-direction: column;
+  gap: 0;
+  max-height: min(72vh, 640px);
+  overflow: hidden;
+}
+
+.custom-sites-dialog-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.custom-sites-dialog-scroll mc-checkbox-group::part(fieldset-container) {
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .custom-sites-dialog-desc {
@@ -1904,10 +1849,11 @@ onMounted(loadDraft)
 .custom-sites-dialog-footer {
   border-top: 1px solid rgba(22, 22, 22, 0.08);
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 8px;
+  margin-top: 16px;
   padding-top: 16px;
 }
 

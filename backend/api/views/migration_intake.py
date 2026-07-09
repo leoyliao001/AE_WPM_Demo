@@ -34,7 +34,6 @@ def _validate_payload(payload: dict) -> str | None:
     list_fields = {
         "areas": "At least one area is required.",
         "countries": "At least one country is required.",
-        "locationStrategies": "At least one location strategy is required.",
         "products": "At least one product is required.",
         "languageDependencies": "At least one language is required.",
     }
@@ -42,15 +41,15 @@ def _validate_payload(payload: dict) -> str | None:
         if not payload.get(field):
             return message
 
-    if payload.get("supportingGscSitesCustom"):
-        if not payload.get("customSupportingGscSites"):
-            return "Custom supporting GSC sites are required."
-        if not str(payload.get("customSupportingJustification", "")).strip():
-            return "Custom supporting GSC sites justification is required."
+    if payload.get("locationStrategyCustom"):
+        if not payload.get("customLocationStrategies"):
+            return "Custom location strategy is required."
+        if not str(payload.get("customLocationStrategyJustification", "")).strip():
+            return "Custom location strategy justification is required."
         if not (payload.get("customApprovalFile") or {}).get("name"):
-            return "Custom supporting GSC sites approval attachment is required."
-    elif not payload.get("defaultSupportingGscSites"):
-        return "At least one default supporting GSC site is required."
+            return "Custom location strategy approval attachment is required."
+    elif not payload.get("defaultLocationStrategies"):
+        return "At least one location strategy is required."
 
     return None
 

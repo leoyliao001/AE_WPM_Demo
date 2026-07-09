@@ -51,23 +51,20 @@ def create_submission_from_payload(payload: dict) -> MigrationIntakeSubmission:
         region=payload.get("region", ""),
         areas=_unique_strings(_as_list(payload.get("areas"))),
         countries=_unique_strings(_as_list(payload.get("countries"))),
-        location_strategies=_unique_strings(_as_list(payload.get("locationStrategies"))),
-        area_location_pairs=_normalize_pairs(
-            payload.get("areaLocationPairs"),
-            {"area": "area", "locationStrategy": "locationStrategy"},
-        ),
         area_country_pairs=_normalize_pairs(
             payload.get("areaCountryPairs"),
             {"area": "area", "country": "country"},
         ),
-        default_supporting_gsc_sites=_unique_strings(
-            _as_list(payload.get("defaultSupportingGscSites"))
+        default_location_strategies=_unique_strings(
+            _as_list(payload.get("defaultLocationStrategies"))
         ),
-        custom_supporting_gsc_sites=_unique_strings(
-            _as_list(payload.get("customSupportingGscSites"))
+        custom_location_strategies=_unique_strings(
+            _as_list(payload.get("customLocationStrategies"))
         ),
-        supporting_gsc_sites_custom=bool(payload.get("supportingGscSitesCustom")),
-        custom_supporting_justification=payload.get("customSupportingJustification", ""),
+        location_strategy_custom=bool(payload.get("locationStrategyCustom")),
+        custom_location_strategy_justification=payload.get(
+            "customLocationStrategyJustification", ""
+        ),
         custom_approval_file_name=approval_file.get("name", ""),
         custom_approval_file_size=approval_file.get("size") or None,
         custom_approval_file_type=approval_file.get("type", ""),

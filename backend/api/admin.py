@@ -13,7 +13,7 @@ class MigrationIntakeSubmissionAdmin(admin.ModelAdmin):
         "status",
         "created_at",
     )
-    list_filter = ("status", "region", "supporting_gsc_sites_custom", "created_at")
+    list_filter = ("status", "region", "location_strategy_custom", "created_at")
     search_fields = (
         "migration_request_id",
         "project_name",
