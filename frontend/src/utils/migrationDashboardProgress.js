@@ -173,7 +173,7 @@ export const buildDetailSections = (project) => [
   {
     id: 'workforce',
     title: 'Workforce and Language',
-    accent: '#F3880E',
+    accent: '#42B0D5',
     icon: 'mi-users',
     items: [
       {
@@ -190,7 +190,7 @@ export const buildDetailSections = (project) => [
   {
     id: 'risk',
     title: 'Risk Assessment',
-    accent: '#E85454',
+    accent: '#F3880E',
     icon: 'mi-exclamation-triangle',
     items: [{ label: 'Risks', value: project.risks || '—', multiline: true }]
   }

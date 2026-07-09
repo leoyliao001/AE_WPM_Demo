@@ -93,7 +93,7 @@
             <div class="summary-stat summary-stat--progress">
               <span class="summary-stat__label">Stages complete</span>
               <div class="summary-stat__progress-row">
-                <strong class="summary-stat__value summary-stat__value--success">
+                <strong class="summary-stat__value summary-stat__value--accent">
                   {{ completedStages }}/{{ migrationMilestoneTotal }}
                 </strong>
                 <div class="summary-stat__track">
@@ -120,7 +120,6 @@
             :key="item.id"
             class="milestone-card"
             :class="`milestone-card--${item.state}`"
-            :style="{ '--card-accent': item.accent }"
             variant="bordered"
             fit="medium"
             contentalignment="middle"
@@ -130,7 +129,9 @@
             @click="onMilestoneClick(item)"
           >
             <div slot="image" class="milestone-card__icon">
-              <mc-icon :icon="item.icon" size="24" />
+              <span class="milestone-card__icon-wrap">
+                <mc-icon :icon="item.icon" size="24" />
+              </span>
             </div>
 
             <div slot="actions" class="milestone-card__actions">
@@ -355,8 +356,9 @@ watch(() => route.params.id, loadProject)
 
 .summary-donut__ring {
   background: conic-gradient(
-    #0077b8 calc(var(--donut-pct) * 1%),
-    #e8edf2 0
+    #0077b8 0deg,
+    #42b0d5 calc(var(--donut-pct) * 3.6deg),
+    #e8edf2 calc(var(--donut-pct) * 3.6deg)
   );
   border-radius: 50%;
   height: 100%;
@@ -450,13 +452,14 @@ watch(() => route.params.id, loadProject)
 }
 
 .milestone-stepper__item--active .milestone-stepper__node {
-  background: #eef6fb;
+  background: #0077b8;
   border-color: #0077b8;
-  color: #0077b8;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(0, 119, 184, 0.15);
 }
 
 .milestone-stepper__item--at_risk .milestone-stepper__node {
-  background: #fff1f1;
+  background: #fff5f5;
   border-color: #e85454;
   color: #e85454;
 }
@@ -470,7 +473,7 @@ watch(() => route.params.id, loadProject)
 }
 
 .milestone-stepper__item--complete .milestone-stepper__label {
-  color: #6daa28;
+  color: #5a9420;
 }
 
 .milestone-stepper__item--active .milestone-stepper__label {
@@ -484,7 +487,8 @@ watch(() => route.params.id, loadProject)
 }
 
 .summary-stats {
-  background: #f6f7f9;
+  background: linear-gradient(135deg, rgba(0, 119, 184, 0.05) 0%, rgba(66, 176, 213, 0.04) 100%);
+  border: 1px solid rgba(0, 119, 184, 0.1);
   border-radius: 12px;
   display: grid;
   gap: 16px;
@@ -506,8 +510,8 @@ watch(() => route.params.id, loadProject)
   line-height: 1.1;
 }
 
-.summary-stat__value--success {
-  color: #6daa28;
+.summary-stat__value--accent {
+  color: #0077b8;
 }
 
 .summary-stat__progress-row {
@@ -527,7 +531,7 @@ watch(() => route.params.id, loadProject)
 }
 
 .summary-stat__fill {
-  background: linear-gradient(90deg, #6daa28, #8cc63f);
+  background: linear-gradient(90deg, #0077b8, #42b0d5);
   border-radius: 999px;
   height: 100%;
 }
@@ -577,7 +581,6 @@ watch(() => route.params.id, loadProject)
 }
 
 .milestone-card {
-  --card-accent: #0077b8;
   min-height: 188px;
 }
 
@@ -589,7 +592,7 @@ watch(() => route.params.id, loadProject)
 }
 
 .milestone-card::part(container)::before {
-  background: var(--card-accent);
+  background: #e8edf2;
   content: '';
   height: 3px;
   left: 0;
@@ -598,16 +601,66 @@ watch(() => route.params.id, loadProject)
   width: 100%;
 }
 
+.milestone-card--complete::part(container)::before {
+  background: #6daa28;
+}
+
+.milestone-card--complete::part(container) {
+  background: linear-gradient(180deg, rgba(109, 170, 40, 0.04) 0%, #fff 48px);
+}
+
+.milestone-card--active::part(container)::before {
+  background: #0077b8;
+}
+
+.milestone-card--active::part(container) {
+  background: linear-gradient(180deg, rgba(0, 119, 184, 0.06) 0%, #fff 48px);
+  box-shadow: 0 2px 16px rgba(0, 119, 184, 0.1);
+}
+
+.milestone-card--at_risk::part(container)::before {
+  background: #e85454;
+}
+
+.milestone-card--at_risk::part(container) {
+  background: linear-gradient(180deg, rgba(232, 84, 84, 0.05) 0%, #fff 48px);
+}
+
 .milestone-card:hover::part(container) {
   box-shadow: 0 8px 22px rgba(22, 22, 22, 0.08);
   transform: translateY(-1px);
 }
 
 .milestone-card__icon {
-  color: var(--card-accent);
   display: flex;
   justify-content: center;
   padding: 6px 0 4px;
+}
+
+.milestone-card__icon-wrap {
+  align-items: center;
+  background: #f0f3f6;
+  border-radius: 12px;
+  color: #6c757d;
+  display: inline-flex;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
+.milestone-card--complete .milestone-card__icon-wrap {
+  background: rgba(109, 170, 40, 0.12);
+  color: #6daa28;
+}
+
+.milestone-card--active .milestone-card__icon-wrap {
+  background: rgba(0, 119, 184, 0.12);
+  color: #0077b8;
+}
+
+.milestone-card--at_risk .milestone-card__icon-wrap {
+  background: rgba(232, 84, 84, 0.1);
+  color: #e85454;
 }
 
 .milestone-card__actions {
@@ -628,9 +681,9 @@ watch(() => route.params.id, loadProject)
 
 .section-icon {
   align-items: center;
-  background: color-mix(in srgb, var(--section-accent) 12%, white);
+  background: color-mix(in srgb, var(--section-accent, #0077b8) 12%, white);
   border-radius: 12px;
-  color: var(--section-accent);
+  color: var(--section-accent, #0077b8);
   display: flex;
   height: 44px;
   justify-content: center;
