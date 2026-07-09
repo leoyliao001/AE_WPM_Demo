@@ -1,4 +1,5 @@
 import { buildAreaLocationPairs } from '../data/areaLocationStrategyMapping'
+import { buildAreaCountryPairs } from '../data/areaCountryMapping'
 
 export const REQUESTOR_PLACEHOLDER = 'LYL114'
 export const DEFAULT_MIGRATION_STATUS = 'new'
@@ -35,6 +36,7 @@ export const collectValidationErrors = ({
   if (!form.migrationType) missing.push('Migration type')
   if (!form.region) missing.push('Region')
   if (!form.areas.length) missing.push('Area')
+  if (!form.countries.length) missing.push('Country')
   if (!form.locationStrategies.length) missing.push('Location Strategy')
   const defaultSites = form.defaultSupportingGscSites ?? []
   const customSites = form.customSupportingGscSites ?? []
@@ -83,8 +85,10 @@ export const buildSubmissionPreview = ({
     migrationTypeValue: form.migrationType,
     region: form.region,
     areas: [...form.areas],
+    countries: [...(form.countries ?? [])],
     locationStrategies: [...form.locationStrategies],
     areaLocationPairs: buildAreaLocationPairs(form.areas, form.locationStrategies),
+    areaCountryPairs: buildAreaCountryPairs(form.areas, form.countries ?? []),
     defaultSupportingGscSites: form.supportingGscSitesCustom
       ? []
       : [...(form.defaultSupportingGscSites ?? [])],
@@ -128,6 +132,13 @@ export const previewSections = (preview) => [
       { label: 'Migration type', value: preview.migrationType },
       { label: 'Region', value: preview.region },
       { label: 'Area', value: preview.areas.join(', ') },
+      { label: 'Country', value: preview.countries.join(', ') },
+      {
+        label: 'Area ↔ Country',
+        value: preview.areaCountryPairs.length
+          ? preview.areaCountryPairs.map((pair) => `${pair.area} → ${pair.country}`).join('; ')
+          : '—'
+      },
       { label: 'Location Strategy', value: preview.locationStrategies.join(', ') },
       {
         label: 'Area ↔ Location Strategy',
