@@ -143,6 +143,54 @@
               </div>
             </div>
 
+            <div v-if="form.areas.length" class="country-panel">
+              <div class="country-panel-head">
+                <div>
+                  <span class="country-panel-title">Country</span>
+                  <p class="country-panel-desc">
+                    Select one or more countries. Options are filtered by your area selection.
+                  </p>
+                </div>
+                <mc-tag
+                  v-if="form.countries.length"
+                  appearance="info"
+                  fit="small"
+                  :label="`${form.countries.length} selected`"
+                />
+              </div>
+
+              <mc-input
+                label="Filter countries"
+                hiddenlabel
+                placeholder="Search countries..."
+                :value="countryFilter"
+                width="full-width"
+                @input="onCountryFilterInput"
+              />
+
+              <mc-checkbox-group
+                :key="`countries-${form.areas.join('|')}`"
+                legend="Country"
+                hiddenlegend
+                orientation="vertical"
+                name="countries"
+                :value.prop="countryCheckboxValue"
+                @change="onCountriesChange"
+              >
+                <mc-checkbox
+                  v-for="country in visibleCountries"
+                  :key="country"
+                  name="countries"
+                  :value="country"
+                  :label="country"
+                />
+              </mc-checkbox-group>
+
+              <p v-if="!visibleCountries.length" class="country-panel-empty">
+                No countries match your search.
+              </p>
+            </div>
+
             <div v-if="form.locationStrategies.length" class="supporting-sites-panel">
               <div class="supporting-sites-head">
                 <span class="supporting-sites-label">Supporting GSC Sites</span>
@@ -734,6 +782,11 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
 import {
+  buildAreaCountryPairs,
+  filterValidCountries,
+  getCountriesForAreas
+} from '../data/areaCountryMapping'
+import {
   APPROVAL_FILE_ACCEPT,
   MAX_APPROVAL_FILE_BYTES,
   buildAreaLocationPairs,
@@ -775,7 +828,16 @@ const filteredProducts = computed(() => getProductsForFunction(form.function))
 const productCheckboxValue = computed(() => [...form.products])
 const productFilter = ref('')
 const languageFilter = ref('')
+const countryFilter = ref('')
 const languageCheckboxValue = computed(() => [...form.languageDependencies])
+const countryCheckboxValue = computed(() => [...form.countries])
+
+const visibleCountries = computed(() => {
+  const query = countryFilter.value.trim().toLowerCase()
+  const options = getCountriesForAreas(form.areas)
+  if (!query) return options
+  return options.filter((country) => country.toLowerCase().includes(query))
+})
 
 const visibleLanguages = computed(() => {
   const query = languageFilter.value.trim().toLowerCase()
@@ -868,6 +930,7 @@ const form = reactive({
   migrationType: '',
   region: '',
   areas: [],
+  countries: [],
   locationStrategies: [],
   defaultSupportingGscSites: [],
   customSupportingGscSites: [],
@@ -1041,6 +1104,7 @@ const logSupportingGscSitesState = (source) => {
 
 const resetSupportingSitesState = () => {
   form.locationStrategies = []
+  form.countries = []
   form.defaultSupportingGscSites = []
   form.customSupportingGscSites = []
   form.supportingGscSitesCustom = false
@@ -1048,6 +1112,11 @@ const resetSupportingSitesState = () => {
   customApprovalFileMeta.name = ''
   customApprovalFileMeta.size = 0
   customApprovalFileMeta.type = ''
+}
+
+const syncCountriesFromAreas = () => {
+  form.countries = filterValidCountries(form.areas, form.countries)
+  countryFilter.value = ''
 }
 
 const syncDefaultSupportingSites = () => {
@@ -1101,6 +1170,7 @@ const onSelect = (field, event) => {
       resetSupportingSitesState()
     } else {
       syncLocationStrategiesFromAreas()
+      syncCountriesFromAreas()
       if (!form.supportingGscSitesCustom) {
         syncDefaultSupportingSites()
       }
@@ -1125,6 +1195,7 @@ const onAreasChange = (event) => {
     return
   }
   syncLocationStrategiesFromAreas()
+  syncCountriesFromAreas()
   if (!form.supportingGscSitesCustom) {
     syncDefaultSupportingSites()
   }
@@ -1135,12 +1206,14 @@ const onLocationStrategiesChange = (event) => {
   const selected = Array.isArray(value) ? [...value] : []
   form.locationStrategies = filterValidLocationStrategies(form.areas, selected)
   form.areas = filterAreasByLocationStrategies(form.areas, form.locationStrategies)
+  syncCountriesFromAreas()
   if (!form.locationStrategies.length || !form.areas.length) {
     form.defaultSupportingGscSites = []
     form.customSupportingGscSites = []
     form.supportingGscSitesCustom = false
     if (!form.areas.length) {
       form.locationStrategies = []
+      form.countries = []
     }
     return
   }
@@ -1155,6 +1228,18 @@ const onProductFilterInput = (event) => {
 
 const onLanguageFilterInput = (event) => {
   languageFilter.value = readEventValue(event)
+}
+
+const onCountryFilterInput = (event) => {
+  countryFilter.value = readEventValue(event)
+}
+
+const onCountriesChange = (event) => {
+  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
+  form.countries = filterValidCountries(
+    form.areas,
+    Array.isArray(value) ? [...value] : []
+  )
 }
 
 const onLanguageDependenciesChange = (event) => {
@@ -1283,8 +1368,10 @@ const collectForm = () => ({
   products: [...form.products],
   languageDependencies: [...form.languageDependencies],
   areas: [...form.areas],
+  countries: [...form.countries],
   locationStrategies: [...form.locationStrategies],
   areaLocationPairs: buildAreaLocationPairs(form.areas, form.locationStrategies),
+  areaCountryPairs: buildAreaCountryPairs(form.areas, form.countries),
   defaultSupportingGscSites: [...form.defaultSupportingGscSites],
   customSupportingGscSites: [...form.customSupportingGscSites],
   customApprovalFile: customApprovalFileMeta.name
@@ -1302,6 +1389,7 @@ const loadDraft = () => {
       migrationType: saved.migrationType ?? '',
       region: regions.includes(saved.region) ? saved.region : '',
       areas: [],
+      countries: [],
       locationStrategies: [],
       defaultSupportingGscSites: [],
       customSupportingGscSites: [],
@@ -1328,6 +1416,8 @@ const loadDraft = () => {
           ? [saved.area]
           : []
       form.areas = savedAreas.filter((area) => validAreas.includes(area))
+      const savedCountries = Array.isArray(saved.countries) ? saved.countries : []
+      form.countries = filterValidCountries(form.areas, savedCountries)
     }
     if (form.areas.length) {
       const validStrategies = getLocationStrategiesForAreas(form.areas)
@@ -1636,6 +1726,53 @@ onMounted(loadDraft)
 
 .area-strategy-row {
   align-items: start;
+}
+
+.country-panel {
+  background: rgba(0, 119, 184, 0.03);
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.country-panel-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.country-panel-title {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.country-panel-desc {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.country-panel mc-checkbox-group::part(fieldset-container) {
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.country-panel-empty {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  margin: 0;
+  text-align: center;
 }
 
 .location-strategy-field {
