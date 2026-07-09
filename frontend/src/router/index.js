@@ -3,6 +3,7 @@ import Welcome from '../views/Welcome.vue'
 import Welcome2 from '../views/Welcome2.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
+import MigrationProjectDetail from '../views/MigrationProjectDetail.vue'
 import LDDashboard from '../views/LDDashboard.vue'
 import ProjectDashboard from '../views/ProjectDashboard.vue'
 import ProjectMilestoneDetail from '../views/ProjectMilestoneDetail.vue'
@@ -16,6 +17,11 @@ const routes = [
   { path: '/welcome2', redirect: '/future-service-model' },
   { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
   { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard },
+  {
+    path: '/migration-dashboard/:id',
+    name: 'MigrationProjectDetail',
+    component: MigrationProjectDetail
+  },
   { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
   { path: '/project-dashboard', name: 'ProjectDashboard', component: ProjectDashboard },
   {
