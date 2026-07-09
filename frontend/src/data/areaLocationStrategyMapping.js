@@ -1,5 +1,5 @@
-/** Area → Location Strategy & default Supporting GSC Sites (from mapping table) */
-export const customGscSiteOptions = [
+/** Area → default Location Strategy options (GSC sites from mapping table) */
+export const customLocationStrategyOptions = [
   'Chengdu',
   'Vietnam',
   'Manila',
@@ -14,87 +14,45 @@ export const customGscSiteOptions = [
 ]
 
 export const areaLocationMapping = {
-  GCA: { locationStrategy: 'APA', supportingSites: ['Chengdu', 'Qingdao'] },
-  Mekong: { locationStrategy: 'APA', supportingSites: ['Manila', 'Vietnam'] },
-  NEA: { locationStrategy: 'APA', supportingSites: ['Chengdu', 'Chongqing'] },
-  Oceania: { locationStrategy: 'APA', supportingSites: ['Manila'] },
-  SEA: { locationStrategy: 'APA', supportingSites: ['Manila'] },
-  CSE: { locationStrategy: 'EUR', supportingSites: ['Manila', 'Mumbai'] },
-  EME: { locationStrategy: 'EUR', supportingSites: ['Chennai', 'Pune'] },
-  NDC: { locationStrategy: 'EUR', supportingSites: ['Chennai', 'Poland'] },
-  NEC: { locationStrategy: 'EUR', supportingSites: ['Mumbai', 'Pune'] },
-  SWE: { locationStrategy: 'EUR', supportingSites: ['Chennai', 'Poland'] },
-  'UK&I': { locationStrategy: 'EUR', supportingSites: ['Mumbai', 'Poland'] },
-  EAA: { locationStrategy: 'IMEA', supportingSites: ['Chennai', 'Mumbai'] },
-  IBS: { locationStrategy: 'IMEA', supportingSites: ['Mumbai', 'Pune'] },
-  PAK: { locationStrategy: 'IMEA', supportingSites: ['Manila'] },
-  SAA: { locationStrategy: 'IMEA', supportingSites: ['Pune'] },
-  SAI: { locationStrategy: 'IMEA', supportingSites: ['Chennai', 'Mumbai'] },
-  UAE: { locationStrategy: 'IMEA', supportingSites: ['Pune'] },
-  WAF: { locationStrategy: 'IMEA', supportingSites: ['Chennai', 'Mumbai'] },
-  CAC: { locationStrategy: 'LAM', supportingSites: ['Manila', 'Mexico'] },
-  ECSA: { locationStrategy: 'LAM', supportingSites: ['Brazil', 'Mumbai'] },
-  WCSA: { locationStrategy: 'LAM', supportingSites: ['Manila', 'Mexico'] },
-  CAA: { locationStrategy: 'NAM', supportingSites: ['Chennai', 'Mexico'] },
-  MEX: { locationStrategy: 'NAM', supportingSites: ['Manila', 'Mexico'] },
-  USA: { locationStrategy: 'NAM', supportingSites: ['Chennai', 'Mexico'] }
+  GCA: { supportingSites: ['Chengdu', 'Qingdao'] },
+  Mekong: { supportingSites: ['Manila', 'Vietnam'] },
+  NEA: { supportingSites: ['Chengdu', 'Chongqing'] },
+  Oceania: { supportingSites: ['Manila'] },
+  SEA: { supportingSites: ['Manila'] },
+  CSE: { supportingSites: ['Manila', 'Mumbai'] },
+  EME: { supportingSites: ['Chennai', 'Pune'] },
+  NDC: { supportingSites: ['Chennai', 'Poland'] },
+  NEC: { supportingSites: ['Mumbai', 'Pune'] },
+  SWE: { supportingSites: ['Chennai', 'Poland'] },
+  'UK&I': { supportingSites: ['Mumbai', 'Poland'] },
+  EAA: { supportingSites: ['Chennai', 'Mumbai'] },
+  IBS: { supportingSites: ['Mumbai', 'Pune'] },
+  PAK: { supportingSites: ['Manila'] },
+  SAA: { supportingSites: ['Pune'] },
+  SAI: { supportingSites: ['Chennai', 'Mumbai'] },
+  UAE: { supportingSites: ['Pune'] },
+  WAF: { supportingSites: ['Chennai', 'Mumbai'] },
+  CAC: { supportingSites: ['Manila', 'Mexico'] },
+  ECSA: { supportingSites: ['Brazil', 'Mumbai'] },
+  WCSA: { supportingSites: ['Manila', 'Mexico'] },
+  CAA: { supportingSites: ['Chennai', 'Mexico'] },
+  MEX: { supportingSites: ['Manila', 'Mexico'] },
+  USA: { supportingSites: ['Chennai', 'Mexico'] }
 }
 
-export const getLocationStrategyForArea = (area) => areaLocationMapping[area]?.locationStrategy ?? ''
-
-export const getDefaultSupportingSitesForArea = (area) =>
+export const getDefaultLocationStrategiesForArea = (area) =>
   areaLocationMapping[area]?.supportingSites ?? []
 
-export const getLocationStrategiesForArea = (area) => {
-  const strategy = getLocationStrategyForArea(area)
-  return strategy ? [strategy] : []
-}
-
-export const getLocationStrategiesForAreas = (areas) => {
-  const strategies = new Set()
-  for (const area of areas) {
-    const strategy = getLocationStrategyForArea(area)
-    if (strategy) strategies.add(strategy)
-  }
-  return [...strategies].sort()
-}
-
-export const getDefaultSupportingSitesForAreas = (areas) => {
+export const getDefaultLocationStrategiesForAreas = (areas) => {
   const sites = new Set()
   for (const area of areas) {
-    getDefaultSupportingSitesForArea(area).forEach((site) => sites.add(site))
+    getDefaultLocationStrategiesForArea(area).forEach((site) => sites.add(site))
   }
   return [...sites].sort()
 }
 
-export const getAreasForLocationStrategy = (areas, strategy) =>
-  areas.filter((area) => getLocationStrategyForArea(area) === strategy)
-
-export const getDefaultSupportingSitesForAreasAndStrategies = (areas, strategies) => {
-  const strategySet = new Set(strategies)
-  const activeAreas = areas.filter((area) => strategySet.has(getLocationStrategyForArea(area)))
-  return getDefaultSupportingSitesForAreas(activeAreas)
-}
-
-export const filterValidLocationStrategies = (areas, strategies) => {
-  const valid = new Set(getLocationStrategiesForAreas(areas))
-  return strategies.filter((strategy) => valid.has(strategy))
-}
-
-export const filterAreasByLocationStrategies = (areas, strategies) => {
-  const strategySet = new Set(strategies)
-  return areas.filter((area) => strategySet.has(getLocationStrategyForArea(area)))
-}
-
-export const buildAreaLocationPairs = (areas, strategies) => {
-  const strategySet = new Set(strategies)
-  return areas
-    .map((area) => ({
-      area,
-      locationStrategy: getLocationStrategyForArea(area)
-    }))
-    .filter((pair) => pair.locationStrategy && strategySet.has(pair.locationStrategy))
-}
+/** @deprecated Use customLocationStrategyOptions */
+export const customGscSiteOptions = customLocationStrategyOptions
 
 export const MAX_APPROVAL_FILE_BYTES = 4 * 1024 * 1024
 
