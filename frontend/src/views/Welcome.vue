@@ -150,6 +150,14 @@ const menuItems = [
     icon: 'mi-flow',
     accent: '#5A9FD4',
     route: '/final-ci-review'
+  },
+  {
+    id: 'fpo-mapping',
+    title: 'FPO Mapping',
+    description: 'Cascading L1–L4 process / FPO dictionary grid powered by Handsontable.',
+    icon: 'mi-list',
+    accent: '#0077B8',
+    route: '/fpo-mapping'
   }
 ]
 

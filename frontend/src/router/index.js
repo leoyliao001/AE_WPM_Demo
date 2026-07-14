@@ -9,6 +9,7 @@ import ProjectDashboard from '../views/ProjectDashboard.vue'
 import ProjectMilestoneDetail from '../views/ProjectMilestoneDetail.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
 import FinalCiReview from '../views/FinalCiReview.vue'
+import FpoMapping from '../views/FpoMapping.vue'
 
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
@@ -30,7 +31,8 @@ const routes = [
     component: ProjectMilestoneDetail
   },
   { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
-  { path: '/final-ci-review', name: 'FinalCiReview', component: FinalCiReview }
+  { path: '/final-ci-review', name: 'FinalCiReview', component: FinalCiReview },
+  { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping }
 ]
 
 const router = createRouter({
