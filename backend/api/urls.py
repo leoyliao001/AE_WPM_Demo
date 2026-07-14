@@ -8,4 +8,5 @@ urlpatterns = [
     path("ld-dashboard/", include("api.routes.ld_dashboard")),
     path("project-dashboard/", include("api.routes.project_dashboard")),
     path("migration-chatbot/", include("api.routes.migration_chatbot")),
+    path("fpo-mapping/", include("api.routes.fpo_mapping")),
 ]
