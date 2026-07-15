@@ -19,13 +19,25 @@
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
+          <span v-if="pendingCount" class="meta-pill meta-pill--pending">
+            {{ pendingCount }} pending
+          </span>
+          <mc-button
+            appearance="primary"
+            fit="small"
+            :label="saving ? 'Saving…' : 'Save'"
+            icon="mi-save"
+            :disabled="loading || saving || deleting || pendingCount === 0"
+            :title="saving ? saveProgressMessage : 'Ctrl + S'"
+            @click="saveData"
+          />
           <mc-button
             appearance="neutral"
             variant="plain"
             fit="small"
             label="Reload"
             icon="mi-arrow-clockwise"
-            :disabled="loading"
+            :disabled="loading || saving || deleting"
             @click="loadData"
           />
         </div>
@@ -47,7 +59,7 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import axios from 'axios'
 import Handsontable from 'handsontable'
 import 'handsontable/styles/handsontable.min.css'
@@ -168,8 +180,55 @@ const loading = ref(false)
 const hotReady = ref(false)
 const error = ref('')
 const rowCount = ref(0)
+const allChanges = ref([])
+const saving = ref(false)
+const deleting = ref(false)
+const saveProgressMessage = ref('')
 
-const emptyRow = () => Object.fromEntries(ALL_KEYS.map((k) => [k, '']))
+const pendingCount = computed(() => {
+  const map = new Map()
+  allChanges.value.forEach((item) => {
+    const key = item.id != null && item.id !== '' ? `id:${item.id}` : `cid:${item._cid}`
+    map.set(key, item)
+  })
+  return map.size
+})
+
+const emptyRow = () => {
+  const row = Object.fromEntries(ALL_KEYS.map((k) => [k, '']))
+  row.id = null
+  row._cid = ''
+  return row
+}
+
+function isBlankRow(row) {
+  if (!row) return true
+  return ALL_KEYS.every((k) => !String(row[k] ?? '').trim())
+}
+
+function makeClientId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `cid-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function trackChangedRow(hot, visualRow) {
+  const physicalRow =
+    typeof hot.toPhysicalRow === 'function' ? hot.toPhysicalRow(visualRow) : visualRow
+  const src = hot.getSourceDataAtRow(physicalRow)
+  if (!src || isBlankRow(src)) return
+
+  if (!src.id && !src._cid) {
+    src._cid = makeClientId()
+  }
+
+  const snapshot = { id: src.id ?? null, _cid: src._cid || '' }
+  ALL_KEYS.forEach((k) => {
+    snapshot[k] = src[k] ?? ''
+  })
+  allChanges.value.push(snapshot)
+}
 
 function getL1Node(l1) {
   if (!l1) return null
@@ -403,21 +462,38 @@ function destroyHot() {
 function syncTableHeight() {
   const el = hotContainer.value
   if (!el) return 480
-  const top = el.getBoundingClientRect().top
-  const height = Math.max(window.innerHeight - top - 12, 360)
+
+  // Flex child may briefly be hidden while loading; measure with it visible.
+  const wasHidden = el.classList.contains('is-hidden')
+  if (wasHidden) el.classList.remove('is-hidden')
+  el.style.height = ''
+
+  void el.offsetHeight
+  let height = Math.floor(el.clientHeight || 0)
+
+  // Fallback if flex layout not ready yet
+  if (height < 280) {
+    const top = el.getBoundingClientRect().top || 120
+    // Keep a small bottom gap so the horizontal scrollbar stays in view
+    height = Math.max(Math.floor(window.innerHeight - top - 24), 280)
+  }
+
   el.style.height = `${height}px`
+  if (wasHidden) el.classList.add('is-hidden')
   return height
 }
 
 function initHot(rows) {
   if (!hotContainer.value) return
   destroyHot()
+  allChanges.value = []
 
   const data = rows.map((r) => {
     const row = emptyRow()
     ALL_KEYS.forEach((k) => {
       row[k] = r[k] ?? ''
     })
+    row.id = r.id ?? null
     return row
   })
 
@@ -445,11 +521,21 @@ function initHot(rows) {
     filters: true,
     dropdownMenu: true,
     multiColumnSorting: true,
+    copyPaste: {
+      copyColumnHeaders: true,
+      copyColumnHeadersOnly: true
+    },
     contextMenu: {
       items: {
         row_above: { name: 'Insert row above' },
         row_below: { name: 'Insert row below' },
         remove_row: { name: 'Remove row' },
+        sp1: '---------',
+        copy: {},
+        copy_with_column_headers: {},
+        copy_column_headers_only: {},
+        cut: {},
+        sp2: '---------',
         undo: { name: 'Undo' },
         redo: { name: 'Redo' },
         alignment: { name: 'Alignment' }
@@ -464,7 +550,6 @@ function initHot(rows) {
       const prop = this.colToProp(sel[1])
       if (!CASCADE_SET.has(prop)) return
 
-      // Allow navigation / confirm / clear / open editor — block free typing
       if (event.ctrlKey || event.metaKey || event.altKey) return
       const allowed = new Set([
         'ArrowUp',
@@ -489,11 +574,14 @@ function initHot(rows) {
       }
     },
     afterChange(changes, source) {
-      if (!changes || source === 'cascade' || source === 'loadData') return
+      if (!changes || source === 'cascade' || source === 'loadData' || source === 'api') return
       if (!['edit', 'CopyPaste.paste', 'Autofill.fill'].includes(source)) return
 
-      const handled = new Set()
+      const handledCascade = new Set()
+      const touchedRows = new Set()
+
       changes.forEach(([visualRow, prop]) => {
+        touchedRows.add(visualRow)
         if (
           !CLEAR_FROM[prop] &&
           !['l1', 'l2', 'l3', 'l4', 'sub_process_call_activity'].includes(prop)
@@ -501,8 +589,8 @@ function initHot(rows) {
           return
         }
         const key = `${visualRow}|${prop}`
-        if (handled.has(key)) return
-        handled.add(key)
+        if (handledCascade.has(key)) return
+        handledCascade.add(key)
 
         const physicalRow =
           typeof this.toPhysicalRow === 'function'
@@ -510,6 +598,40 @@ function initHot(rows) {
             : visualRow
         applyCascadeFill(this, visualRow, physicalRow, prop)
       })
+
+      touchedRows.forEach((visualRow) => {
+        trackChangedRow(this, visualRow)
+      })
+    },
+    beforeRemoveRow(index, amount, physicalRows) {
+      if (deleting.value) {
+        alert('Delete in progress, please wait…')
+        return false
+      }
+
+      const idsToRemove = []
+      for (let i = 0; i < amount; i += 1) {
+        const rowData = this.getSourceDataAtRow(physicalRows[i])
+        const rowId = rowData?.id
+        if (rowId != null && rowId !== '') {
+          idsToRemove.push(rowId)
+        }
+      }
+
+      const confirmed = confirm(
+        'The rows will be deleted permanently and can not be restored. Continue?'
+      )
+      if (!confirmed) {
+        return false
+      }
+
+      // Unsaved local-only rows: allow Handsontable to remove them
+      if (idsToRemove.length === 0) {
+        return true
+      }
+
+      void runDeleteRows(idsToRemove)
+      return false
     },
     afterInit() {
       requestAnimationFrame(() => {
@@ -531,6 +653,97 @@ function onResize() {
   hotInstance.value.refreshDimensions()
 }
 
+async function saveData() {
+  if (saving.value || deleting.value) return
+  if (allChanges.value.length === 0) {
+    alert('No changes to save.')
+    return
+  }
+
+  const deduped = new Map()
+  allChanges.value.forEach((item) => {
+    const key = item.id != null && item.id !== '' ? `id:${item.id}` : `cid:${item._cid}`
+    deduped.set(key, item)
+  })
+
+  const uniqueData = [...deduped.values()]
+    .filter((item) => !isBlankRow(item))
+    .map((item) => {
+      const payload = { id: item.id ?? null }
+      ALL_KEYS.forEach((k) => {
+        payload[k] = item[k] ?? ''
+      })
+      return payload
+    })
+
+  if (uniqueData.length === 0) {
+    alert('No valid rows to save.')
+    return
+  }
+
+  saving.value = true
+  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)…`
+  error.value = ''
+  try {
+    const { data } = await axios.post('/api/fpo-mapping/data/', { uniqueData })
+    const created = data.created_count || 0
+    const updated = data.updated_count || 0
+    const errCount = data.error_count || 0
+    if (errCount > 0) {
+      alert(
+        `Saved with errors: created ${created}, updated ${updated}, errors ${errCount}.`
+      )
+    } else {
+      alert(`Saved: created ${created}, updated ${updated}.`)
+    }
+    allChanges.value = []
+    await loadData()
+  } catch (e) {
+    console.error(e)
+    const msg =
+      e?.response?.data?.error ||
+      e?.response?.data?.detail ||
+      e.message ||
+      'Save failed'
+    error.value = msg
+    alert(`Save failed: ${msg}`)
+  } finally {
+    saving.value = false
+    saveProgressMessage.value = ''
+  }
+}
+
+async function runDeleteRows(idsToRemove) {
+  if (deleting.value) return
+  deleting.value = true
+  error.value = ''
+  try {
+    const { data } = await axios.delete('/api/fpo-mapping/data/delete/', {
+      data: { removedIds: idsToRemove }
+    })
+    const deletedCount = data.deleted_count || 0
+    const errCount = data.error_count || 0
+    if (errCount > 0) {
+      alert(`Delete done: deleted ${deletedCount}, errors ${errCount}.`)
+    } else {
+      alert(`Delete done: deleted ${deletedCount} row(s).`)
+    }
+    allChanges.value = []
+    await loadData()
+  } catch (e) {
+    console.error(e)
+    const msg =
+      e?.response?.data?.error ||
+      e?.response?.data?.detail ||
+      e.message ||
+      'Delete failed'
+    error.value = msg
+    alert(`Delete failed: ${msg}`)
+  } finally {
+    deleting.value = false
+  }
+}
+
 async function loadData() {
   loading.value = true
   error.value = ''
@@ -546,16 +759,27 @@ async function loadData() {
     destroyHot()
   } finally {
     loading.value = false
+    await nextTick()
+    onResize()
   }
+}
+
+function handleGlobalKeydown(event) {
+  if (!(event.ctrlKey || event.metaKey)) return
+  if (event.key !== 's' && event.key !== 'S') return
+  event.preventDefault()
+  saveData()
 }
 
 onMounted(() => {
   loadData()
   window.addEventListener('resize', onResize)
+  document.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
+  document.removeEventListener('keydown', handleGlobalKeydown)
   destroyHot()
 })
 </script>
@@ -563,14 +787,22 @@ onBeforeUnmount(() => {
 <style scoped>
 .fpo-page {
   background: #fff;
-  min-height: calc(100vh - 56px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);
+  overflow: hidden;
 }
 
 .fpo-page-inner {
   box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   margin: 0;
   max-width: none;
-  padding: 8px 10px 8px;
+  min-height: 0;
+  padding: 8px 10px 16px;
   width: 100%;
 }
 
@@ -578,6 +810,7 @@ onBeforeUnmount(() => {
   align-items: center;
   border-bottom: 1px solid #c0c4cc;
   display: flex;
+  flex-shrink: 0;
   gap: 12px;
   justify-content: space-between;
   margin-bottom: 8px;
@@ -617,6 +850,12 @@ onBeforeUnmount(() => {
   padding: 2px 8px;
 }
 
+.meta-pill--pending {
+  background: #fff8e6;
+  border-color: #f0d78c;
+  color: #8a6d00;
+}
+
 .meta-pill--loading {
   color: #0077b8;
 }
@@ -631,15 +870,17 @@ onBeforeUnmount(() => {
   align-items: center;
   color: #6c757d;
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 12px;
   justify-content: center;
-  min-height: 360px;
+  min-height: 0;
 }
 
 .handsontable-host {
   box-sizing: border-box;
-  min-height: 360px;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -714,8 +955,18 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
+  .fpo-page {
+    height: auto;
+    min-height: calc(100vh - 56px);
+    overflow: visible;
+  }
+
   .fpo-page-inner {
-    padding: 6px 6px 8px;
+    padding: 6px 6px 16px;
+  }
+
+  .handsontable-host {
+    min-height: 360px;
   }
 
   .page-title {
