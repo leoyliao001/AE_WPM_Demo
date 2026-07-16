@@ -789,8 +789,10 @@ onBeforeUnmount(() => {
   background: #fff;
   box-sizing: border-box;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  height: calc(100vh - 56px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -802,7 +804,7 @@ onBeforeUnmount(() => {
   margin: 0;
   max-width: none;
   min-height: 0;
-  padding: 8px 10px 16px;
+  padding: 8px 10px 12px;
   width: 100%;
 }
 
@@ -955,18 +957,12 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
-  .fpo-page {
-    height: auto;
-    min-height: calc(100vh - 56px);
-    overflow: visible;
-  }
-
   .fpo-page-inner {
-    padding: 6px 6px 16px;
+    padding: 6px 6px 12px;
   }
 
   .handsontable-host {
-    min-height: 360px;
+    min-height: 280px;
   }
 
   .page-title {
