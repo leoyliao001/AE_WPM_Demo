@@ -3,10 +3,17 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
 body {
   background: #fff;
   font-family: 'Maersk Text', sans-serif;
-  margin: 0;
+  overflow: hidden;
 }
 </style>
 
@@ -26,10 +33,17 @@ import AppHeader from './components/AppHeader.vue'
 <style scoped>
 .app-layout {
   background: #fff;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .app-main {
-  min-height: calc(100vh - 56px);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
 }
 </style>
