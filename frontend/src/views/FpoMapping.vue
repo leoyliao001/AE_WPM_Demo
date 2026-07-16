@@ -26,7 +26,7 @@
             appearance="primary"
             fit="small"
             :label="saving ? 'Saving…' : 'Save'"
-            icon="mi-save"
+            icon="mi-floppy-disk"
             :disabled="loading || saving || deleting || pendingCount === 0"
             :title="saving ? saveProgressMessage : 'Ctrl + S'"
             @click="saveData"
