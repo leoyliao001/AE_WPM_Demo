@@ -15,6 +15,13 @@
           <mc-tag appearance="info" fit="small" label="FPO Mapping" />
           <h1 class="page-title">FPO Extended Mapping</h1>
           <span class="meta-pill">{{ rowCount }} rows</span>
+          <button
+            type="button"
+            class="meta-pill meta-pill--help"
+            @click="helpDialogOpen = true"
+          >
+            How to use
+          </button>
           <span v-if="loading" class="meta-pill meta-pill--loading">Loading…</span>
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
@@ -54,6 +61,119 @@
         class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
       />
+
+      <mc-dialog
+        :open="helpDialogOpen"
+        heading="FPO Extended Mapping — User Guide"
+        dimension="large"
+        showclosebutton
+        @closing="helpDialogOpen = false"
+      >
+        <div class="help-dialog-body">
+          <section class="help-section">
+            <h3>What this table is for</h3>
+            <p>
+              This grid is the <strong>FPO Extended Mapping</strong> dictionary. It links Maersk
+              process hierarchy from <strong>L1</strong> down to <strong>L4</strong>, together with
+              GPL, SFPO, FPO, risk links, activity types, and related metadata. Use it to browse
+              existing mappings, validate process paths, and maintain records in one place.
+            </p>
+          </section>
+
+          <section class="help-section">
+            <h3>Cascading fields (dropdown only)</h3>
+            <ul>
+              <li>
+                <strong>L1 → L2 → L3 → L4</strong> — each level filters the next. Start by
+                selecting L1.
+              </li>
+              <li>
+                <strong>GPL, SFPO, Policy count, FPO, Risk Link</strong> — auto-filled when the
+                parent path is chosen (1:1 mapping).
+              </li>
+              <li>
+                <strong>Sub-Process / Activity Type (L5)</strong> — options depend on the selected
+                L4 and sub-process.
+              </li>
+              <li>
+                Cascade columns do not allow free typing; choose values from the dropdown only.
+              </li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>Browse and filter</h3>
+            <ul>
+              <li>
+                Click the <strong>⋮</strong> button on a column header to open the filter menu.
+              </li>
+              <li>
+                Use <strong>Filter by condition</strong> or <strong>Filter by value</strong> (search,
+                Select all, Clear) to narrow rows.
+              </li>
+              <li>Click <strong>OK</strong> to apply filters, or <strong>Cancel</strong> to close.</li>
+              <li>Sort columns via the header menu or multi-column sorting where supported.</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>Edit, save, and delete</h3>
+            <ul>
+              <li>
+                Change cells in empty or existing rows. Edits are tracked as
+                <strong>pending</strong> until you save.
+              </li>
+              <li>
+                Click <strong>Save</strong> or press <strong>Ctrl+S</strong> to write changes to the
+                database (insert new rows or update existing ones).
+              </li>
+              <li>
+                Right-click a row → <strong>Remove row</strong> to delete. Saved rows require
+                confirmation; unsaved blank rows are removed locally only.
+              </li>
+              <li>
+                Click <strong>Reload</strong> to refresh from the server (discards unsaved pending
+                changes if you reload without saving).
+              </li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>Copy to Excel</h3>
+            <ul>
+              <li>Select a range of cells, then right-click.</li>
+              <li>
+                Choose <strong>Copy with headers</strong> to paste column names and data into Excel.
+              </li>
+              <li>
+                <strong>Copy headers only</strong> copies just the column titles for the selected
+                columns.
+              </li>
+              <li>Standard <strong>Copy</strong> copies data only (same as Ctrl+C).</li>
+            </ul>
+          </section>
+
+          <section class="help-section">
+            <h3>All columns</h3>
+            <p>
+              Besides the cascade fields, the grid shows process level, grouping, GUID, connect /
+              SharePoint links, activity counts, report date, and other fields from the FPO extended
+              list. Non-cascade columns can be edited as plain text where applicable.
+            </p>
+          </section>
+        </div>
+
+        <div slot="footer" class="help-dialog-footer">
+          <mc-button
+            type="button"
+            appearance="primary"
+            variant="filled"
+            fit="medium"
+            label="Got it"
+            @click="helpDialogOpen = false"
+          />
+        </div>
+      </mc-dialog>
     </div>
   </div>
 </template>
@@ -67,6 +187,7 @@ import 'handsontable/styles/ht-theme-horizon.min.css'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-loading-indicator'
+import '@maersk-global/mds-components-core/mc-dialog'
 
 /** Cascade columns — dropdown only, no free text */
 const CASCADE_KEYS = [
@@ -180,6 +301,7 @@ const loading = ref(false)
 const hotReady = ref(false)
 const error = ref('')
 const rowCount = ref(0)
+const helpDialogOpen = ref(false)
 const allChanges = ref([])
 const saving = ref(false)
 const deleting = ref(false)
@@ -910,6 +1032,65 @@ onBeforeUnmount(() => {
   font-size: 11px;
   font-weight: 500;
   padding: 2px 8px;
+}
+
+.meta-pill--help {
+  background: #eef6fb;
+  border-color: #b8d9eb;
+  color: #0077b8;
+  cursor: pointer;
+  font-family: 'Maersk Text', sans-serif;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.meta-pill--help:hover {
+  background: #dceef8;
+  border-color: #0077b8;
+}
+
+.help-dialog-body {
+  color: #161616;
+  font-size: 14px;
+  line-height: 1.55;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.help-section {
+  margin-bottom: 20px;
+}
+
+.help-section:last-child {
+  margin-bottom: 0;
+}
+
+.help-section h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.help-section p {
+  margin: 0;
+}
+
+.help-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.help-section li {
+  margin-bottom: 6px;
+}
+
+.help-section li:last-child {
+  margin-bottom: 0;
+}
+
+.help-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .meta-pill--pending {
