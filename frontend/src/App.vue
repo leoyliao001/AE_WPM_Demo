@@ -46,4 +46,9 @@ import AppHeader from './components/AppHeader.vue'
   min-height: 0;
   overflow: auto;
 }
+
+/* FPO Mapping: page owns scroll via Handsontable only */
+.app-main:has(.fpo-page) {
+  overflow: hidden;
+}
 </style>

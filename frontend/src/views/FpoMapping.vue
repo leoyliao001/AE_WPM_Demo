@@ -51,7 +51,7 @@
       <div
         id="fpo-handsontable"
         ref="hotContainer"
-        class="ht-theme-main handsontable-host"
+        class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
       />
     </div>
@@ -63,7 +63,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 
 import axios from 'axios'
 import Handsontable from 'handsontable'
 import 'handsontable/styles/handsontable.min.css'
-import 'handsontable/styles/ht-theme-main.min.css'
+import 'handsontable/styles/ht-theme-horizon.min.css'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-loading-indicator'
@@ -474,9 +474,11 @@ function syncTableHeight() {
   // Fallback if flex layout not ready yet
   if (height < 280) {
     const top = el.getBoundingClientRect().top || 120
-    // Keep a small bottom gap so the horizontal scrollbar stays in view
     height = Math.max(Math.floor(window.innerHeight - top - 24), 280)
   }
+
+  // Leave room for Handsontable's horizontal scrollbar inside the clipped host
+  height = Math.max(height - 2, 280)
 
   el.style.height = `${height}px`
   if (wasHidden) el.classList.add('is-hidden')
@@ -507,7 +509,7 @@ function initHot(rows) {
     data,
     columns: buildColumns(),
     colHeaders: ALL_COLUMNS.map((c) => c.label),
-    rowHeaders: true,
+    rowHeaders: false,
     height: tableHeight,
     width: '100%',
     stretchH: 'none',
@@ -519,7 +521,13 @@ function initHot(rows) {
     manualColumnResize: true,
     manualRowResize: true,
     filters: true,
-    dropdownMenu: true,
+    // Official docs: pass an explicit item list (do not use `true` + hook filtering).
+    // https://handsontable.com/docs/16.2/javascript-data-grid/column-filter/
+    dropdownMenu: [
+      'filter_by_condition',
+      'filter_by_value',
+      'filter_action_bar'
+    ],
     multiColumnSorting: true,
     copyPaste: {
       copyColumnHeaders: true,
@@ -531,10 +539,36 @@ function initHot(rows) {
         row_below: { name: 'Insert row below' },
         remove_row: { name: 'Remove row' },
         sp1: '---------',
-        copy: {},
-        copy_with_column_headers: {},
-        copy_column_headers_only: {},
-        cut: {},
+        copy: {
+          name: 'Copy',
+          callback() {
+            this.getPlugin('copyPaste')?.copyCellsOnly()
+          }
+        },
+        copy_with_column_headers: {
+          name: 'Copy with headers',
+          callback() {
+            this.getPlugin('copyPaste')?.copyWithColumnHeaders()
+          },
+          disabled() {
+            return !this.getSelectedLast()
+          }
+        },
+        copy_column_headers_only: {
+          name: 'Copy headers only',
+          callback() {
+            this.getPlugin('copyPaste')?.copyColumnHeadersOnly()
+          },
+          disabled() {
+            return !this.getSelectedLast()
+          }
+        },
+        cut: {
+          name: 'Cut',
+          callback() {
+            this.getPlugin('copyPaste')?.cut()
+          }
+        },
         sp2: '---------',
         undo: { name: 'Undo' },
         redo: { name: 'Redo' },
@@ -543,7 +577,31 @@ function initHot(rows) {
     },
     minSpareRows: 1,
     licenseKey: 'non-commercial-and-evaluation',
+    themeName: 'ht-theme-horizon',
     className: 'htLeft htMiddle',
+    headerClassName: 'htLeft',
+    afterDropdownMenuShow() {
+      const FILTER_MENU_WIDTH = 340
+      const FILTER_LIST_HEIGHT = 280
+
+      const menu = this.getPlugin('dropdownMenu')?.menu
+      if (menu?.options) {
+        menu.options.minWidth = FILTER_MENU_WIDTH
+      }
+      if (menu?.hotMenu && !menu.hotMenu.isDestroyed) {
+        menu.hotMenu.updateSettings({ colWidths: [FILTER_MENU_WIDTH] })
+        menu.hotMenu.refreshDimensions()
+      }
+
+      // Filter-by-value checklist is a nested Handsontable with default height 110px
+      const filtersPlugin = this.getPlugin('filters')
+      const valueComponent = filtersPlugin?.components?.get?.('filter_by_value')
+      const itemsBox = valueComponent?.getMultipleSelectElement?.()?.getItemsBox?.()
+      if (itemsBox && !itemsBox.isDestroyed) {
+        itemsBox.updateSettings({ height: FILTER_LIST_HEIGHT })
+        itemsBox.refreshDimensions()
+      }
+    },
     beforeKeyDown(event) {
       const sel = this.getSelectedLast()
       if (!sel) return
@@ -786,7 +844,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .fpo-page {
-  background: #fff;
+  background: #f3f4f6;
   box-sizing: border-box;
   display: flex;
   flex: 1;
@@ -804,20 +862,22 @@ onBeforeUnmount(() => {
   margin: 0;
   max-width: none;
   min-height: 0;
-  padding: 8px 10px 12px;
+  padding: 10px 12px 12px;
   width: 100%;
 }
 
 .fpo-toolbar {
   align-items: center;
-  border-bottom: 1px solid #c0c4cc;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   display: flex;
   flex-shrink: 0;
-  gap: 12px;
+  gap: 8px;
   justify-content: space-between;
   margin-bottom: 8px;
-  min-height: 44px;
-  padding: 4px 2px 8px;
+  min-height: 0;
+  padding: 4px 10px;
 }
 
 .toolbar-left,
@@ -836,7 +896,7 @@ onBeforeUnmount(() => {
 .page-title {
   color: #161616;
   font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 400;
   letter-spacing: -0.01em;
   margin: 0;
@@ -870,6 +930,9 @@ onBeforeUnmount(() => {
 
 .table-loading {
   align-items: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   color: #6c757d;
   display: flex;
   flex: 1;
@@ -880,6 +943,9 @@ onBeforeUnmount(() => {
 }
 
 .handsontable-host {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
@@ -892,73 +958,45 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-/* —— OverView-like dense spreadsheet chrome —— */
+/* Keep HT internal scroll only; do not override Horizon theme chrome */
 :deep(#fpo-handsontable .ht-root-wrapper) {
   height: 100% !important;
+  width: 100% !important;
+}
+
+:deep(#fpo-handsontable .ht_master) {
+  width: 100% !important;
 }
 
 :deep(#fpo-handsontable .ht_master .wtHolder) {
-  overflow: auto !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
 }
 
 :deep(#fpo-handsontable .ht_clone_inline_start .wtHolder),
 :deep(#fpo-handsontable .ht_clone_top .wtHolder),
-:deep(#fpo-handsontable .ht_clone_top_inline_start_corner .wtHolder) {
+:deep(#fpo-handsontable .ht_clone_top_inline_start_corner .wtHolder),
+:deep(#fpo-handsontable .ht_clone_bottom .wtHolder),
+:deep(#fpo-handsontable .ht_clone_bottom_inline_start_corner .wtHolder) {
   overflow: hidden !important;
 }
 
 :deep(#fpo-handsontable .handsontable),
-:deep(#fpo-handsontable .htCore td),
-:deep(#fpo-handsontable .htCore th) {
-  font-family: 'Maersk Text', sans-serif !important;
-  font-size: 11px !important;
-}
-
-:deep(#fpo-handsontable .htCore thead th),
-:deep(#fpo-handsontable .ht_clone_top th),
-:deep(#fpo-handsontable .ht_clone_top_inline_start_corner th) {
-  background: #f5f5f5 !important;
-  border-color: #e0e0e0 !important;
-  color: #161616 !important;
-  font-weight: 600 !important;
-  white-space: nowrap;
-}
-
-:deep(#fpo-handsontable .htCore tbody td) {
-  border-color: #e0e0e0 !important;
-  box-sizing: border-box;
-  overflow: hidden !important;
-  vertical-align: middle;
-}
-
-:deep(#fpo-handsontable .htCore tbody tr:nth-child(even) td) {
-  border-bottom: 1px solid #e0e0e0 !important;
-}
-
-:deep(#fpo-handsontable .htCore tbody tr:nth-child(odd) td) {
-  border-bottom: 1px dashed #e0e0e0 !important;
-}
-
-:deep(#fpo-handsontable .htCore tbody tr:hover td) {
-  background: rgba(0, 119, 184, 0.04);
-}
-
+:deep(#fpo-handsontable .htCore th),
 :deep(#fpo-handsontable .handsontableInput),
 :deep(#fpo-handsontable .handsontableInputHolder textarea),
 :deep(#fpo-handsontable .listbox) {
-  font-family: 'Maersk Text', sans-serif !important;
-  font-size: 11px !important;
+  font-family: 'Maersk Text', sans-serif;
 }
 
-:deep(#fpo-handsontable .htDropdownMenu),
-:deep(#fpo-handsontable .htFiltersMenuCondition),
-:deep(#fpo-handsontable .htFiltersMenuValue) {
-  font-size: 11px;
+:deep(#fpo-handsontable .htCore tbody td) {
+  font-family: 'Maersk Text', sans-serif;
+  font-size: 11px !important;
 }
 
 @media (max-width: 900px) {
   .fpo-page-inner {
-    padding: 6px 6px 12px;
+    padding: 6px 6px 10px;
   }
 
   .handsontable-host {
@@ -968,5 +1006,33 @@ onBeforeUnmount(() => {
   .page-title {
     font-size: 16px;
   }
+}
+</style>
+
+<!-- Dropdown menu renders in a portal outside this component — use global CSS -->
+<style>
+.handsontable.htDropdownMenu:not(.htGhostTable),
+.handsontable.htDropdownMenu > .ht_master,
+.handsontable.htDropdownMenu table.htCore {
+  min-width: 340px !important;
+}
+
+.handsontable.htDropdownMenu .htFiltersMenuCondition .htUIInput,
+.handsontable.htDropdownMenu .htFiltersMenuCondition .htUIInput input,
+.handsontable.htDropdownMenu .htFiltersMenuValue .htUIMultipleSelectSearch,
+.handsontable.htDropdownMenu .htFiltersMenuValue .htUIMultipleSelectSearch input {
+  box-sizing: border-box;
+  min-width: 300px !important;
+  width: 100% !important;
+}
+
+.htDropdownMenu .htUIMultipleSelectHot,
+.htDropdownMenu .htUIMultipleSelectHot .ht-root-wrapper {
+  height: 280px !important;
+}
+
+.htDropdownMenu .htUIMultipleSelectHot .ht_master .wtHolder {
+  height: 280px !important;
+  max-height: 280px !important;
 }
 </style>
