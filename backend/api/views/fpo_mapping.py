@@ -202,7 +202,7 @@ def _build_cascade_tree(rows: list[dict]) -> dict:
 
 @api_view(["GET"])
 def list_fpo_mapping(request):
-    """GET /api/fpo-mapping/ — rows + cascade tree for Handsontable."""
+    """GET /api/fpo-mapping/ — all DB rows for the grid + cascade tree."""
     qs = FpoMapping.objects.all().order_by("id")
     rows = [_serialize_row(item) for item in qs]
 

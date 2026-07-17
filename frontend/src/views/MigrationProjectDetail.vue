@@ -184,7 +184,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import {
@@ -211,6 +211,7 @@ const REGION_LABELS = {
 }
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(true)
 const loadError = ref('')
 const project = ref(null)
@@ -257,6 +258,10 @@ const milestoneCardBody = (item) => {
 }
 
 const onMilestoneClick = (item) => {
+  if (item.id === 'opportunity') {
+    router.push(`/migration-dashboard/${route.params.id}/opportunity-assessment`)
+    return
+  }
   console.log('[Migration Project] Milestone selected', item.id)
 }
 
