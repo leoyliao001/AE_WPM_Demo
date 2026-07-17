@@ -84,6 +84,11 @@ class FpoMapping(models.Model):
     num_business_rules = models.CharField(max_length=16, blank=True, default="")
     report_generation_date = models.CharField(max_length=32, blank=True, default="")
     sharepoint_link_sop = models.TextField(blank=True, default="")
+    is_reference = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="True = Excel dictionary row for cascade dropdowns only; not shown in the grid.",
+    )
 
     class Meta:
         db_table = "fpo_mapping"
@@ -95,3 +100,42 @@ class FpoMapping(models.Model):
 
     def __str__(self):
         return f"{self.l1} / {self.l2} / {self.l3} / {self.fpo}"
+
+
+class OpportunityAssessment(models.Model):
+    """Task-level Opportunity Assessment scoped to a migration request."""
+
+    migration_request_id = models.CharField(max_length=32, db_index=True)
+    owner = models.CharField(max_length=128, blank=True, default="")
+    l1 = models.CharField(max_length=128, blank=True, default="")
+    l2 = models.CharField(max_length=128, blank=True, default="")
+    l3 = models.CharField(max_length=128, blank=True, default="")
+    l4 = models.CharField(max_length=255, blank=True, default="")
+    task_name = models.CharField(max_length=255, blank=True, default="")
+    task_description = models.TextField(blank=True, default="")
+    task_found_in_service_catalog = models.CharField(max_length=255, blank=True, default="")
+    migratable_to_gsc = models.CharField(max_length=255, blank=True, default="")
+    upstream = models.TextField(blank=True, default="")
+    downstream = models.TextField(blank=True, default="")
+    risks_related = models.TextField(blank=True, default="")
+    complexity = models.CharField(max_length=64, blank=True, default="")
+    sop_iop_exists = models.CharField(max_length=128, blank=True, default="")
+    training_time_needed = models.CharField(max_length=255, blank=True, default="")
+    recommended_handoff_duration = models.CharField(max_length=255, blank=True, default="")
+    task_frequency = models.CharField(max_length=255, blank=True, default="")
+    unit_of_measure = models.CharField(max_length=128, blank=True, default="")
+    volume = models.CharField(max_length=64, blank=True, default="")
+    task_time_per_unit = models.CharField(max_length=64, blank=True, default="")
+    fte_calculation = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "opportunity_assessment"
+        ordering = ["id"]
+        indexes = [
+            models.Index(fields=["migration_request_id", "l1", "l2", "l3"]),
+        ]
+
+    def __str__(self):
+        return f"{self.migration_request_id} — {self.task_name or self.l4 or self.id}"

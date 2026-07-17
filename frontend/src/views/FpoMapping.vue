@@ -88,8 +88,12 @@
                 selecting L1.
               </li>
               <li>
-                <strong>GPL, SFPO, Policy count, FPO, Risk Link</strong> — auto-filled when the
-                parent path is chosen (1:1 mapping).
+                <strong>GPL, SFPO, Policy count, FPO</strong> — auto-filled when the parent path
+                is chosen (1:1 mapping).
+              </li>
+              <li>
+                <strong>Risk Link, Control Link</strong> — auto-filled when L3 is selected, but
+                can also be edited as plain text (URLs).
               </li>
               <li>
                 <strong>Sub-Process / Activity Type (L5)</strong> — options depend on the selected
@@ -198,8 +202,6 @@ const CASCADE_KEYS = [
   'num_business_policy',
   'l3',
   'fpo',
-  'risk_link',
-  'control_link',
   'l4',
   'activity_type',
   'sub_process_call_activity',
@@ -407,14 +409,6 @@ function optionsFor(prop, rowData) {
       const n3 = getL3Node(l1, l2, l3)
       return n3?.fpo ? [n3.fpo] : []
     }
-    case 'risk_link': {
-      const n3 = getL3Node(l1, l2, l3)
-      return n3?.risk_link ? [n3.risk_link] : []
-    }
-    case 'control_link': {
-      const n3 = getL3Node(l1, l2, l3)
-      return n3?.control_link ? [n3.control_link] : []
-    }
     case 'l4':
       return getL3Node(l1, l2, l3)?.l4_list || []
     case 'activity_type':
@@ -448,7 +442,8 @@ function makeDropdownSource(prop) {
 
 function makeValidator(prop) {
   return function validator(value, callback) {
-    if (value === null || value === undefined || value === '') {
+    const normalized = normalizeCellValue(value)
+    if (!normalized) {
       callback(true)
       return
     }
@@ -457,8 +452,96 @@ function makeValidator(prop) {
     const physicalRow =
       typeof hot.toPhysicalRow === 'function' ? hot.toPhysicalRow(visualRow) : visualRow
     const rowData = { ...(hot.getSourceDataAtRow(physicalRow) || emptyRow()) }
-    callback(optionsFor(prop, rowData).includes(value))
+    rowData[prop] = normalized
+    callback(optionsFor(prop, rowData).includes(normalized))
   }
+}
+
+function normalizeCellValue(value) {
+  if (value === null || value === undefined) return ''
+  return String(value).replace(/\r\n/g, '\n').trim()
+}
+
+function applyCascadeAutofillOnlyToSource(data) {
+  const fillIfEmpty = (field, value) => {
+    const normalized = normalizeCellValue(value)
+    if (!normalizeCellValue(data[field]) && normalized) {
+      data[field] = normalized
+    }
+  }
+
+  const n1 = getL1Node(data.l1)
+  if (n1) fillIfEmpty('gpl', n1.gpl)
+
+  const n2 = getL2Node(data.l1, data.l2)
+  if (n2) {
+    fillIfEmpty('sfpo', n2.sfpo)
+    fillIfEmpty('num_business_policy', n2.num_business_policy)
+  }
+
+  const n3 = getL3Node(data.l1, data.l2, data.l3)
+  if (n3) {
+    fillIfEmpty('fpo', n3.fpo)
+    fillIfEmpty('risk_link', n3.risk_link)
+    fillIfEmpty('control_link', n3.control_link)
+  }
+
+  const n4 = getL4Node(data.l1, data.l2, data.l3, data.l4)
+  if (n4?.activity_type_list?.length === 1) {
+    fillIfEmpty('activity_type', n4.activity_type_list[0])
+  }
+
+  const leaf = getSubNode(
+    data.l1,
+    data.l2,
+    data.l3,
+    data.l4,
+    data.sub_process_call_activity
+  )
+  if (leaf) {
+    fillIfEmpty('activity_type_2', leaf.activity_type_2)
+    fillIfEmpty('assigned_models_from_l5', leaf.assigned_models_from_l5)
+  }
+}
+
+function applyCascadeAutofillOnly(hot, visualRow, physicalRow) {
+  const data = hot.getSourceDataAtRow(physicalRow)
+  if (!data) return
+  applyCascadeAutofillOnlyToSource(data)
+  hot.render()
+}
+
+function applyPastedRows(hot, pasteData, coords) {
+  if (!pasteData?.length || !coords?.length) return
+
+  const target = coords[0]
+  const startRow = target?.startRow ?? 0
+  const startCol = target?.startCol ?? 0
+  const touchedRows = new Set()
+
+  pasteData.forEach((rowValues, rowOffset) => {
+    if (!Array.isArray(rowValues)) return
+
+    const visualRow = startRow + rowOffset
+    const physicalRow =
+      typeof hot.toPhysicalRow === 'function' ? hot.toPhysicalRow(visualRow) : visualRow
+    const src = hot.getSourceDataAtRow(physicalRow)
+    if (!src) return
+
+    rowValues.forEach((cellValue, colOffset) => {
+      const col = startCol + colOffset
+      if (col < 0 || col >= ALL_KEYS.length) return
+
+      const prop = ALL_KEYS[col]
+      src[prop] = normalizeCellValue(cellValue)
+    })
+
+    applyCascadeAutofillOnlyToSource(src)
+    touchedRows.add(visualRow)
+  })
+
+  hot.render()
+  touchedRows.forEach((visualRow) => trackChangedRow(hot, visualRow))
 }
 
 function applyCascadeFill(hot, visualRow, physicalRow, changedProp) {
@@ -555,7 +638,7 @@ function buildColumns() {
         data: col.key,
         type: 'dropdown',
         strict: true,
-        allowInvalid: false,
+        allowInvalid: true,
         filter: false,
         visibleRows: 12,
         trimDropdown: false,
@@ -724,6 +807,10 @@ function initHot(rows) {
         itemsBox.refreshDimensions()
       }
     },
+    afterPaste(pasteData, coords) {
+      // Re-apply full clipboard row after default paste (selection may be a single cell).
+      applyPastedRows(this, pasteData, coords)
+    },
     beforeKeyDown(event) {
       const sel = this.getSelectedLast()
       if (!sel) return
@@ -754,30 +841,60 @@ function initHot(rows) {
       }
     },
     afterChange(changes, source) {
-      if (!changes || source === 'cascade' || source === 'loadData' || source === 'api') return
-      if (!['edit', 'CopyPaste.paste', 'Autofill.fill'].includes(source)) return
+      if (!changes || source === 'cascade' || source === 'loadData' || source === 'api' || source === 'paste') {
+        return
+      }
+      if (!['edit', 'Autofill.fill'].includes(source)) return
 
       const handledCascade = new Set()
       const touchedRows = new Set()
 
-      changes.forEach(([visualRow, prop]) => {
-        touchedRows.add(visualRow)
-        if (
-          !CLEAR_FROM[prop] &&
-          !['l1', 'l2', 'l3', 'l4', 'sub_process_call_activity'].includes(prop)
-        ) {
-          return
-        }
-        const key = `${visualRow}|${prop}`
-        if (handledCascade.has(key)) return
-        handledCascade.add(key)
+      if (source === 'Autofill.fill') {
+        const pastedByRow = new Map()
 
-        const physicalRow =
-          typeof this.toPhysicalRow === 'function'
-            ? this.toPhysicalRow(visualRow)
-            : visualRow
-        applyCascadeFill(this, visualRow, physicalRow, prop)
-      })
+        changes.forEach(([visualRow, prop, , newValue]) => {
+          touchedRows.add(visualRow)
+          if (!pastedByRow.has(visualRow)) {
+            pastedByRow.set(visualRow, new Map())
+          }
+          pastedByRow.get(visualRow).set(prop, newValue)
+        })
+
+        pastedByRow.forEach((pastedValues, visualRow) => {
+          const physicalRow =
+            typeof this.toPhysicalRow === 'function'
+              ? this.toPhysicalRow(visualRow)
+              : visualRow
+          const src = this.getSourceDataAtRow(physicalRow)
+          if (!src) return
+
+          pastedValues.forEach((value, prop) => {
+            if (!ALL_KEYS.includes(prop)) return
+            src[prop] = normalizeCellValue(value)
+          })
+          applyCascadeAutofillOnlyToSource(src)
+          this.render()
+        })
+      } else {
+        changes.forEach(([visualRow, prop]) => {
+          touchedRows.add(visualRow)
+          if (
+            !CLEAR_FROM[prop] &&
+            !['l1', 'l2', 'l3', 'l4', 'sub_process_call_activity'].includes(prop)
+          ) {
+            return
+          }
+          const key = `${visualRow}|${prop}`
+          if (handledCascade.has(key)) return
+          handledCascade.add(key)
+
+          const physicalRow =
+            typeof this.toPhysicalRow === 'function'
+              ? this.toPhysicalRow(visualRow)
+              : visualRow
+          applyCascadeFill(this, visualRow, physicalRow, prop)
+        })
+      }
 
       touchedRows.forEach((visualRow) => {
         trackChangedRow(this, visualRow)

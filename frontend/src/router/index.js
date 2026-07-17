@@ -10,6 +10,7 @@ import ProjectMilestoneDetail from '../views/ProjectMilestoneDetail.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
 import FinalCiReview from '../views/FinalCiReview.vue'
 import FpoMapping from '../views/FpoMapping.vue'
+import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
@@ -23,6 +24,11 @@ const routes = [
     name: 'MigrationProjectDetail',
     component: MigrationProjectDetail
   },
+  {
+    path: '/migration-dashboard/:id/opportunity-assessment',
+    name: 'OpportunityAssessment',
+    component: OpportunityAssessment
+  },
   { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
   { path: '/project-dashboard', name: 'ProjectDashboard', component: ProjectDashboard },
   {
@@ -34,7 +40,6 @@ const routes = [
   { path: '/final-ci-review', name: 'FinalCiReview', component: FinalCiReview },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping }
 ]
-
 const router = createRouter({
   history: createWebHistory(),
   routes
