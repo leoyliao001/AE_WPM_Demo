@@ -7,7 +7,10 @@ __pycache__/
 venv/
 
 # Node
-node_modules/
+# 不忽略 frontend/node_modules，便于同事 pull 后免 npm install 直接跑前端
+# 其他目录的依赖仍忽略
+exports/**/node_modules/
+standalone/**/node_modules/
 dist/
 .vite/
 
