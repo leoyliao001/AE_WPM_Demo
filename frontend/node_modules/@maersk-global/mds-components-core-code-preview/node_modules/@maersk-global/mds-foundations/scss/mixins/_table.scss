@@ -1,0 +1,22 @@
+@mixin mds-apply-row-controls-styles() {
+  width: 1px;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+@mixin mds-apply-expanded-row-padding($fit) {
+  .mds-table__expanded-row {
+    &.mds-table__expanded-row--no-padding {
+      td {
+        padding: 0;
+      }
+    }
+
+    td {
+      padding: var(--mds_foundations_table_#{$fit}_expanded-row_padding-top)
+        var(--mds_foundations_table_#{$fit}_expanded-row_padding-right)
+        var(--mds_foundations_table_#{$fit}_expanded-row_padding-bottom)
+        var(--mds_foundations_table_#{$fit}_expanded-row_padding-left);
+    }
+  }
+}
