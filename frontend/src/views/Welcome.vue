@@ -155,7 +155,7 @@ const menuItems = [
     id: 'fpo-mapping',
     title: 'FPO Mapping',
     description: 'Cascading L1–L4 process / FPO dictionary grid powered by Handsontable.',
-    icon: 'mi-list',
+    icon: 'mi-list-bullets',
     accent: '#0077B8',
     route: '/fpo-mapping'
   }

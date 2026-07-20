@@ -2,9 +2,16 @@
  * MDS mc-icon expects the icon name WITHOUT the `mi-` prefix.
  * The component resolves icons as `mi-${icon}.js`.
  */
+const ICON_ALIASES = {
+  // Not all MDS icon names exist in the package; map app aliases to real files.
+  list: 'list-bullets',
+  'mi-list': 'list-bullets'
+}
+
 export const normalizeMdsIconName = (icon) => {
   if (!icon || icon === 'empty') return icon
-  return icon.startsWith('mi-') ? icon.slice(3) : icon
+  const aliased = ICON_ALIASES[icon] || icon
+  return aliased.startsWith('mi-') ? aliased.slice(3) : aliased
 }
 
 export const patchMcIconComponent = (McIcon) => {

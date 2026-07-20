@@ -1,4 +1,3 @@
-import { cpSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -6,20 +5,16 @@ import http from 'node:http'
 
 const localAgent = new http.Agent({ keepAlive: true })
 
-function copyMdsIcons() {
-  return {
-    name: 'copy-mds-icons',
-    closeBundle() {
-      const src = resolve(__dirname, 'node_modules/@maersk-global/icons/js/20px')
-      const dest = resolve(__dirname, 'dist/node_modules/@maersk-global/icons/js/20px')
-      mkdirSync(dest, { recursive: true })
-      cpSync(src, dest, { recursive: true })
-    }
-  }
-}
-
 export default defineConfig({
   base: './',
+  resolve: {
+    alias: {
+      '@floating-ui/dom': resolve(__dirname, 'node_modules/@floating-ui/dom/dist/floating-ui.dom.esm.js'),
+      '@floating-ui/core': resolve(__dirname, 'node_modules/@floating-ui/core/dist/floating-ui.core.esm.js'),
+      '@floating-ui/utils/dom': resolve(__dirname, 'node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.esm.js'),
+      '@floating-ui/utils': resolve(__dirname, 'node_modules/@floating-ui/utils/dist/floating-ui.utils.esm.js')
+    }
+  },
   plugins: [
     vue({
       template: {
@@ -27,8 +22,7 @@ export default defineConfig({
           isCustomElement: (tag) => tag.startsWith('mc-')
         }
       }
-    }),
-    copyMdsIcons()
+    })
   ],
   server: {
     port: 3001,

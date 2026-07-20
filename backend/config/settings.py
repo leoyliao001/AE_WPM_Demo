@@ -10,8 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,12 +20,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-_h_7o7_s)$n&q%j%*n$92zh13#uctf1$aw$6b3e#nfqm%n6nbs"
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-_h_7o7_s)$n&q%j%*n$92zh13#uctf1$aw$6b3e#nfqm%n6nbs",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+# Comma-separated hosts, e.g. localhost,127.0.0.1,SCRBAEXDEFRM217
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1,SCRBAEXDEFRM217,10.176.115.28,*",
+    ).split(",")
+    if h.strip()
+]
 
 
 # Application definition
@@ -125,10 +136,14 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# CORS — 允许 Vite 开发服务器跨域访问 API
+# CORS — 开发端口 + 同机 Apache 部署入口
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
+    origin.strip()
+    for origin in os.environ.get(
+        "DJANGO_CORS_ORIGINS",
+        "http://localhost:3001,http://127.0.0.1:3001,http://localhost,http://127.0.0.1,http://10.176.115.28,http://SCRBAEXDEFRM217",
+    ).split(",")
+    if origin.strip()
 ]
 
 REST_FRAMEWORK = {

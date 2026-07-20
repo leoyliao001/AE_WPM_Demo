@@ -10,9 +10,10 @@ import router from './router'
 patchMcIconComponent(McIcon)
 
 if (typeof window !== 'undefined') {
+  // Absolute path for Apache production (base './' would otherwise resolve under /assets/).
   const iconBasePath = import.meta.env.DEV
     ? '/node_modules/'
-    : `${import.meta.env.BASE_URL}node_modules/`
+    : '/assets/node_modules/'
 
   axios.defaults.baseURL = ''
   MdsConfig.iconsDynamicImportPath = iconBasePath
