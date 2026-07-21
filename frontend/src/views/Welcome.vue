@@ -174,15 +174,14 @@ const onDatabaseClick = () => {
 <style scoped>
 .welcome-page {
   background: #fff;
-  min-height: 100vh;
-  overflow: hidden;
+  flex-shrink: 0;
   position: relative;
+  width: 100%;
 }
 
 .page-content {
   margin: 0 auto;
   max-width: 1140px;
-  min-height: 100vh;
   padding: 56px 32px 72px;
   position: relative;
   z-index: 1;
