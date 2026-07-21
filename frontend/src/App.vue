@@ -44,7 +44,9 @@ import AppHeader from './components/AppHeader.vue'
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Handsontable pages: page owns scroll via Handsontable only */

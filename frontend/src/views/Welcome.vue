@@ -174,7 +174,13 @@ const onDatabaseClick = () => {
 <style scoped>
 .welcome-page {
   background: #fff;
-  flex-shrink: 0;
+  /* Own the vertical scroll so bottom sections stay reachable */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   position: relative;
   width: 100%;
 }
@@ -182,7 +188,7 @@ const onDatabaseClick = () => {
 .page-content {
   margin: 0 auto;
   max-width: 1140px;
-  padding: 56px 32px 72px;
+  padding: 56px 32px 120px;
   position: relative;
   z-index: 1;
 }
@@ -484,7 +490,7 @@ const onDatabaseClick = () => {
 
 @media (max-width: 600px) {
   .page-content {
-    padding: 32px 16px 48px;
+    padding: 32px 16px 96px;
   }
 
   .card-grid {
