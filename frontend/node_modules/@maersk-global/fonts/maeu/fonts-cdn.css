@@ -1,0 +1,106 @@
+/* Maersk Text */
+@font-face {
+  font-family: "Maersk Text";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Regular.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Regular.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Text";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Medium.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Medium.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Text";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Bold.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Bold.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Text";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Italic.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/text/MaerskText-Italic.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Text";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/text/MaerskText-MediumItalic.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/text/MaerskText-MediumItalic.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Text";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/text/MaerskText-BoldItalic.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/text/MaerskText-BoldItalic.woff")
+      format("woff");
+}
+/* Maersk Headline */
+@font-face {
+  font-family: "Maersk Headline";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/headline/MaerskHeadline-Regular.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/headline/MaerskHeadline-Regular.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Headline";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/headline/MaerskHeadline-Bold.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/headline/MaerskHeadline-Bold.woff")
+      format("woff");
+}
+@font-face {
+  font-family: "Maersk Headline";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("https://assets.maerskline.com/mds/fonts/headline/MaerskHeadline-Light.woff2")
+      format("woff2"),
+    url("https://assets.maerskline.com/mds/fonts/headline/MaerskHeadline-Light.woff")
+      format("woff");
+}
+/* Utility classes with fallback fonts */
+.maersk-text {
+  font-family: "Maersk Text", Arial, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Helvetica, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Hiragino Kaku Gothic ProN", Meiryo, "PingFang TC",
+    "Microsoft JhengHei", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.maersk-headline {
+  font-family: "Maersk Headline", Arial, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Helvetica, "Apple SD Gothic Neo",
+    "Malgun Gothic", "Hiragino Kaku Gothic ProN", Meiryo, "PingFang TC",
+    "Microsoft JhengHei", "PingFang SC", "Microsoft YaHei", sans-serif;
+}

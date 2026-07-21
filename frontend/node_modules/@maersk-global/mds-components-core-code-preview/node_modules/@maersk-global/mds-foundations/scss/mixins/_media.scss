@@ -1,0 +1,121 @@
+/** 
+ * These SASS variables are auto-generated out of their counter-part design-tokens 
+ * during build of foundations using scripts/utils/generate-breakpoint-sass-variables.mjs 
+ **/
+$mds_breakpoint_xs_min-width: 0;
+$mds_breakpoint_xs_max-width: 640px;
+$mds_breakpoint_sm_min-width: 641px;
+$mds_breakpoint_sm_max-width: 1024px;
+$mds_breakpoint_md_min-width: 1025px;
+$mds_breakpoint_md_max-width: 1440px;
+$mds_breakpoint_lg_min-width: 1441px;
+$mds_breakpoint_lg_max-width: 1920px;
+$mds_breakpoint_xl_min-width: 1921px;
+
+@mixin mds-viewport-above($name) {
+  @if $name == 'xs' {
+
+    @media only screen and (min-width: #{$mds_breakpoint_sm_min-width}) {
+      @content;
+    }
+  }
+  @if $name == 'sm' {
+
+    @media only screen and (min-width: #{$mds_breakpoint_md_min-width}) {
+      @content;
+    }
+  }
+  @if $name == 'md' {
+
+    @media only screen and (min-width: #{$mds_breakpoint_lg_min-width}) {
+      @content;
+    }
+  }
+  @if $name == 'lg' {
+
+    @media only screen and (min-width: #{$mds_breakpoint_xl_min-width}) {
+      @content;
+    }
+  }
+}
+
+@mixin mds-viewport-below($name) {
+  @if $name == 'sm' {
+
+    @media only screen and (max-width: #{$mds_breakpoint_xs_max-width}) {
+      @content;
+    }
+  }
+  @if $name == 'md' {
+
+    @media only screen and (max-width: #{$mds_breakpoint_sm_max-width}) {
+      @content;
+    }
+  }
+  @if $name == 'lg' {
+
+    @media only screen and (max-width: #{$mds_breakpoint_md_max-width}) {
+      @content;
+    }
+  }
+  @if $name == 'xl' {
+
+    @media only screen and (max-width: #{$mds_breakpoint_lg_max-width}) {
+      @content;
+    }
+  }
+}
+
+@mixin mds-container-above($name) {
+  @if $name == 'xs' {
+
+    @container (min-width: #{$mds_breakpoint_sm_min-width}) {
+      @content;
+    }
+  }
+  @if $name == 'sm' {
+
+    @container (min-width: #{$mds_breakpoint_md_min-width}) {
+      @content;
+    }
+  }
+  @if $name == 'md' {
+
+    @container (min-width: #{$mds_breakpoint_lg_min-width}) {
+      @content;
+    }
+  }
+  @if $name == 'lg' {
+
+    @container (min-width: #{$mds_breakpoint_xl_min-width}) {
+      @content;
+    }
+  }
+}
+
+@mixin mds-container-below($name) {
+  @if $name == 'sm' {
+
+    @container (max-width: #{$mds_breakpoint_xs_max-width}) {
+      @content;
+    }
+  }
+  @if $name == 'md' {
+
+    @container (max-width: #{$mds_breakpoint_sm_max-width}) {
+      @content;
+    }
+  }
+  @if $name == 'lg' {
+
+    @container (max-width: #{$mds_breakpoint_md_max-width}) {
+      @content;
+    }
+  }
+  @if $name == 'xl' {
+
+    @container (max-width: #{$mds_breakpoint_lg_max-width}) {
+      @content;
+    }
+  }
+}

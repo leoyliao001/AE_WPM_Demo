@@ -1,0 +1,14 @@
+@mixin mds-prevent-pointer-events-if-disabled {
+  & {
+    pointer-events: none;
+    touch-action: none;
+    opacity: var(--mds_brand_appearance_state_disabled_opacity);
+    user-select: none;
+  }
+
+  * {
+    user-select: none;
+    pointer-events: none;
+    touch-action: none;
+  }
+}
