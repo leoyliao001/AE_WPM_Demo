@@ -1388,7 +1388,7 @@ onMounted(loadDraft)
 
 .page-content {
   margin: 0 auto;
-  max-width: 920px;
+  max-width: 1180px;
   padding: 40px 24px 72px;
   position: relative;
   z-index: 1;
