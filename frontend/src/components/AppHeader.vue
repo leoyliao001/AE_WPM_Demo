@@ -54,6 +54,8 @@ const isActive = (path) => {
 <style scoped>
 .app-header {
   background: var(--mds_brand_appearance_neutral_default_background-color, #fff);
+  padding-left: 12px;
+  padding-right: 12px;
   position: sticky;
   top: 0;
   z-index: 1000;
