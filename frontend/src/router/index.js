@@ -1,22 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Welcome from '../views/Welcome.vue'
-import Welcome2 from '../views/Welcome2.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
 import MigrationProjectDetail from '../views/MigrationProjectDetail.vue'
 import LDDashboard from '../views/LDDashboard.vue'
-import ProjectDashboard from '../views/ProjectDashboard.vue'
-import ProjectMilestoneDetail from '../views/ProjectMilestoneDetail.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
-import FinalCiReview from '../views/FinalCiReview.vue'
 import FpoMapping from '../views/FpoMapping.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
   { path: '/welcome', redirect: '/' },
-  { path: '/future-service-model', name: 'FutureServiceModel', component: Welcome2 },
-  { path: '/welcome2', redirect: '/future-service-model' },
+  // Hidden for now — redirect direct URLs back to Welcome
+  { path: '/future-service-model', redirect: '/' },
+  { path: '/welcome2', redirect: '/' },
+  { path: '/final-ci-review', redirect: '/' },
   { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
   { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard },
   {
@@ -30,14 +28,10 @@ const routes = [
     component: OpportunityAssessment
   },
   { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
-  { path: '/project-dashboard', name: 'ProjectDashboard', component: ProjectDashboard },
-  {
-    path: '/project-dashboard/:section',
-    name: 'ProjectMilestoneDetail',
-    component: ProjectMilestoneDetail
-  },
+  // Project: same list for now; later filter to current user's projects
+  { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
+  { path: '/project-dashboard/:section', redirect: '/project-dashboard' },
   { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
-  { path: '/final-ci-review', name: 'FinalCiReview', component: FinalCiReview },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping }
 ]
 const router = createRouter({

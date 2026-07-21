@@ -489,26 +489,10 @@
               <aside class="workforce-sizing-panel" aria-label="Workforce sizing">
                 <div class="workforce-sizing-head">
                   <span class="workforce-sizing-title">Workforce sizing</span>
-                  <p class="workforce-sizing-desc">FTE and job level counts. Values may change during scoping.</p>
+                  <p class="workforce-sizing-desc">
+                    Enter JL2–JL4 counts. FTE number is calculated automatically and may change during scoping.
+                  </p>
                 </div>
-
-                <mc-input
-                  ref="fteRef"
-                  class="field-required"
-                  label="FTE number"
-                  placeholder="e.g. 12"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  maxlength="3"
-                  :value="form.fteNumber"
-                  :invalid="showWorkforceMismatchHint"
-                  width="full-width"
-                  @keydown="onNumericKeydown('fteNumber', $event)"
-                  @beforeinput="onBeforeNumericInput('fteNumber', $event)"
-                  @paste="onNumericPaste('fteNumber', $event)"
-                  @compositionstart="blockNumericComposition"
-                  @input="onNumericInput('fteNumber', $event)"
-                />
 
                 <div class="job-level-grid">
                   <mc-input
@@ -520,7 +504,6 @@
                     pattern="[0-9]*"
                     maxlength="3"
                     :value="form.jl2"
-                    :invalid="showWorkforceMismatchHint"
                     width="full-width"
                     @keydown="onNumericKeydown('jl2', $event)"
                     @beforeinput="onBeforeNumericInput('jl2', $event)"
@@ -537,7 +520,6 @@
                     pattern="[0-9]*"
                     maxlength="3"
                     :value="form.jl3"
-                    :invalid="showWorkforceMismatchHint"
                     width="full-width"
                     @keydown="onNumericKeydown('jl3', $event)"
                     @beforeinput="onBeforeNumericInput('jl3', $event)"
@@ -554,7 +536,6 @@
                     pattern="[0-9]*"
                     maxlength="3"
                     :value="form.jl4"
-                    :invalid="showWorkforceMismatchHint"
                     width="full-width"
                     @keydown="onNumericKeydown('jl4', $event)"
                     @beforeinput="onBeforeNumericInput('jl4', $event)"
@@ -564,80 +545,24 @@
                   />
                 </div>
 
+                <mc-input
+                  class="fte-total-input"
+                  label="FTE number"
+                  hint="Auto-calculated from JL2 + JL3 + JL4"
+                  :value="form.fteNumber"
+                  disabled
+                  width="full-width"
+                />
+
                 <div v-if="hasWorkforceInput" class="workforce-balance-tracker">
-                  <span>FTE: <strong>{{ form.fteNumber || 0 }}</strong></span>
-                  <span class="workforce-balance-tracker-sep">·</span>
                   <span>
-                    JL2 + JL3 + JL4:
-                    <strong>{{ jobLevelTotal }}</strong>
+                    FTE =
+                    <strong>{{ form.fteNumber || 0 }}</strong>
                     ({{ form.jl2 || 0 }} + {{ form.jl3 || 0 }} + {{ form.jl4 || 0 }})
                   </span>
                 </div>
-
-                <div
-                  v-if="showWorkforceMismatchHint"
-                  class="workforce-balance-alert workforce-balance-alert--error"
-                  role="alert"
-                  aria-live="polite"
-                >
-                  <mc-icon icon="mi-exclamation-triangle" size="20" />
-                  <div>
-                    <p class="workforce-balance-alert-title">Totals do not match</p>
-                    <p class="workforce-balance-alert-body">
-                      JL2 + JL3 + JL4 must equal FTE number. {{ workforceMismatchDetail }}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  v-else-if="showWorkforceBalancedHint"
-                  class="workforce-balance-alert workforce-balance-alert--success"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <mc-icon icon="mi-check-circle" size="20" />
-                  <div>
-                    <p class="workforce-balance-alert-title">Totals match</p>
-                    <p class="workforce-balance-alert-body">
-                      Job level counts add up to the FTE number.
-                    </p>
-                  </div>
-                </div>
               </aside>
             </div>
-
-            <mc-dialog
-              :open="workforceMismatchDialogOpen"
-              heading="Workforce totals do not match"
-              dimension="small"
-              showclosebutton
-              @closing="onWorkforceMismatchDialogClosing"
-            >
-              <div class="workforce-mismatch-dialog-body">
-                <p class="workforce-mismatch-dialog-desc">
-                  JL2 + JL3 + JL4 must equal the FTE number before you can submit.
-                </p>
-                <ul class="workforce-mismatch-summary">
-                  <li><strong>FTE number:</strong> {{ form.fteNumber || 0 }}</li>
-                  <li>
-                    <strong>JL2 + JL3 + JL4:</strong>
-                    {{ jobLevelTotal }}
-                    ({{ form.jl2 || 0 }} + {{ form.jl3 || 0 }} + {{ form.jl4 || 0 }})
-                  </li>
-                </ul>
-              </div>
-
-              <div slot="footer" class="workforce-mismatch-dialog-footer">
-                <mc-button
-                  type="button"
-                  appearance="primary"
-                  variant="filled"
-                  fit="medium"
-                  label="OK"
-                  @click="closeWorkforceMismatchDialog"
-                />
-              </div>
-            </mc-dialog>
           </div>
         </section>
 
@@ -786,7 +711,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import RequiredMark from '../components/RequiredMark.vue'
 import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
@@ -868,34 +793,16 @@ const jobLevelTotal = computed(
 )
 
 const hasWorkforceInput = computed(() =>
-  Boolean(form.fteNumber || form.jl2 || form.jl3 || form.jl4)
+  Boolean(form.jl2 || form.jl3 || form.jl4)
 )
 
-const isWorkforceBalanced = computed(
-  () => Number(form.fteNumber || 0) === jobLevelTotal.value
-)
-
-const showWorkforceMismatchHint = computed(
-  () => hasWorkforceInput.value && !isWorkforceBalanced.value
-)
-
-const showWorkforceBalancedHint = computed(
-  () => Boolean(form.fteNumber) && isWorkforceBalanced.value
-)
-
-const workforceMismatchDetail = computed(() => {
-  const fte = Number(form.fteNumber || 0)
-  const total = jobLevelTotal.value
-  const diff = Math.abs(fte - total)
-
-  if (total > fte) {
-    return `Job level total exceeds FTE number by ${diff}.`
+const syncFteFromJobLevels = () => {
+  if (!form.jl2 && !form.jl3 && !form.jl4) {
+    form.fteNumber = ''
+    return
   }
-  if (total < fte) {
-    return `Job level total is ${diff} less than FTE number.`
-  }
-  return ''
-})
+  form.fteNumber = String(jobLevelTotal.value)
+}
 
 const previewSectionGroups = computed(() =>
   submissionPreview.value ? previewSections(submissionPreview.value) : []
@@ -909,7 +816,6 @@ const customSitesDialogFile = ref(null)
 const approvalFileInputRef = ref(null)
 const customDialogErrors = reactive({ justification: false, file: '' })
 const customApprovalFileMeta = reactive({ name: '', size: 0, type: '' })
-const workforceMismatchDialogOpen = ref(false)
 const validationDialogOpen = ref(false)
 const validationErrors = ref([])
 const previewDialogOpen = ref(false)
@@ -935,6 +841,8 @@ const form = reactive({
   jl4: '',
   risks: ''
 })
+
+watch(() => [form.jl2, form.jl3, form.jl4], syncFteFromJobLevels)
 
 const elevatedSection = ref(null)
 const openDropdownCount = ref(0)
@@ -1044,14 +952,6 @@ const onTextInput = (field, event) => {
 
 const onNumericInput = (field, event) => {
   form[field] = sanitizeNumericInput(readEventValue(event))
-}
-
-const closeWorkforceMismatchDialog = () => {
-  workforceMismatchDialogOpen.value = false
-}
-
-const onWorkforceMismatchDialogClosing = () => {
-  workforceMismatchDialogOpen.value = false
 }
 
 const closeValidationDialog = () => {
@@ -1414,6 +1314,7 @@ const loadDraft = () => {
         ? [saved.languageDependency]
         : []
     form.languageDependencies = savedLanguages.filter((lang) => languageOptions.includes(lang))
+    syncFteFromJobLevels()
   } catch {
     // ignore corrupt draft
   }
@@ -1432,8 +1333,7 @@ const clearNotice = () => {
 const validateForm = () =>
   collectValidationErrors({
     form,
-    customApprovalFileMeta,
-    isWorkforceBalanced: isWorkforceBalanced.value
+    customApprovalFileMeta
   })
 
 const onReviewAndSubmit = () => {
@@ -2001,6 +1901,10 @@ onMounted(loadDraft)
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.fte-total-input {
+  margin-top: 4px;
+}
+
 .workforce-balance-tracker {
   background: rgba(22, 22, 22, 0.03);
   border-radius: 8px;
@@ -2015,78 +1919,6 @@ onMounted(loadDraft)
 
 .workforce-balance-tracker strong {
   color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
-}
-
-.workforce-balance-tracker-sep {
-  opacity: 0.5;
-}
-
-.workforce-balance-alert {
-  align-items: flex-start;
-  border-radius: 10px;
-  display: flex;
-  gap: 10px;
-  padding: 10px 12px;
-}
-
-.workforce-balance-alert--error {
-  background: rgba(196, 0, 10, 0.06);
-  border: 1px solid rgba(196, 0, 10, 0.2);
-  color: #9b0010;
-}
-
-.workforce-balance-alert--success {
-  background: rgba(109, 170, 40, 0.1);
-  border: 1px solid rgba(109, 170, 40, 0.25);
-  color: #4a7a18;
-}
-
-.workforce-balance-alert-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.4;
-  margin: 0;
-}
-
-.workforce-balance-alert-body {
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 4px 0 0;
-  opacity: 0.92;
-}
-
-.workforce-mismatch-dialog-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.workforce-mismatch-dialog-desc {
-  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.workforce-mismatch-summary {
-  background: rgba(243, 136, 14, 0.08);
-  border: 1px solid rgba(243, 136, 14, 0.25);
-  border-radius: 10px;
-  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
-  font-size: 14px;
-  line-height: 1.6;
-  list-style: none;
-  margin: 0;
-  padding: 12px 14px;
-}
-
-.workforce-mismatch-summary li + li {
-  margin-top: 8px;
-}
-
-.workforce-mismatch-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .validation-dialog-body,
