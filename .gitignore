@@ -6,13 +6,27 @@ __pycache__/
 .venv/
 venv/
 
-# Node
-# 不忽略 frontend/node_modules，便于同事 pull 后免 npm install 直接跑前端
-# 其他目录的依赖仍忽略
+# Node / frontend — dependencies & build artifacts (do NOT commit)
+node_modules/
+frontend/node_modules/
+frontend/node_modules.*/
 exports/**/node_modules/
 standalone/**/node_modules/
 dist/
+frontend/dist/
 .vite/
+frontend/.vite/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+.nyc_output/
+
+# Env / local overrides
+.env.*
+!.env.example
+*.local
 
 # IDE
 .idea/
