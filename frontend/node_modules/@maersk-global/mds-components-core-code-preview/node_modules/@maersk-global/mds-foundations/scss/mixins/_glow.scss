@@ -1,0 +1,38 @@
+@mixin mds-glow-and-border() {
+  outline: 0;
+  border-color: var(--mds_brand_appearance_state_focus_border-color);
+  box-shadow: var(--mds_brand_appearance_state_focus_default_shadow_offset-x)
+    var(--mds_brand_appearance_state_focus_default_shadow_offset-y)
+    var(--mds_brand_appearance_state_focus_default_shadow_blur-radius)
+    var(--mds_brand_appearance_state_focus_default_shadow_spread-radius)
+    var(--mds_brand_appearance_state_focus_default_shadow_color);
+}
+
+@mixin mds-glow-and-border-vanity() {
+  outline: 0;
+  border-bottom-color: var(--mds_brand_appearance_state_focus_border-color);
+  box-shadow: var(--mds_brand_appearance_state_focus_vanity_shadow_offset-x)
+    var(--mds_brand_appearance_state_focus_vanity_shadow_offset-y)
+    var(--mds_brand_appearance_state_focus_vanity_shadow_blur-radius)
+    var(--mds_brand_appearance_state_focus_vanity_shadow_spread-radius)
+    var(--mds_brand_appearance_state_focus_vanity_shadow_color);
+}
+
+@mixin mds-glow-only-on-keyboard-nav($inset: outset) {
+  outline: 0;
+
+  @if $inset {
+    box-shadow: inset
+      var(--mds_brand_appearance_state_focus_default_shadow_offset-x)
+      var(--mds_brand_appearance_state_focus_default_shadow_offset-y)
+      var(--mds_brand_appearance_state_focus_default_shadow_blur-radius)
+      var(--mds_brand_appearance_state_focus_default_shadow_spread-radius)
+      var(--mds_brand_appearance_state_focus_default_shadow_color);
+  } @else {
+    box-shadow: var(--mds_brand_appearance_state_focus_default_shadow_offset-x)
+      var(--mds_brand_appearance_state_focus_default_shadow_offset-y)
+      var(--mds_brand_appearance_state_focus_default_shadow_blur-radius)
+      var(--mds_brand_appearance_state_focus_default_shadow_spread-radius)
+      var(--mds_brand_appearance_state_focus_default_shadow_color);
+  }
+}

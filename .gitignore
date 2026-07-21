@@ -7,21 +7,7 @@ __pycache__/
 venv/
 
 # Node / frontend — dependencies & build artifacts (do NOT commit)
-node_modules/
-frontend/node_modules/
-frontend/node_modules.*/
-exports/**/node_modules/
-standalone/**/node_modules/
-dist/
-frontend/dist/
-.vite/
-frontend/.vite/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-coverage/
-.nyc_output/
+
 
 # Env / local overrides
 .env.*
@@ -36,3 +22,6 @@ coverage/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local tooling (do not commit)
+.tools/
