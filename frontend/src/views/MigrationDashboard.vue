@@ -1,8 +1,8 @@
 <template>
   <PageShell
-    title="Migration Dashboard"
-    subtitle="Review submitted migration intake requests — overview of all projects and drill-down into progress."
-    tag="Migration Dashboard"
+    :title="pageTitle"
+    :subtitle="pageSubtitle"
+    :tag="pageTag"
     back-label="Back to Welcome"
   >
     <mc-notification
@@ -352,7 +352,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import MigrationProjectsTable from '../components/MigrationProjectsTable.vue'
@@ -375,6 +375,22 @@ import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
 
 const router = useRouter()
+const route = useRoute()
+
+// Project nav reuses this list; later filter to the signed-in user's projects only.
+const isMyProjectsView = computed(() => route.name === 'ProjectDashboard')
+const pageTitle = computed(() =>
+  isMyProjectsView.value ? 'My Projects' : 'Migration Dashboard'
+)
+const pageSubtitle = computed(() =>
+  isMyProjectsView.value
+    ? 'Projects under your account — open a project to track migration progress. (User filter coming soon.)'
+    : 'Review submitted migration intake requests — overview of all projects and drill-down into progress.'
+)
+const pageTag = computed(() =>
+  isMyProjectsView.value ? 'My Projects' : 'Migration Dashboard'
+)
+
 const loading = ref(true)
 const loadError = ref('')
 const projects = ref([])

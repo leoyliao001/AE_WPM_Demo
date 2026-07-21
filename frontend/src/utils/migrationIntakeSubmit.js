@@ -54,9 +54,7 @@ export const collectValidationErrors = ({
 
   form,
 
-  customApprovalFileMeta,
-
-  isWorkforceBalanced
+  customApprovalFileMeta
 
 }) => {
 
@@ -106,13 +104,11 @@ export const collectValidationErrors = ({
 
   if (!form.languageDependencies.length) missing.push('Language dependency')
 
-  if (!form.fteNumber.trim()) missing.push('FTE number')
+  if (!String(form.jl2 ?? '').trim()) missing.push('JL2')
 
-  if (!isWorkforceBalanced) {
+  if (!String(form.jl3 ?? '').trim()) missing.push('JL3')
 
-    missing.push('Workforce sizing (JL2 + JL3 + JL4 must equal FTE number)')
-
-  }
+  if (!String(form.jl4 ?? '').trim()) missing.push('JL4')
 
 
 
@@ -350,13 +346,13 @@ export const previewSections = (preview) => [
 
       { label: 'Language dependency', value: preview.languageDependencies.join(', ') },
 
-      { label: 'FTE number', value: preview.fteNumber },
-
       { label: 'JL2', value: preview.jl2 },
 
       { label: 'JL3', value: preview.jl3 },
 
       { label: 'JL4', value: preview.jl4 },
+
+      { label: 'FTE number', value: preview.fteNumber },
 
       {
 

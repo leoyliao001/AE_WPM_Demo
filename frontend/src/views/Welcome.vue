@@ -129,28 +129,13 @@ const menuItems = [
   },
   {
     id: 'project-dashboard',
-    title: 'Individual Project Dashboard',
-    description: 'Opportunity assessment and milestone detail screens.',
+    title: 'My Projects',
+    description: 'Projects under your account — open a project to track migration progress.',
     icon: 'mi-file-check',
     accent: '#003F6E',
     route: '/project-dashboard'
   },
-  {
-    id: 'future-service-model',
-    title: 'Future Service Model',
-    description: 'Cost, readiness, and country-level analytics for GSC transition planning.',
-    icon: 'mi-chart-line-up',
-    accent: '#0F766E',
-    route: '/future-service-model'
-  },
-  {
-    id: 'final-ci-review',
-    title: 'Final CI Review',
-    description: 'Review automation initiatives, track approvals, and capture value realisation.',
-    icon: 'mi-flow',
-    accent: '#5A9FD4',
-    route: '/final-ci-review'
-  },
+  // Hidden for now: Future Service Model, Final CI Review
   {
     id: 'fpo-mapping',
     title: 'FPO Mapping',
