@@ -1,0 +1,146 @@
+[
+  {
+    "region": "APA",
+    "area": "GCA",
+    "supporting_gsc_sites": "Chengdu & Chongqing",
+    "all_options": ""
+  },
+  {
+    "region": "APA",
+    "area": "MEK",
+    "supporting_gsc_sites": "Manila & Vietnam",
+    "all_options": "Chengdu"
+  },
+  {
+    "region": "APA",
+    "area": "NEA",
+    "supporting_gsc_sites": "Chengdu & Qingdao",
+    "all_options": "Vietnam"
+  },
+  {
+    "region": "APA",
+    "area": "OCE",
+    "supporting_gsc_sites": "Manila",
+    "all_options": "Manila"
+  },
+  {
+    "region": "APA",
+    "area": "SEA",
+    "supporting_gsc_sites": "Manila",
+    "all_options": "Qingdao"
+  },
+  {
+    "region": "EUR",
+    "area": "CSE",
+    "supporting_gsc_sites": "Manila & Mumbai",
+    "all_options": "Chennai"
+  },
+  {
+    "region": "EUR",
+    "area": "EME",
+    "supporting_gsc_sites": "Chennai & Pune",
+    "all_options": "Mumbai"
+  },
+  {
+    "region": "EUR",
+    "area": "NDC",
+    "supporting_gsc_sites": "Chennai & Mumbai",
+    "all_options": "Pune"
+  },
+  {
+    "region": "EUR",
+    "area": "NEC",
+    "supporting_gsc_sites": "Mumbai & Poland",
+    "all_options": "Brazil"
+  },
+  {
+    "region": "EUR",
+    "area": "SWE",
+    "supporting_gsc_sites": "Chennai & Manila",
+    "all_options": "Chongqing"
+  },
+  {
+    "region": "EUR",
+    "area": "UKI",
+    "supporting_gsc_sites": "Mumbai & Poland",
+    "all_options": "Mexico"
+  },
+  {
+    "region": "IMEA",
+    "area": "EAF",
+    "supporting_gsc_sites": "Chennai & Pune",
+    "all_options": "Poland"
+  },
+  {
+    "region": "IMEA",
+    "area": "IBS",
+    "supporting_gsc_sites": "Mumbai & Pune",
+    "all_options": ""
+  },
+  {
+    "region": "IMEA",
+    "area": "PAK",
+    "supporting_gsc_sites": "Manila",
+    "all_options": ""
+  },
+  {
+    "region": "IMEA",
+    "area": "SAA",
+    "supporting_gsc_sites": "Pune",
+    "all_options": ""
+  },
+  {
+    "region": "IMEA",
+    "area": "SAI",
+    "supporting_gsc_sites": "Chennai & Pune",
+    "all_options": ""
+  },
+  {
+    "region": "IMEA",
+    "area": "UAE",
+    "supporting_gsc_sites": "Pune",
+    "all_options": ""
+  },
+  {
+    "region": "IMEA",
+    "area": "WAF",
+    "supporting_gsc_sites": "Chennai & Pune",
+    "all_options": ""
+  },
+  {
+    "region": "LAM",
+    "area": "CAC",
+    "supporting_gsc_sites": "Manila & Mexico",
+    "all_options": ""
+  },
+  {
+    "region": "LAM",
+    "area": "ESA",
+    "supporting_gsc_sites": "Brazil & Mumbai",
+    "all_options": ""
+  },
+  {
+    "region": "LAM",
+    "area": "WSA",
+    "supporting_gsc_sites": "Manila & Mexico",
+    "all_options": ""
+  },
+  {
+    "region": "NAM",
+    "area": "CAN",
+    "supporting_gsc_sites": "Chennai & Mexico",
+    "all_options": ""
+  },
+  {
+    "region": "NAM",
+    "area": "MEX",
+    "supporting_gsc_sites": "Manila & Mexico",
+    "all_options": ""
+  },
+  {
+    "region": "NAM",
+    "area": "USA",
+    "supporting_gsc_sites": "Chennai & Mexico",
+    "all_options": ""
+  }
+]

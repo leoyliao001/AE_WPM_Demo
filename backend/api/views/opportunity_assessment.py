@@ -8,40 +8,103 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from django.http import FileResponse
 
-from api.models import FpoMapping, MigrationIntakeSubmission, OpportunityAssessment
+from api.models import FpoMapping, MigrationIntakeSubmission, OpportunityAssessment, ProductOwnership
 from api.services.opportunity_assessment_excel import (
     build_opportunity_template,
     parse_opportunity_workbook,
 )
 from api.views.fpo_mapping import _build_cascade_tree, _serialize_row as serialize_fpo_row
 
-ALL_FIELDS = [
-    ("migration_request_id", "migration_request_id"),
-    ("owner", "Owner"),
-    ("l1", "L1"),
-    ("l2", "L2"),
-    ("l3", "L3"),
-    ("l4", "L4"),
-    ("task_name", "Task Name"),
-    ("task_description", "Task Description"),
-    ("task_found_in_service_catalog", "Task found in the corresponding Service Catalog?"),
-    ("migratable_to_gsc", "Migratable to GSC as per service catalog?"),
-    ("upstream", "Upstream (tasks, events, input)"),
-    ("downstream", "Downstream (task, events, output)"),
-    ("risks_related", "Risks related to the Process/Task"),
-    ("complexity", "Complexity (Low, Medium, High)"),
-    ("sop_iop_exists", "SOP/IOP Exists?"),
-    ("training_time_needed", "Training Time Needed"),
-    ("recommended_handoff_duration", "Recommended Handoff Duration"),
-    ("task_frequency", "Task Frequency"),
-    ("unit_of_measure", "Unit of measure"),
-    ("volume", "Volume"),
-    ("task_time_per_unit", "Task time per unit"),
-    ("fte_calculation", "FTE Calculation"),
-]
+# Labels for OA grid/API. Column order always follows OpportunityAssessment model field order.
+OA_FIELD_LABELS = {
+    "migration_request_id": "migration_request_id",
+    "product": "Product",
+    "owner": "Owner",
+    "location": "Location",
+    "l1": "L1",
+    "l2": "L2",
+    "l3": "L3",
+    "l4": "L4",
+    "task_name": "Task Name",
+    "task_description": "Task Description",
+    "upstream": "Upstream (tasks, events, input)",
+    "downstream": "Downstream (task, events, output)",
+    "risks_related": "Risks related to the Process/Task",
+    "complexity": "Complexity (Low, Medium, High)",
+    "sop_iop_exists": "SOP/IOP Exists?",
+    "training_time_needed": "Training Time Needed",
+    "recommended_handoff_duration": "Recommended Handoff Duration",
+    "task_frequency": "Task Frequency",
+    "unit_of_measure": "Unit of measure",
+    "volume_monthly": "Volume Monthly",
+    "task_time_per_unit_min": "Task time per unit (min)",
+    "task_found_in_service_catalog": "Task found in the corresponding Service Catalogue (Y/N)",
+    "migratable_to_gsc": "Migratable to GSC as per service catalogue (Y/N)",
+    "fte_calculation": "FTE Calculation",
+}
+OA_SKIP_FIELDS = frozenset({"id", "created_at", "updated_at"})
 
+
+def _all_fields():
+    """Return (key, label) pairs in OpportunityAssessment model definition order."""
+    return [
+        (field.name, OA_FIELD_LABELS.get(field.name, field.name))
+        for field in OpportunityAssessment._meta.fields
+        if field.name not in OA_SKIP_FIELDS
+    ]
+
+
+ALL_FIELDS = _all_fields()
 WRITABLE_FIELDS = [key for key, _label in ALL_FIELDS if key != "migration_request_id"]
 CASCADE_FIELD_KEYS = {"l1", "l2", "l3", "l4"}
+
+# Intake products are granular; Product Ownership uses aggregate bundles.
+OWNERSHIP_PRODUCT_KEYWORDS = {
+    "Customs, Air, LCL, DCS, CI": [
+        "customs",
+        "air",
+        "lcl",
+        "dcs",
+        " ci",
+        "ci ",
+        "e-commerce",
+        "ecommerce",
+    ],
+    "Ocean, Landside, CEM, Sales": [
+        "ocean",
+        "landside",
+        "l&s",
+        "l and s",
+        "inland",
+        "intermodal",
+        "booking",
+        "fcl",
+        "first mile",
+        "last mile",
+        "middle mile",
+        "freight",
+        "atr",
+        "otc",
+        "ptp",
+        "cem",
+        "sales",
+    ],
+    "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain": [
+        "scm",
+        "lead logistics",
+        "cold chain",
+        "warehouse",
+        "project logistics",
+        "maersk flow",
+        "neonav",
+        "supply chain",
+        "ll",
+        "mgf",
+        "mec",
+        "mcl",
+        "mpl",
+    ],
+}
 
 
 def _normalize_value(value) -> str:
@@ -50,32 +113,80 @@ def _normalize_value(value) -> str:
     return str(value).strip()
 
 
-def _serialize_row(item: OpportunityAssessment) -> dict:
+def _match_ownership_bundle(intake_product: str) -> str | None:
+    text = (intake_product or "").strip().lower()
+    if not text:
+        return None
+    for bundle, keywords in OWNERSHIP_PRODUCT_KEYWORDS.items():
+        if text in bundle.lower():
+            return bundle
+        if any(keyword in text for keyword in keywords):
+            return bundle
+    return None
+
+
+def _build_setup_context(project: MigrationIntakeSubmission) -> dict:
+    """Prefill defaults for OA row generation from intake + Product Ownership."""
+    products = [str(p).strip() for p in (project.products or []) if str(p).strip()]
+    if project.location_strategy_custom:
+        locations = [
+            str(item).strip()
+            for item in (project.custom_location_strategies or [])
+            if str(item).strip()
+        ]
+    else:
+        locations = [
+            str(item).strip()
+            for item in (project.default_location_strategies or [])
+            if str(item).strip()
+        ]
+
+    region = (project.region or "").strip()
+    matched_bundles: list[str] = []
+    for product in products:
+        bundle = _match_ownership_bundle(product)
+        if bundle and bundle not in matched_bundles:
+            matched_bundles.append(bundle)
+
+    ownership_qs = ProductOwnership.objects.filter(region=region)
+    if matched_bundles:
+        ownership_qs = ownership_qs.filter(product__in=matched_bundles)
+
+    owner_options: list[str] = []
+    matched_rows: list[dict] = []
+    for item in ownership_qs.order_by("id"):
+        manager = (item.migration_manager or "").strip()
+        matched_rows.append(
+            {
+                "product": item.product,
+                "region": item.region,
+                "manager": item.manager,
+                "migration_manager": manager,
+            }
+        )
+        if manager and manager not in owner_options:
+            owner_options.append(manager)
+
     return {
-        "id": item.id,
-        "migration_request_id": item.migration_request_id,
-        "owner": item.owner,
-        "l1": item.l1,
-        "l2": item.l2,
-        "l3": item.l3,
-        "l4": item.l4,
-        "task_name": item.task_name,
-        "task_description": item.task_description,
-        "task_found_in_service_catalog": item.task_found_in_service_catalog,
-        "migratable_to_gsc": item.migratable_to_gsc,
-        "upstream": item.upstream,
-        "downstream": item.downstream,
-        "risks_related": item.risks_related,
-        "complexity": item.complexity,
-        "sop_iop_exists": item.sop_iop_exists,
-        "training_time_needed": item.training_time_needed,
-        "recommended_handoff_duration": item.recommended_handoff_duration,
-        "task_frequency": item.task_frequency,
-        "unit_of_measure": item.unit_of_measure,
-        "volume": item.volume,
-        "task_time_per_unit": item.task_time_per_unit,
-        "fte_calculation": item.fte_calculation,
+        "migration_request_id": project.migration_request_id,
+        "project_name": project.project_name,
+        "region": region,
+        "products": products,
+        "products_display": ", ".join(products),
+        "location_default": ", ".join(locations),
+        "location_options": locations,
+        "owner_default": owner_options[0] if owner_options else "",
+        "owner_options": owner_options,
+        "matched_ownership_products": matched_bundles,
+        "matched_ownership_rows": matched_rows,
     }
+
+
+def _serialize_row(item: OpportunityAssessment) -> dict:
+    row = {"id": item.id}
+    for key, _label in _all_fields():
+        row[key] = getattr(item, key, "") or ""
+    return row
 
 
 def _get_project(project_id: int):
@@ -115,7 +226,9 @@ def list_opportunity_assessment(request, project_id: int):
             "migration_request_id": migration_request_id,
             "project_name": project.project_name,
             "count": len(rows),
-            "columns": [{"key": key, "label": label} for key, label in ALL_FIELDS],
+            "has_existing_rows": len(rows) > 0,
+            "setup": _build_setup_context(project),
+            "columns": [{"key": key, "label": label} for key, label in _all_fields()],
             "cascade_keys": sorted(CASCADE_FIELD_KEYS),
             "cascade": _build_l1_l4_cascade(),
             "rows": rows,
@@ -148,7 +261,11 @@ def save_opportunity_assessment(request, project_id: int):
             continue
 
         record_id = item.get("id")
-        payload = {field: _normalize_value(item.get(field)) for field in WRITABLE_FIELDS}
+        payload = {
+            field: _normalize_value(item.get(field))
+            for field, _label in _all_fields()
+            if field != "migration_request_id"
+        }
         payload["migration_request_id"] = migration_request_id
 
         try:

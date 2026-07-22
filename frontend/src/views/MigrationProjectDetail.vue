@@ -178,6 +178,57 @@
           </div>
         </dl>
       </section>
+
+      <mc-dialog
+        :open="intakeDialogOpen"
+        heading="Intake submitted — read only"
+        dimension="large"
+        showclosebutton
+        @closing="closeIntakeDialog"
+      >
+        <div v-if="project" class="intake-dialog-shell">
+          <div class="intake-dialog-body">
+            <div class="intake-dialog-intro">
+              <mc-tag appearance="success" fit="small" label="Read only" />
+              <p>
+                Submitted intake for
+                <strong>{{ project.migrationRequestId }}</strong>
+                — content cannot be edited from this view.
+              </p>
+            </div>
+
+            <section
+              v-for="section in detailSections"
+              :key="section.id"
+              class="intake-section"
+            >
+              <h3 class="intake-section-title">{{ section.title }}</h3>
+              <dl class="intake-grid">
+                <div
+                  v-for="item in section.items"
+                  :key="`${section.id}-${item.label}`"
+                  class="intake-row"
+                  :class="{ 'intake-row--multiline': item.multiline }"
+                >
+                  <dt class="intake-label">{{ item.label }}</dt>
+                  <dd class="intake-value">{{ item.value }}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <div class="intake-dialog-footer">
+            <mc-button
+              type="button"
+              appearance="primary"
+              variant="filled"
+              fit="medium"
+              label="Close"
+              @click="closeIntakeDialog"
+            />
+          </div>
+        </div>
+      </mc-dialog>
     </template>
   </PageShell>
 </template>
@@ -201,6 +252,7 @@ import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-notification'
+import '@maersk-global/mds-components-core/mc-dialog'
 
 const REGION_LABELS = {
   APA: 'Asia Pacific region',
@@ -215,6 +267,7 @@ const router = useRouter()
 const loading = ref(true)
 const loadError = ref('')
 const project = ref(null)
+const intakeDialogOpen = ref(false)
 
 const progressPct = computed(() => overallProgress(project.value?.status))
 const migrationMilestones = computed(() =>
@@ -262,13 +315,22 @@ const onMilestoneClick = (item) => {
     router.push(`/migration-dashboard/${route.params.id}/opportunity-assessment`)
     return
   }
+  if (item.id === 'intake') {
+    intakeDialogOpen.value = true
+    return
+  }
   console.log('[Migration Project] Milestone selected', item.id)
+}
+
+const closeIntakeDialog = () => {
+  intakeDialogOpen.value = false
 }
 
 const loadProject = async () => {
   loading.value = true
   loadError.value = ''
   project.value = null
+  intakeDialogOpen.value = false
 
   try {
     const { data } = await axios.get(`/api/migration-dashboard/projects/${route.params.id}/`)
@@ -749,6 +811,97 @@ watch(() => route.params.id, loadProject)
 
 @media (max-width: 560px) {
   .milestone-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.intake-dialog-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: min(75vh, 720px);
+}
+
+.intake-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.intake-dialog-intro {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.intake-dialog-intro p {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.intake-section + .intake-section {
+  border-top: 1px solid rgba(22, 22, 22, 0.08);
+  margin-top: 4px;
+  padding-top: 16px;
+}
+
+.intake-section-title {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.intake-grid {
+  display: grid;
+  gap: 10px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.intake-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.intake-row--multiline {
+  grid-column: 1 / -1;
+}
+
+.intake-label {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.intake-value {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.intake-dialog-footer {
+  background: #fff;
+  border-top: 1px solid rgba(22, 22, 22, 0.08);
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  padding-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .intake-grid {
     grid-template-columns: 1fr;
   }
 }

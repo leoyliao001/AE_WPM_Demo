@@ -6,6 +6,9 @@ import MigrationProjectDetail from '../views/MigrationProjectDetail.vue'
 import LDDashboard from '../views/LDDashboard.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
 import FpoMapping from '../views/FpoMapping.vue'
+import ProductOwnership from '../views/ProductOwnership.vue'
+import GscSiteMapping from '../views/GscSiteMapping.vue'
+import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 
 const routes = [
@@ -32,6 +35,13 @@ const routes = [
   { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
   { path: '/project-dashboard/:section', redirect: '/project-dashboard' },
   { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
+  {
+    path: '/project-attributes',
+    name: 'ProjectAttributesDatabase',
+    component: ProjectAttributesDatabase
+  },
+  { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
+  { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping }
 ]
 const router = createRouter({

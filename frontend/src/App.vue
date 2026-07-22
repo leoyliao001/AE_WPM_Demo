@@ -51,6 +51,8 @@ import AppHeader from './components/AppHeader.vue'
 
 /* Handsontable pages: page owns scroll via Handsontable only */
 .app-main:has(.fpo-page),
+.app-main:has(.po-page),
+.app-main:has(.gsc-page),
 .app-main:has(.oa-page) {
   overflow: hidden;
 }

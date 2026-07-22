@@ -106,15 +106,15 @@ class OpportunityAssessment(models.Model):
     """Task-level Opportunity Assessment scoped to a migration request."""
 
     migration_request_id = models.CharField(max_length=32, db_index=True)
+    product = models.CharField(max_length=128, blank=True, default="")
     owner = models.CharField(max_length=128, blank=True, default="")
+    location = models.CharField(max_length=128, blank=True, default="")
     l1 = models.CharField(max_length=128, blank=True, default="")
     l2 = models.CharField(max_length=128, blank=True, default="")
     l3 = models.CharField(max_length=128, blank=True, default="")
     l4 = models.CharField(max_length=255, blank=True, default="")
     task_name = models.CharField(max_length=255, blank=True, default="")
     task_description = models.TextField(blank=True, default="")
-    task_found_in_service_catalog = models.CharField(max_length=255, blank=True, default="")
-    migratable_to_gsc = models.CharField(max_length=255, blank=True, default="")
     upstream = models.TextField(blank=True, default="")
     downstream = models.TextField(blank=True, default="")
     risks_related = models.TextField(blank=True, default="")
@@ -124,9 +124,11 @@ class OpportunityAssessment(models.Model):
     recommended_handoff_duration = models.CharField(max_length=255, blank=True, default="")
     task_frequency = models.CharField(max_length=255, blank=True, default="")
     unit_of_measure = models.CharField(max_length=128, blank=True, default="")
-    volume = models.CharField(max_length=64, blank=True, default="")
-    task_time_per_unit = models.CharField(max_length=64, blank=True, default="")
+    volume_monthly = models.CharField(max_length=64, blank=True, default="")
+    task_time_per_unit_min = models.CharField(max_length=64, blank=True, default="")
     fte_calculation = models.CharField(max_length=64, blank=True, default="")
+    task_found_in_service_catalog = models.CharField(max_length=255, blank=True, default="")
+    migratable_to_gsc = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -139,3 +141,46 @@ class OpportunityAssessment(models.Model):
 
     def __str__(self):
         return f"{self.migration_request_id} — {self.task_name or self.l4 or self.id}"
+
+
+class ProductOwnership(models.Model):
+    """Product / Manager / Region / Migration Manager ownership mapping."""
+
+    product = models.CharField(max_length=255, blank=True, default="")
+    manager = models.CharField(max_length=128, blank=True, default="")
+    region = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    migration_manager = models.CharField(max_length=128, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "product_ownership"
+        ordering = ["id"]
+        indexes = [
+            models.Index(fields=["product", "region"]),
+            models.Index(fields=["manager"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product} / {self.region} / {self.migration_manager}"
+
+
+class GscSiteMapping(models.Model):
+    """Region / Area / Supporting GSC Sites mapping (Sheet2)."""
+
+    region = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    area = models.CharField(max_length=32, blank=True, default="", db_index=True)
+    supporting_gsc_sites = models.CharField(max_length=255, blank=True, default="")
+    all_options = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gsc_site_mapping"
+        ordering = ["id"]
+        indexes = [
+            models.Index(fields=["region", "area"]),
+        ]
+
+    def __str__(self):
+        return f"{self.region} / {self.area} / {self.supporting_gsc_sites}"
