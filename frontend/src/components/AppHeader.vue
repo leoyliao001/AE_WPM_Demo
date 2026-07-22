@@ -39,7 +39,6 @@ const navItems = [
   { label: 'Dashboard', to: '/migration-dashboard', icon: 'mi-chart-bars-vertical' },
   { label: 'L&D', to: '/ld-dashboard', icon: 'mi-monitor' },
   { label: 'Project', to: '/project-dashboard', icon: 'mi-file-check' },
-  { label: 'FPO Mapping', to: '/fpo-mapping', icon: 'mi-list-bullets' },
   { label: 'Chatbot', to: '/migration-chatbot', icon: 'mi-chatbot' }
 ]
 

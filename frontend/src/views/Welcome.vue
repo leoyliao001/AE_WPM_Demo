@@ -60,7 +60,7 @@
           fit="medium"
           heading="Project Attributes Database"
           subheading="Central data layer"
-          body="All tools above read from and write to this shared attribute store — your single source of truth for project metadata."
+          body="Maintain shared reference tables — FPO Mapping, Product Ownership, and GSC Site Mapping."
           contentalignment="middle"
           clickable
           @click="onDatabaseClick"
@@ -134,16 +134,8 @@ const menuItems = [
     icon: 'mi-file-check',
     accent: '#003F6E',
     route: '/project-dashboard'
-  },
-  // Hidden for now: Future Service Model, Final CI Review
-  {
-    id: 'fpo-mapping',
-    title: 'FPO Mapping',
-    description: 'Cascading L1–L4 process / FPO dictionary grid powered by Handsontable.',
-    icon: 'mi-list-bullets',
-    accent: '#0077B8',
-    route: '/fpo-mapping'
   }
+  // Hidden for now: Future Service Model, Final CI Review
 ]
 
 const onCardClick = (item) => {
@@ -152,7 +144,7 @@ const onCardClick = (item) => {
 }
 
 const onDatabaseClick = () => {
-  // 预留：跳转至 Project Attributes Database
+  router.push('/project-attributes')
 }
 </script>
 

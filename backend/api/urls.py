@@ -9,4 +9,6 @@ urlpatterns = [
     path("project-dashboard/", include("api.routes.project_dashboard")),
     path("migration-chatbot/", include("api.routes.migration_chatbot")),
     path("fpo-mapping/", include("api.routes.fpo_mapping")),
+    path("product-ownership/", include("api.routes.product_ownership")),
+    path("gsc-site-mapping/", include("api.routes.gsc_site_mapping")),
 ]

@@ -3,7 +3,7 @@
     <div class="fpo-page-inner">
       <header class="fpo-toolbar">
         <div class="toolbar-left">
-          <router-link class="back-link" to="/">
+          <router-link class="back-link" to="/project-attributes">
             <mc-button
               appearance="neutral"
               variant="plain"
@@ -193,6 +193,12 @@ import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-loading-indicator'
 import '@maersk-global/mds-components-core/mc-dialog'
 
+import {
+  createAfterColumnResizeHandler,
+  loadColumnWidths,
+  resolveColumnWidth
+} from '../utils/handsontableColumnWidths.js'
+
 /** Cascade columns — dropdown only, no free text */
 const CASCADE_KEYS = [
   'l1',
@@ -247,6 +253,7 @@ const ALL_COLUMNS = [
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
 const CASCADE_SET = new Set(CASCADE_KEYS)
+const COLUMN_WIDTH_STORAGE_ID = 'fpo-mapping'
 
 const CLEAR_FROM = {
   l1: [
@@ -632,7 +639,9 @@ function applyCascadeFill(hot, visualRow, physicalRow, changedProp) {
 }
 
 function buildColumns() {
+  const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
   return ALL_COLUMNS.map((col) => {
+    const width = resolveColumnWidth(col.width, col.key, storedWidths)
     if (CASCADE_SET.has(col.key)) {
       return {
         data: col.key,
@@ -644,14 +653,14 @@ function buildColumns() {
         trimDropdown: false,
         source: makeDropdownSource(col.key),
         validator: makeValidator(col.key),
-        width: col.width
+        width
       }
     }
 
     return {
       data: col.key,
       type: 'text',
-      width: col.width
+      width
     }
   })
 }
@@ -738,6 +747,7 @@ function initHot(rows) {
       copyColumnHeaders: true,
       copyColumnHeadersOnly: true
     },
+    afterColumnResize: createAfterColumnResizeHandler(COLUMN_WIDTH_STORAGE_ID, ALL_KEYS),
     contextMenu: {
       items: {
         row_above: { name: 'Insert row above' },

@@ -56,6 +56,16 @@
             @change="onFileSelected"
           />
           <mc-button
+            v-if="hasExistingRows || hotReady"
+            appearance="neutral"
+            variant="outlined"
+            fit="small"
+            label="Add new"
+            icon="mi-plus"
+            :disabled="loading || saving || deleting || uploading || setupDialogOpen"
+            @click="openSetupDialog('append')"
+          />
+          <mc-button
             appearance="primary"
             fit="small"
             :label="saving ? 'Saving…' : 'Save'"
@@ -91,10 +101,25 @@
       </div>
 
       <div
+        v-else-if="!hotReady && !hasExistingRows"
+        class="table-empty"
+      >
+        <p>No assessment rows yet for this migration.</p>
+        <mc-button
+          appearance="primary"
+          fit="medium"
+          label="Generate rows"
+          icon="mi-plus"
+          :disabled="setupDialogOpen"
+          @click="openSetupDialog('create')"
+        />
+      </div>
+
+      <div
         id="oa-handsontable"
         ref="hotContainer"
         class="ht-theme-horizon handsontable-host"
-        :class="{ 'is-hidden': loading && !hotReady }"
+        :class="{ 'is-hidden': (loading && !hotReady) || !hotReady }"
       />
 
       <mc-dialog
@@ -128,8 +153,8 @@
                 <code>{{ migrationRequestId || '—' }}</code>.
               </li>
               <li>
-                Column <strong>migration_request_id</strong> is read-only in the online grid and is
-                auto-filled for every row.
+                Column <strong>migration_request_id</strong> and <strong>Product</strong> are
+                read-only in the online grid (pre-filled from Intake / setup).
               </li>
               <li>
                 When you download the Excel template, column A is pre-filled with the same ID —
@@ -146,8 +171,8 @@
             <h3>1) Online update (edit in the grid)</h3>
             <ul>
               <li>
-                The grid reserves up to <strong>200 rows</strong>. Fill empty rows or edit existing
-                ones directly in the browser.
+                The grid shows exactly the number of rows you generated (or loaded). Use
+                <strong>Add new</strong> to append more rows — there are no spare blank rows.
               </li>
               <li>
                 <strong>L1 → L2 → L3 → L4</strong> — cascading dropdowns only. Start with L1; each
@@ -157,8 +182,8 @@
                 Changing L1 clears L2/L3/L4; changing L2 clears L3/L4; changing L3 clears L4.
               </li>
               <li>
-                Other columns (Owner, Task Name, Description, Complexity, Volume, FTE, etc.) are
-                free-text fields you can type or paste into.
+                Other columns (Owner, Location, Task Name, Description, Complexity, Volume, FTE,
+                etc.) are free-text fields you can type or paste into.
               </li>
               <li>
                 Edits are tracked as <strong>pending</strong> until you click
@@ -274,6 +299,142 @@
       </mc-dialog>
 
       <mc-dialog
+        :open="setupDialogOpen"
+        :heading="setupMode === 'append' ? 'Add new assessment rows' : 'Generate assessment rows'"
+        dimension="medium"
+        showclosebutton
+        @closing="closeSetupDialog"
+      >
+        <div class="setup-dialog-body">
+          <div class="setup-dialog-scroll">
+            <p class="setup-dialog-intro">
+              Prefill from Migration Intake and Product Ownership. Migration ID and Product are locked;
+              you can adjust Location and Owner before generating rows.
+            </p>
+
+            <div class="setup-field">
+              <label class="setup-label">Migration ID</label>
+              <mc-input
+                label="Migration ID"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                :value="setupForm.migrationRequestId"
+                disabled
+              />
+            </div>
+
+            <div class="setup-field">
+              <label class="setup-label">Product</label>
+              <mc-input
+                label="Product"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                :value="setupForm.productsDisplay"
+                disabled
+              />
+              <p v-if="setupMeta.matchedOwnershipProducts.length" class="setup-hint">
+                Matched Product Ownership:
+                {{ setupMeta.matchedOwnershipProducts.join(' · ') }}
+              </p>
+              <p v-else class="setup-hint setup-hint--warn">
+                No Product Ownership match found for region
+                {{ setupMeta.region || '—' }}. You can still set Owner manually.
+              </p>
+            </div>
+
+            <div class="setup-field">
+              <label class="setup-label">Location</label>
+              <mc-input
+                label="Location"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                :value="setupForm.location"
+                placeholder="Location Strategy"
+                @input="onSetupLocationInput"
+              />
+              <p v-if="setupMeta.locationOptions.length" class="setup-hint">
+                From Location Strategy:
+                {{ setupMeta.locationOptions.join(', ') }}
+              </p>
+            </div>
+
+            <div class="setup-field">
+              <label class="setup-label">Owner (Migration Manager)</label>
+              <mc-select
+                v-if="setupMeta.ownerOptions.length"
+                label="Owner"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                placeholder="Select owner"
+                :value="setupForm.owner"
+                @optionselected="onSetupOwnerSelect"
+              >
+                <mc-option
+                  v-for="owner in setupMeta.ownerOptions"
+                  :key="owner"
+                  :value="owner"
+                >
+                  {{ owner }}
+                </mc-option>
+              </mc-select>
+              <mc-input
+                label="Owner"
+                :hiddenlabel="setupMeta.ownerOptions.length > 0"
+                fit="medium"
+                width="full-width"
+                :value="setupForm.owner"
+                :placeholder="
+                  setupMeta.ownerOptions.length
+                    ? 'Or type a different owner'
+                    : 'Migration Manager'
+                "
+                @input="onSetupOwnerInput"
+              />
+            </div>
+
+            <div class="setup-field">
+              <label class="setup-label">Number of rows</label>
+              <mc-input
+                label="Number of rows"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                type="number"
+                :value="String(setupForm.rowCount)"
+                placeholder="e.g. 10"
+                @input="onSetupRowCountInput"
+              />
+              <p class="setup-hint">Generate 1–{{ MAX_ROWS }} rows with the values above.</p>
+            </div>
+          </div>
+
+          <div class="setup-dialog-footer">
+            <mc-button
+              type="button"
+              appearance="neutral"
+              variant="outlined"
+              fit="medium"
+              label="Cancel"
+              @click="closeSetupDialog"
+            />
+            <mc-button
+              type="button"
+              appearance="primary"
+              variant="filled"
+              fit="medium"
+              :label="setupMode === 'append' ? 'Add rows' : 'Generate'"
+              :disabled="!canConfirmSetup"
+              @click="confirmSetupDialog"
+            />
+          </div>
+        </div>
+      </mc-dialog>
+
+      <mc-dialog
         :open="uploadDialogOpen"
         :heading="uploadDialogHeading"
         dimension="medium"
@@ -323,44 +484,69 @@ import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-loading-indicator'
 import '@maersk-global/mds-components-core/mc-dialog'
+import '@maersk-global/mds-components-core/mc-input'
+import '@maersk-global/mds-components-core/mc-select'
+import '@maersk-global/mds-components-core/mc-option'
+import {
+  createAfterColumnResizeHandler,
+  loadColumnWidths,
+  resolveColumnWidth
+} from '../utils/handsontableColumnWidths.js'
 
 const CASCADE_KEYS = ['l1', 'l2', 'l3', 'l4']
+const YN_DROPDOWN_KEYS = ['task_found_in_service_catalog', 'migratable_to_gsc']
+const YN_OPTIONS = ['Y', 'N']
 
-const ALL_COLUMNS = [
-  { key: 'migration_request_id', label: 'migration_request_id', width: 180, readOnly: true },
-  { key: 'owner', label: 'Owner', width: 90 },
-  { key: 'l1', label: 'L1', width: 200 },
-  { key: 'l2', label: 'L2', width: 180 },
-  { key: 'l3', label: 'L3', width: 200 },
-  { key: 'l4', label: 'L4', width: 220 },
-  { key: 'task_name', label: 'Task Name', width: 160 },
-  { key: 'task_description', label: 'Task Description', width: 220 },
-  {
-    key: 'task_found_in_service_catalog',
-    label: 'Task found in the corresponding Service Catalog?',
-    width: 180
-  },
-  {
-    key: 'migratable_to_gsc',
-    label: 'Migratable to GSC as per service catalog?',
-    width: 180
-  },
-  { key: 'upstream', label: 'Upstream (tasks, events, input)', width: 180 },
-  { key: 'downstream', label: 'Downstream (task, events, output)', width: 180 },
-  { key: 'risks_related', label: 'Risks related to the Process/Task', width: 180 },
-  { key: 'complexity', label: 'Complexity (Low, Medium, High)', width: 120 },
-  { key: 'sop_iop_exists', label: 'SOP/IOP Exists?', width: 120 },
-  { key: 'training_time_needed', label: 'Training Time Needed', width: 140 },
-  { key: 'recommended_handoff_duration', label: 'Recommended Handoff Duration', width: 160 },
-  { key: 'task_frequency', label: 'Task Frequency', width: 140 },
-  { key: 'unit_of_measure', label: 'Unit of measure', width: 120 },
-  { key: 'volume', label: 'Volume', width: 90 },
-  { key: 'task_time_per_unit', label: 'Task time per unit', width: 120 },
-  { key: 'fte_calculation', label: 'FTE Calculation', width: 110 }
-]
+/** Width / readOnly only — column order & labels come from the API (model order). */
+const COLUMN_META = {
+  migration_request_id: { width: 180, readOnly: true },
+  product: { width: 140, readOnly: true },
+  owner: { width: 90 },
+  location: { width: 140 },
+  l1: { width: 200 },
+  l2: { width: 180 },
+  l3: { width: 200 },
+  l4: { width: 220 },
+  task_name: { width: 160 },
+  task_description: { width: 220 },
+  upstream: { width: 180 },
+  downstream: { width: 180 },
+  risks_related: { width: 180 },
+  complexity: { width: 120 },
+  sop_iop_exists: { width: 120 },
+  training_time_needed: { width: 140 },
+  recommended_handoff_duration: { width: 160 },
+  task_frequency: { width: 140 },
+  unit_of_measure: { width: 120 },
+  volume_monthly: { width: 110 },
+  task_time_per_unit_min: { width: 140 },
+  task_found_in_service_catalog: { width: 200 },
+  migratable_to_gsc: { width: 200 },
+  fte_calculation: { width: 110 }
+}
 
-const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
+const tableColumns = shallowRef([])
+
+function applyColumnsFromApi(apiColumns) {
+  const list = Array.isArray(apiColumns) ? apiColumns : []
+  tableColumns.value = list.map((col) => {
+    const meta = COLUMN_META[col.key] || {}
+    return {
+      key: col.key,
+      label: col.label || col.key,
+      width: meta.width ?? 140,
+      readOnly: !!meta.readOnly
+    }
+  })
+}
+
+function getAllKeys() {
+  return tableColumns.value.map((c) => c.key)
+}
+
 const CASCADE_SET = new Set(CASCADE_KEYS)
+const YN_DROPDOWN_SET = new Set(YN_DROPDOWN_KEYS)
+const COLUMN_WIDTH_STORAGE_ID = 'opportunity-assessment'
 const MAX_ROWS = 200
 
 const CLEAR_FROM = {
@@ -391,6 +577,23 @@ const uploadDialogMessage = ref('')
 const uploadDialogDetails = ref([])
 const uploadDialogIsError = ref(false)
 const helpDialogOpen = ref(false)
+const hasExistingRows = ref(false)
+const setupDialogOpen = ref(false)
+const setupMode = ref('create') // 'create' | 'append'
+const setupMeta = ref({
+  region: '',
+  locationOptions: [],
+  ownerOptions: [],
+  matchedOwnershipProducts: []
+})
+const setupForm = ref({
+  migrationRequestId: '',
+  productsDisplay: '',
+  products: [],
+  location: '',
+  owner: '',
+  rowCount: 10
+})
 
 function openUploadDialog({ heading, message, details = [], isError = false }) {
   uploadDialogHeading.value = heading
@@ -416,8 +619,127 @@ const pendingCount = computed(() => {
   return map.size
 })
 
+const canConfirmSetup = computed(() => {
+  const n = Number(setupForm.value.rowCount)
+  return Number.isFinite(n) && n >= 1 && n <= MAX_ROWS
+})
+
+function eventValue(event) {
+  const target = event?.currentTarget ?? event?.target
+  return String(target?.value ?? event?.detail?.value ?? event?.detail ?? '')
+}
+
+function onSetupLocationInput(event) {
+  setupForm.value.location = eventValue(event)
+}
+
+function onSetupOwnerInput(event) {
+  setupForm.value.owner = eventValue(event)
+}
+
+function onSetupOwnerSelect(event) {
+  setupForm.value.owner = eventValue(event)
+}
+
+function onSetupRowCountInput(event) {
+  const raw = eventValue(event)
+  const n = Number.parseInt(raw, 10)
+  setupForm.value.rowCount = Number.isFinite(n) ? n : raw
+}
+
+function applySetupPayload(setup = {}) {
+  setupMeta.value = {
+    region: setup.region || '',
+    locationOptions: Array.isArray(setup.location_options) ? setup.location_options : [],
+    ownerOptions: Array.isArray(setup.owner_options) ? setup.owner_options : [],
+    matchedOwnershipProducts: Array.isArray(setup.matched_ownership_products)
+      ? setup.matched_ownership_products
+      : []
+  }
+  setupForm.value = {
+    migrationRequestId: setup.migration_request_id || migrationRequestId.value || '',
+    productsDisplay: setup.products_display || '',
+    products: Array.isArray(setup.products) ? setup.products : [],
+    location: setup.location_default || '',
+    owner: setup.owner_default || '',
+    rowCount: 10
+  }
+}
+
+function openSetupDialog(mode = 'create') {
+  setupMode.value = mode
+  setupDialogOpen.value = true
+}
+
+function closeSetupDialog() {
+  setupDialogOpen.value = false
+}
+
+function buildSeedRows(count) {
+  const product = setupForm.value.productsDisplay || ''
+  const location = String(setupForm.value.location || '').trim()
+  const owner = String(setupForm.value.owner || '').trim()
+  const rows = []
+  for (let i = 0; i < count; i += 1) {
+    const row = emptyRow()
+    row.product = product
+    row.location = location
+    row.owner = owner
+    row.migration_request_id = migrationRequestId.value || setupForm.value.migrationRequestId || ''
+    row.id = null
+    row._cid = makeClientId()
+    rows.push(row)
+  }
+  return rows
+}
+
+function trackSeedRows(seedRows) {
+  seedRows.forEach((row) => {
+    const snapshot = { id: null, _cid: row._cid || makeClientId() }
+    getAllKeys().forEach((k) => {
+      snapshot[k] = row[k] ?? ''
+    })
+    allChanges.value.push(snapshot)
+  })
+}
+
+function getFilledSourceRows() {
+  const hot = hotInstance.value
+  if (!hot || hot.isDestroyed) return []
+  return (hot.getSourceData() || []).filter((row) => row?.id || !isBlankRow(row))
+}
+
+async function confirmSetupDialog() {
+  if (!canConfirmSetup.value) return
+  const count = Math.min(Math.max(Number(setupForm.value.rowCount) || 0, 1), MAX_ROWS)
+  const seedRows = buildSeedRows(count)
+  const append = setupMode.value === 'append' && hotReady.value
+
+  if (append) {
+    const existing = getFilledSourceRows()
+    const combined = [...existing, ...seedRows]
+    if (combined.length > MAX_ROWS) {
+      alert(`Cannot exceed ${MAX_ROWS} rows. You can add at most ${MAX_ROWS - existing.length} more.`)
+      return
+    }
+    const pendingBefore = [...allChanges.value]
+    initHot(combined)
+    allChanges.value = pendingBefore
+    trackSeedRows(seedRows)
+  } else {
+    initHot(seedRows)
+    trackSeedRows(seedRows)
+  }
+
+  hasExistingRows.value = true
+  rowCount.value = hotInstance.value?.countRows?.() || seedRows.length
+  closeSetupDialog()
+  await nextTick()
+  onResize()
+}
+
 const emptyRow = () => {
-  const row = Object.fromEntries(ALL_KEYS.map((k) => [k, '']))
+  const row = Object.fromEntries(getAllKeys().map((k) => [k, '']))
   row.migration_request_id = migrationRequestId.value || ''
   row.id = null
   row._cid = ''
@@ -426,9 +748,9 @@ const emptyRow = () => {
 
 function isBlankRow(row) {
   if (!row) return true
-  return ALL_KEYS.filter((k) => k !== 'migration_request_id').every(
-    (k) => !String(row[k] ?? '').trim()
-  )
+  return getAllKeys()
+    .filter((k) => k !== 'migration_request_id')
+    .every((k) => !String(row[k] ?? '').trim())
 }
 
 function makeClientId() {
@@ -451,7 +773,7 @@ function trackChangedRow(hot, visualRow) {
   }
 
   const snapshot = { id: src.id ?? null, _cid: src._cid || '' }
-  ALL_KEYS.forEach((k) => {
+  getAllKeys().forEach((k) => {
     snapshot[k] = src[k] ?? ''
   })
   allChanges.value.push(snapshot)
@@ -540,7 +862,9 @@ function applyCascadeFill(hot, visualRow, physicalRow, changedProp) {
 }
 
 function buildColumns() {
-  return ALL_COLUMNS.map((col) => {
+  const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
+  return tableColumns.value.map((col) => {
+    const width = resolveColumnWidth(col.width, col.key, storedWidths)
     if (CASCADE_SET.has(col.key)) {
       return {
         data: col.key,
@@ -552,7 +876,21 @@ function buildColumns() {
         trimDropdown: false,
         source: makeDropdownSource(col.key),
         validator: makeValidator(col.key),
-        width: col.width
+        width
+      }
+    }
+
+    if (YN_DROPDOWN_SET.has(col.key)) {
+      return {
+        data: col.key,
+        type: 'dropdown',
+        strict: true,
+        allowInvalid: false,
+        filter: false,
+        visibleRows: 4,
+        trimDropdown: false,
+        source: YN_OPTIONS,
+        width
       }
     }
 
@@ -560,7 +898,7 @@ function buildColumns() {
       data: col.key,
       type: 'text',
       readOnly: !!col.readOnly,
-      width: col.width
+      width
     }
   })
 }
@@ -597,29 +935,36 @@ function syncTableHeight() {
 
 function initHot(rows) {
   if (!hotContainer.value) return
+  if (!tableColumns.value.length) {
+    error.value = 'Column definition missing from API.'
+    return
+  }
   destroyHot()
   allChanges.value = []
 
   const data = rows.map((r) => {
     const row = emptyRow()
-    ALL_KEYS.forEach((k) => {
+    getAllKeys().forEach((k) => {
       row[k] = r[k] ?? ''
     })
     row.migration_request_id = migrationRequestId.value || r.migration_request_id || ''
     row.id = r.id ?? null
+    row._cid = r._cid || ''
     return row
   })
 
-  for (let i = data.length; i < MAX_ROWS; i += 1) {
-    data.push(emptyRow())
-  }
+  // Grid size follows the user's chosen / saved row count — no spare blank padding.
+  const rowCap = Math.max(data.length, 1)
+  rowCount.value = data.length
 
   const tableHeight = syncTableHeight()
+  const columnDefs = tableColumns.value
+  const allKeys = getAllKeys()
 
   const hot = new Handsontable(hotContainer.value, {
     data,
     columns: buildColumns(),
-    colHeaders: ALL_COLUMNS.map((c) => c.label),
+    colHeaders: columnDefs.map((c) => c.label),
     rowHeaders: false,
     height: tableHeight,
     width: '100%',
@@ -638,18 +983,19 @@ function initHot(rows) {
       copyColumnHeaders: true,
       copyColumnHeadersOnly: true
     },
+    afterColumnResize: createAfterColumnResizeHandler(COLUMN_WIDTH_STORAGE_ID, allKeys),
     contextMenu: {
       items: {
         row_above: {
           name: 'Insert row above',
           disabled() {
-            return this.countRows() >= MAX_ROWS
+            return this.countRows() >= rowCap
           }
         },
         row_below: {
           name: 'Insert row below',
           disabled() {
-            return this.countRows() >= MAX_ROWS
+            return this.countRows() >= rowCap
           }
         },
         remove_row: { name: 'Remove row' },
@@ -682,7 +1028,7 @@ function initHot(rows) {
     },
     licenseKey: 'non-commercial-and-evaluation',
     minSpareRows: 0,
-    maxRows: MAX_ROWS,
+    maxRows: rowCap,
     themeName: 'ht-theme-horizon',
     className: 'htLeft htMiddle',
     headerClassName: 'htLeft',
@@ -1006,6 +1352,7 @@ async function runDeleteRows(idsToRemove) {
 async function loadData() {
   loading.value = true
   error.value = ''
+  setupDialogOpen.value = false
   try {
     const { data } = await axios.get(
       `/api/migration-dashboard/projects/${projectId.value}/opportunity-assessment/`
@@ -1014,13 +1361,22 @@ async function loadData() {
     projectName.value = data.project_name || ''
     cascade.value = data.cascade || { l1_list: [], by_l1: {} }
     rowCount.value = data.count || 0
+    hasExistingRows.value = !!data.has_existing_rows || (data.count || 0) > 0
+    applySetupPayload(data.setup || {})
+    applyColumnsFromApi(data.columns || [])
     await nextTick()
-    initHot(data.rows || [])
+    if (hasExistingRows.value) {
+      initHot(data.rows || [])
+    } else {
+      destroyHot()
+      openSetupDialog('create')
+    }
   } catch (e) {
     console.error(e)
     error.value =
       e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Failed to load'
     destroyHot()
+    hasExistingRows.value = false
   } finally {
     loading.value = false
     await nextTick()
@@ -1223,6 +1579,91 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
+.table-loading {
+  align-items: center;
+  color: #6b7280;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  min-height: 280px;
+  padding: 32px;
+}
+
+.table-empty {
+  align-items: center;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  color: #4b5563;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 280px;
+  padding: 32px;
+  text-align: center;
+}
+
+.table-empty p {
+  margin: 0;
+}
+
+.setup-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: min(70vh, 640px);
+}
+
+.setup-dialog-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+  padding-bottom: 4px;
+}
+
+.setup-dialog-intro {
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.setup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setup-label {
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.setup-hint {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.setup-hint--warn {
+  color: #9a3412;
+}
+
+.setup-dialog-footer {
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
 .oa-banner {
   background: #fff7ed;
   border: 1px solid #fed7aa;
@@ -1302,16 +1743,6 @@ onBeforeUnmount(() => {
 .upload-dialog-footer {
   display: flex;
   justify-content: flex-end;
-}
-
-.table-loading {
-  align-items: center;
-  color: #6b7280;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 12px;
-  justify-content: center;
 }
 
 .handsontable-host {

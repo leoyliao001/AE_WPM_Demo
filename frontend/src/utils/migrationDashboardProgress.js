@@ -156,7 +156,26 @@ export const buildDetailSections = (project) => [
       {
         label: 'Location Strategy mode',
         value: project.locationStrategyCustom ? 'Custom' : 'Default'
-      }
+      },
+      ...(project.locationStrategyCustom
+        ? [
+            {
+              label: 'Custom strategy justification',
+              value: project.customLocationStrategyJustification || '—',
+              multiline: true
+            },
+            {
+              label: 'Approval attachment',
+              value: project.customApprovalFile?.name
+                ? `${project.customApprovalFile.name}${
+                    project.customApprovalFile.size
+                      ? ` (${Math.round(project.customApprovalFile.size / 1024)} KB)`
+                      : ''
+                  }`
+                : '—'
+            }
+          ]
+        : [])
     ]
   },
   {

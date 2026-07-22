@@ -36,6 +36,8 @@ SANITIZE_CHARS = [" ", ".", "-", "/", "(", ")", ",", "'", '"', "+", "%", "&", ":
 FIELD_BY_HEADER = {
     "migration_request_id": "migration_request_id",
     "owner": "owner",
+    "product": "product",
+    "location": "location",
     "l1": "l1",
     "l2": "l2",
     "l3": "l3",
@@ -55,8 +57,13 @@ FIELD_BY_HEADER = {
     "recommended handoff duration": "recommended_handoff_duration",
     "task frequency": "task_frequency",
     "unit of measure": "unit_of_measure",
-    "volume": "volume",
-    "task time per unit": "task_time_per_unit",
+    "volume": "volume_monthly",
+    "volume monthly": "volume_monthly",
+    "volume_monthly": "volume_monthly",
+    "task time per unit": "task_time_per_unit_min",
+    "task time per unit (min)": "task_time_per_unit_min",
+    "task_time_per_unit": "task_time_per_unit_min",
+    "task_time_per_unit_min": "task_time_per_unit_min",
     "fte calculation": "fte_calculation",
 }
 
@@ -329,7 +336,7 @@ def parse_opportunity_workbook(file_obj, expected_migration_request_id: str) -> 
     if ws is None:
         raise ValueError("No data sheet found in workbook.")
 
-    headers = [_normalize_header(ws.cell(HEADER_ROW, c).value) for c in range(1, 23)]
+    headers = [_normalize_header(ws.cell(HEADER_ROW, c).value) for c in range(1, 40)]
     col_map: dict[str, int] = {}
     for idx, header in enumerate(headers, start=1):
         field = FIELD_BY_HEADER.get(header)
@@ -356,14 +363,14 @@ def parse_opportunity_workbook(file_obj, expected_migration_request_id: str) -> 
         payload = {
             "migration_request_id": cell(row_idx, "migration_request_id"),
             "owner": cell(row_idx, "owner"),
+            "product": cell(row_idx, "product"),
+            "location": cell(row_idx, "location"),
             "l1": cell(row_idx, "l1"),
             "l2": cell(row_idx, "l2"),
             "l3": cell(row_idx, "l3"),
             "l4": cell(row_idx, "l4"),
             "task_name": cell(row_idx, "task_name"),
             "task_description": cell(row_idx, "task_description"),
-            "task_found_in_service_catalog": cell(row_idx, "task_found_in_service_catalog"),
-            "migratable_to_gsc": cell(row_idx, "migratable_to_gsc"),
             "upstream": cell(row_idx, "upstream"),
             "downstream": cell(row_idx, "downstream"),
             "risks_related": cell(row_idx, "risks_related"),
@@ -373,21 +380,23 @@ def parse_opportunity_workbook(file_obj, expected_migration_request_id: str) -> 
             "recommended_handoff_duration": cell(row_idx, "recommended_handoff_duration"),
             "task_frequency": cell(row_idx, "task_frequency"),
             "unit_of_measure": cell(row_idx, "unit_of_measure"),
-            "volume": cell(row_idx, "volume"),
-            "task_time_per_unit": cell(row_idx, "task_time_per_unit"),
+            "volume_monthly": cell(row_idx, "volume_monthly"),
+            "task_time_per_unit_min": cell(row_idx, "task_time_per_unit_min"),
+            "task_found_in_service_catalog": cell(row_idx, "task_found_in_service_catalog"),
+            "migratable_to_gsc": cell(row_idx, "migratable_to_gsc"),
             "fte_calculation": cell(row_idx, "fte_calculation"),
         }
 
         content_fields = [
+            "product",
             "owner",
+            "location",
             "l1",
             "l2",
             "l3",
             "l4",
             "task_name",
             "task_description",
-            "task_found_in_service_catalog",
-            "migratable_to_gsc",
             "upstream",
             "downstream",
             "risks_related",
@@ -396,8 +405,10 @@ def parse_opportunity_workbook(file_obj, expected_migration_request_id: str) -> 
             "recommended_handoff_duration",
             "task_frequency",
             "unit_of_measure",
-            "volume",
-            "task_time_per_unit",
+            "volume_monthly",
+            "task_time_per_unit_min",
+            "task_found_in_service_catalog",
+            "migratable_to_gsc",
             "fte_calculation",
         ]
         # Ignore rows that only have migration_request_id (or leftover noise)
