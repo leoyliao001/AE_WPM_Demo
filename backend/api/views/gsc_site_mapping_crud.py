@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import GscSiteMapping
+from api.permissions.attributes_access import require_attributes_access
 from api.views.gsc_site_mapping import ALL_FIELDS
 
 WRITABLE_FIELDS = [key for key, _label in ALL_FIELDS]
@@ -27,6 +28,7 @@ def _is_new_record(record_id) -> bool:
 
 
 @api_view(["POST"])
+@require_attributes_access("gsc_site_mapping")
 def save_gsc_site_mapping(request):
     unique_data = request.data.get("uniqueData")
     if not isinstance(unique_data, list) or len(unique_data) == 0:
@@ -84,6 +86,7 @@ def save_gsc_site_mapping(request):
 
 
 @api_view(["DELETE"])
+@require_attributes_access("gsc_site_mapping")
 def delete_gsc_site_mapping(request):
     removed_ids = request.data.get("removedIds")
     if not isinstance(removed_ids, list) or len(removed_ids) == 0:

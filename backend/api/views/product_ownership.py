@@ -1,16 +1,16 @@
 """
-Product Ownership API — Handsontable grid (Product / Manager / Region / Migration Manager).
+Product Ownership API — Handsontable grid (Region / Area / Migration Manager).
 """
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import ProductOwnership
+from api.permissions.attributes_access import require_attributes_access
 
 ALL_FIELDS = [
-    ("product", "Product"),
-    ("manager", "Manager"),
     ("region", "Region"),
+    ("area", "Area"),
     ("migration_manager", "Migration Manager"),
 ]
 
@@ -18,14 +18,14 @@ ALL_FIELDS = [
 def _serialize_row(item: ProductOwnership) -> dict:
     return {
         "id": item.id,
-        "product": item.product,
-        "manager": item.manager,
         "region": item.region,
+        "area": item.area,
         "migration_manager": item.migration_manager,
     }
 
 
 @api_view(["GET"])
+@require_attributes_access("product_ownership")
 def list_product_ownership(_request):
     rows = [_serialize_row(item) for item in ProductOwnership.objects.all().order_by("id")]
     return Response(

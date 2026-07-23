@@ -1,7 +1,7 @@
 <template>
-  <div class="po-page">
-    <div class="po-page-inner">
-      <header class="po-toolbar">
+  <div class="aac-page">
+    <div class="aac-page-inner">
+      <header class="aac-toolbar">
         <div class="toolbar-left">
           <router-link class="back-link" to="/project-attributes">
             <mc-button
@@ -12,8 +12,8 @@
               icon="mi-arrow-left"
             />
           </router-link>
-          <mc-tag appearance="info" fit="small" label="Product Ownership" />
-          <h1 class="page-title">Product Ownership</h1>
+          <mc-tag appearance="info" fit="small" label="Access Control" />
+          <h1 class="page-title">Access Control</h1>
           <span class="meta-pill">{{ rowCount }} rows</span>
           <button
             type="button"
@@ -22,7 +22,7 @@
           >
             How to use
           </button>
-          <span v-if="loading" class="meta-pill meta-pill--loading">Loading‚Ä¶</span>
+          <span v-if="loading" class="meta-pill meta-pill--loading">Loadingù</span>
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
@@ -32,7 +32,7 @@
           <mc-button
             appearance="primary"
             fit="small"
-            :label="saving ? 'Saving‚Ä¶' : 'Save'"
+            :label="saving ? 'Savingù' : 'Save'"
             icon="mi-floppy-disk"
             :disabled="loading || saving || deleting || pendingCount === 0"
             :title="saving ? saveProgressMessage : 'Ctrl + S'"
@@ -52,11 +52,11 @@
 
       <div v-if="loading && !hotReady" class="table-loading">
         <mc-loading-indicator size="large" />
-        <span>Loading product ownership‚Ä¶</span>
+        <span>Loading access controlù</span>
       </div>
 
       <div
-        id="po-handsontable"
+        id="aac-handsontable"
         ref="hotContainer"
         class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
@@ -64,7 +64,7 @@
 
       <mc-dialog
         :open="helpDialogOpen"
-        heading="Product Ownership ‚Äî User Guide"
+        heading="Access Control ù User Guide"
         dimension="medium"
         showclosebutton
         @closing="helpDialogOpen = false"
@@ -73,9 +73,9 @@
           <section class="help-section">
             <h3>What this table is for</h3>
             <p>
-              Maintain the mapping between <strong>Region</strong>, <strong>Area</strong>, and
-              <strong>Migration Manager</strong>. Edit cells, add or remove rows, then click
-              <strong>Save</strong>.
+              Manage who can open Project Attributes tables using SSO <strong>email</strong>.
+              Set <strong>Super Admin (Y)</strong> to grant access to every table. Otherwise enable
+              individual tables with Y/N. Edit rows, then click <strong>Save</strong>.
             </p>
           </section>
           <section class="help-section">
@@ -84,7 +84,7 @@
               <li>Edit any cell directly. Pending changes are tracked until you Save.</li>
               <li>Use the context menu to insert or remove rows.</li>
               <li>Press <strong>Ctrl + S</strong> (Cmd + S on Mac) to save.</li>
-              <li>Use column filters via the ‚ãÆ menu on each header.</li>
+              <li>Use column filters via the ? menu on each header.</li>
             </ul>
           </section>
         </div>
@@ -109,15 +109,28 @@ import {
   persistColumnWidths,
   resolveColumnWidth
 } from '../utils/handsontableColumnWidths.js'
+import { clearAttributesAccessCache } from '../utils/attributesAccess.js'
+
+const YN_OPTIONS = ['Y', 'N']
+const YN_KEYS = new Set([
+  'is_super_admin',
+  'fpo_mapping',
+  'product_ownership',
+  'gsc_site_mapping',
+  'access_control'
+])
 
 const ALL_COLUMNS = [
-  { key: 'region', label: 'Region', width: 120 },
-  { key: 'area', label: 'Area', width: 160 },
-  { key: 'migration_manager', label: 'Migration Manager', width: 220 }
+  { key: 'email', label: 'Email', width: 260 },
+  { key: 'is_super_admin', label: 'Super Admin (Y/N)', width: 140 },
+  { key: 'fpo_mapping', label: 'FPO Mapping (Y/N)', width: 150 },
+  { key: 'product_ownership', label: 'Product Ownership (Y/N)', width: 180 },
+  { key: 'gsc_site_mapping', label: 'GSC Site Mapping (Y/N)', width: 170 },
+  { key: 'access_control', label: 'Access Control (Y/N)', width: 160 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
-const COLUMN_WIDTH_STORAGE_ID = 'product-ownership'
+const COLUMN_WIDTH_STORAGE_ID = 'project-attributes-access'
 
 const hotContainer = ref(null)
 const hotInstance = shallowRef(null)
@@ -136,7 +149,7 @@ const pendingCount = computed(() => allChanges.value.length)
 function emptyRow() {
   const row = { id: null, _cid: crypto.randomUUID() }
   ALL_KEYS.forEach((key) => {
-    row[key] = ''
+    row[key] = YN_KEYS.has(key) ? 'N' : ''
   })
   return row
 }
@@ -147,7 +160,7 @@ function normalizeCellValue(value) {
 }
 
 function isBlankRow(item) {
-  return ALL_KEYS.every((key) => !normalizeCellValue(item[key]))
+  return !normalizeCellValue(item.email)
 }
 
 function trackChangedRow(hot, visualRow) {
@@ -179,11 +192,24 @@ function trackChangedRow(hot, visualRow) {
 
 function buildColumns() {
   const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
-  return ALL_COLUMNS.map((col) => ({
-    data: col.key,
-    type: 'text',
-    width: resolveColumnWidth(col.width, col.key, storedWidths)
-  }))
+  return ALL_COLUMNS.map((col) => {
+    const width = resolveColumnWidth(col.width, col.key, storedWidths)
+    if (YN_KEYS.has(col.key)) {
+      return {
+        data: col.key,
+        type: 'dropdown',
+        strict: true,
+        allowInvalid: false,
+        source: YN_OPTIONS,
+        width
+      }
+    }
+    return {
+      data: col.key,
+      type: 'text',
+      width
+    }
+  })
 }
 
 function destroyHot() {
@@ -314,7 +340,7 @@ function initHot(rows) {
     },
     beforeRemoveRow(index, amount, physicalRows) {
       if (deleting.value) {
-        alert('Delete in progress, please wait‚Ä¶')
+        alert('Delete in progress, please waitù')
         return false
       }
 
@@ -383,10 +409,10 @@ async function saveData() {
   }
 
   saving.value = true
-  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)‚Ä¶`
+  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)ù`
   error.value = ''
   try {
-    const { data } = await axios.post('/api/product-ownership/data/', { uniqueData })
+    const { data } = await axios.post('/api/project-attributes-access/data/', { uniqueData })
     const created = data.created_count || 0
     const updated = data.updated_count || 0
     const errCount = data.error_count || 0
@@ -396,6 +422,7 @@ async function saveData() {
       alert(`Saved: created ${created}, updated ${updated}.`)
     }
     allChanges.value = []
+    clearAttributesAccessCache()
     await loadData()
   } catch (e) {
     console.error(e)
@@ -417,7 +444,7 @@ async function runDeleteRows(idsToRemove) {
   deleting.value = true
   error.value = ''
   try {
-    const { data } = await axios.delete('/api/product-ownership/data/delete/', {
+    const { data } = await axios.delete('/api/project-attributes-access/data/delete/', {
       data: { removedIds: idsToRemove }
     })
     const deletedCount = data.deleted_count || 0
@@ -447,13 +474,13 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await axios.get('/api/product-ownership/')
+    const { data } = await axios.get('/api/project-attributes-access/')
     rowCount.value = data.count || 0
     await nextTick()
     initHot(data.rows || [])
   } catch (e) {
     console.error(e)
-    error.value = e?.response?.data?.detail || e.message || 'Failed to load product ownership'
+    error.value = e?.response?.data?.detail || e.message || 'Failed to load access control'
     destroyHot()
   } finally {
     loading.value = false
@@ -483,7 +510,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.po-page {
+.aac-page {
   background: #f3f4f6;
   box-sizing: border-box;
   display: flex;
@@ -494,7 +521,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.po-page-inner {
+.aac-page-inner {
   box-sizing: border-box;
   display: flex;
   flex: 1;
@@ -506,7 +533,7 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.po-toolbar {
+.aac-toolbar {
   align-items: center;
   background: #fff;
   border: 1px solid #e5e7eb;

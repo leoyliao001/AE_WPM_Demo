@@ -1,272 +1,77 @@
 [
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "APA",
+    "area": "",
     "migration_manager": "Shirley Figueroa"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "APA",
+    "area": "",
     "migration_manager": "Margie Burcel"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "APA",
+    "area": "",
     "migration_manager": "Teresa Zhou"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "APA",
+    "area": "",
     "migration_manager": "Hector Jacome"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "IMEA",
+    "area": "",
     "migration_manager": "Akshay Shetty"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "IMEA",
+    "area": "",
     "migration_manager": "Karan Shroff"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "IMEA",
+    "area": "",
     "migration_manager": "Roselle Gonsalves"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "EUR",
+    "area": "",
     "migration_manager": "Shirley Figueroa"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "EUR",
+    "area": "",
     "migration_manager": "TBD"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "EUR",
+    "area": "",
     "migration_manager": "Roselle Gonsalves"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "LAM",
+    "area": "",
     "migration_manager": "Ivanina Bolyukova"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "LAM",
+    "area": "",
     "migration_manager": "Hector Jacome"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "LAM",
+    "area": "",
     "migration_manager": "Raviraj Dhuri"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "NAM",
+    "area": "",
     "migration_manager": "Ivanina Bolyukova"
   },
   {
-    "product": "Customs, Air, LCL, DCS, CI",
-    "manager": "Hector Jacome",
     "region": "NAM",
-    "migration_manager": "Hector Jacome"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "APA",
-    "migration_manager": "Shirley Figueroa"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "APA",
-    "migration_manager": "Margie Burcel"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "APA",
-    "migration_manager": "Teresa Zhou"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "APA",
-    "migration_manager": "Hector Jacome"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "IMEA",
-    "migration_manager": "Akshay Shetty"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "IMEA",
-    "migration_manager": "Karan Shroff"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "IMEA",
-    "migration_manager": "Roselle Gonsalves"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "EUR",
-    "migration_manager": "Shirley Figueroa"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "EUR",
-    "migration_manager": "TBD"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "EUR",
-    "migration_manager": "Roselle Gonsalves"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "LAM",
-    "migration_manager": "Ivanina Bolyukova"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "LAM",
-    "migration_manager": "Hector Jacome"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "LAM",
-    "migration_manager": "Raviraj Dhuri"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "NAM",
-    "migration_manager": "Ivanina Bolyukova"
-  },
-  {
-    "product": "Ocean, Landside, CEM, Sales",
-    "manager": "Roselle Gonsalves",
-    "region": "NAM",
-    "migration_manager": "Hector Jacome"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "APA",
-    "migration_manager": "Shirley Figueroa"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "APA",
-    "migration_manager": "Margie Burcel"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "APA",
-    "migration_manager": "Teresa Zhou"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "APA",
-    "migration_manager": "Hector Jacome"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "IMEA",
-    "migration_manager": "Akshay Shetty"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "IMEA",
-    "migration_manager": "Karan Shroff"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "IMEA",
-    "migration_manager": "Roselle Gonsalves"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "EUR",
-    "migration_manager": "Shirley Figueroa"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "EUR",
-    "migration_manager": "TBD"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "EUR",
-    "migration_manager": "Roselle Gonsalves"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "LAM",
-    "migration_manager": "Ivanina Bolyukova"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "LAM",
-    "migration_manager": "Hector Jacome"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "LAM",
-    "migration_manager": "Raviraj Dhuri"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "NAM",
-    "migration_manager": "Ivanina Bolyukova"
-  },
-  {
-    "product": "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain",
-    "manager": "Karan Shroff",
-    "region": "NAM",
+    "area": "",
     "migration_manager": "Hector Jacome"
   }
 ]

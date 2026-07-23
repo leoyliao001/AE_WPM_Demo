@@ -9,7 +9,19 @@ import FpoMapping from '../views/FpoMapping.vue'
 import ProductOwnership from '../views/ProductOwnership.vue'
 import GscSiteMapping from '../views/GscSiteMapping.vue'
 import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
+import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
+import {
+  canAccessAttributesTable,
+  fetchMyAttributesAccess
+} from '../utils/attributesAccess.js'
+
+const ATTRIBUTE_ROUTE_KEYS = {
+  '/fpo-mapping': 'fpo_mapping',
+  '/product-ownership': 'product_ownership',
+  '/gsc-site-mapping': 'gsc_site_mapping',
+  '/attributes-access-control': 'access_control'
+}
 
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
@@ -42,11 +54,27 @@ const routes = [
   },
   { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
   { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },
-  { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping }
+  { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping },
+  {
+    path: '/attributes-access-control',
+    name: 'AttributesAccessControl',
+    component: AttributesAccessControl
+  }
 ]
+
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach(async (to) => {
+  const tableKey = ATTRIBUTE_ROUTE_KEYS[to.path]
+  if (!tableKey) return true
+  const access = await fetchMyAttributesAccess()
+  if (!canAccessAttributesTable(access, tableKey)) {
+    return { path: '/project-attributes' }
+  }
+  return true
 })
 
 export default router

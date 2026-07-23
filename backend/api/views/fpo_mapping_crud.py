@@ -11,6 +11,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import FpoMapping
+from api.permissions.attributes_access import require_attributes_access
 from api.views.fpo_mapping import ALL_FIELDS
 
 WRITABLE_FIELDS = [key for key, _label in ALL_FIELDS]
@@ -31,6 +32,7 @@ def _is_new_record(record_id) -> bool:
 
 
 @api_view(["POST"])
+@require_attributes_access("fpo_mapping")
 def save_fpo_mapping(request):
     """
     Upsert FPO mapping rows from Handsontable.
@@ -98,6 +100,7 @@ def save_fpo_mapping(request):
 
 
 @api_view(["DELETE"])
+@require_attributes_access("fpo_mapping")
 def delete_fpo_mapping(request):
     """Hard-delete FPO mapping rows by primary key ids."""
     removed_ids = request.data.get("removedIds")

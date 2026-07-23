@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import GscSiteMapping
+from api.permissions.attributes_access import require_attributes_access
 
 ALL_FIELDS = [
     ("region", "Region"),
@@ -26,6 +27,7 @@ def _serialize_row(item: GscSiteMapping) -> dict:
 
 
 @api_view(["GET"])
+@require_attributes_access("gsc_site_mapping")
 def list_gsc_site_mapping(_request):
     rows = [_serialize_row(item) for item in GscSiteMapping.objects.all().order_by("id")]
     return Response(

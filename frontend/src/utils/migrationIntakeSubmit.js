@@ -328,7 +328,7 @@ export const previewSections = (preview) => [
 
       { label: 'Function', value: preview.function },
 
-      { label: 'Product', value: preview.products.join(', ') },
+      { label: 'Product', value: preview.products[0] || '—' },
 
       { label: 'Proposed scope', value: preview.proposedScope, multiline: true }
 

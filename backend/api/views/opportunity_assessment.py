@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+from django.db.models import Q
 from django.http import FileResponse
 
 from api.models import FpoMapping, MigrationIntakeSubmission, OpportunityAssessment, ProductOwnership
@@ -38,6 +39,8 @@ OA_FIELD_LABELS = {
     "unit_of_measure": "Unit of measure",
     "volume_monthly": "Volume Monthly",
     "task_time_per_unit_min": "Task time per unit (min)",
+    "area": "Area",
+    "gsc_site": "GSC Site",
     "task_found_in_service_catalog": "Task found in the corresponding Service Catalogue (Y/N)",
     "migratable_to_gsc": "Migratable to GSC as per service catalogue (Y/N)",
     "fte_calculation": "FTE Calculation",
@@ -58,54 +61,6 @@ ALL_FIELDS = _all_fields()
 WRITABLE_FIELDS = [key for key, _label in ALL_FIELDS if key != "migration_request_id"]
 CASCADE_FIELD_KEYS = {"l1", "l2", "l3", "l4"}
 
-# Intake products are granular; Product Ownership uses aggregate bundles.
-OWNERSHIP_PRODUCT_KEYWORDS = {
-    "Customs, Air, LCL, DCS, CI": [
-        "customs",
-        "air",
-        "lcl",
-        "dcs",
-        " ci",
-        "ci ",
-        "e-commerce",
-        "ecommerce",
-    ],
-    "Ocean, Landside, CEM, Sales": [
-        "ocean",
-        "landside",
-        "l&s",
-        "l and s",
-        "inland",
-        "intermodal",
-        "booking",
-        "fcl",
-        "first mile",
-        "last mile",
-        "middle mile",
-        "freight",
-        "atr",
-        "otc",
-        "ptp",
-        "cem",
-        "sales",
-    ],
-    "SCM/LL, MGF, MEC, MCL, MPL, Cold Chain": [
-        "scm",
-        "lead logistics",
-        "cold chain",
-        "warehouse",
-        "project logistics",
-        "maersk flow",
-        "neonav",
-        "supply chain",
-        "ll",
-        "mgf",
-        "mec",
-        "mcl",
-        "mpl",
-    ],
-}
-
 
 def _normalize_value(value) -> str:
     if value is None:
@@ -113,21 +68,10 @@ def _normalize_value(value) -> str:
     return str(value).strip()
 
 
-def _match_ownership_bundle(intake_product: str) -> str | None:
-    text = (intake_product or "").strip().lower()
-    if not text:
-        return None
-    for bundle, keywords in OWNERSHIP_PRODUCT_KEYWORDS.items():
-        if text in bundle.lower():
-            return bundle
-        if any(keyword in text for keyword in keywords):
-            return bundle
-    return None
-
-
 def _build_setup_context(project: MigrationIntakeSubmission) -> dict:
     """Prefill defaults for OA row generation from intake + Product Ownership."""
     products = [str(p).strip() for p in (project.products or []) if str(p).strip()]
+    areas = [str(a).strip() for a in (project.areas or []) if str(a).strip()]
     if project.location_strategy_custom:
         locations = [
             str(item).strip()
@@ -142,28 +86,25 @@ def _build_setup_context(project: MigrationIntakeSubmission) -> dict:
         ]
 
     region = (project.region or "").strip()
-    matched_bundles: list[str] = []
-    for product in products:
-        bundle = _match_ownership_bundle(product)
-        if bundle and bundle not in matched_bundles:
-            matched_bundles.append(bundle)
-
     ownership_qs = ProductOwnership.objects.filter(region=region)
-    if matched_bundles:
-        ownership_qs = ownership_qs.filter(product__in=matched_bundles)
+    if areas:
+        ownership_qs = ownership_qs.filter(Q(area__in=areas) | Q(area=""))
 
     owner_options: list[str] = []
     matched_rows: list[dict] = []
+    matched_areas: list[str] = []
     for item in ownership_qs.order_by("id"):
         manager = (item.migration_manager or "").strip()
+        area = (item.area or "").strip()
         matched_rows.append(
             {
-                "product": item.product,
                 "region": item.region,
-                "manager": item.manager,
+                "area": area,
                 "migration_manager": manager,
             }
         )
+        if area and area not in matched_areas:
+            matched_areas.append(area)
         if manager and manager not in owner_options:
             owner_options.append(manager)
 
@@ -171,13 +112,14 @@ def _build_setup_context(project: MigrationIntakeSubmission) -> dict:
         "migration_request_id": project.migration_request_id,
         "project_name": project.project_name,
         "region": region,
+        "areas": areas,
         "products": products,
         "products_display": ", ".join(products),
         "location_default": ", ".join(locations),
         "location_options": locations,
         "owner_default": owner_options[0] if owner_options else "",
         "owner_options": owner_options,
-        "matched_ownership_products": matched_bundles,
+        "matched_ownership_areas": matched_areas,
         "matched_ownership_rows": matched_rows,
     }
 
