@@ -1,0 +1,102 @@
+import {
+  t
+} from "./chunk-RU35FA3K.js";
+import {
+  ifDefined
+} from "./chunk-N5UCH72U.js";
+import {
+  o,
+  p
+} from "./chunk-RAGJIJAT.js";
+import {
+  classMap,
+  i,
+  property,
+  query
+} from "./chunk-TZBJS2LN.js";
+import {
+  css,
+  html,
+  unsafeCSS
+} from "./chunk-3OXU6R3A.js";
+
+// node_modules/@maersk-global/mds-components-core-list-item/index.js
+var h = Object.defineProperty;
+var f = Object.getOwnPropertyDescriptor;
+var e = (n, o2, l, s) => {
+  for (var r = s > 1 ? void 0 : s ? f(o2, l) : o2, d = n.length - 1, p2; d >= 0; d--) (p2 = n[d]) && (r = (s ? p2(o2, l, r) : p2(r)) || r);
+  return s && r && h(o2, l, r), r;
+};
+var u = css`:host{flex-grow:1;overflow-x:hidden;display:flex;align-items:flex-start}:host([type=checkbox]){display:block!important}:host([orientation=vertical]){flex-grow:0}:host([orientation=vertical]) mc-button.mc-list-item::part(trailing-icon){margin-left:auto}:host(:hover),:host([focused][type=button]),:host([selected][type=button]){background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color)}::slotted([slot=actions]){display:flex;flex-direction:row}::slotted(a){color:var(--mds_brand_appearance_neutral_default_text-color)!important;pointer-events:auto;touch-action:auto}:host([fit=small]) ::slotted([slot=actions]){padding:4px 4px 0 8px}:host([fit=small]):host([icon]) ::slotted(a){padding-left:calc(11px + 20px + 6px);margin-left:calc((11px + 20px + 6px)*-1)}:host([fit=small]):host([sublabel]) ::slotted(a){padding-bottom:20px;margin-bottom:-20px}:host([fit=medium]) ::slotted([slot=actions]){padding:6px 6px 0 12px}:host([fit=medium]):host([icon]) ::slotted(a){padding-left:calc(15px + 24px + 6px);margin-left:calc((15px + 24px + 6px)*-1)}:host([fit=medium]):host([sublabel]) ::slotted(a){padding-bottom:24px;margin-bottom:-24px}:host([fit=large]) ::slotted([slot=actions]){padding:8px 8px 0 16px}:host([fit=large]):host([icon]) ::slotted(a){padding-left:calc(23px + 24px + 6px);margin-left:calc((23px + 24px + 6px)*-1)}:host([fit=large]):host([sublabel]) ::slotted(a){padding-bottom:28px;margin-bottom:-28px}:host([orientation=horizontal]) ::slotted(a){padding-left:100vw!important;margin-left:-100vw!important}:host(mc-option) mc-button.mc-list-item.small.vertical.icon-leading::part(text-and-icon-labels){padding-right:16px}:host(mc-option) mc-button.mc-list-item.medium.vertical.icon-leading::part(text-and-icon-labels){padding-right:20px}:host(mc-option) mc-button.mc-list-item.large.vertical.icon-leading::part(text-and-icon-labels){padding-right:24px}:host([data-keyboard-nav]) mc-button.mc-list-item:not(.focused)::part(button):hover{background-color:transparent;color:inherit;box-shadow:none;outline:0}:host([data-keyboard-nav]) mc-button.mc-list-item:not(.focused):hover ::part(icon),:host([data-keyboard-nav]) mc-button.mc-list-item:not(.focused):hover::part(icon){fill:inherit}:host([data-keyboard-nav]) mc-button.mc-list-item:not(.focused):hover .sublabel{color:var(--mds_brand_appearance_neutral_weakest_text-color)}:host([data-keyboard-nav]) mc-checkbox.mc-list-item:not(.focused):hover::part(label-container){color:inherit;background-color:transparent}:host([data-keyboard-nav]) mc-checkbox.mc-list-item:not(.focused):hover::part(checkmark){border-color:var(--mds_brand_appearance_neutral_default_border-color)}:host([data-keyboard-nav]) mc-checkbox.mc-list-item:not(.focused).selected:hover::part(checkmark){border-color:var(--mds_brand_appearance_primary_default_border-color)}mc-button.mc-list-item{display:flex;flex-grow:1}mc-button.mc-list-item::part(text-and-icon){align-items:flex-start;text-align:left;pointer-events:none;touch-action:none}mc-button.mc-list-item::part(button){border:0;border-radius:0;transition:none}mc-button.mc-list-item::part(button):hover{color:var(--mds_brand_appearance_state_neutral_default_hover_on-background-color);background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color);box-shadow:none;outline:0}mc-button.mc-list-item::part(button):focus{box-shadow:none}mc-button.mc-list-item.selected::part(button){background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color)}mc-button.mc-list-item .sublabel{color:var(--mds_brand_appearance_neutral_weakest_text-color);text-align:left}mc-button.mc-list-item.focused::part(button){color:var(--mds_brand_appearance_state_neutral_default_hover_on-background-color);background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color);box-shadow:none;outline:0}mc-button.mc-list-item.focused::part(button):focus{color:var(--mds_brand_appearance_state_neutral_default_hover_on-background-color);background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color);box-shadow:none;outline:0}mc-button.mc-list-item.focused::part(button):focus-visible{color:var(--mds_brand_appearance_state_neutral_default_hover_on-background-color);background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color);box-shadow:none;outline:0}mc-button.mc-list-item.focused .sublabel{color:var(--mds_brand_appearance_neutral_weakest_text-color)}mc-button.mc-list-item.small .sublabel{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_x-small_mobile_font-size);line-height:var(--mds_brand_typography_text_x-small_mobile_line-height)}@media screen and (min-width:1025px){mc-button.mc-list-item.small .sublabel{font-size:var(--mds_brand_typography_text_x-small_desktop_font-size);line-height:var(--mds_brand_typography_text_x-small_desktop_line-height)}}mc-button.mc-list-item.small .sublabel{font-style:var(--mds_brand_typography_text_x-small_normal_font-style);font-weight:var(--mds_brand_typography_text_x-small_normal_font-weight)}mc-button.mc-list-item.small::part(button){padding:6px 8px}mc-button.mc-list-item.small::part(text-and-icon){gap:6px}mc-button.mc-list-item.small ::slotted(a){padding:6px 100vw 6px 8px;margin:-6px -100vw -6px -8px}mc-button.mc-list-item.medium .sublabel{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_x-small_mobile_font-size);line-height:var(--mds_brand_typography_text_x-small_mobile_line-height)}@media screen and (min-width:1025px){mc-button.mc-list-item.medium .sublabel{font-size:var(--mds_brand_typography_text_x-small_desktop_font-size);line-height:var(--mds_brand_typography_text_x-small_desktop_line-height)}}mc-button.mc-list-item.medium .sublabel{font-style:var(--mds_brand_typography_text_x-small_normal_font-style);font-weight:var(--mds_brand_typography_text_x-small_normal_font-weight)}mc-button.mc-list-item.medium::part(button){padding:8px 12px}mc-button.mc-list-item.medium::part(text-and-icon){gap:6px}mc-button.mc-list-item.medium ::slotted(a){padding:8px 100vw 8px 12px;margin:-8px -100vw -8px -12px}mc-button.mc-list-item.large .sublabel{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}@media screen and (min-width:1025px){mc-button.mc-list-item.large .sublabel{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}mc-button.mc-list-item.large .sublabel{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}mc-button.mc-list-item.large::part(button){padding:10px 16px}mc-button.mc-list-item.large::part(text-and-icon){gap:6px}mc-button.mc-list-item.large ::slotted(a){padding:10px 100vw 10px 16px;margin:-10px -100vw -10px -16px}mc-checkbox.mc-list-item:hover::part(label-container){color:var(--mds_brand_appearance_state_neutral_default_hover_on-background-color);background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color)}mc-checkbox.mc-list-item:hover::part(checkmark){box-shadow:none;transition:none;border-color:var(--mds_brand_appearance_state_neutral_default_hover_border-color)}mc-checkbox.mc-list-item.focused::part(label-container){color:var(--mds_brand_appearance_state_neutral_default_hover_on-background-color);background-color:var(--mds_brand_appearance_state_neutral_default_hover_background-color)}mc-checkbox.mc-list-item.focused::part(checkmark){box-shadow:none;transition:none;border-color:var(--mds_brand_appearance_state_neutral_default_hover_border-color)}mc-checkbox.mc-list-item.selected::part(checkmark),mc-checkbox.mc-list-item.selected:hover::part(checkmark){border-color:var(--mds_brand_appearance_state_primary_default_hover_border-color)}mc-checkbox.mc-list-item.small::part(label-container){padding:6px 8px}mc-checkbox.mc-list-item.medium::part(label-container){padding:8px 12px}mc-checkbox.mc-list-item.large::part(label-container){padding:10px 16px}`;
+var b = [i, unsafeCSS(u)];
+var t2 = class extends p(t) {
+  constructor() {
+    super(...arguments);
+    this.type = "button";
+    this.selected = false;
+    this.focused = false;
+    this.hiddencheckmark = false;
+    this.href = "";
+    this.ariarole = "listitem";
+    this.orientation = "vertical";
+    this.visible = true;
+    this.value = void 0;
+  }
+  getCssClass() {
+    if (this.hasLeadingIcon()) return "icon-leading";
+    if (this.hasTrailingIcon()) return "icon-trailing";
+  }
+  getJustifyItems() {
+    return this.orientation === "horizontal" || this.hiddenlabel ? "center" : this.justifyitems || "left";
+  }
+  focus(l) {
+    var _a;
+    (_a = this.mcButton) == null ? void 0 : _a.focus(l);
+  }
+  blur() {
+    var _a;
+    (_a = this.mcButton) == null ? void 0 : _a.blur();
+  }
+};
+e([query("mc-button")], t2.prototype, "mcButton", 2), e([property({ type: String, reflect: true })], t2.prototype, "type", 2), e([property({ type: Boolean, reflect: true })], t2.prototype, "selected", 2), e([property({ type: Boolean, reflect: true })], t2.prototype, "focused", 2), e([property({ type: String })], t2.prototype, "justifyitems", 2), e([property({ type: Boolean })], t2.prototype, "hiddencheckmark", 2), e([property({ type: String })], t2.prototype, "href", 2), e([property({ type: String })], t2.prototype, "target", 2), e([property({ type: String })], t2.prototype, "ariarole", 2), e([property({ type: String, attribute: true, reflect: true })], t2.prototype, "orientation", 2), e([property({ type: Number })], t2.prototype, "tabindex", 2), e([property({ type: Boolean, reflect: true })], t2.prototype, "visible", 2), e([property({ type: String, reflect: true })], t2.prototype, "value", 2);
+var m = class extends t2 {
+  static get styles() {
+    return [super.styles, b];
+  }
+  render() {
+    if (this.visible) {
+      let o2 = { [`${this.fit}`]: true, selected: this.selected, focused: this.focused, vertical: this.orientation === "vertical", "icon-leading": this.hasLeadingIcon(), [`${o(this.classList, ["hover", "focus"])}`]: true };
+      return this.type && this.type === "checkbox" ? html`<mc-checkbox class="mc-list-item mc-checkbox ${classMap(o2)}" tabindex="${ifDefined(this.tabindex)}" ?disabled="${this.disabled}" .fit="${this.fit}" .ariarole="${this.ariarole}" name="test" data-cy="${ifDefined(this.value ? this.value.toString() : void 0)}" value="${ifDefined(this.value ? this.value.toString() : void 0)}" ?checked="${this.selected}" @blur="${() => this.focused = false}" @focus="${() => this.focused = true}"><slot slot="label">${this.label}</slot></mc-checkbox>` : html`<mc-button class="mc-list-item mc-button mc-text-and-icon ${classMap(o2)}" exportparts="button, text-and-icon, icon" appearance="neutral" data-cy="${ifDefined(this.value ? this.value.toString() : void 0)}" ?disabled="${this.disabled}" .fit="${this.fit}" .href="${this.href}" .target="${this.target}" .justifyitems="${this.getJustifyItems()}" ?hiddenlabel="${this.hiddenlabel}" .tabindex="${this.tabindex}" .ariarole="${this.ariarole}" ?disabledlabelslot="${this.disabledlabelslot}" ?disablediconslot="${this.disablediconslot}" .label="${this.label}" .cssclass="${this.getCssClass() ?? ""}" @blur="${this.onBlur}" @focus="${this.onFocus}" variant="plain" width="full-width">${this.disablediconslot ? null : html`<slot slot="icon" name="icon">${this.renderIcon(this.icon)}</slot>`} ${this.disabledlabelslot ? null : html`${this.renderText()}`} ${this.disablediconslot ? null : html`<slot slot="trailingicon" name="trailingicon">${this.renderIcon(this.trailingicon)}</slot>`}<slot slot="badge" name="badge"></slot></mc-button><slot name="actions"></slot>`;
+    }
+    return html``;
+  }
+  async updated(o2) {
+    super.updated(o2), await this.updateComplete, (o2.has("ariarole") || o2.has("selected")) && (this.ariarole === "option" && this.type === "button" && !this.hiddencheckmark && (this.trailingicon = this.selected ? "check" : "empty"), this.ariarole === "option" && this.type === "checkbox" && this.mcCheckbox && (this.mcCheckbox.checked = this.selected));
+  }
+  focus(o2) {
+    var _a;
+    super.focus(o2), (_a = this.mcCheckbox) == null ? void 0 : _a.focus(o2);
+  }
+  blur() {
+    var _a;
+    (_a = this.mcCheckbox) == null ? void 0 : _a.blur();
+  }
+  onFocus() {
+    this.focused = true, this.dispatchEvent(new CustomEvent("onfocus", { detail: this, bubbles: true }));
+  }
+  onBlur() {
+    this.focused = false, this.dispatchEvent(new CustomEvent("onblur", { detail: this, bubbles: true }));
+  }
+};
+e([query("mc-checkbox")], m.prototype, "mcCheckbox", 2);
+customElements.get("mc-list-item") || customElements.define("mc-list-item", m);
+
+// node_modules/@maersk-global/mds-components-core-option/index.js
+var e2 = class extends m {
+};
+customElements.get("mc-option") || customElements.define("mc-option", e2);
+
+export {
+  e2 as e
+};
+//# sourceMappingURL=chunk-DVOKCQ3D.js.map

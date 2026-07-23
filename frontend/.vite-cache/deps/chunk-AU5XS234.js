@@ -1,0 +1,227 @@
+import {
+  ifDefined
+} from "./chunk-N5UCH72U.js";
+import {
+  T,
+  e3 as e,
+  m
+} from "./chunk-RAGJIJAT.js";
+import {
+  classMap,
+  i,
+  property,
+  query,
+  queryAssignedElements,
+  state
+} from "./chunk-TZBJS2LN.js";
+import {
+  LitElement,
+  css,
+  html,
+  unsafeCSS
+} from "./chunk-3OXU6R3A.js";
+
+// node_modules/@maersk-global/mds-components-core-pagination/index.js
+var v = Object.defineProperty;
+var x = Object.getOwnPropertyDescriptor;
+var n = (g, m2, t, e2) => {
+  for (var s = e2 > 1 ? void 0 : e2 ? x(m2, t) : m2, a = g.length - 1, l; a >= 0; a--) (l = g[a]) && (s = (e2 ? l(m2, t, s) : l(s)) || s);
+  return e2 && s && v(m2, t, s), s;
+};
+var h = css`:host{display:block;width:100%}.mc-pagination,.mc-pagination .page-selector{display:flex;align-items:center}.mc-pagination mc-button[selected]::part(button){position:relative}.mc-pagination mc-button[selected]::part(text-and-icon){font-weight:500}.mc-pagination mc-button[selected]::part(button)::after{content:"";position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);height:3px;background-color:var(--mds_brand_appearance_static_brand)}.mc-pagination .page mc-button::part(button){padding-left:4px;padding-right:4px;justify-content:center}.mc-pagination nav.center{margin:0 auto}.mc-pagination nav.end{margin-left:auto}.mc-pagination nav ul{display:flex;gap:4px;list-style:none;margin:0;padding:0;text-indent:0;align-items:center}.mc-pagination .page-selector .input::part(input){text-align:center}.mc-pagination .ellipsis span{display:flex;flex-direction:column;justify-content:flex-end;user-select:none}.mc-pagination.small{gap:16px}.mc-pagination.small mc-button[selected]::part(button)::after{width:16px}.mc-pagination.small .page mc-button::part(button){min-width:32px}.mc-pagination.small .ellipsis{height:32px;padding:6px 4px;font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.small .ellipsis{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}.mc-pagination.small .ellipsis{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}.mc-pagination.small mc-select::part(field){width:72px}.mc-pagination.small .page-selector{padding-left:2px;padding-right:2px;gap:6px}.mc-pagination.small .page-selector mc-select{width:60px}.mc-pagination.small .page-selector mc-input{width:44px}.mc-pagination.small .pages-text{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.small .pages-text{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}.mc-pagination.small .pages-text{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}.mc-pagination.small .pagestatus{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.small .pagestatus{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}.mc-pagination.small .pagestatus{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}.mc-pagination.medium{gap:20px}.mc-pagination.medium mc-button[selected]::part(button)::after{width:20px}.mc-pagination.medium .page mc-button::part(button){min-width:40px}.mc-pagination.medium .ellipsis{height:40px;padding:8px 4px;font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.medium .ellipsis{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-pagination.medium .ellipsis{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-pagination.medium mc-select::part(field){width:88px}.mc-pagination.medium .page-selector{padding-left:4px;padding-right:4px;gap:8px}.mc-pagination.medium .page-selector mc-select{width:72px}.mc-pagination.medium .page-selector mc-input{width:56px}.mc-pagination.medium .pages-text{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.medium .pages-text{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-pagination.medium .pages-text{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-pagination.medium .pagestatus{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.medium .pagestatus{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-pagination.medium .pagestatus{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-pagination.large{gap:24px}.mc-pagination.large mc-button[selected]::part(button)::after{width:24px}.mc-pagination.large .page mc-button::part(button){min-width:48px}.mc-pagination.large .ellipsis{height:48px;padding:12px 4px;font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.large .ellipsis{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-pagination.large .ellipsis{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-pagination.large mc-select::part(field){width:96px}.mc-pagination.large .page-selector{padding-left:4px;padding-right:4px;gap:8px}.mc-pagination.large .page-selector mc-select{width:84px}.mc-pagination.large .page-selector mc-input{width:64px}.mc-pagination.large .pages-text{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.large .pages-text{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-pagination.large .pages-text{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-pagination.large .pagestatus{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-pagination.large .pagestatus{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-pagination.large .pagestatus{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-pagination .pagestatus{color:var(--mds_brand_appearance_neutral_weakest_text-color);white-space:nowrap}@media screen and (max-width:700px){.mc-pagination{flex-direction:column;align-items:stretch}.mc-pagination nav.center,.mc-pagination nav.end{margin:0}.mc-pagination .ellipsis,.mc-pagination ul li.page:not(.active){display:none}}::slotted(a){display:none!important}`;
+var c = [i, unsafeCSS(h)];
+var _ = { en: { ...e.en, previous: "Previous", next: "Next", first: "First", last: "Last", ariaEllipsis: "Ellipsis", ariaCurrentPage: "Current Page, Page", ariaPage: "Go to Page", ariaSelectLabel: "Select page number", ariaInputLabel: "Input page number" }, de: { ...e.de, previous: "Zurück", next: "Weiter", first: "Erste", last: "Letzte", ariaEllipsis: "Auslassungszeichen", ariaCurrentPage: "Aktuelle Seite, Seite", ariaPage: "Gehe zu Seite", ariaSelectLabel: "Seitennummer auswählen", ariaInputLabel: "Seitennummer eingeben" }, es: { ...e.es, previous: "Anterior", next: "Siguiente", first: "Primero", last: "Último", ariaEllipsis: "Elipsis", ariaCurrentPage: "Página actual, página", ariaPage: "Ir a la página", ariaSelectLabel: "Seleccionar número de página", ariaInputLabel: "Ingresar número de página" }, fr: { ...e.fr, previous: "Précédent", next: "Suivant", first: "Premier", last: "Dernier", ariaEllipsis: "Points de suspension", ariaCurrentPage: "Page actuelle, page", ariaPage: "Aller à la page", ariaSelectLabel: "Sélectionner le numéro de page", ariaInputLabel: "Entrer le numéro de page" }, it: { ...e.it, previous: "Precedente", next: "Successivo", first: "Primo", last: "Ultimo", ariaEllipsis: "Ellissi", ariaCurrentPage: "Pagina corrente, pagina", ariaPage: "Vai alla pagina", ariaSelectLabel: "Seleziona il numero di pagina", ariaInputLabel: "Inserisci il numero di pagina" }, pt: { ...e.pt, previous: "Anterior", next: "Próximo", first: "Primeiro", last: "Último", ariaEllipsis: "Reticências", ariaCurrentPage: "Página atual, página", ariaPage: "Ir para a página", ariaSelectLabel: "Selecionar número de página", ariaInputLabel: "Inserir número de página" }, tr: { ...e.tr, previous: "Önceki", next: "Sonraki", first: "İlk", last: "Son", ariaEllipsis: "Üç nokta", ariaCurrentPage: "Geçerli Sayfa, Sayfa", ariaPage: "Sayfaya git", ariaSelectLabel: "Sayfa numarasını seçin", ariaInputLabel: "Sayfa numarasını girin" }, ru: { ...e.ru, previous: "Предыдущая", next: "Следующая", first: "Первая", last: "Последняя", ariaEllipsis: "Многоточие", ariaCurrentPage: "Текущая страница, страница", ariaPage: "Перейти на страницу", ariaSelectLabel: "Выбрать номер страницы", ariaInputLabel: "Ввести номер страницы" }, zh: { ...e.zh, previous: "上一页", next: "下一页", first: "第一页", last: "最后一页", ariaEllipsis: "省略号", ariaCurrentPage: "当前页，页码", ariaPage: "前往页码", ariaSelectLabel: "选择页码", ariaInputLabel: "输入页码" }, "zh-TW": { ...e["zh-TW"], previous: "上一頁", next: "下一頁", first: "第一頁", last: "最後一頁", ariaEllipsis: "省略號", ariaCurrentPage: "當前頁，頁碼", ariaPage: "前往頁碼", ariaSelectLabel: "選擇頁碼", ariaInputLabel: "輸入頁碼" }, ko: { ...e.ko, previous: "이전", next: "다음", first: "처음", last: "마지막", ariaEllipsis: "줄임표", ariaCurrentPage: "현재 페이지, 페이지", ariaPage: "페이지로 이동", ariaSelectLabel: "페이지 번호 선택", ariaInputLabel: "페이지 번호 입력" }, ja: { ...e.ja, previous: "前へ", next: "次へ", first: "最初", last: "最後", ariaEllipsis: "省略記号", ariaCurrentPage: "現在のページ、ページ", ariaPage: "ページへ移動", ariaSelectLabel: "ページ番号を選択", ariaInputLabel: "ページ番号を入力" } };
+var i2 = class extends T(LitElement) {
+  constructor() {
+    super(...arguments);
+    this._currentPage = 1;
+    this._totalpages = -1;
+    this._totalrecords = 0;
+    this._linkElements = [];
+    this.hasLinkSlot = false;
+    this.variant = "button";
+    this.arialabel = "Navigate pages";
+    this.visiblepages = 10;
+    this.fit = "medium";
+    this.disabledtruncation = false;
+    this.hiddenlabels = false;
+    this.showlabels = false;
+    this.showfirstandlastpage = false;
+    this.nextlabel = "Next";
+    this.previouslabel = "Previous";
+    this.pagesize = 10;
+    this.showpagesize = false;
+    this.pagesizeoptions = [10, 20, 50, 100];
+    this.showpagestatus = false;
+  }
+  set totalrecords(t) {
+    isNaN(t) || (this._totalrecords = Math.ceil(t) || 0);
+  }
+  get totalrecords() {
+    return this._totalrecords;
+  }
+  set totalpages(t) {
+    let e2 = this._totalpages;
+    if (isNaN(t)) {
+      console.warn("totalpages must be a number.");
+      return;
+    }
+    this._totalpages = Math.ceil(t) || 0, this.requestUpdate("totalpages", e2);
+  }
+  get totalpages() {
+    return this.totalrecords > 0 && this.pagesize > 0 ? Math.ceil(this.totalrecords / this.pagesize) : this._totalpages;
+  }
+  get currentpage() {
+    return this._currentPage;
+  }
+  set currentpage(t) {
+    let e2 = this._currentPage;
+    if (isNaN(t)) {
+      console.warn("currentpage must be a number.");
+      return;
+    }
+    this._currentPage = Math.ceil(t) || 1, this.requestUpdate("currentpage", e2), this.dispatchEvent(new CustomEvent("pagechange", { detail: this.currentpage }));
+  }
+  get computedLabels() {
+    return { ...m({ translations: _, deprecatedPropsMap: { nextlabel: "next", previouslabel: "previous" }, component: this, labelsOverride: this.labels }) };
+  }
+  static get styles() {
+    return c;
+  }
+  render() {
+    let t = { [`${this.fit}`]: true };
+    return html`<div class="mc-pagination ${classMap(t)}" fit="${this.fit}">${this.showpagesize ? this.renderShowPageSize() : null} ${this.showpagestatus ? this.renderPageStatus() : null}<nav class="${this.showpagesize || this.showpagestatus ? "end" : "center"}" role="navigation" aria-label="${this.arialabel}" part="navigation"><ul>${this.showfirstandlastpage ? this.renderNavButton("first") : null} ${this.renderNavButton("prev")} ${this.variant === "button" ? this.renderNavList() : null} ${this.variant === "select" ? this.renderPageSelector() : null} ${this.variant === "input" ? this.renderInput() : null} ${this.renderNavButton("next")} ${this.showfirstandlastpage ? this.renderNavButton("last") : null}</ul></nav></div><slot @slotchange="${this.onLinkSlotChange}"></slot>`;
+  }
+  renderNavButton(t) {
+    let e2 = this.currentpage === 1 || this.totalpages < 1, s = this.currentpage === this.totalpages || this.totalpages < 1, a = "";
+    return t === "first" ? a = this.computedLabels.first : t === "prev" ? a = this.computedLabels.previous : t === "next" ? a = this.computedLabels.next : t === "last" && (a = this.computedLabels.last), html`<li><mc-button data-cy="${t}" ?disabled="${t === "first" || t === "prev" ? e2 : s}" ?hiddenlabel="${!this.showlabels || this.hiddenlabels}" label="${a}" @click="${() => this.handleNavButtonClick(t)}" appearance="neutral" variant="plain" fit="${this.fit}" icon="${ifDefined(t === "first" ? "chevron-left-to-line" : t === "prev" ? "chevron-left" : void 0)}" trailingicon="${ifDefined(t === "next" ? "chevron-right" : t === "last" ? "chevron-right-to-line" : void 0)}" id="${t === "first" ? "pagination-button-first" : t === "prev" ? "pagination-button-0" : t === "next" ? `pagination-button-${this.totalpages + 1}` : "pagination-button-last"}"></mc-button></li>`;
+  }
+  renderNavList() {
+    if ([this.totalpages < 1, this.visiblepages < 1, !this.totalpages].some(Boolean)) return [];
+    if (this.totalpages === 1) return this.buildPageButtons([1]);
+    if (this.visiblepages === 1) return this.buildPageButtons([this.currentpage]);
+    let e2 = this.calculateElipsisVisibilty((this.visiblepages - 1) / 2);
+    if (!e2.left && e2.right) {
+      let a = this.range(2, this.visiblepages - 2), l = a[a.length - 1];
+      return this.disabledtruncation ? [...this.buildPageButtons([a[0] - 1, ...a]), ...this.buildPageButtons([l + 1, l + 2])] : [...this.buildPageButtons([1, ...a]), this.buildEllipsis(), ...this.buildPageButtons([this.totalpages])];
+    }
+    if (e2.left && e2.right) {
+      let a = Math.floor(this.visiblepages / 2) - 1, l = this.range(this.currentpage - a + 1, this.currentpage + a - 1), d = l[0], u = l[l.length - 1];
+      return this.disabledtruncation ? [...this.buildPageButtons([d - 2, d - 1, ...l]), ...this.buildPageButtons([u + 1, u + 2])] : [...this.buildPageButtons([1]), this.buildEllipsis(), ...this.buildPageButtons(l), this.buildEllipsis(), ...this.buildPageButtons([this.totalpages])];
+    }
+    if (e2.left && !e2.right) {
+      let a = this.totalpages - (this.visiblepages - 3), l = this.range(a, this.totalpages - 1), d = l[0];
+      return this.disabledtruncation ? [...this.buildPageButtons([d - 2, d - 1]), ...this.buildPageButtons([...l, this.totalpages])] : [...this.buildPageButtons([1]), this.buildEllipsis(), ...this.buildPageButtons([...l, this.totalpages])];
+    }
+    let s = this.range(2, this.totalpages - 1);
+    return [...this.buildPageButtons([1, ...s, this.totalpages])];
+  }
+  calculateElipsisVisibilty(t) {
+    return this.totalpages > this.visiblepages ? { left: this.currentpage > this.visiblepages - t, right: this.currentpage < this.totalpages - t } : { left: false, right: false };
+  }
+  buildEllipsis() {
+    return html`<li class="ellipsis"><span role="img" aria-label="${this.computedLabels.ariaEllipsis}">...</span></li>`;
+  }
+  buildPageButtons(t) {
+    return t.map((e2) => this.buildPageButton(e2));
+  }
+  buildPageButton(t) {
+    let e2 = this.currentpage === t;
+    return html`<li class="page ${classMap({ active: e2 })}"><mc-button @click="${() => this.handlePageButtonClick(Number(t))}" .label="${t.toString()}" ariacurrent="${e2}" arialabel="${e2 ? `${this.computedLabels.ariaCurrentPage} ${t}` : `${this.computedLabels.ariaPage} ${t}`}" data-cy="page-button" fit="${this.fit}" id="pagination-button-${t}" appearance="neutral" variant="plain" ?selected="${e2}" disablediconslot>${this.hasLinkSlot && this._linkElements.length > 0 ? this._linkElements[t - 1] : null}</mc-button></li>`;
+  }
+  renderPageSelector() {
+    return html`<li class="page-selector"><mc-select .data="${this.pagesData}" .value="${this.currentpage.toString()}" @optionselected="${this.handleSelectChange}" fit="${this.fit}" hiddenlabel label="${this.computedLabels.ariaSelectLabel}" data-cy="page-select"></mc-select>${this.renderPageSelectorText()}</li>`;
+  }
+  renderInput() {
+    return html`<li class="page-selector"><mc-input .mask="${/^\d+$/}" .value="${this.currentpage.toString()}" @focus="${() => {
+      this.inputElement.select();
+    }}" @keydown="${this.handleInputChange}" autocomplete="off" class="input" fit="${this.fit}" hiddenlabel label="${this.computedLabels.ariaInputLabel}"></mc-input>${this.renderPageSelectorText()}</li>`;
+  }
+  renderPageSelectorText() {
+    let t = this.computedLabels.pageSelected.replace(/{{totalRecords}}/, this.totalpages.toString());
+    return html`<span class="pages-text">${t}</span>`;
+  }
+  renderShowPageSize() {
+    return html`<mc-select part="pagesize" fit="${this.fit}" labelposition="left" label="${this.computedLabels.pageSize}" .value="${this.pagesize.toString()}" .data="${this.rowsPerPageSelectData}" @optionselected="${this.handlePageSizeChange}" data-cy="page-size-select"></mc-select>`;
+  }
+  renderPageStatus() {
+    let t = (this.currentpage - 1) * this.pagesize + 1, e2 = this.currentpage * this.pagesize, s = Math.min(e2, this.totalrecords || e2), a = this.computedLabels.pageStatus.replace(/{{recordStart}}/, t.toString()).replace(/{{recordEnd}}/, s.toString()).replace(/{{totalRecords}}/, this.totalrecords.toString());
+    return html`<div class="pagestatus ${this.fit}" part="pagestatus">${a}</div>`;
+  }
+  firstUpdated() {
+    this.addEventListener("keydown", this.handleKeyDown), this.addEventListener("keyup", this.handleKeyUp);
+  }
+  disconnectedCallback() {
+    this.removeEventListener("keydown", this.handleKeyDown), this.removeEventListener("keyup", this.handleKeyDown), super.disconnectedCallback();
+  }
+  updated(t) {
+    var _a, _b;
+    t.has("currentFocusIndex") && ((_b = (_a = this.shadowRoot) == null ? void 0 : _a.querySelector(`mc-button#pagination-button-${this.currentFocusIndex}`)) == null ? void 0 : _b.focus());
+  }
+  handleNavButtonClick(t) {
+    this.isChangingPagePossible(t) && (this.currentpage = t === "first" ? 1 : t === "prev" ? this.currentpage - 1 : t === "next" ? this.currentpage + 1 : this.totalpages, this.currentFocusIndex = t === "first" ? 1 : t === "prev" ? 0 : t === "next" ? this.totalpages + 1 : this.totalpages);
+  }
+  isChangingPagePossible(t) {
+    let e2 = this.currentpage === 1, s = this.currentpage === this.totalpages;
+    switch (t) {
+      case "first":
+      case "prev":
+        return !e2;
+      case "next":
+      case "last":
+        return !s;
+      default:
+        return false;
+    }
+  }
+  handlePageButtonClick(t) {
+    this.currentFocusIndex = t, this.currentpage !== t && (this.currentpage = t);
+  }
+  handleSelectChange(t) {
+    let e2 = parseInt(t.detail.value, 10);
+    !isNaN(e2) && e2 !== this.currentpage && (this.currentpage = e2);
+  }
+  handleInputChange(t) {
+    if (t.code !== "Enter") return;
+    let e2 = parseInt(this.inputElement.value, 10);
+    !isNaN(e2) && e2 !== this.currentpage ? e2 >= 1 && e2 <= this.totalpages ? this.currentpage = e2 : this.currentpage = this.totalpages : this.currentpage = 1, this.inputElement.value = this.currentpage.toString();
+  }
+  handlePageSizeChange(t) {
+    let e2 = parseInt(t.detail.value, 10);
+    !isNaN(e2) && e2 !== this.pagesize && (this.pagesize = e2, this.dispatchEvent(new CustomEvent("pagesizechange", { detail: this.pagesize })));
+  }
+  handleKeyDown(t) {
+    (t.code === "Space" || t.code === "Enter") && t.preventDefault();
+  }
+  handleKeyUp(t) {
+    var _a;
+    if (t.code === "Space" || t.code === "Enter") {
+      let e2 = (_a = this.shadowRoot) == null ? void 0 : _a.querySelector(":focus");
+      e2 && e2.click();
+    }
+  }
+  range(t, e2) {
+    let s = [];
+    for (let a = t; a <= e2; a++) s.push(a);
+    return s;
+  }
+  onLinkSlotChange() {
+    this.linkSlotElements.length > 0 && (this.hasLinkSlot = this.linkSlotElements[0].nodeName.toLocaleLowerCase() === "a", this.hasLinkSlot && this._linkElements.length === 0 && (this._linkElements = this.linkSlotElements));
+  }
+  selectedData(t) {
+    return t.map((e2) => ({ label: e2.toString(), value: e2.toString() }));
+  }
+  get pagesData() {
+    return this.selectedData(this.range(1, this.totalpages));
+  }
+  get rowsPerPageSelectData() {
+    return this.selectedData(this.pagesizeoptions);
+  }
+};
+n([state()], i2.prototype, "currentFocusIndex", 2), n([state()], i2.prototype, "hasLinkSlot", 2), n([queryAssignedElements({ slot: "", flatten: true })], i2.prototype, "linkSlotElements", 2), n([query("mc-input")], i2.prototype, "inputElement", 2), n([property({ type: Object })], i2.prototype, "labels", 2), n([property({ type: String })], i2.prototype, "variant", 2), n([property({ type: String })], i2.prototype, "arialabel", 2), n([property({ type: Number })], i2.prototype, "visiblepages", 2), n([property({ type: String })], i2.prototype, "fit", 2), n([property({ type: Boolean })], i2.prototype, "disabledtruncation", 2), n([property({ type: Boolean })], i2.prototype, "hiddenlabels", 2), n([property({ type: Boolean })], i2.prototype, "showlabels", 2), n([property({ type: Boolean })], i2.prototype, "showfirstandlastpage", 2), n([property({ type: String })], i2.prototype, "nextlabel", 2), n([property({ type: String })], i2.prototype, "previouslabel", 2), n([property({ type: Number })], i2.prototype, "pagesize", 2), n([property({ type: Boolean })], i2.prototype, "showpagesize", 2), n([property({ type: Array })], i2.prototype, "pagesizeoptions", 2), n([property({ type: Boolean })], i2.prototype, "showpagestatus", 2), n([property({ type: Number })], i2.prototype, "totalrecords", 1), n([property({ type: Number })], i2.prototype, "totalpages", 1), n([property({ type: Number, reflect: true })], i2.prototype, "currentpage", 1);
+customElements.get("mc-pagination") || customElements.define("mc-pagination", i2);
+
+export {
+  i2 as i
+};
+//# sourceMappingURL=chunk-AU5XS234.js.map

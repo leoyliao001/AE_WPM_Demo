@@ -1,0 +1,196 @@
+{
+  "hash": "207ac9c9",
+  "configHash": "dfd58bb2",
+  "lockfileHash": "2a28a1ff",
+  "browserHash": "9c86722d",
+  "optimized": {
+    "@maersk-global/mds-components-core-icon": {
+      "src": "../../node_modules/@maersk-global/mds-components-core-icon/index.js",
+      "file": "@maersk-global_mds-components-core-icon.js",
+      "fileHash": "5c7733b2",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-button": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-button/index.js",
+      "file": "@maersk-global_mds-components-core_mc-button.js",
+      "fileHash": "1ee72dfa",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-card": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-card/index.js",
+      "file": "@maersk-global_mds-components-core_mc-card.js",
+      "fileHash": "1f5ffa12",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-checkbox": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-checkbox/index.js",
+      "file": "@maersk-global_mds-components-core_mc-checkbox.js",
+      "fileHash": "9dcbef91",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-checkbox-group": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-checkbox-group/index.js",
+      "file": "@maersk-global_mds-components-core_mc-checkbox-group.js",
+      "fileHash": "b5c0d192",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-dialog": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-dialog/index.js",
+      "file": "@maersk-global_mds-components-core_mc-dialog.js",
+      "fileHash": "ebf8f299",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-icon": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-icon/index.js",
+      "file": "@maersk-global_mds-components-core_mc-icon.js",
+      "fileHash": "9c322373",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-input": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-input/index.js",
+      "file": "@maersk-global_mds-components-core_mc-input.js",
+      "fileHash": "8bc6add3",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-loading-indicator": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-loading-indicator/index.js",
+      "file": "@maersk-global_mds-components-core_mc-loading-indicator.js",
+      "fileHash": "922a392e",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-notification": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-notification/index.js",
+      "file": "@maersk-global_mds-components-core_mc-notification.js",
+      "fileHash": "aaab05b4",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-option": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-option/index.js",
+      "file": "@maersk-global_mds-components-core_mc-option.js",
+      "fileHash": "e028bf99",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-pagination": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-pagination/index.js",
+      "file": "@maersk-global_mds-components-core_mc-pagination.js",
+      "fileHash": "de442a16",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-select": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-select/index.js",
+      "file": "@maersk-global_mds-components-core_mc-select.js",
+      "fileHash": "01120202",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-table": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-table/index.js",
+      "file": "@maersk-global_mds-components-core_mc-table.js",
+      "fileHash": "5d28cceb",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-tag": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-tag/index.js",
+      "file": "@maersk-global_mds-components-core_mc-tag.js",
+      "fileHash": "c1658211",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-textarea": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-textarea/index.js",
+      "file": "@maersk-global_mds-components-core_mc-textarea.js",
+      "fileHash": "a0a44b19",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-components-core/mc-top-bar": {
+      "src": "../../node_modules/@maersk-global/mds-components-core/mc-top-bar/index.js",
+      "file": "@maersk-global_mds-components-core_mc-top-bar.js",
+      "fileHash": "c6fedae5",
+      "needsInterop": false
+    },
+    "@maersk-global/mds-config": {
+      "src": "../../node_modules/@maersk-global/mds-config/index.js",
+      "file": "@maersk-global_mds-config.js",
+      "fileHash": "935a97fe",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "653909e5",
+      "needsInterop": false
+    },
+    "handsontable": {
+      "src": "../../node_modules/handsontable/index.mjs",
+      "file": "handsontable.js",
+      "fileHash": "843941d4",
+      "needsInterop": false
+    },
+    "vue": {
+      "src": "../../node_modules/vue/dist/vue.runtime.esm-bundler.js",
+      "file": "vue.js",
+      "fileHash": "2e8b12fe",
+      "needsInterop": false
+    },
+    "vue-router": {
+      "src": "../../node_modules/vue-router/dist/vue-router.mjs",
+      "file": "vue-router.js",
+      "fileHash": "db2572cd",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-V2NUS6ME": {
+      "file": "chunk-V2NUS6ME.js"
+    },
+    "chunk-AU5XS234": {
+      "file": "chunk-AU5XS234.js"
+    },
+    "chunk-G3IT3V66": {
+      "file": "chunk-G3IT3V66.js"
+    },
+    "chunk-DVOKCQ3D": {
+      "file": "chunk-DVOKCQ3D.js"
+    },
+    "chunk-4NMOIP75": {
+      "file": "chunk-4NMOIP75.js"
+    },
+    "chunk-PWXMWD6L": {
+      "file": "chunk-PWXMWD6L.js"
+    },
+    "chunk-ELVOGCWC": {
+      "file": "chunk-ELVOGCWC.js"
+    },
+    "chunk-BTR5GQTV": {
+      "file": "chunk-BTR5GQTV.js"
+    },
+    "chunk-RU35FA3K": {
+      "file": "chunk-RU35FA3K.js"
+    },
+    "chunk-BZYDNCBH": {
+      "file": "chunk-BZYDNCBH.js"
+    },
+    "chunk-N5UCH72U": {
+      "file": "chunk-N5UCH72U.js"
+    },
+    "chunk-QJCHO7A2": {
+      "file": "chunk-QJCHO7A2.js"
+    },
+    "chunk-K3ZZTKUZ": {
+      "file": "chunk-K3ZZTKUZ.js"
+    },
+    "chunk-QFRRPCYS": {
+      "file": "chunk-QFRRPCYS.js"
+    },
+    "chunk-RAGJIJAT": {
+      "file": "chunk-RAGJIJAT.js"
+    },
+    "chunk-TZBJS2LN": {
+      "file": "chunk-TZBJS2LN.js"
+    },
+    "chunk-3OXU6R3A": {
+      "file": "chunk-3OXU6R3A.js"
+    },
+    "chunk-5FUTL2UF": {
+      "file": "chunk-5FUTL2UF.js"
+    }
+  }
+}

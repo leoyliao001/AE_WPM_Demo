@@ -21,6 +21,20 @@
         </router-link>
       </nav>
     </mc-top-bar>
+    <div class="app-user-panel" aria-live="polite">
+      <span
+        v-if="azureAuthState.status === 'loading' || azureAuthState.status === 'redirecting'"
+        class="user-status"
+      >Signing in...</span>
+      <div
+        v-else-if="azureAuthState.user"
+        class="user-badge"
+        :title="azureAuthState.user.name || azureAuthState.user.username"
+      >
+        <span class="user-badge__name">{{ azureAuthState.user.username || azureAuthState.user.name }}</span>
+      </div>
+      <span v-else-if="azureAuthState.error" class="user-status user-status--error">SSO unavailable</span>
+    </div>
     <div class="app-header-divider" aria-hidden="true" />
   </header>
 </template>
@@ -29,6 +43,7 @@
 import { useRoute } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-top-bar'
 import '@maersk-global/mds-components-core/mc-icon'
+import { azureAuthState } from '../auth/azureAuth.js'
 
 const route = useRoute()
 
@@ -84,7 +99,43 @@ const isActive = (path) => {
   flex-wrap: wrap;
   gap: 4px 16px;
   height: 100%;
-  padding: 0 8px;
+  padding: 0 220px 0 8px;
+}
+
+.app-user-panel {
+  align-items: center;
+  display: flex;
+  inset: 0 20px auto auto;
+  min-height: 100%;
+  pointer-events: none;
+  position: absolute;
+}
+
+.user-badge,
+.user-status {
+  align-items: center;
+  background: #eef6fb;
+  border: 1px solid #c6d9e6;
+  border-radius: 999px;
+  color: #174a68;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 8px;
+  max-width: 280px;
+  padding: 6px 12px;
+}
+
+.user-badge__name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-status--error {
+  background: #fff4e8;
+  border-color: #f0c48b;
+  color: #8a4f00;
 }
 
 .nav-link {
@@ -115,6 +166,7 @@ const isActive = (path) => {
 @media (max-width: 900px) {
   .app-nav {
     gap: 4px 10px;
+    padding-right: 150px;
   }
 
   .nav-link span {
@@ -123,6 +175,29 @@ const isActive = (path) => {
 
   .nav-link {
     padding: 8px;
+  }
+
+  .user-badge,
+  .user-status {
+    max-width: 140px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding-right: 8px;
+  }
+
+  .app-nav {
+    padding-right: 96px;
+  }
+
+  .user-badge,
+  .user-status {
+    font-size: 11px;
+    max-width: 92px;
   }
 }
 </style>
