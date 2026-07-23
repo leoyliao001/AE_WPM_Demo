@@ -5,8 +5,10 @@ import http from 'node:http'
 
 const localAgent = new http.Agent({ keepAlive: true })
 
-export default defineConfig({
-  base: './',
+export default defineConfig(({ command }) => ({
+  // Absolute base when served via Apache HTTPS proxy; relative for production build
+  base: command === 'build' ? './' : '/',
+  cacheDir: resolve(__dirname, '.vite-cache'),
   resolve: {
     alias: {
       '@floating-ui/dom': resolve(__dirname, 'node_modules/@floating-ui/dom/dist/floating-ui.dom.esm.js'),
@@ -25,13 +27,20 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '127.0.0.1',
     port: 3001,
+    strictPort: true,
+    // Browser opens https://<registered-host>/ (Apache → here). HMR uses same host on 443/WSS.
+    hmr: {
+      protocol: 'wss',
+      clientPort: 443
+    },
     fs: {
       allow: ['..']
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         agent: localAgent,
         bypass(req) {
@@ -43,4 +52,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))
