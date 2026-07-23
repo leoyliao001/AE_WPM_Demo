@@ -1,0 +1,231 @@
+import "./chunk-RU35FA3K.js";
+import "./chunk-BZYDNCBH.js";
+import "./chunk-N5UCH72U.js";
+import "./chunk-QJCHO7A2.js";
+import "./chunk-K3ZZTKUZ.js";
+import {
+  styleMap
+} from "./chunk-QFRRPCYS.js";
+import {
+  a2 as a,
+  n2 as n
+} from "./chunk-RAGJIJAT.js";
+import {
+  classMap,
+  i,
+  property,
+  query
+} from "./chunk-TZBJS2LN.js";
+import {
+  LitElement,
+  css,
+  html,
+  unsafeCSS
+} from "./chunk-3OXU6R3A.js";
+import "./chunk-5FUTL2UF.js";
+
+// node_modules/@maersk-global/mds-components-core-dialog/index.js
+var E = Object.defineProperty;
+var S = Object.getOwnPropertyDescriptor;
+var o = (c, p, e, t) => {
+  for (var s = t > 1 ? void 0 : t ? S(p, e) : p, d = c.length - 1, r; d >= 0; d--) (r = c[d]) && (s = (t ? r(p, e, s) : r(s)) || s);
+  return t && s && E(p, e, s), s;
+};
+var b = css`dialog{opacity:0;transform:scale(.8);border-radius:var(--mds_brand_border_2x-large_radius)}dialog[open]{opacity:1;transform:none}dialog[open]::backdrop{opacity:1}dialog.small header{padding:16px 20px 8px}dialog.small .body{padding-left:20px;padding-right:20px;padding-bottom:10px;font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}@media screen and (min-width:1025px){dialog.small .body{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}dialog.small .body{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}dialog.small footer{padding:10px 20px 20px;gap:8px}dialog.medium header{padding:20px 24px 12px}dialog.medium .body{padding-left:24px;padding-right:24px;padding-bottom:12px;font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){dialog.medium .body{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}dialog.medium .body{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}dialog.medium footer{padding:12px 24px 24px;gap:12px}dialog.dimension--small{width:320px}dialog.dimension--medium{width:480px}dialog.dimension--large{width:800px}dialog.non-modal{inset:0}dialog.no-body .body{display:none}dialog.no-footer footer{padding-top:0}dialog.no-footer .body,dialog.no-header header{padding-bottom:0}@starting-style{dialog[open]{opacity:0;transform:scale(.8)}dialog[open]::backdrop{opacity:0}}`;
+var f = css`:host([nonmodal]){width:min-content;height:min-content}dialog{padding:0;border-width:0;position:fixed;display:none;opacity:0;flex-direction:column;background-color:var(--mds_brand_appearance_neutral_default_background-color);color:var(--mds_brand_appearance_neutral_default_text-color);max-width:100%;max-height:100%;overflow:hidden;z-index:999;transition:opacity var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing),transform var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing),overlay var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing) allow-discrete,display var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing) allow-discrete;box-shadow:var(--mds_brand_appearance_shadow_high_first-layer_offset-x) var(--mds_brand_appearance_shadow_high_first-layer_offset-y) var(--mds_brand_appearance_shadow_high_first-layer_blur-radius) var(--mds_brand_appearance_shadow_high_first-layer_spread-radius) var(--mds_brand_appearance_shadow_high_first-layer_color),var(--mds_brand_appearance_shadow_high_second-layer_offset-x) var(--mds_brand_appearance_shadow_high_second-layer_offset-y) var(--mds_brand_appearance_shadow_high_second-layer_blur-radius) var(--mds_brand_appearance_shadow_high_second-layer_spread-radius) var(--mds_brand_appearance_shadow_high_second-layer_color),var(--mds_brand_appearance_shadow_high_third-layer_offset-x) var(--mds_brand_appearance_shadow_high_third-layer_offset-y) var(--mds_brand_appearance_shadow_high_third-layer_blur-radius) var(--mds_brand_appearance_shadow_high_third-layer_spread-radius) var(--mds_brand_appearance_shadow_high_third-layer_color)}dialog.custom-stacking{inset:0}dialog .body-wrapper,dialog header{display:flex;justify-content:space-between}dialog header{align-items:center;flex-grow:0}dialog header h1{margin:0;font-family:var(--mds_brand_typography_headline_font-family),var(--mds_brand_typography_headline_font-family-fallback);font-size:var(--mds_brand_typography_headline_x-small_mobile_font-size);line-height:var(--mds_brand_typography_headline_x-small_mobile_line-height)}@media screen and (min-width:1025px){dialog header h1{font-size:var(--mds_brand_typography_headline_x-small_desktop_font-size);line-height:var(--mds_brand_typography_headline_x-small_desktop_line-height)}}dialog header h1{text-transform:var(--mds_brand_typography_headline_x-small_text-transform);font-style:var(--mds_brand_typography_headline_x-small_font-style);font-weight:var(--mds_brand_typography_headline_x-small_font-weight)}dialog .body-wrapper{flex-direction:column;overflow:auto;flex-grow:1}dialog .body-wrapper .body{height:100%;display:flex;flex-direction:column}dialog::backdrop{background-color:var(--mds_brand_appearance_opacity_inverse_50);opacity:0;transition:opacity var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing),overlay var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing) allow-discrete,display var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing) allow-discrete}dialog footer{display:flex;justify-content:flex-end;flex-grow:0}dialog.non-modal{position:fixed}dialog.no-padding .body-wrapper .body{padding:0}dialog[open]{display:flex;opacity:1}:host([dimension]) dialog.breakpoint-widths{width:var(--dialog-width-xs, 100%)}@media only screen and (min-width:641px){:host([dimension]) dialog.breakpoint-widths{width:var(--dialog-width-sm, var(--dialog-width-xs))}}@media only screen and (min-width:1025px){:host([dimension]) dialog.breakpoint-widths{width:var(--dialog-width-md, var(--dialog-width-sm))}}@media only screen and (min-width:1441px){:host([dimension]) dialog.breakpoint-widths{width:var(--dialog-width-lg, var(--dialog-width-md))}}@media only screen and (min-width:1921px){:host([dimension]) dialog.breakpoint-widths{width:var(--dialog-width-xl, var(--dialog-width-lg))}}:host([dimension]) dialog.breakpoint-heights{height:var(--dialog-height-xs, auto)}@media only screen and (min-width:641px){:host([dimension]) dialog.breakpoint-heights{height:var(--dialog-height-sm, var(--dialog-height-xs))}}@media only screen and (min-width:1025px){:host([dimension]) dialog.breakpoint-heights{height:var(--dialog-height-md, var(--dialog-height-sm))}}@media only screen and (min-width:1441px){:host([dimension]) dialog.breakpoint-heights{height:var(--dialog-height-lg, var(--dialog-height-md))}}@media only screen and (min-width:1921px){:host([dimension]) dialog.breakpoint-heights{height:var(--dialog-height-xl, var(--dialog-height-lg))}}@media only screen and (max-width:1024px){:host([dimension]) dialog:not(.breakpoint-widths):not(.breakpoint-heights).dimension--large{width:100%;height:100%;max-width:100%;max-height:100%;border-radius:0}}@media only screen and (max-width:640px){:host([dimension]) dialog:not(.breakpoint-widths):not(.breakpoint-heights){width:100%;height:100%;max-width:100%;max-height:100%;border-radius:0}}dialog.disable-page-scroll,dialog.disable-page-scroll::backdrop{overscroll-behavior:contain}:host(:focus) * dialog,:host(:focus) dialog,:host(:focus-visible) * dialog,:host(:focus-visible) dialog{box-shadow:var(--mds_brand_appearance_shadow_high_first-layer_offset-x) var(--mds_brand_appearance_shadow_high_first-layer_offset-y) var(--mds_brand_appearance_shadow_high_first-layer_blur-radius) var(--mds_brand_appearance_shadow_high_first-layer_spread-radius) var(--mds_brand_appearance_shadow_high_first-layer_color),var(--mds_brand_appearance_shadow_high_second-layer_offset-x) var(--mds_brand_appearance_shadow_high_second-layer_offset-y) var(--mds_brand_appearance_shadow_high_second-layer_blur-radius) var(--mds_brand_appearance_shadow_high_second-layer_spread-radius) var(--mds_brand_appearance_shadow_high_second-layer_color),var(--mds_brand_appearance_shadow_high_third-layer_offset-x) var(--mds_brand_appearance_shadow_high_third-layer_offset-y) var(--mds_brand_appearance_shadow_high_third-layer_blur-radius) var(--mds_brand_appearance_shadow_high_third-layer_spread-radius) var(--mds_brand_appearance_shadow_high_third-layer_color)}.backdrop{position:fixed;inset:0;background:var(--mds_brand_appearance_opacity_inverse_50);z-index:998;transition:opacity var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing),transform var(--mds_global_transition_fast_duration) var(--mds_global_transition_fast_timing);opacity:1;pointer-events:auto}.backdrop.hidden{opacity:0;pointer-events:none}`;
+var v = [unsafeCSS(f)];
+var x = [unsafeCSS(b), i];
+var g = `dialog-open-style-${n()}`;
+var a2 = class extends LitElement {
+  constructor() {
+    super(...arguments);
+    this.open = false;
+    this.fit = "medium";
+    this.dimension = "medium";
+    this.width = "";
+    this.height = "";
+    this.customsize = "";
+    this.escapecloseactiondisabled = false;
+    this.heading = "";
+    this.body = "";
+    this.zindex = 999;
+    this.showclosebutton = false;
+    this.disablepagescroll = true;
+    this.closeonclickoutside = false;
+    this.disablestickyfooter = false;
+    this.nonmodal = false;
+    this.nopadding = false;
+    this.customstacking = false;
+    this.hasheadingslot = false;
+    this.hasbodyslot = false;
+    this.hasfooterslot = false;
+    this._actionAttribute = "dialogaction";
+    this._savedScrollY = 0;
+    this.focusableElements = [];
+    this.currentFocusIndex = -1;
+    this.activeFocusElement = null;
+  }
+  static get styles() {
+    return v;
+  }
+  getClasses() {
+    return { [`${this.fit}`]: true, [`dimension--${this.dimension}`]: true, "disable-page-scroll": this.disablepagescroll, "no-header": !this.heading && !this.hasheadingslot, "no-body": !this.body && !this.hasbodyslot, "no-footer": !this.hasfooterslot, "non-modal": this.nonmodal, "no-padding": this.nopadding, "breakpoint-widths": (typeof this.width == "object" || typeof this.customsize == "object") && this.shouldApplyWidth(), "breakpoint-heights": (typeof this.height == "object" || typeof this.customsize == "object") && this.shouldApplyHeight(), "no-header-footer": !this.heading && !this.hasheadingslot && !this.hasfooterslot, "custom-stacking": this.customstacking };
+  }
+  shouldApplyWidth() {
+    return true;
+  }
+  shouldApplyHeight() {
+    return true;
+  }
+  getStyles() {
+    return { zIndex: this.zindex.toString(), ...this.getBreakpointStyles("width", this.customsize || this.width), ...this.getBreakpointStyles("height", this.customsize || this.height) };
+  }
+  getBreakpointStyles(e, t) {
+    if (typeof t == "string") {
+      if (e === "width" && !this.shouldApplyWidth() || e === "height" && !this.shouldApplyHeight()) return {};
+      let s = t === "auto" ? "fit-content" : t;
+      return { [e]: s };
+    }
+    return typeof t == "object" ? Object.entries(t).reduce((s, [d, r]) => ({ ...s, [`--dialog-${e}-${d}`]: r }), {}) : {};
+  }
+  render() {
+    return html`${this.customstacking ? this.renderBackdrop() : ""}<dialog class="${classMap(this.getClasses())}" style="${styleMap(this.getStyles())}" @click="${this.handleClick}" @keydown="${this.handleKeyDown}" @keyup="${this.handleKeyUp}" part="dialog" data-cy="dialog">${this.renderHeader()} ${this.renderBody()} ${this.disablestickyfooter ? "" : this.renderFooter()}</dialog>`;
+  }
+  renderBackdrop() {
+    let e = { backdrop: true, hidden: !this.open };
+    return html`<div class="${classMap(e)}" @click="${this.handleClick}" data-cy="backdrop"></div>`;
+  }
+  renderHeader() {
+    return html`<header part="header"><h1 tabindex="-1"><slot name="heading" @slotchange="${this.handleSlotChange}">${this.heading}</slot></h1>${this.showclosebutton ? this.renderCloseButton() : ""}</header>`;
+  }
+  renderCloseButton() {
+    return html`<mc-button @click="${() => this.closeWithEvents("cancel")}" class="close" label="Close" hiddenlabel appearance="neutral" variant="plain" icon="times" fit="${this.fit}" data-cy="close"></mc-button>`;
+  }
+  renderBody() {
+    return html`<div class="body-wrapper" part="body-wrapper"><div class="body" part="body"><slot id="default-slot" class="default-slot" @slotchange="${this.handleSlotChange}"></slot>${this.renderBodyText()}</div>${this.disablestickyfooter ? this.renderFooter() : ""}</div>`;
+  }
+  renderBodyText() {
+    if (this.body && !this.hasbodyslot) return html`<span class="body-text">${this.body}</span>`;
+  }
+  renderFooter() {
+    return html`<footer part="footer"><slot name="footer" @slotchange="${this.handleSlotChange}"></slot></footer>`;
+  }
+  update(e) {
+    super.update(e), e.has("open") && (this.open ? this.openDialog() : this.closeDialog());
+  }
+  openDialog() {
+    let e = new CustomEvent("opening", { cancelable: true });
+    this.dispatchEvent(e), !e.defaultPrevented && (this.customstacking && (this.activeFocusElement = document.activeElement), this.nonmodal || this.customstacking ? (this.disablepagescroll && this.exceedsViewportBounds() && this.injectDialogOpenStyle(), this.dialog.show(), this.customstacking && this.updateFocusableElements()) : (this.disablepagescroll && this.injectDialogOpenStyle(), this.dialog.showModal()), this.focusFirstElement(), this.dispatchEvent(new CustomEvent("opened")));
+  }
+  closeDialog() {
+    this.removeDialogOpenStyle(), this.dialog.close(), this.customstacking && this.activeFocusElement && this.activeFocusElement.focus();
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback(), this.removeDialogOpenStyle();
+  }
+  injectDialogOpenStyle() {
+    if (!document.getElementById(g)) {
+      this._savedScrollY = window.scrollY;
+      let e = document.createElement("style");
+      e.id = g, e.textContent = "html { overflow: hidden; }", document.head.appendChild(e), a() && requestAnimationFrame(() => {
+        document.body.style.position = "fixed", document.body.style.top = `-${this._savedScrollY}px`, document.body.style.width = "100%", document.body.style.left = "0";
+      });
+    }
+  }
+  removeDialogOpenStyle() {
+    let e = document.getElementById(g);
+    e && (document.head.removeChild(e), a() && (document.body.style.position = "", document.body.style.width = "", document.body.style.top = "", document.body.style.left = "", requestAnimationFrame(() => {
+      window.scrollTo(0, this._savedScrollY);
+    })));
+  }
+  handleClick(e) {
+    let t = e.target;
+    if (t.hasAttribute(this._actionAttribute)) {
+      let s = t.getAttribute(this._actionAttribute);
+      this.closeWithEvents(s);
+    } else this.closeonclickoutside && (t.tagName === "DIALOG" || this.customstacking && t.tagName === "DIV" && t.classList.contains("backdrop")) && this.closeWithEvents("click outside");
+  }
+  handleKeyUp(e) {
+    this.customstacking && e.key === "Tab" && this.focusableElements[this.currentFocusIndex].focus();
+  }
+  handleKeyDown(e) {
+    if (this.customstacking && e.key === "Tab" && (e.preventDefault(), this.currentFocusIndex === -1 ? this.currentFocusIndex = 0 : e.shiftKey ? this.currentFocusIndex = (this.currentFocusIndex - 1 + this.focusableElements.length) % this.focusableElements.length : this.currentFocusIndex = (this.currentFocusIndex + 1) % this.focusableElements.length), e.key === "Escape") {
+      if (this.escapecloseactiondisabled) {
+        e.preventDefault();
+        return;
+      }
+      this.closeWithEvents("cancel") && e.preventDefault();
+    }
+  }
+  closeWithEvents(e) {
+    let t = new CustomEvent("closing", { detail: { action: e }, cancelable: true });
+    return this.dispatchEvent(t), t.defaultPrevented ? true : (this.open = false, this.dispatchEvent(new CustomEvent("closed", { detail: { action: e } })), false);
+  }
+  focusFirstElement() {
+    let e = null;
+    if (this.customstacking) {
+      if (this.focusableElements.forEach((t, s) => {
+        !e && (t.hasAttribute("autofocus") || t.hasAttribute("autoFocus")) && (this.currentFocusIndex = s, e = t);
+      }), e) {
+        "focus" in e && typeof e.focus == "function" && e.focus();
+        return;
+      }
+    } else {
+      if (e = this.querySelector("[autofocus]") || this.querySelector("[autoFocus]"), e) {
+        e.focus();
+        return;
+      }
+      let t = this.dialog.querySelector('h1, [tabindex="-1"]');
+      t && t.focus();
+    }
+  }
+  updateFocusableElements() {
+    let e = ['a[href]:not([tabindex="-1"])', 'area[href]:not([tabindex="-1"])', 'input:not([disabled]):not([tabindex="-1"])', 'select:not([disabled]):not([tabindex="-1"])', 'textarea:not([disabled]):not([tabindex="-1"])', 'button:not([disabled]):not([tabindex="-1"])', 'iframe:not([tabindex="-1"])', '[tabindex]:not([tabindex="-1"])', '[contenteditable]:not([tabindex="-1"])'], t = [];
+    this.querySelectorAll("*").forEach((r) => {
+      let n2 = r, l = e.some((_) => n2.matches(_)), m = n2.tagName.toLowerCase().startsWith("mc-");
+      (l || m) && !n2.hasAttribute("disabled") && !n2.getAttribute("aria-hidden") && (!n2.hasAttribute("tabindex") || n2.getAttribute("tabindex") !== "-1") && t.push(n2);
+    }), this.dialog.querySelectorAll("*").forEach((r) => {
+      let n2 = r;
+      if (t.includes(n2)) return;
+      let l = e.some((_) => n2.matches(_)), m = n2.tagName.toLowerCase().startsWith("mc-");
+      (l || m) && !n2.hasAttribute("disabled") && !n2.getAttribute("aria-hidden") && (!n2.hasAttribute("tabindex") || n2.getAttribute("tabindex") !== "-1") && t.push(n2);
+    }), this.focusableElements = t;
+  }
+  handleSlotChange(e) {
+    let t = e.target, s = t.name || "default", d = (r) => r.assignedNodes({ flatten: true }).some((l) => l.nodeType === Node.ELEMENT_NODE || l.nodeType === Node.TEXT_NODE && l.textContent.trim() !== "");
+    switch (s) {
+      case "heading":
+        this.hasheadingslot = d(t);
+        break;
+      case "footer":
+      case "primaryAction":
+      case "secondaryAction":
+        this.hasfooterslot = d(t);
+        break;
+      default:
+        this.hasbodyslot = d(t);
+        break;
+    }
+  }
+  exceedsViewportBounds() {
+    return this.disablepagescroll;
+  }
+};
+o([property({ type: Boolean, reflect: true })], a2.prototype, "open", 2), o([property({ type: String })], a2.prototype, "fit", 2), o([property({ type: String, reflect: true })], a2.prototype, "dimension", 2), o([property({ type: String })], a2.prototype, "width", 2), o([property({ type: String })], a2.prototype, "height", 2), o([property({ type: String })], a2.prototype, "customsize", 2), o([property({ type: Boolean })], a2.prototype, "escapecloseactiondisabled", 2), o([property({ type: String })], a2.prototype, "heading", 2), o([property({ type: String })], a2.prototype, "body", 2), o([property({ type: Number })], a2.prototype, "zindex", 2), o([property({ type: Boolean })], a2.prototype, "showclosebutton", 2), o([property({ type: Boolean })], a2.prototype, "disablepagescroll", 2), o([property({ type: Boolean })], a2.prototype, "closeonclickoutside", 2), o([property({ type: Boolean })], a2.prototype, "disablestickyfooter", 2), o([property({ type: Boolean })], a2.prototype, "nonmodal", 2), o([property({ type: Boolean })], a2.prototype, "nopadding", 2), o([property({ type: Boolean })], a2.prototype, "customstacking", 2), o([query("dialog")], a2.prototype, "dialog", 2), o([property({ type: Boolean })], a2.prototype, "hasheadingslot", 2), o([property({ type: Boolean })], a2.prototype, "hasbodyslot", 2), o([property({ type: Boolean })], a2.prototype, "hasfooterslot", 2);
+var u = class extends a2 {
+  static get styles() {
+    return [...super.styles, x];
+  }
+  constructor() {
+    super();
+  }
+  renderFooter() {
+    return html`<footer class="footer" part="footer"><slot name="secondaryAction" @slotchange="${this.handleSlotChange}"></slot><slot name="primaryAction" @slotchange="${this.handleSlotChange}"></slot></footer>`;
+  }
+};
+customElements.get("mc-dialog") || customElements.define("mc-dialog", u);
+export {
+  u as McDialog,
+  a2 as McDialogBase
+};
+//# sourceMappingURL=@maersk-global_mds-components-core_mc-dialog.js.map

@@ -1,0 +1,120 @@
+import {
+  classMap,
+  i,
+  property,
+  queryAssignedElements,
+  state
+} from "./chunk-TZBJS2LN.js";
+import {
+  LitElement,
+  css,
+  html,
+  unsafeCSS
+} from "./chunk-3OXU6R3A.js";
+
+// node_modules/@maersk-global/mds-components-core-label/index.js
+var s = Object.defineProperty;
+var y = Object.getOwnPropertyDescriptor;
+var l = (r, a, o, m2) => {
+  for (var t2 = m2 > 1 ? void 0 : m2 ? y(a, o) : a, _3 = r.length - 1, n2; _3 >= 0; _3--) (n2 = r[_3]) && (t2 = (m2 ? n2(a, o, t2) : n2(t2)) || t2);
+  return m2 && t2 && s(a, o, t2), t2;
+};
+var d = css`:host{line-height:0}.mc-label{color:var(--mds_brand_appearance_neutral_default_text-color);text-align:left;display:block;padding-bottom:4px}.mc-label.small.left{padding:6px 12px 0 0}@media screen and (max-width:700px){.mc-label.small.left{padding-top:0;padding-bottom:4px}}.mc-label.small{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}@media screen and (min-width:1025px){.mc-label.small{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}.mc-label.small{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}.mc-label.medium.left{padding:8px 16px 0 0}@media screen and (max-width:700px){.mc-label.medium.left{padding-top:0;padding-bottom:4px}}.mc-label.medium{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-label.medium{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-label.medium{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}.mc-label.large.left{padding:12px 16px 0 0}@media screen and (max-width:700px){.mc-label.large.left{padding-top:0;padding-bottom:4px}}.mc-label.large{font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_medium_mobile_font-size);line-height:var(--mds_brand_typography_text_medium_mobile_line-height)}@media screen and (min-width:1025px){.mc-label.large{font-size:var(--mds_brand_typography_text_medium_desktop_font-size);line-height:var(--mds_brand_typography_text_medium_desktop_line-height)}}.mc-label.large{font-style:var(--mds_brand_typography_text_medium_normal_font-style);font-weight:var(--mds_brand_typography_text_medium_normal_font-weight)}:host([hiddenlabel]){height:1px;margin:-1px;overflow:hidden;padding:0;position:relative;width:1px;display:inline-block}`;
+var p = [unsafeCSS(d)];
+var e = class extends LitElement {
+  constructor() {
+    super(...arguments);
+    this.fit = "medium";
+    this.hiddenlabel = false;
+    this.label = "Label";
+    this.labelposition = "top";
+  }
+  static get styles() {
+    return p;
+  }
+  render() {
+    return html`<slot part="label" class="mc-label ${this.fit} ${this.labelposition}">${this.label}</slot>`;
+  }
+};
+l([property({ type: String })], e.prototype, "fit", 2), l([property({ type: Boolean })], e.prototype, "hiddenlabel", 2), l([property({ type: String })], e.prototype, "label", 2), l([property({ type: String })], e.prototype, "labelposition", 2);
+customElements.get("mc-label") || customElements.define("mc-label", e);
+
+// node_modules/@maersk-global/mds-components-core-hint/index.js
+var _ = Object.defineProperty;
+var d2 = Object.getOwnPropertyDescriptor;
+var s2 = (r, a, t2, l2) => {
+  for (var i2 = l2 > 1 ? void 0 : l2 ? d2(a, t2) : a, o = r.length - 1, n2; o >= 0; o--) (n2 = r[o]) && (i2 = (l2 ? n2(a, t2, i2) : n2(i2)) || i2);
+  return l2 && i2 && _(a, t2, i2), i2;
+};
+var m = css`:host{line-height:0}.mc-hint{display:none;color:var(--mds_brand_appearance_neutral_weakest_text-color);font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}.mc-hint.visible{display:flex;margin-top:4px;column-gap:4px}@media screen and (min-width:1025px){.mc-hint{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}.mc-hint{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}`;
+var h = [i, unsafeCSS(m)];
+var e2 = class extends LitElement {
+  constructor() {
+    super(...arguments);
+    this.hasSlotHint = false;
+    this.visible = false;
+    this.fit = "medium";
+  }
+  static get styles() {
+    return h;
+  }
+  async firstUpdated(t2) {
+    super.firstUpdated(t2), await this.updateComplete, this.updateVisible();
+  }
+  willUpdate(t2) {
+    super.willUpdate(t2), t2.has("hint") && this.updateVisible();
+  }
+  render() {
+    let t2 = { visible: this.visible, [`${this.fit}`]: true };
+    return html`<slot part="hint" class="mc-hint ${classMap(t2)}" @slotchange="${this.onHintSlotChange}">${this.hint}</slot>`;
+  }
+  onHintSlotChange() {
+    this.hasSlotHint = this.hintNodes.length > 0, this.updateVisible();
+  }
+  updateVisible() {
+    this.visible = !!(this.hasSlotHint || this.hint && this.hint !== "");
+  }
+};
+s2([state()], e2.prototype, "hasSlotHint", 2), s2([queryAssignedElements({ slot: "", flatten: true })], e2.prototype, "hintNodes", 2), s2([property({ type: Boolean, reflect: true })], e2.prototype, "visible", 2), s2([property({ type: String })], e2.prototype, "hint", 2), s2([property({ type: String })], e2.prototype, "fit", 2);
+customElements.get("mc-hint") || customElements.define("mc-hint", e2);
+
+// node_modules/@maersk-global/mds-components-core-error/index.js
+var _2 = Object.defineProperty;
+var h2 = Object.getOwnPropertyDescriptor;
+var s3 = (o, a, e3, i2) => {
+  for (var r = i2 > 1 ? void 0 : i2 ? h2(a, e3) : a, p2 = o.length - 1, m2; p2 >= 0; p2--) (m2 = o[p2]) && (r = (i2 ? m2(a, e3, r) : m2(r)) || r);
+  return i2 && r && _2(a, e3, r), r;
+};
+var n = css`:host{line-height:0}.mc-error{display:none;color:var(--mds_brand_appearance_error_default_text-color);font-family:var(--mds_brand_typography_text_font-family),var(--mds_brand_typography_text_font-family-fallback);font-size:var(--mds_brand_typography_text_small_mobile_font-size);line-height:var(--mds_brand_typography_text_small_mobile_line-height)}.mc-error.visible.invalid{display:flex;margin-top:4px;column-gap:4px}@media screen and (min-width:1025px){.mc-error{font-size:var(--mds_brand_typography_text_small_desktop_font-size);line-height:var(--mds_brand_typography_text_small_desktop_line-height)}}.mc-error{font-style:var(--mds_brand_typography_text_small_normal_font-style);font-weight:var(--mds_brand_typography_text_small_normal_font-weight)}`;
+var d3 = [i, unsafeCSS(n)];
+var t = class extends LitElement {
+  constructor() {
+    super(...arguments);
+    this.hasSlotError = false;
+    this.visible = false;
+    this.invalid = false;
+    this.fit = "medium";
+  }
+  static get styles() {
+    return d3;
+  }
+  async firstUpdated(e3) {
+    super.firstUpdated(e3), await this.updateComplete, this.updateVisible();
+  }
+  willUpdate(e3) {
+    super.willUpdate(e3), (e3.has("errormessage") || e3.has("invalid")) && this.updateVisible();
+  }
+  render() {
+    let e3 = { visible: this.visible, invalid: !!this.invalid, [`${this.fit}`]: true };
+    return html`<slot part="error" class="mc-error ${classMap(e3)}" @slotchange="${this.onErrorSlotChange}">${this.errormessage}</slot>`;
+  }
+  onErrorSlotChange() {
+    this.hasSlotError = this.errorNodes.length > 0, this.updateVisible();
+  }
+  updateVisible() {
+    this.visible = !!(this.hasSlotError || this.errormessage && this.errormessage !== "");
+  }
+};
+s3([state()], t.prototype, "hasSlotError", 2), s3([queryAssignedElements({ slot: "", flatten: true })], t.prototype, "errorNodes", 2), s3([property({ type: Boolean, reflect: true })], t.prototype, "visible", 2), s3([property({ type: String })], t.prototype, "errormessage", 2), s3([property({ type: Boolean })], t.prototype, "invalid", 2), s3([property({ type: String })], t.prototype, "fit", 2);
+customElements.get("mc-error") || customElements.define("mc-error", t);
+//# sourceMappingURL=chunk-BTR5GQTV.js.map
