@@ -19,6 +19,33 @@ const NONCE_KEY = `${STORAGE_PREFIX}.nonce`
 const VERIFIER_KEY = `${STORAGE_PREFIX}.verifier`
 const RETURN_URL_KEY = `${STORAGE_PREFIX}.returnUrl`
 const CLOCK_SKEW_MS = 60 * 1000
+const MOCK_DEV_USER = {
+  name: 'Local Dev User',
+  username: 'local.dev@localhost',
+  oid: 'local-dev-oid',
+  tenantId: 'local-dev-tid'
+}
+
+function isLocalDevHost() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+}
+
+function applyMockDevAuth() {
+  const user = { ...MOCK_DEV_USER }
+  // No real Azure token on localhost — UI works; API SSO probe will see no Bearer unless you use HTTPS proxy.
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
+  setAuthenticatedState({ accessToken: '', user })
+  azureAuthState.status = 'authenticated'
+  console.info(
+    '[azureAuth] Localhost DEV mock SSO — no Azure redirect. ' +
+      'For real SSO use https://SCRBAEXDEFRM217.crb.apmoller.net/ with enable-dev-proxy.bat'
+  )
+}
 
 export const azureAuthState = reactive({
   status: 'idle',
@@ -29,7 +56,8 @@ export const azureAuthState = reactive({
 })
 
 function getRedirectUri() {
-  const raw = REDIRECT_URI_OVERRIDE || `${window.location.origin}${window.location.pathname}`
+  // Prefer site root — Azure app registration is typically https://host/ only
+  const raw = REDIRECT_URI_OVERRIDE || `${window.location.origin}/`
 
   let normalized
   try {
@@ -333,12 +361,24 @@ export async function initAzureAuth() {
   azureAuthState.status = 'loading'
   azureAuthState.error = ''
 
+  const searchParams = new URLSearchParams(window.location.search)
+  const forceRealSso = searchParams.get('sso') === '1'
+  const forceMock = searchParams.get('mockSso') === '1'
+
+  // localhost / 127.0.0.1 cannot use company Azure redirect URIs — skip Microsoft login
+  if ((isLocalDevHost() && !forceRealSso) || forceMock) {
+    applyMockDevAuth()
+    if (forceMock) {
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+    return
+  }
+
   if (!CLIENT_ID) {
     setErrorState('Azure SSO is not configured. Set VITE_AZURE_CLIENT_ID in the frontend environment.')
     return
   }
 
-  const searchParams = new URLSearchParams(window.location.search)
   const authError = searchParams.get('error')
 
   if (authError) {
