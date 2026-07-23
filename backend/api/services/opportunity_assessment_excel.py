@@ -64,6 +64,9 @@ FIELD_BY_HEADER = {
     "task time per unit (min)": "task_time_per_unit_min",
     "task_time_per_unit": "task_time_per_unit_min",
     "task_time_per_unit_min": "task_time_per_unit_min",
+    "area": "area",
+    "gsc site": "gsc_site",
+    "gsc_site": "gsc_site",
     "fte calculation": "fte_calculation",
 }
 
@@ -382,6 +385,8 @@ def parse_opportunity_workbook(file_obj, expected_migration_request_id: str) -> 
             "unit_of_measure": cell(row_idx, "unit_of_measure"),
             "volume_monthly": cell(row_idx, "volume_monthly"),
             "task_time_per_unit_min": cell(row_idx, "task_time_per_unit_min"),
+            "area": cell(row_idx, "area"),
+            "gsc_site": cell(row_idx, "gsc_site"),
             "task_found_in_service_catalog": cell(row_idx, "task_found_in_service_catalog"),
             "migratable_to_gsc": cell(row_idx, "migratable_to_gsc"),
             "fte_calculation": cell(row_idx, "fte_calculation"),
@@ -407,6 +412,8 @@ def parse_opportunity_workbook(file_obj, expected_migration_request_id: str) -> 
             "unit_of_measure",
             "volume_monthly",
             "task_time_per_unit_min",
+            "area",
+            "gsc_site",
             "task_found_in_service_catalog",
             "migratable_to_gsc",
             "fte_calculation",

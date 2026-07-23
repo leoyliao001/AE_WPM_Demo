@@ -365,6 +365,8 @@ import {
   overallProgress,
   statusAppearance
 } from '../utils/migrationDashboardProgress.js'
+import { azureAuthState, getCurrentUserEmail } from '../auth/azureAuth.js'
+import { getAuthBearerToken } from '../auth/authToken.js'
 import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
@@ -631,7 +633,44 @@ const loadProjects = async () => {
   }
 }
 
-onMounted(loadProjects)
+onMounted(() => {
+  // TEMP test: dump SSO / auth user payload when opening Migration Dashboard
+  let storedUser = null
+  try {
+    storedUser = JSON.parse(localStorage.getItem('wpm.azure.auth.user') || 'null')
+  } catch {
+    storedUser = null
+  }
+
+  const bearer = getAuthBearerToken()
+  let idTokenClaims = null
+  if (bearer) {
+    try {
+      const payload = bearer.split('.')[1]
+      const padded = payload.replace(/-/g, '+').replace(/_/g, '/')
+      const json = atob(padded.padEnd(padded.length + ((4 - (padded.length % 4)) % 4), '='))
+      idTokenClaims = JSON.parse(json)
+    } catch {
+      idTokenClaims = null
+    }
+  }
+
+  console.log('[MigrationDashboard] SSO user info (test)', {
+    azureAuthState: {
+      status: azureAuthState.status,
+      isAuthenticated: azureAuthState.isAuthenticated,
+      error: azureAuthState.error,
+      accessToken: azureAuthState.accessToken,
+      user: azureAuthState.user ? { ...azureAuthState.user } : null
+    },
+    getCurrentUserEmail: getCurrentUserEmail(),
+    localStorageUser: storedUser,
+    hasBearerToken: Boolean(bearer),
+    idTokenClaims
+  })
+
+  loadProjects()
+})
 </script>
 
 <style scoped>

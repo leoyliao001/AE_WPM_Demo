@@ -55,6 +55,11 @@ export const azureAuthState = reactive({
   error: ''
 })
 
+export function getCurrentUserEmail() {
+  const username = azureAuthState.user?.username || ''
+  return String(username).trim().toLowerCase()
+}
+
 function getRedirectUri() {
   // Prefer site root — Azure app registration is typically https://host/ only
   const raw = REDIRECT_URI_OVERRIDE || `${window.location.origin}/`

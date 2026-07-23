@@ -381,40 +381,28 @@
                 class="field-required"
                 label="Product"
                 placeholder="Select function first"
-                hint="Choose all products involved in this migration."
+                hint="Choose the product involved in this migration."
                 width="full-width"
                 disabled
               />
 
-              <template v-else>
-                <mc-input
-                  v-if="filteredProducts.length > 8"
-                  label="Filter products"
-                  hiddenlabel
-                  placeholder="Filter products..."
-                  :value="productFilter"
-                  width="full-width"
-                  @input="onProductFilterInput"
-                />
-
-                <mc-checkbox-group
-                  :key="`products-${form.function}`"
-                  hint="Choose all products involved in this migration."
-                  orientation="vertical"
-                  name="products"
-                  :value.prop="productCheckboxValue"
-                  @change="onProductsChange"
-                >
-                  <span slot="legend">Product<RequiredMark /></span>
-                  <mc-checkbox
-                    v-for="product in visibleProducts"
-                    :key="product"
-                    name="products"
-                    :value="product"
-                    :label="product"
-                  />
-                </mc-checkbox-group>
-              </template>
+              <mc-select
+                v-else
+                :key="`products-${form.function}`"
+                class="field-required"
+                label="Product"
+                placeholder="Select product"
+                hint="Choose the product involved in this migration."
+                :value="selectedProduct"
+                width="full-width"
+                @optionselected="onProductSelect"
+                @opened="onDropdownOpened('project-details')"
+                @closed="onDropdownClosed('project-details')"
+              >
+                <mc-option v-for="product in filteredProducts" :key="product" :value="product">
+                  {{ product }}
+                </mc-option>
+              </mc-select>
             </div>
           </div>
         </section>
@@ -754,8 +742,7 @@ const migrationTypes = [
 
 const filteredAreas = computed(() => getAreasForRegion(form.region))
 const filteredProducts = computed(() => getProductsForFunction(form.function))
-const productCheckboxValue = computed(() => [...form.products])
-const productFilter = ref('')
+const selectedProduct = computed(() => form.products[0] || '')
 const languageFilter = ref('')
 const countryFilter = ref('')
 const languageCheckboxValue = computed(() => [...form.languageDependencies])
@@ -772,12 +759,6 @@ const visibleLanguages = computed(() => {
   const query = languageFilter.value.trim().toLowerCase()
   if (!query) return languageOptions
   return languageOptions.filter((lang) => lang.toLowerCase().includes(query))
-})
-
-const visibleProducts = computed(() => {
-  const query = productFilter.value.trim().toLowerCase()
-  if (!query) return filteredProducts.value
-  return filteredProducts.value.filter((product) => product.toLowerCase().includes(query))
 })
 
 const defaultLocationStrategyOptions = computed(() =>
@@ -1054,8 +1035,8 @@ const onSelect = (field, event) => {
   if (field === 'function') {
     form.function = value
     const validProducts = getProductsForFunction(value)
-    form.products = form.products.filter((p) => validProducts.includes(p))
-    productFilter.value = ''
+    const kept = form.products.find((p) => validProducts.includes(p))
+    form.products = kept ? [kept] : []
     return
   }
   form[field] = value
@@ -1074,8 +1055,10 @@ const onAreasChange = (event) => {
   }
 }
 
-const onProductFilterInput = (event) => {
-  productFilter.value = readEventValue(event)
+const onProductSelect = (event) => {
+  const value = event?.detail?.value ?? readEventValue(event)
+  const product = String(value || '').trim()
+  form.products = product ? [product] : []
 }
 
 const onLanguageFilterInput = (event) => {
@@ -1097,11 +1080,6 @@ const onCountriesChange = (event) => {
 const onLanguageDependenciesChange = (event) => {
   const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
   form.languageDependencies = Array.isArray(value) ? [...value] : []
-}
-
-const onProductsChange = (event) => {
-  const value = event?.detail ?? event?.currentTarget?.value ?? event?.target?.value
-  form.products = Array.isArray(value) ? [...value] : []
 }
 
 const onDefaultLocationStrategiesChange = (event) => {
@@ -1306,7 +1284,8 @@ const loadDraft = () => {
     if (form.function) {
       const validProducts = getProductsForFunction(form.function)
       const savedProducts = Array.isArray(saved.products) ? saved.products : []
-      form.products = savedProducts.filter((p) => validProducts.includes(p))
+      const kept = savedProducts.find((p) => validProducts.includes(p))
+      form.products = kept ? [kept] : []
     }
     const savedLanguages = Array.isArray(saved.languageDependencies)
       ? saved.languageDependencies
@@ -1827,14 +1806,6 @@ onMounted(loadDraft)
   overflow: visible;
   position: relative;
   width: 100%;
-}
-
-.product-field mc-checkbox-group::part(fieldset-container) {
-  border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 12px;
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 8px 12px;
 }
 
 .workforce-language-layout {

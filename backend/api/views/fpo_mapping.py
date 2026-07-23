@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import FpoMapping
+from api.permissions.attributes_access import require_attributes_access
 
 # All DB columns (Excel order) for Handsontable headers
 ALL_FIELDS = [
@@ -201,6 +202,7 @@ def _build_cascade_tree(rows: list[dict]) -> dict:
 
 
 @api_view(["GET"])
+@require_attributes_access("fpo_mapping")
 def list_fpo_mapping(request):
     """GET /api/fpo-mapping/ — all DB rows for the grid + cascade tree."""
     qs = FpoMapping.objects.all().order_by("id")

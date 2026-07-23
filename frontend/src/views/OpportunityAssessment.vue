@@ -334,14 +334,14 @@
                 :value="setupForm.productsDisplay"
                 disabled
               />
-              <p v-if="setupMeta.matchedOwnershipProducts.length" class="setup-hint">
-                Matched Product Ownership:
-                {{ setupMeta.matchedOwnershipProducts.join(' · ') }}
-              </p>
-              <p v-else class="setup-hint setup-hint--warn">
-                No Product Ownership match found for region
-                {{ setupMeta.region || '—' }}. You can still set Owner manually.
-              </p>
+            <p v-if="setupMeta.matchedOwnershipAreas.length" class="setup-hint">
+              Matched Product Ownership areas:
+              {{ setupMeta.matchedOwnershipAreas.join(' · ') }}
+            </p>
+            <p v-else class="setup-hint setup-hint--warn">
+              No Product Ownership match found for region
+              {{ setupMeta.region || '—' }}. You can still set Owner manually.
+            </p>
             </div>
 
             <div class="setup-field">
@@ -520,6 +520,8 @@ const COLUMN_META = {
   unit_of_measure: { width: 120 },
   volume_monthly: { width: 110 },
   task_time_per_unit_min: { width: 140 },
+  area: { width: 140 },
+  gsc_site: { width: 160 },
   task_found_in_service_catalog: { width: 200 },
   migratable_to_gsc: { width: 200 },
   fte_calculation: { width: 110 }
@@ -584,7 +586,7 @@ const setupMeta = ref({
   region: '',
   locationOptions: [],
   ownerOptions: [],
-  matchedOwnershipProducts: []
+  matchedOwnershipAreas: []
 })
 const setupForm = ref({
   migrationRequestId: '',
@@ -652,8 +654,8 @@ function applySetupPayload(setup = {}) {
     region: setup.region || '',
     locationOptions: Array.isArray(setup.location_options) ? setup.location_options : [],
     ownerOptions: Array.isArray(setup.owner_options) ? setup.owner_options : [],
-    matchedOwnershipProducts: Array.isArray(setup.matched_ownership_products)
-      ? setup.matched_ownership_products
+    matchedOwnershipAreas: Array.isArray(setup.matched_ownership_areas)
+      ? setup.matched_ownership_areas
       : []
   }
   setupForm.value = {

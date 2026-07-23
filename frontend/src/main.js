@@ -6,7 +6,7 @@ import { McIcon } from '@maersk-global/mds-components-core-icon'
 import { patchMcIconComponent } from './utils/mdsIcon.js'
 import App from './App.vue'
 import { getAuthBearerToken } from './auth/authToken.js'
-import { initAzureAuth } from './auth/azureAuth.js'
+import { getCurrentUserEmail, initAzureAuth } from './auth/azureAuth.js'
 import router from './router'
 
 patchMcIconComponent(McIcon)
@@ -19,10 +19,14 @@ if (typeof window !== 'undefined') {
 
   axios.defaults.baseURL = ''
   axios.interceptors.request.use((config) => {
+    config.headers = config.headers || {}
     const token = getAuthBearerToken()
     if (token) {
-      config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
+    }
+    const email = getCurrentUserEmail()
+    if (email) {
+      config.headers['X-User-Email'] = email
     }
     return config
   })

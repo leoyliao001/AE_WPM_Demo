@@ -126,9 +126,11 @@ class OpportunityAssessment(models.Model):
     unit_of_measure = models.CharField(max_length=128, blank=True, default="")
     volume_monthly = models.CharField(max_length=64, blank=True, default="")
     task_time_per_unit_min = models.CharField(max_length=64, blank=True, default="")
-    fte_calculation = models.CharField(max_length=64, blank=True, default="")
+    area = models.CharField(max_length=64, blank=True, default="")
+    gsc_site = models.CharField(max_length=128, blank=True, default="")
     task_found_in_service_catalog = models.CharField(max_length=255, blank=True, default="")
     migratable_to_gsc = models.CharField(max_length=255, blank=True, default="")
+    fte_calculation = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -138,17 +140,16 @@ class OpportunityAssessment(models.Model):
         indexes = [
             models.Index(fields=["migration_request_id", "l1", "l2", "l3"]),
         ]
-
+    
     def __str__(self):
         return f"{self.migration_request_id} — {self.task_name or self.l4 or self.id}"
 
 
 class ProductOwnership(models.Model):
-    """Product / Manager / Region / Migration Manager ownership mapping."""
+    """Region / Area / Migration Manager ownership mapping."""
 
-    product = models.CharField(max_length=255, blank=True, default="")
-    manager = models.CharField(max_length=128, blank=True, default="")
     region = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    area = models.CharField(max_length=32, blank=True, default="", db_index=True)
     migration_manager = models.CharField(max_length=128, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -157,12 +158,12 @@ class ProductOwnership(models.Model):
         db_table = "product_ownership"
         ordering = ["id"]
         indexes = [
-            models.Index(fields=["product", "region"]),
-            models.Index(fields=["manager"]),
+            models.Index(fields=["region", "area"]),
+            models.Index(fields=["migration_manager"]),
         ]
 
     def __str__(self):
-        return f"{self.product} / {self.region} / {self.migration_manager}"
+        return f"{self.region} / {self.area} / {self.migration_manager}"
 
 
 class GscSiteMapping(models.Model):
@@ -184,3 +185,25 @@ class GscSiteMapping(models.Model):
 
     def __str__(self):
         return f"{self.region} / {self.area} / {self.supporting_gsc_sites}"
+
+
+class ProjectAttributesAccess(models.Model):
+    """SSO email-based access control for Project Attributes Database tables."""
+
+    email = models.CharField(max_length=255, unique=True, db_index=True)
+    is_super_admin = models.BooleanField(default=False)
+    fpo_mapping = models.BooleanField(default=False)
+    product_ownership = models.BooleanField(default=False)
+    gsc_site_mapping = models.BooleanField(default=False)
+    access_control = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "project_attributes_access"
+        ordering = ["email"]
+
+    def __str__(self):
+        role = "super_admin" if self.is_super_admin else "user"
+        return f"{self.email} ({role})"
+
