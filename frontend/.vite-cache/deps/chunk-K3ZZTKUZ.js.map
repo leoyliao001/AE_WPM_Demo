@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../node_modules/@maersk-global/mds-config/lib/index.js"],
-  "sourcesContent": ["import{isServer as n}from\"lit\";class t{static initializeGlobal(){!n&&!window.MdsConfig&&(window.MdsConfig={_iconsDynamicImportPath:null,_isInitialized:!1})}static get iconsDynamicImportPath(){return n?this._ssrFallbackPath:(this.initializeGlobal(),window.MdsConfig._iconsDynamicImportPath)}static set iconsDynamicImportPath(i){if(n){this._ssrFallbackPath=i;return}this.initializeGlobal(),window.MdsConfig._iconsDynamicImportPath=i,window.MdsConfig._isInitialized=!0,i||console.warn(`[MdsConfig] Setting icons path to null. This may cause issues:\r\n1. Icons will not be rendered properly\r\n2. mc-icon component will fall back to empty icon\r\n3. Dynamic imports will fail\r\nPlease provide a valid path to your icons directory.`)}}t._ssrFallbackPath=null;export{t as MdsConfig};\r\n"],
-  "mappings": ";;;;;AAA+B,IAAM,IAAN,MAAO;AAAA,EAAC,OAAO,mBAAkB;AAAC,KAAC,YAAG,CAAC,OAAO,cAAY,OAAO,YAAU,EAAC,yBAAwB,MAAK,gBAAe,MAAE;AAAA,EAAE;AAAA,EAAC,WAAW,yBAAwB;AAAC,WAAO,WAAE,KAAK,oBAAkB,KAAK,iBAAiB,GAAE,OAAO,UAAU;AAAA,EAAwB;AAAA,EAAC,WAAW,uBAAuB,GAAE;AAAC,QAAG,UAAE;AAAC,WAAK,mBAAiB;AAAE;AAAA,IAAM;AAAC,SAAK,iBAAiB,GAAE,OAAO,UAAU,0BAAwB,GAAE,OAAO,UAAU,iBAAe,MAAG,KAAG,QAAQ,KAAK;AAAA;AAAA;AAAA;AAAA,qDAI7a;AAAA,EAAC;AAAC;AAAC,EAAE,mBAAiB;",
-  "names": []
-}

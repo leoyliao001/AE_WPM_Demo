@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../node_modules/@maersk-global/mds-components-utils/lib/host/multi-choice-fieldset-disabled.styles.js"],
-  "sourcesContent": ["import\"../../chunk-LTEQ7OUJ.js\";import{css as a}from\"lit\";var t=a`:host([disabled]){opacity:unset}:host([disabled]) *{pointer-events:unset}:host([disabled]) ::part(label),:host([disabled]) ::slotted(*){color:var(--mds_brand_appearance_opacity_inverse_50);cursor:not-allowed}:host([disabled]) ::slotted(.legend){color:var(--mds_brand_appearance_neutral_default_text-color)}:host([disabled]) .checkmark,:host([disabled]) .track{opacity:var(--mds_brand_appearance_state_disabled_opacity);cursor:not-allowed}`;export{t as default};\r\n"],
-  "mappings": ";;;;;AAA0D,IAAI,IAAE;",
-  "names": []
-}
