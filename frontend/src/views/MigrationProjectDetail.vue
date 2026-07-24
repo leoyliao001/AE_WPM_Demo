@@ -229,6 +229,31 @@
           </div>
         </div>
       </mc-dialog>
+      <mc-dialog
+        :open="accessDeniedOpen"
+        heading="Access denied"
+        dimension="small"
+        showclosebutton
+        @closing="closeAccessDenied"
+      >
+        <div class="access-denied-body">
+          <p>
+            This Opportunity Assessment was not submitted by you. Only the original
+            requestor can open it.
+          </p>
+          <p v-if="project?.requestor" class="access-denied-meta">
+            Requestor: <strong>{{ project.requestor }}</strong>
+          </p>
+        </div>
+        <div slot="actions" class="access-denied-actions">
+          <mc-button
+            appearance="primary"
+            fit="small"
+            label="OK"
+            @click="closeAccessDenied"
+          />
+        </div>
+      </mc-dialog>
     </template>
   </PageShell>
 </template>
@@ -247,6 +272,7 @@ import {
   overallProgress,
   statusAppearance
 } from '../utils/migrationDashboardProgress.js'
+import { getCurrentUserEmail } from '../auth/azureAuth.js'
 import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-icon'
@@ -268,6 +294,7 @@ const loading = ref(true)
 const loadError = ref('')
 const project = ref(null)
 const intakeDialogOpen = ref(false)
+const accessDeniedOpen = ref(false)
 
 const progressPct = computed(() => overallProgress(project.value?.status))
 const migrationMilestones = computed(() =>
@@ -312,6 +339,12 @@ const milestoneCardBody = (item) => {
 
 const onMilestoneClick = (item) => {
   if (item.id === 'opportunity') {
+    const currentEmail = String(getCurrentUserEmail() || '').trim().toLowerCase()
+    const requestor = String(project.value?.requestor || '').trim().toLowerCase()
+    if (!currentEmail || !requestor || currentEmail !== requestor) {
+      accessDeniedOpen.value = true
+      return
+    }
     router.push(`/migration-dashboard/${route.params.id}/opportunity-assessment`)
     return
   }
@@ -326,11 +359,16 @@ const closeIntakeDialog = () => {
   intakeDialogOpen.value = false
 }
 
+const closeAccessDenied = () => {
+  accessDeniedOpen.value = false
+}
+
 const loadProject = async () => {
   loading.value = true
   loadError.value = ''
   project.value = null
   intakeDialogOpen.value = false
+  accessDeniedOpen.value = false
 
   try {
     const { data } = await axios.get(`/api/migration-dashboard/projects/${route.params.id}/`)
@@ -898,6 +936,31 @@ watch(() => route.params.id, loadProject)
   flex-shrink: 0;
   justify-content: flex-end;
   padding-top: 16px;
+}
+
+.access-denied-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 8px;
+}
+
+.access-denied-body p {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.access-denied-meta {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+}
+
+.access-denied-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
 }
 
 @media (max-width: 640px) {

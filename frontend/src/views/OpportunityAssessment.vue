@@ -95,7 +95,27 @@
         <code>migration_request_id</code> does not match.
       </div>
 
-      <div v-if="loading && !hotReady" class="table-loading">
+      <div
+        v-if="accessDenied"
+        class="access-denied-banner"
+      >
+        <mc-notification
+          appearance="error"
+          fit="medium"
+          heading="Access denied"
+          :body="error"
+        />
+        <router-link class="access-denied-back" :to="backTo">
+          <mc-button
+            appearance="primary"
+            fit="small"
+            label="Back to project"
+            icon="mi-arrow-left"
+          />
+        </router-link>
+      </div>
+
+      <div v-else-if="loading && !hotReady" class="table-loading">
         <mc-loading-indicator size="large" />
         <span>Loading opportunity assessment…</span>
       </div>
@@ -487,6 +507,7 @@ import '@maersk-global/mds-components-core/mc-dialog'
 import '@maersk-global/mds-components-core/mc-input'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
+import '@maersk-global/mds-components-core/mc-notification'
 import {
   createAfterColumnResizeHandler,
   loadColumnWidths,
@@ -566,6 +587,7 @@ const projectName = ref('')
 const loading = ref(false)
 const hotReady = ref(false)
 const error = ref('')
+const accessDenied = ref(false)
 const rowCount = ref(0)
 const allChanges = ref([])
 const saving = ref(false)
@@ -1354,6 +1376,7 @@ async function runDeleteRows(idsToRemove) {
 async function loadData() {
   loading.value = true
   error.value = ''
+  accessDenied.value = false
   setupDialogOpen.value = false
   try {
     const { data } = await axios.get(
@@ -1375,8 +1398,10 @@ async function loadData() {
     }
   } catch (e) {
     console.error(e)
+    const status = e?.response?.status
     error.value =
       e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Failed to load'
+    accessDenied.value = status === 401 || status === 403
     destroyHot()
     hasExistingRows.value = false
   } finally {
@@ -1591,6 +1616,21 @@ onBeforeUnmount(() => {
   justify-content: center;
   min-height: 280px;
   padding: 32px;
+}
+
+.access-denied-banner {
+  align-items: flex-start;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  min-height: 280px;
+  padding: 32px 24px;
+}
+
+.access-denied-back {
+  text-decoration: none;
 }
 
 .table-empty {
