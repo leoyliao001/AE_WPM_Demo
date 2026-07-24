@@ -721,6 +721,7 @@ import {
   collectValidationErrors,
   previewSections
 } from '../utils/migrationIntakeSubmit'
+import { getCurrentUserEmail } from '../auth/azureAuth.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-tag'
@@ -954,10 +955,20 @@ const onPreviewDialogClosing = () => {
 }
 
 const openSubmissionPreview = () => {
+  const requestor = getCurrentUserEmail()
+  if (!requestor) {
+    showNotice(
+      'error',
+      'Sign-in required',
+      'Unable to resolve your SSO email for Requestor. Please sign in again, then retry.'
+    )
+    return
+  }
   submissionPreview.value = buildSubmissionPreview({
     form,
     customApprovalFileMeta,
-    migrationTypes
+    migrationTypes,
+    requestor
   })
   logLocationStrategyState('review-preview')
   console.log('[Migration Intake] Submission preview payload', submissionPreview.value)

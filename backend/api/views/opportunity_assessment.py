@@ -10,11 +10,17 @@ from django.db.models import Q
 from django.http import FileResponse
 
 from api.models import FpoMapping, MigrationIntakeSubmission, OpportunityAssessment, ProductOwnership
+from api.permissions.attributes_access import get_request_email, normalize_email
 from api.services.opportunity_assessment_excel import (
     build_opportunity_template,
     parse_opportunity_workbook,
 )
 from api.views.fpo_mapping import _build_cascade_tree, _serialize_row as serialize_fpo_row
+
+OA_REQUESTOR_DENIED = (
+    "Access denied. This Opportunity Assessment was not submitted by you. "
+    "Only the original requestor can open it."
+)
 
 # Labels for OA grid/API. Column order always follows OpportunityAssessment model field order.
 OA_FIELD_LABELS = {
@@ -138,6 +144,19 @@ def _get_project(project_id: int):
         return None
 
 
+def _deny_unless_requestor(request, project):
+    """Only the intake requestor (SSO email) may access Opportunity Assessment."""
+    email = get_request_email(request)
+    if not email:
+        return Response(
+            {"error": "Sign in required. Missing SSO email."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    if normalize_email(email) != normalize_email(project.requestor):
+        return Response({"error": OA_REQUESTOR_DENIED}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
 def _build_l1_l4_cascade() -> dict:
     """Build L1→L4 cascade options from FPO mapping dictionary."""
     qs = FpoMapping.objects.all().order_by("id")
@@ -155,6 +174,9 @@ def list_opportunity_assessment(request, project_id: int):
     project = _get_project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+    denied = _deny_unless_requestor(request, project)
+    if denied:
+        return denied
 
     migration_request_id = project.migration_request_id
     qs = OpportunityAssessment.objects.filter(
@@ -184,6 +206,9 @@ def save_opportunity_assessment(request, project_id: int):
     project = _get_project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+    denied = _deny_unless_requestor(request, project)
+    if denied:
+        return denied
 
     unique_data = request.data.get("uniqueData")
     if not isinstance(unique_data, list) or len(unique_data) == 0:
@@ -256,6 +281,9 @@ def delete_opportunity_assessment(request, project_id: int):
     project = _get_project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+    denied = _deny_unless_requestor(request, project)
+    if denied:
+        return denied
 
     removed_ids = request.data.get("removedIds")
     if not isinstance(removed_ids, list) or len(removed_ids) == 0:
@@ -304,6 +332,9 @@ def download_opportunity_template(request, project_id: int):
     project = _get_project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+    denied = _deny_unless_requestor(request, project)
+    if denied:
+        return denied
 
     try:
         buffer = build_opportunity_template(project.migration_request_id)
@@ -336,6 +367,9 @@ def upload_opportunity_excel(request, project_id: int):
     project = _get_project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+    denied = _deny_unless_requestor(request, project)
+    if denied:
+        return denied
 
     upload = request.FILES.get("file")
     if not upload:

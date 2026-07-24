@@ -2,8 +2,7 @@ import { buildAreaCountryPairs } from '../data/areaCountryMapping'
 
 
 
-export const REQUESTOR_PLACEHOLDER = 'LYL114'
-
+export const REQUESTOR_PLACEHOLDER = ''
 export const DEFAULT_MIGRATION_STATUS = 'new'
 
 
