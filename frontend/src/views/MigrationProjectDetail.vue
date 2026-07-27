@@ -352,6 +352,10 @@ const onMilestoneClick = (item) => {
     intakeDialogOpen.value = true
     return
   }
+  if (item.id === 'gantt') {
+    router.push(`/migration-dashboard/${route.params.id}/gantt`)
+    return
+  }
   console.log('[Migration Project] Milestone selected', item.id)
 }
 

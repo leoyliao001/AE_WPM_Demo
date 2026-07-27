@@ -1,6 +1,7 @@
 from django.urls import path
 
 from api.views.migration_dashboard import list_projects, project_detail
+from api.views.project_gantt import project_gantt
 from api.views.opportunity_assessment import (
     delete_opportunity_assessment,
     download_opportunity_template,
@@ -12,6 +13,11 @@ from api.views.opportunity_assessment import (
 urlpatterns = [
     path("projects/", list_projects, name="migration-dashboard-projects"),
     path("projects/<int:project_id>/", project_detail, name="migration-dashboard-project-detail"),
+    path(
+        "projects/<int:project_id>/gantt/",
+        project_gantt,
+        name="project-gantt",
+    ),
     path(
         "projects/<int:project_id>/opportunity-assessment/",
         list_opportunity_assessment,

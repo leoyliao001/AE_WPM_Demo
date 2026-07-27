@@ -17,8 +17,8 @@
       v-else-if="!loading && !projects.length"
       appearance="info"
       fit="medium"
-      heading="No submitted projects yet"
-      body="Submit a migration intake form to see projects appear here."
+      :heading="emptyHeading"
+      :body="emptyBody"
     >
       <mc-button
         slot="actions"
@@ -351,7 +351,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
@@ -365,8 +365,7 @@ import {
   overallProgress,
   statusAppearance
 } from '../utils/migrationDashboardProgress.js'
-import { azureAuthState, getCurrentUserEmail } from '../auth/azureAuth.js'
-import { getAuthBearerToken } from '../auth/authToken.js'
+import { getCurrentUserEmail } from '../auth/azureAuth.js'
 import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
@@ -379,18 +378,26 @@ import '@maersk-global/mds-components-core/mc-option'
 const router = useRouter()
 const route = useRoute()
 
-// Project nav reuses this list; later filter to the signed-in user's projects only.
+// /project-dashboard = current user's projects; /migration-dashboard = all projects
 const isMyProjectsView = computed(() => route.name === 'ProjectDashboard')
 const pageTitle = computed(() =>
   isMyProjectsView.value ? 'My Projects' : 'Migration Dashboard'
 )
 const pageSubtitle = computed(() =>
   isMyProjectsView.value
-    ? 'Projects under your account — open a project to track migration progress. (User filter coming soon.)'
+    ? 'Only projects you submitted — open a project to track migration progress.'
     : 'Review submitted migration intake requests — overview of all projects and drill-down into progress.'
 )
 const pageTag = computed(() =>
   isMyProjectsView.value ? 'My Projects' : 'Migration Dashboard'
+)
+const emptyHeading = computed(() =>
+  isMyProjectsView.value ? 'No projects under your account yet' : 'No submitted projects yet'
+)
+const emptyBody = computed(() =>
+  isMyProjectsView.value
+    ? 'Projects you submit via the migration intake form will appear here.'
+    : 'Submit a migration intake form to see projects appear here.'
 )
 
 const loading = ref(true)
@@ -622,7 +629,21 @@ const loadProjects = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await axios.get('/api/migration-dashboard/projects/')
+    if (isMyProjectsView.value && !getCurrentUserEmail()) {
+      projects.value = []
+      summary.value = {
+        totalProjects: 0,
+        totalFte: 0,
+        byStatus: {},
+        byRegion: {},
+        byProduct: {}
+      }
+      loadError.value = 'Sign in required to view your projects.'
+      return
+    }
+
+    const params = isMyProjectsView.value ? { mine: 1 } : undefined
+    const { data } = await axios.get('/api/migration-dashboard/projects/', { params })
     projects.value = data.rows ?? []
     summary.value = data.summary ?? summary.value
   } catch (error) {
@@ -634,41 +655,11 @@ const loadProjects = async () => {
 }
 
 onMounted(() => {
-  // TEMP test: dump SSO / auth user payload when opening Migration Dashboard
-  let storedUser = null
-  try {
-    storedUser = JSON.parse(localStorage.getItem('wpm.azure.auth.user') || 'null')
-  } catch {
-    storedUser = null
-  }
+  loadProjects()
+})
 
-  const bearer = getAuthBearerToken()
-  let idTokenClaims = null
-  if (bearer) {
-    try {
-      const payload = bearer.split('.')[1]
-      const padded = payload.replace(/-/g, '+').replace(/_/g, '/')
-      const json = atob(padded.padEnd(padded.length + ((4 - (padded.length % 4)) % 4), '='))
-      idTokenClaims = JSON.parse(json)
-    } catch {
-      idTokenClaims = null
-    }
-  }
-
-  console.log('[MigrationDashboard] SSO user info (test)', {
-    azureAuthState: {
-      status: azureAuthState.status,
-      isAuthenticated: azureAuthState.isAuthenticated,
-      error: azureAuthState.error,
-      accessToken: azureAuthState.accessToken,
-      user: azureAuthState.user ? { ...azureAuthState.user } : null
-    },
-    getCurrentUserEmail: getCurrentUserEmail(),
-    localStorageUser: storedUser,
-    hasBearerToken: Boolean(bearer),
-    idTokenClaims
-  })
-
+watch(isMyProjectsView, () => {
+  clearFilters()
   loadProjects()
 })
 </script>

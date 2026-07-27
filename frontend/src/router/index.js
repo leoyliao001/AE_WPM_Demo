@@ -11,6 +11,7 @@ import GscSiteMapping from '../views/GscSiteMapping.vue'
 import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
 import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
+import ProjectGantt from '../views/ProjectGantt.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -42,8 +43,13 @@ const routes = [
     name: 'OpportunityAssessment',
     component: OpportunityAssessment
   },
+  {
+    path: '/migration-dashboard/:id/gantt',
+    name: 'ProjectGantt',
+    component: ProjectGantt
+  },
   { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
-  // Project: same list for now; later filter to current user's projects
+  // Project: current user's submitted projects only (?mine=1)
   { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
   { path: '/project-dashboard/:section', redirect: '/project-dashboard' },
   { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
