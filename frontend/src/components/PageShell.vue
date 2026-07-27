@@ -1,5 +1,5 @@
 <template>
-  <div class="page-shell">
+  <div class="page-shell" :class="{ 'page-shell--full-width': fullWidth }">
     <div class="page-content">
       <header v-if="showHeader" class="page-header">
         <router-link v-if="backTo" class="back-link" :to="backTo">
@@ -40,7 +40,8 @@ defineProps({
   tagAppearance: { type: String, default: 'info' },
   backTo: { type: String, default: '/' },
   backLabel: { type: String, default: 'Back to Welcome' },
-  showHeader: { type: Boolean, default: true }
+  showHeader: { type: Boolean, default: true },
+  fullWidth: { type: Boolean, default: false }
 })
 </script>
 
@@ -58,6 +59,17 @@ defineProps({
   padding: 40px 24px 72px;
   position: relative;
   z-index: 1;
+}
+
+.page-shell--full-width .page-content {
+  margin: 0;
+  max-width: none;
+  padding: 28px 20px 48px;
+  width: 100%;
+}
+
+.page-shell--full-width .page-subtitle {
+  max-width: none;
 }
 
 .page-header {

@@ -207,3 +207,30 @@ class ProjectAttributesAccess(models.Model):
         role = "super_admin" if self.is_super_admin else "user"
         return f"{self.email} ({role})"
 
+
+class ProjectGanttPlan(models.Model):
+    """Per-project Gantt task week spans (editable bars)."""
+
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="gantt_plan",
+    )
+    tasks = models.JSONField(
+        default=list,
+        help_text="[{id, name, startWeek, endWeek, phaseId}, ...]",
+    )
+    meta = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Project summary fields (phase, scope, FTE, HC, totals).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "project_gantt_plan"
+
+    def __str__(self):
+        return f"Gantt plan for project {self.project_id}"
+
