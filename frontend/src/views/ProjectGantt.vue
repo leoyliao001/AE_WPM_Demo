@@ -28,9 +28,7 @@
                     ? 'Unsaved changes — edit summary or bars, then Save.'
                     : savedAt
                       ? `Saved plan · last update ${savedAtLabel}`
-                      : tasks.length
-                        ? 'Tasks from Opportunity Assessment — edit week bars, then Save for this project.'
-                        : 'No Opportunity Assessment tasks yet — submit OA tasks to generate Migration Key Steps.'
+                      : 'Using fixed Migration Key Steps — edit week bars, then Save for this project.'
               }}
             </p>
           </div>
@@ -53,8 +51,8 @@
               appearance="neutral"
               variant="outlined"
               fit="small"
-              label="Reset from OA"
-              :disabled="saving || loading || !editMode || !oaTasks.length"
+              label="Reset template"
+              :disabled="saving || loading || !editMode"
               @click="resetToTemplate"
             />
             <mc-button
@@ -132,7 +130,7 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import ProjectGanttChart from '../components/ProjectGanttChart.vue'
-import { projectGanttFixture } from '../data/projectGanttFixture.js'
+import { projectGanttFixture, buildProjectGanttWeeks } from '../data/projectGanttFixture.js'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
@@ -171,12 +169,12 @@ const savedAt = ref(null)
 const isDirty = ref(false)
 const editMode = ref(false)
 const fieldLabels = projectGanttFixture.fieldLabels
-const weeks = projectGanttFixture.weeks
+const weeks = ref(buildProjectGanttWeeks())
 const phases = projectGanttFixture.phases
 const notes = projectGanttFixture.notes
 const todayWeek = projectGanttFixture.todayWeek
-const tasks = ref([])
-const oaTasks = ref([])
+const tasks = ref(cloneTasks(projectGanttFixture.tasks))
+const templateTasks = ref(cloneTasks(projectGanttFixture.tasks))
 const meta = ref(cloneMeta(projectGanttFixture.meta))
 
 const backTo = computed(() => `/migration-dashboard/${route.params.id}`)
@@ -187,9 +185,12 @@ const pageTitle = computed(() =>
 
 const pageSubtitle = computed(() => {
   if (project.value) {
-    return `${project.value.migrationRequestId} — Migration Key Steps follow Opportunity Assessment tasks.`
+    const start = weeks.value?.[0]?.calendarWeek
+    return start
+      ? `${project.value.migrationRequestId} — Calendar weeks start at ${start} (intake week + 1).`
+      : `${project.value.migrationRequestId} — edit fixed Migration Key Steps week bars for this project.`
   }
-  return 'Migration Key Steps follow Opportunity Assessment tasks.'
+  return 'Edit fixed Migration Key Steps week bars for this project.'
 })
 
 const savedAtLabel = computed(() => {
@@ -201,11 +202,28 @@ const savedAtLabel = computed(() => {
   }
 })
 
-const applyGanttPayload = (data) => {
+const applyGanttPayload = (data, projectData = null) => {
   const nextTasks = Array.isArray(data?.tasks) ? data.tasks : []
-  const nextOa = Array.isArray(data?.oa_tasks) ? data.oa_tasks : nextTasks
-  tasks.value = cloneTasks(nextTasks)
-  oaTasks.value = cloneTasks(nextOa)
+  const nextTemplate = Array.isArray(data?.template_tasks)
+    ? data.template_tasks
+    : projectGanttFixture.tasks
+  tasks.value = cloneTasks(nextTasks.length ? nextTasks : projectGanttFixture.tasks)
+  templateTasks.value = cloneTasks(nextTemplate)
+
+  if (Array.isArray(data?.weeks) && data.weeks.length) {
+    weeks.value = data.weeks.map((week, index) => ({
+      index: week.index ?? index + 1,
+      timelineWeek: week.timelineWeek || `wk${String(index + 1).padStart(2, '0')}`,
+      calendarWeek: week.calendarWeek || '',
+      calendarWeekNumber: week.calendarWeekNumber,
+      calendarYear: week.calendarYear
+    }))
+  } else {
+    const createdAt =
+      data?.intake_created_at || projectData?.createdAt || project.value?.createdAt || null
+    weeks.value = buildProjectGanttWeeks(createdAt || undefined)
+  }
+
   if (data?.meta && typeof data.meta === 'object') {
     meta.value = mergeSavedMeta(data.meta)
   }
@@ -249,7 +267,7 @@ const onUpdateMeta = ({ key, value }) => {
 }
 
 const resetToTemplate = () => {
-  tasks.value = cloneTasks(oaTasks.value)
+  tasks.value = cloneTasks(templateTasks.value.length ? templateTasks.value : projectGanttFixture.tasks)
   meta.value = cloneMeta(projectGanttFixture.meta)
   isDirty.value = true
 }
@@ -271,8 +289,8 @@ const loadAll = async () => {
   resultDialogOpen.value = false
   project.value = null
   isDirty.value = false
-  tasks.value = []
-  oaTasks.value = []
+  tasks.value = cloneTasks(projectGanttFixture.tasks)
+  templateTasks.value = cloneTasks(projectGanttFixture.tasks)
   meta.value = cloneMeta(projectGanttFixture.meta)
   savedAt.value = null
 
@@ -282,7 +300,7 @@ const loadAll = async () => {
       axios.get(`/api/migration-dashboard/projects/${route.params.id}/gantt/`)
     ])
     project.value = projectRes.data
-    applyGanttPayload(ganttRes.data || {})
+    applyGanttPayload(ganttRes.data || {}, projectRes.data)
   } catch (error) {
     loadError.value =
       error?.response?.data?.error ?? 'Unable to load this project Gantt. Please try again.'

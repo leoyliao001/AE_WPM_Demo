@@ -1,27 +1,28 @@
 """
 Project Gantt API — per-project editable task week spans + summary meta.
 
-Migration Key Steps rows are derived from Opportunity Assessment tasks for the
-project's migration_request_id (not from a fixed Excel template). Saved plan
-tasks are merged by id (`oa-<pk>`) to preserve week/phase edits.
+Migration Key Steps are a fixed template (Excel / Project Gantt sheet). Saved
+plan tasks are merged by id to preserve week/phase edits.
 
 GET  /api/migration-dashboard/projects/<id>/gantt/
 PUT  /api/migration-dashboard/projects/<id>/gantt/
 """
 
 from typing import Optional
+from datetime import date, datetime, timedelta
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import MigrationIntakeSubmission, OpportunityAssessment, ProjectGanttPlan
+from api.models import MigrationIntakeSubmission, ProjectGanttPlan
 
 MAX_WEEK = 44
 MIN_WEEK = 1
-DEFAULT_TASK_START = 1
-DEFAULT_TASK_END = 5
+TIMELINE_WEEK_COUNT = 44
 DEFAULT_TASK_PHASE = "opportunity"
+DEFAULT_CALENDAR_START_WEEK = 9
 
 ALLOWED_PHASE_IDS = {
     "opportunity",
@@ -43,6 +44,121 @@ META_NUMBER_KEYS = (
     "total",
 )
 
+# Fixed Migration Key Steps (matches Excel / fixture attachment).
+TEMPLATE_TASKS = [
+    {
+        "id": "business-case",
+        "name": "Business Case (Memo)",
+        "startWeek": 1,
+        "endWeek": 5,
+        "phaseId": "opportunity",
+    },
+    {
+        "id": "fbp-approval",
+        "name": "FBP approval",
+        "startWeek": 1,
+        "endWeek": 5,
+        "phaseId": "opportunity",
+    },
+    {
+        "id": "functional-head",
+        "name": "Functional head approval",
+        "startWeek": 3,
+        "endWeek": 5,
+        "phaseId": "opportunity",
+    },
+    {
+        "id": "elt-approval",
+        "name": "ELT approg",
+        "startWeek": 3,
+        "endWeek": 5,
+        "phaseId": "opportunity",
+    },
+    {
+        "id": "gsc-head",
+        "name": "GSC Head -1 approval",
+        "startWeek": 3,
+        "endWeek": 5,
+        "phaseId": "opportunity",
+    },
+    {
+        "id": "opportunity-assessment",
+        "name": "Opportunity Assessment (Detailed task scoping)",
+        "startWeek": 1,
+        "endWeek": 5,
+        "phaseId": "opportunity",
+    },
+    {
+        "id": "pid-approval",
+        "name": "PID Approval",
+        "startWeek": 6,
+        "endWeek": 12,
+        "phaseId": "onboarding",
+    },
+    {
+        "id": "hiring-request",
+        "name": "Hiring Request approval",
+        "startWeek": 6,
+        "endWeek": 12,
+        "phaseId": "onboarding",
+    },
+    {
+        "id": "resource-mobilization",
+        "name": "Resource mobilization",
+        "startWeek": 13,
+        "endWeek": 23,
+        "phaseId": "onboarding",
+    },
+    {
+        "id": "neo-training",
+        "name": "NEO + GSC L&D business & training stage",
+        "startWeek": 24,
+        "endWeek": 27,
+        "phaseId": "gss-training",
+    },
+    {
+        "id": "knowledge-transfer",
+        "name": "Knowledge Transfer Business + System Training sessions + Assessments",
+        "startWeek": 28,
+        "endWeek": 30,
+        "phaseId": "knowledge-transfer",
+    },
+    {
+        "id": "volume-transfer",
+        "name": "Volume Transfer/Ramp-up stage",
+        "startWeek": 31,
+        "endWeek": 36,
+        "phaseId": "volume-rampup",
+    },
+    {
+        "id": "hypercare",
+        "name": "Hypercare stage",
+        "startWeek": 37,
+        "endWeek": 41,
+        "phaseId": "hypercare",
+    },
+    {
+        "id": "hypercare-exit",
+        "name": "Hypercare Exit Success Criteria Review",
+        "startWeek": 42,
+        "endWeek": 42,
+        "phaseId": "closure",
+    },
+    {
+        "id": "sign-off",
+        "name": "Migration Sign-off recommendation",
+        "startWeek": 43,
+        "endWeek": 43,
+        "phaseId": "closure",
+    },
+    {
+        "id": "capacity-release",
+        "name": "Recommended soonest Capacity Release",
+        "startWeek": 44,
+        "endWeek": 44,
+        "phaseId": "closure",
+    },
+]
 
 def _get_project(project_id: int):
     try:
@@ -51,15 +167,59 @@ def _get_project(project_id: int):
         return None
 
 
-def _oa_display_name(row: OpportunityAssessment) -> str:
-    name = (row.task_name or "").strip()
-    if name:
-        return name
-    for candidate in (row.l4, row.l3, row.product):
-        text = (candidate or "").strip()
-        if text:
-            return text
-    return f"OA Task {row.id}"
+def _as_local_date(value) -> Optional[date]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if timezone.is_aware(value):
+            return timezone.localtime(value).date()
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return None
+
+
+def calendar_start_week_from_intake(created_at) -> int:
+    """
+    Calendar weeks start at (ISO work week of intake submission) + 1.
+    Wraps correctly across year boundaries (including 53-week years).
+    """
+    local_date = _as_local_date(created_at)
+    if not local_date:
+        return DEFAULT_CALENDAR_START_WEEK
+
+    year, week, _weekday = local_date.isocalendar()
+    start_monday = date.fromisocalendar(year, week, 1) + timedelta(weeks=1)
+    return start_monday.isocalendar()[1]
+
+
+def build_gantt_weeks(created_at=None, count: int = TIMELINE_WEEK_COUNT) -> list[dict]:
+    """
+    Build timeline + calendar week columns for the Gantt header.
+    Calendar labels start at intake work-week + 1.
+    """
+    local_date = _as_local_date(created_at)
+    if local_date:
+        year, week, _weekday = local_date.isocalendar()
+        start_monday = date.fromisocalendar(year, week, 1) + timedelta(weeks=1)
+    else:
+        # Fallback aligned to legacy Excel demo (Wk9 …).
+        start_monday = date.fromisocalendar(date.today().year, DEFAULT_CALENDAR_START_WEEK, 1)
+
+    weeks: list[dict] = []
+    for index in range(count):
+        day = start_monday + timedelta(weeks=index)
+        _iy, iso_week, _id = day.isocalendar()
+        weeks.append(
+            {
+                "index": index + 1,
+                "timelineWeek": f"wk{index + 1:02d}",
+                "calendarWeek": f"Wk{iso_week}",
+                "calendarWeekNumber": iso_week,
+                "calendarYear": day.isocalendar()[0],
+            }
+        )
+    return weeks
 
 
 def _clamp_week_range(start: int, end: int) -> tuple[int, int]:
@@ -72,35 +232,26 @@ def _clamp_week_range(start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def build_oa_baseline_tasks(migration_request_id: str) -> list[dict]:
-    """One Gantt row per Opportunity Assessment task (defaults only)."""
-    mid = (migration_request_id or "").strip()
-    if not mid:
-        return []
-
-    tasks: list[dict] = []
-    for row in OpportunityAssessment.objects.filter(migration_request_id=mid).order_by("id"):
-        tasks.append(
-            {
-                "id": f"oa-{row.id}",
-                "name": _oa_display_name(row),
-                "startWeek": DEFAULT_TASK_START,
-                "endWeek": DEFAULT_TASK_END,
-                "phaseId": DEFAULT_TASK_PHASE,
-                "opportunity_assessment_id": row.id,
-            }
-        )
-    return tasks
+def build_template_tasks() -> list[dict]:
+    """Return a copy of the fixed Migration Key Steps."""
+    return [
+        {
+            "id": task["id"],
+            "name": task["name"],
+            "startWeek": task["startWeek"],
+            "endWeek": task["endWeek"],
+            "phaseId": task["phaseId"],
+        }
+        for task in TEMPLATE_TASKS
+    ]
 
 
-def merge_gantt_tasks_with_oa(
-    migration_request_id: str, saved_tasks=None
-) -> tuple[list[dict], list[dict]]:
+def merge_gantt_tasks_with_template(saved_tasks=None) -> tuple[list[dict], list[dict]]:
     """
-    Build tasks from OA and overlay saved week/phase (and optional name) by id.
+    Overlay saved week/phase onto the fixed template by task id.
     Returns (merged_tasks, baseline_tasks).
     """
-    baseline = build_oa_baseline_tasks(migration_request_id)
+    baseline = build_template_tasks()
     saved_by_id: dict[str, dict] = {}
     if isinstance(saved_tasks, list):
         for item in saved_tasks:
@@ -120,20 +271,23 @@ def merge_gantt_tasks_with_oa(
 
         phase_id = str(saved.get("phaseId") or base["phaseId"] or DEFAULT_TASK_PHASE).strip()
         if phase_id not in ALLOWED_PHASE_IDS:
-            phase_id = DEFAULT_TASK_PHASE
+            phase_id = base["phaseId"]
 
-        name = str(saved.get("name") or "").strip() or base["name"]
         merged.append(
             {
                 "id": task_id,
-                "name": name,
+                "name": base["name"],
                 "startWeek": start_i,
                 "endWeek": end_i,
                 "phaseId": phase_id,
-                "opportunity_assessment_id": base.get("opportunity_assessment_id"),
             }
         )
     return merged, baseline
+
+
+# Backwards-compatible alias for older imports.
+def merge_gantt_tasks_with_oa(migration_request_id: str, saved_tasks=None):
+    return merge_gantt_tasks_with_template(saved_tasks)
 
 
 def _normalize_tasks(raw_tasks):
@@ -219,14 +373,18 @@ def _serialize_plan(
 ) -> dict:
     mid = (project.migration_request_id or "").strip()
     saved_tasks = plan.tasks if plan else None
-    tasks, oa_tasks = merge_gantt_tasks_with_oa(mid, saved_tasks)
+    tasks, template_tasks = merge_gantt_tasks_with_template(saved_tasks)
+    weeks = build_gantt_weeks(project.created_at)
+    start_week = weeks[0]["calendarWeekNumber"] if weeks else DEFAULT_CALENDAR_START_WEEK
     return {
         "project_id": project.id,
         "migration_request_id": mid or None,
         "saved": bool(plan),
         "tasks": tasks,
-        "oa_tasks": oa_tasks,
-        "oa_task_count": len(oa_tasks),
+        "template_tasks": template_tasks,
+        "weeks": weeks,
+        "calendar_start_week": start_week,
+        "intake_created_at": project.created_at.isoformat() if project.created_at else None,
         "meta": (plan.meta if plan else {}) or {},
         "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
     }

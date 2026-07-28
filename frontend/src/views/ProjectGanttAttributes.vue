@@ -67,7 +67,7 @@
         appearance="info"
         fit="medium"
         heading="Enter a Migration ID"
-        body="Enter a Migration Request ID and Load. Task rows are generated from Opportunity Assessment submissions for that ID."
+        body="Enter a Migration Request ID and Load. Task rows use the fixed Migration Key Steps template; saved week/phase edits are preserved."
       />
 
       <template v-if="loaded">
