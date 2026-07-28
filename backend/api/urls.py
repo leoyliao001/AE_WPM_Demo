@@ -12,4 +12,5 @@ urlpatterns = [
     path("product-ownership/", include("api.routes.product_ownership")),
     path("gsc-site-mapping/", include("api.routes.gsc_site_mapping")),
     path("project-attributes-access/", include("api.routes.project_attributes_access")),
+    path("project-gantt-attributes/", include("api.routes.project_gantt_attributes")),
 ]

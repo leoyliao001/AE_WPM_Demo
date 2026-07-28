@@ -117,6 +117,17 @@ const allTables = [
     actionLabel: 'Open GSC Site Mapping'
   },
   {
+    id: 'project-gantt',
+    tableKey: 'project_gantt',
+    title: 'Project Gantt',
+    description:
+      'Per-migration Gantt tasks and summary parameters. Enter a Migration ID to load, then edit online.',
+    icon: 'mi-calendar',
+    accent: '#0070C0',
+    route: '/project-gantt-attributes',
+    actionLabel: 'Open Project Gantt'
+  },
+  {
     id: 'access-control',
     tableKey: 'access_control',
     title: 'Access Control',
