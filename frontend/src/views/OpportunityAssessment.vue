@@ -515,7 +515,7 @@ import {
 } from '../utils/handsontableColumnWidths.js'
 
 const CASCADE_KEYS = ['l1', 'l2', 'l3', 'l4']
-const YN_DROPDOWN_KEYS = ['task_found_in_service_catalog', 'migratable_to_gsc']
+const YN_DROPDOWN_KEYS = []
 const YN_OPTIONS = ['Y', 'N']
 
 /** Width / readOnly only — column order & labels come from the API (model order). */
@@ -543,8 +543,8 @@ const COLUMN_META = {
   task_time_per_unit_min: { width: 140 },
   area: { width: 140 },
   gsc_site: { width: 160 },
-  task_found_in_service_catalog: { width: 200 },
-  migratable_to_gsc: { width: 200 },
+  task_found_in_service_catalog: { width: 220, readOnly: true },
+  migratable_to_gsc: { width: 240, readOnly: true },
   fte_calculation: { width: 110 }
 }
 
@@ -582,6 +582,7 @@ const route = useRoute()
 const hotContainer = ref(null)
 const hotInstance = shallowRef(null)
 const cascade = shallowRef({ l1_list: [], by_l1: {} })
+const serviceCatalogueByL3 = shallowRef({})
 const migrationRequestId = ref('')
 const projectName = ref('')
 const loading = ref(false)
@@ -820,6 +821,51 @@ function getL3Node(l1, l2, l3) {
   return n2.by_l3?.[l3] || null
 }
 
+function normalizeL3Key(l3) {
+  return String(l3 || '')
+    .trim()
+    .toLowerCase()
+}
+
+function resolveServiceCatalogueLink(l3) {
+  const key = normalizeL3Key(l3)
+  if (!key) {
+    return { taskFound: '', migratable: '' }
+  }
+  const hit = serviceCatalogueByL3.value[key]
+  if (!hit) {
+    return { taskFound: 'N', migratable: '' }
+  }
+  return {
+    taskFound: 'Y',
+    migratable: hit.ownership || ''
+  }
+}
+
+function applyServiceCatalogueValues(row) {
+  const link = resolveServiceCatalogueLink(row?.l3)
+  return {
+    ...row,
+    task_found_in_service_catalog: link.taskFound,
+    migratable_to_gsc: link.migratable
+  }
+}
+
+function applyServiceCatalogueLink(hot, visualRow, physicalRow) {
+  const data = { ...(hot.getSourceDataAtRow(physicalRow) || emptyRow()) }
+  const link = resolveServiceCatalogueLink(data.l3)
+  const updates = []
+  if ((data.task_found_in_service_catalog || '') !== link.taskFound) {
+    updates.push([visualRow, 'task_found_in_service_catalog', link.taskFound])
+  }
+  if ((data.migratable_to_gsc || '') !== link.migratable) {
+    updates.push([visualRow, 'migratable_to_gsc', link.migratable])
+  }
+  if (updates.length) {
+    hot.setDataAtRowProp(updates, 'sc-link')
+  }
+}
+
 function optionsFor(prop, rowData) {
   const { l1, l2, l3 } = rowData || {}
   switch (prop) {
@@ -883,6 +929,11 @@ function applyCascadeFill(hot, visualRow, physicalRow, changedProp) {
   if (updates.length) {
     hot.setDataAtRowProp(updates, 'cascade')
   }
+
+  // L1/L2 clears may empty L3 — refresh Service Catalogue linked fields.
+  if (changedProp === 'l1' || changedProp === 'l2' || changedProp === 'l3') {
+    applyServiceCatalogueLink(hot, visualRow, physicalRow)
+  }
 }
 
 function buildColumns() {
@@ -914,6 +965,7 @@ function buildColumns() {
         visibleRows: 4,
         trimDropdown: false,
         source: YN_OPTIONS,
+        readOnly: !!col.readOnly,
         width
       }
     }
@@ -974,6 +1026,9 @@ function initHot(rows) {
     row.migration_request_id = migrationRequestId.value || r.migration_request_id || ''
     row.id = r.id ?? null
     row._cid = r._cid || ''
+    const linked = applyServiceCatalogueValues(row)
+    row.task_found_in_service_catalog = linked.task_found_in_service_catalog
+    row.migratable_to_gsc = linked.migratable_to_gsc
     return row
   })
 
@@ -1085,7 +1140,15 @@ function initHot(rows) {
       }
     },
     afterChange(changes, source) {
-      if (!changes || source === 'cascade' || source === 'loadData' || source === 'api') return
+      if (
+        !changes ||
+        source === 'cascade' ||
+        source === 'sc-link' ||
+        source === 'loadData' ||
+        source === 'api'
+      ) {
+        return
+      }
       if (!['edit', 'CopyPaste.paste', 'Autofill.fill'].includes(source)) return
 
       const handledCascade = new Set()
@@ -1106,6 +1169,8 @@ function initHot(rows) {
             handledCascade.add(key)
             applyCascadeFill(this, visualRow, physicalRow, prop)
           }
+        } else if (prop === 'l3') {
+          applyServiceCatalogueLink(this, visualRow, physicalRow)
         }
 
         if (prop === 'migration_request_id' && src) {
@@ -1148,6 +1213,17 @@ function initHot(rows) {
 
   hotInstance.value = hot
   hotReady.value = true
+
+  // Mark rows dirty when Service Catalogue linkage changed display values vs DB.
+  data.forEach((row, idx) => {
+    const orig = rows[idx] || {}
+    if (
+      (orig.task_found_in_service_catalog || '') !== (row.task_found_in_service_catalog || '') ||
+      (orig.migratable_to_gsc || '') !== (row.migratable_to_gsc || '')
+    ) {
+      trackChangedRow(hot, idx)
+    }
+  })
 }
 
 function onResize() {
@@ -1385,6 +1461,7 @@ async function loadData() {
     migrationRequestId.value = data.migration_request_id || ''
     projectName.value = data.project_name || ''
     cascade.value = data.cascade || { l1_list: [], by_l1: {} }
+    serviceCatalogueByL3.value = data.service_catalogue_by_l3 || {}
     rowCount.value = data.count || 0
     hasExistingRows.value = !!data.has_existing_rows || (data.count || 0) > 0
     applySetupPayload(data.setup || {})

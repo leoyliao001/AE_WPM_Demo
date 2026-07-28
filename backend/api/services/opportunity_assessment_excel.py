@@ -47,6 +47,7 @@ FIELD_BY_HEADER = {
     "task found in the corresponding service catalogue (y/n)": "task_found_in_service_catalog",
     "task found in the corresponding service catalog?": "task_found_in_service_catalog",
     "migratable to gsc as per service catalogue (y/n)": "migratable_to_gsc",
+    "migratable to gsc as per service catalogue": "migratable_to_gsc",
     "migratable to gsc as per service catalog?": "migratable_to_gsc",
     "upstream (tasks, events, input)": "upstream",
     "downstream (task, events, output)": "downstream",

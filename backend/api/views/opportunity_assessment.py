@@ -9,7 +9,13 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.http import FileResponse
 
-from api.models import FpoMapping, MigrationIntakeSubmission, OpportunityAssessment, ProductOwnership
+from api.models import (
+    FpoMapping,
+    MigrationIntakeSubmission,
+    OpportunityAssessment,
+    ProductOwnership,
+    ServiceCatalogue,
+)
 from api.permissions.attributes_access import get_request_email, normalize_email
 from api.services.opportunity_assessment_excel import (
     build_opportunity_template,
@@ -48,7 +54,7 @@ OA_FIELD_LABELS = {
     "area": "Area",
     "gsc_site": "GSC Site",
     "task_found_in_service_catalog": "Task found in the corresponding Service Catalogue (Y/N)",
-    "migratable_to_gsc": "Migratable to GSC as per service catalogue (Y/N)",
+    "migratable_to_gsc": "Migratable to GSC as per service catalogue",
     "fte_calculation": "FTE Calculation",
 }
 OA_SKIP_FIELDS = frozenset({"id", "created_at", "updated_at"})
@@ -66,6 +72,53 @@ def _all_fields():
 ALL_FIELDS = _all_fields()
 WRITABLE_FIELDS = [key for key, _label in ALL_FIELDS if key != "migration_request_id"]
 CASCADE_FIELD_KEYS = {"l1", "l2", "l3", "l4"}
+
+
+def _normalize_l3_key(value: str) -> str:
+    return _normalize_value(value).casefold()
+
+
+def _build_service_catalogue_l3_lookup() -> dict:
+    """
+    Map normalized L3 -> { found, ownership }.
+    Ownership is unique Current Ownership values (first-seen order), joined by ', '.
+    """
+    lookup: dict = {}
+    for row in ServiceCatalogue.objects.all().order_by("id").values("l3", "current_ownership"):
+        l3 = _normalize_value(row.get("l3"))
+        key = _normalize_l3_key(l3)
+        if not key:
+            continue
+        entry = lookup.get(key)
+        if not entry:
+            entry = {"l3": l3, "found": True, "ownerships": []}
+            lookup[key] = entry
+        ownership = _normalize_value(row.get("current_ownership"))
+        if ownership and ownership not in entry["ownerships"]:
+            entry["ownerships"].append(ownership)
+
+    for entry in lookup.values():
+        entry["ownership"] = ", ".join(entry.pop("ownerships"))
+    return lookup
+
+
+def _apply_service_catalogue_link(payload: dict, lookup: dict) -> dict:
+    """Fill task_found / migratable fields from Service Catalogue L3 match."""
+    key = _normalize_l3_key(payload.get("l3", ""))
+    if not key:
+        payload["task_found_in_service_catalog"] = ""
+        payload["migratable_to_gsc"] = ""
+        return payload
+
+    hit = lookup.get(key)
+    if not hit:
+        payload["task_found_in_service_catalog"] = "N"
+        payload["migratable_to_gsc"] = ""
+        return payload
+
+    payload["task_found_in_service_catalog"] = "Y"
+    payload["migratable_to_gsc"] = hit.get("ownership") or ""
+    return payload
 
 
 def _normalize_value(value) -> str:
@@ -183,6 +236,7 @@ def list_opportunity_assessment(request, project_id: int):
         migration_request_id=migration_request_id
     ).order_by("id")
     rows = [_serialize_row(item) for item in qs]
+    sc_lookup = _build_service_catalogue_l3_lookup()
 
     return Response(
         {
@@ -195,6 +249,7 @@ def list_opportunity_assessment(request, project_id: int):
             "columns": [{"key": key, "label": label} for key, label in _all_fields()],
             "cascade_keys": sorted(CASCADE_FIELD_KEYS),
             "cascade": _build_l1_l4_cascade(),
+            "service_catalogue_by_l3": sc_lookup,
             "rows": rows,
         }
     )
@@ -221,6 +276,7 @@ def save_opportunity_assessment(request, project_id: int):
     created_ids: list[int] = []
     updated_ids: list[int] = []
     errors: list[dict] = []
+    sc_lookup = _build_service_catalogue_l3_lookup()
 
     for index, item in enumerate(unique_data):
         if not isinstance(item, dict):
@@ -234,6 +290,7 @@ def save_opportunity_assessment(request, project_id: int):
             if field != "migration_request_id"
         }
         payload["migration_request_id"] = migration_request_id
+        payload = _apply_service_catalogue_link(payload, sc_lookup)
 
         try:
             if _is_new_record(record_id):

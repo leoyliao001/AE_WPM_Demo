@@ -117,6 +117,17 @@ const allTables = [
     actionLabel: 'Open GSC Site Mapping'
   },
   {
+    id: 'service-catalogue',
+    tableKey: 'service_catalogue',
+    title: 'Service Catalogue',
+    description:
+      'Product / L1–L4 activities catalogue with current ownership — maintain service catalogue reference data.',
+    icon: 'mi-layers',
+    accent: '#0E7490',
+    route: '/service-catalogue',
+    actionLabel: 'Open Service Catalogue'
+  },
+  {
     id: 'project-gantt',
     tableKey: 'project_gantt',
     title: 'Project Gantt',

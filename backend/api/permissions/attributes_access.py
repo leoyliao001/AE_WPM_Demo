@@ -12,6 +12,7 @@ TABLE_KEYS = (
     "fpo_mapping",
     "product_ownership",
     "gsc_site_mapping",
+    "service_catalogue",
     "project_gantt",
     "access_control",
 )
@@ -77,6 +78,7 @@ def build_access_snapshot(email: str) -> dict:
         "fpo_mapping": is_super or bool(row.fpo_mapping),
         "product_ownership": is_super or bool(row.product_ownership),
         "gsc_site_mapping": is_super or bool(row.gsc_site_mapping),
+        "service_catalogue": is_super or bool(row.service_catalogue),
         "project_gantt": is_super or bool(row.project_gantt),
         "access_control": is_super or bool(row.access_control),
     }
