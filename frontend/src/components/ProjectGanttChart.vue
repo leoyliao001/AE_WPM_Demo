@@ -916,7 +916,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   border-right: 1px solid var(--line-soft);
   border-bottom: none;
-  min-height: 34px;
+  min-height: 32px;
   font-size: 10px;
   line-height: 1.15;
 }
@@ -1060,7 +1060,7 @@ onUnmounted(() => {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--week-count), minmax(0, 1fr));
-  min-height: 42px;
+  min-height: 36px;
   isolation: isolate;
 }
 
@@ -1099,8 +1099,8 @@ onUnmounted(() => {
 
 .gantt-bar {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: 6px;
+  bottom: 6px;
   display: flex;
   align-items: center;
   justify-content: center;

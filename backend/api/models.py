@@ -216,6 +216,13 @@ class ProjectGanttPlan(models.Model):
         on_delete=models.CASCADE,
         related_name="gantt_plan",
     )
+    migration_request_id = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Denormalized Migration Request ID (e.g. WPM_PRJ_...) for easier lookup.",
+    )
     tasks = models.JSONField(
         default=list,
         help_text="[{id, name, startWeek, endWeek, phaseId}, ...]",
@@ -232,5 +239,6 @@ class ProjectGanttPlan(models.Model):
         db_table = "project_gantt_plan"
 
     def __str__(self):
-        return f"Gantt plan for project {self.project_id}"
+        mid = self.migration_request_id or self.project_id
+        return f"Gantt plan for {mid}"
 
