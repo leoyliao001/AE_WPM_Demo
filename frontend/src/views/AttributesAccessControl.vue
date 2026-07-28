@@ -74,8 +74,9 @@
             <h3>What this table is for</h3>
             <p>
               Manage who can open Project Attributes tables using SSO <strong>email</strong>.
-              Set <strong>Super Admin (Y)</strong> to grant access to every table. Otherwise enable
-              individual tables with Y/N. Edit rows, then click <strong>Save</strong>.
+              Set <strong>Super Admin (Y)</strong> to grant access to every table (including
+              Project Gantt). Otherwise enable individual tables with Y/N. Edit rows, then click
+              <strong>Save</strong>.
             </p>
           </section>
           <section class="help-section">

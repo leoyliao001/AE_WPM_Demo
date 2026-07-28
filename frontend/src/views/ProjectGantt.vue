@@ -36,7 +36,9 @@
                     ? 'Unsaved changes — edit summary or bars, then Save.'
                     : savedAt
                       ? `Saved plan · last update ${savedAtLabel}`
-                      : 'Using template defaults — edit summary or bars, then Save for this project.'
+                      : tasks.length
+                        ? 'Tasks from Opportunity Assessment — edit week bars, then Save for this project.'
+                        : 'No Opportunity Assessment tasks yet — submit OA tasks to generate Migration Key Steps.'
               }}
             </p>
           </div>
@@ -59,8 +61,8 @@
               appearance="neutral"
               variant="outlined"
               fit="small"
-              label="Reset template"
-              :disabled="saving || loading || !editMode"
+              label="Reset from OA"
+              :disabled="saving || loading || !editMode || !oaTasks.length"
               @click="resetToTemplate"
             />
             <mc-button
@@ -146,7 +148,8 @@ const weeks = projectGanttFixture.weeks
 const phases = projectGanttFixture.phases
 const notes = projectGanttFixture.notes
 const todayWeek = projectGanttFixture.todayWeek
-const tasks = ref(cloneTasks(projectGanttFixture.tasks))
+const tasks = ref([])
+const oaTasks = ref([])
 const meta = ref(cloneMeta(projectGanttFixture.meta))
 
 const backTo = computed(() => `/migration-dashboard/${route.params.id}`)
@@ -157,9 +160,9 @@ const pageTitle = computed(() =>
 
 const pageSubtitle = computed(() => {
   if (project.value) {
-    return `${project.value.migrationRequestId} — edit task week bars and save for this project.`
+    return `${project.value.migrationRequestId} — Migration Key Steps follow Opportunity Assessment tasks.`
   }
-  return 'Edit task week bars and save for this project.'
+  return 'Migration Key Steps follow Opportunity Assessment tasks.'
 })
 
 const savedAtLabel = computed(() => {
@@ -171,25 +174,15 @@ const savedAtLabel = computed(() => {
   }
 })
 
-const mergeSavedTasks = (savedTasks) => {
-  const byId = new Map(
-    (savedTasks || [])
-      .filter((task) => task && task.id)
-      .map((task) => [String(task.id), task])
-  )
-  return cloneTasks(projectGanttFixture.tasks).map((task) => {
-    const saved = byId.get(task.id)
-    if (!saved) return task
-    const start = Number(saved.startWeek)
-    const end = Number(saved.endWeek)
-    if (!Number.isFinite(start) || !Number.isFinite(end)) return task
-    return {
-      ...task,
-      startWeek: Math.min(start, end),
-      endWeek: Math.max(start, end),
-      phaseId: saved.phaseId || task.phaseId || 'opportunity'
-    }
-  })
+const applyGanttPayload = (data) => {
+  const nextTasks = Array.isArray(data?.tasks) ? data.tasks : []
+  const nextOa = Array.isArray(data?.oa_tasks) ? data.oa_tasks : nextTasks
+  tasks.value = cloneTasks(nextTasks)
+  oaTasks.value = cloneTasks(nextOa)
+  if (data?.meta && typeof data.meta === 'object') {
+    meta.value = mergeSavedMeta(data.meta)
+  }
+  savedAt.value = data?.updated_at || null
 }
 
 const mergeSavedMeta = (savedMeta) => {
@@ -231,7 +224,7 @@ const onUpdateMeta = ({ key, value }) => {
 }
 
 const resetToTemplate = () => {
-  tasks.value = cloneTasks(projectGanttFixture.tasks)
+  tasks.value = cloneTasks(oaTasks.value)
   meta.value = cloneMeta(projectGanttFixture.meta)
   isDirty.value = true
   saveMessage.value = ''
@@ -243,7 +236,8 @@ const loadAll = async () => {
   saveMessage.value = ''
   project.value = null
   isDirty.value = false
-  tasks.value = cloneTasks(projectGanttFixture.tasks)
+  tasks.value = []
+  oaTasks.value = []
   meta.value = cloneMeta(projectGanttFixture.meta)
   savedAt.value = null
 
@@ -253,15 +247,7 @@ const loadAll = async () => {
       axios.get(`/api/migration-dashboard/projects/${route.params.id}/gantt/`)
     ])
     project.value = projectRes.data
-    if (ganttRes.data?.saved) {
-      if (Array.isArray(ganttRes.data.tasks) && ganttRes.data.tasks.length) {
-        tasks.value = mergeSavedTasks(ganttRes.data.tasks)
-      }
-      if (ganttRes.data.meta && typeof ganttRes.data.meta === 'object') {
-        meta.value = mergeSavedMeta(ganttRes.data.meta)
-      }
-      savedAt.value = ganttRes.data.updated_at || null
-    }
+    applyGanttPayload(ganttRes.data || {})
   } catch (error) {
     loadError.value =
       error?.response?.data?.error ?? 'Unable to load this project Gantt. Please try again.'
@@ -278,13 +264,7 @@ const saveGantt = async () => {
       `/api/migration-dashboard/projects/${route.params.id}/gantt/`,
       { tasks: tasks.value, meta: meta.value }
     )
-    if (Array.isArray(data?.tasks) && data.tasks.length) {
-      tasks.value = mergeSavedTasks(data.tasks)
-    }
-    if (data?.meta && typeof data.meta === 'object') {
-      meta.value = mergeSavedMeta(data.meta)
-    }
-    savedAt.value = data?.updated_at || null
+    applyGanttPayload(data || {})
     isDirty.value = false
     saveAppearance.value = 'success'
     saveHeading.value = 'Saved'
