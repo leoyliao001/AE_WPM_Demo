@@ -1,0 +1,442 @@
+[
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - COD (Change Of Destination) Enquiry",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - COD Not Completed / Problem With COD",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - COD Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - DIT Not Completed / Problem With DIT",
+    "current_ownership": "Area",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - DIT Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - Problem/Delay at Transhipment Hub",
+    "current_ownership": "Area/GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - Re-export Not Completed / Problem With Re-export",
+    "current_ownership": "Area/GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - Re-export Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - Return Shipment",
+    "current_ownership": "Area/GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - ROB Not Completed / Problem With ROB",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - RoB Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "COD DIT Transhipment - Transhipment Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Daily task - Pull CODs report for all port and upload on tool",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Depot / Terminal - Change Empty Return Depot Reject Enquiry",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Depot / Terminal - Empty Return Depot Change Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "PRISM - Product Change-Perform Product change as per FO Mail",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "PRISM - Product Change-Add Pricing and DLG Code",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "PRISM - COD Process-Raising COD form for partner vessels in PRISM Product",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Sales on Water - Product Change-Check the Repository Sheet",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Sales on Water -Product Change-Provide the Vessel / Voyage and New POD details",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Sales on Water -Product Change-Product change in GCSS System",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Sales on Water -Product Change-Add Pricing and Reference Code",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Booking Exceptions/Query - Equipment issue",
+    "current_ownership": "Area/GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Empty Container Depot",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Service Contract Number",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amendment initiated by carriers",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Booking Instructions Not Followed/Incorrect Booking",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Split/Combine booking",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Booking Details",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Booking Enquiry",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Commodity",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend DG details",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Container Type",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Container Count",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Intermodal Haulage",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Modality",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Port of Loading/Discharge",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Amend Vessel Details",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Booking Amendment Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Customer change request",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Amend Booking Details - Update Booking Details/Empty Container Nomination",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Booking Exceptions/Query - Shipment change notification",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Booking Exceptions/Query - Space issue",
+    "current_ownership": "GSC",
+    "customer": ""
+  },
+  {
+    "catalogue": "SERVICE CATELOG 1",
+    "product": "General Ocean",
+    "l1": "02. Order to Cash",
+    "l2": "Order Management",
+    "l3": "Amend Order",
+    "l4": "Booking amendment - Booking Amendment Request",
+    "current_ownership": "GSC",
+    "customer": ""
+  }
+]

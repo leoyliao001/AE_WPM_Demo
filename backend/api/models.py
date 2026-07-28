@@ -187,6 +187,32 @@ class GscSiteMapping(models.Model):
         return f"{self.region} / {self.area} / {self.supporting_gsc_sites}"
 
 
+class ServiceCatalogue(models.Model):
+    """Service catalogue activities (Product / L1–L4 / ownership)."""
+
+    catalogue = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    product = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    l1 = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    l2 = models.CharField(max_length=128, blank=True, default="")
+    l3 = models.CharField(max_length=128, blank=True, default="")
+    l4 = models.CharField(max_length=255, blank=True, default="")
+    current_ownership = models.CharField(max_length=64, blank=True, default="")
+    customer = models.CharField(max_length=128, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "service_catalogue"
+        ordering = ["id"]
+        indexes = [
+            models.Index(fields=["product", "l1", "l2", "l3"]),
+            models.Index(fields=["current_ownership"]),
+        ]
+
+    def __str__(self):
+        return f"{self.product} / {self.l4 or self.l3 or self.id}"
+
+
 class ProjectAttributesAccess(models.Model):
     """SSO email-based access control for Project Attributes Database tables."""
 
@@ -195,6 +221,7 @@ class ProjectAttributesAccess(models.Model):
     fpo_mapping = models.BooleanField(default=False)
     product_ownership = models.BooleanField(default=False)
     gsc_site_mapping = models.BooleanField(default=False)
+    service_catalogue = models.BooleanField(default=False)
     project_gantt = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
