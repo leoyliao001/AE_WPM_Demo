@@ -16,14 +16,6 @@
     />
 
     <template v-else>
-      <mc-notification
-        v-if="saveMessage"
-        :appearance="saveAppearance"
-        fit="medium"
-        :heading="saveHeading"
-        :body="saveMessage"
-      />
-
       <section class="gantt-panel">
         <div class="panel-head">
           <div>
@@ -96,6 +88,40 @@
           </ul>
         </aside>
       </section>
+
+      <mc-dialog
+        :open="resultDialogOpen"
+        :heading="resultDialogHeading"
+        dimension="small"
+        showclosebutton
+        @closing="closeResultDialog"
+      >
+        <div
+          class="result-dialog"
+          :class="resultDialogIsError ? 'result-dialog--error' : 'result-dialog--success'"
+        >
+          <div class="result-dialog__badge" aria-hidden="true">
+            <mc-icon
+              :icon="resultDialogIsError ? 'mi-times' : 'mi-check-circle'"
+              size="28"
+            />
+          </div>
+          <p class="result-dialog__eyebrow">
+            {{ resultDialogIsError ? 'Something went wrong' : 'All set' }}
+          </p>
+          <p class="result-dialog__message">{{ resultDialogMessage }}</p>
+        </div>
+        <div slot="footer" class="result-dialog-footer">
+          <mc-button
+            type="button"
+            appearance="primary"
+            variant="filled"
+            fit="medium"
+            :label="resultDialogIsError ? 'Close' : 'Done'"
+            @click="closeResultDialog"
+          />
+        </div>
+      </mc-dialog>
     </template>
   </PageShell>
 </template>
@@ -110,7 +136,8 @@ import { projectGanttFixture } from '../data/projectGanttFixture.js'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
-
+import '@maersk-global/mds-components-core/mc-dialog'
+import '@maersk-global/mds-components-core/mc-icon'
 const cloneTasks = (rows) =>
   rows.map((task) => ({
     id: task.id,
@@ -136,13 +163,13 @@ const project = ref(null)
 const loadError = ref('')
 const loading = ref(true)
 const saving = ref(false)
-const saveMessage = ref('')
-const saveAppearance = ref('success')
-const saveHeading = ref('Saved')
+const resultDialogOpen = ref(false)
+const resultDialogHeading = ref('Saved')
+const resultDialogMessage = ref('')
+const resultDialogIsError = ref(false)
 const savedAt = ref(null)
 const isDirty = ref(false)
 const editMode = ref(false)
-
 const fieldLabels = projectGanttFixture.fieldLabels
 const weeks = projectGanttFixture.weeks
 const phases = projectGanttFixture.phases
@@ -212,7 +239,6 @@ const onUpdateTask = ({ id, startWeek, endWeek, phaseId }) => {
   }
   tasks.value = next
   isDirty.value = true
-  saveMessage.value = ''
 }
 
 const onUpdateMeta = ({ key, value }) => {
@@ -220,20 +246,29 @@ const onUpdateMeta = ({ key, value }) => {
   if (meta.value[key] === value) return
   meta.value = { ...meta.value, [key]: value }
   isDirty.value = true
-  saveMessage.value = ''
 }
 
 const resetToTemplate = () => {
   tasks.value = cloneTasks(oaTasks.value)
   meta.value = cloneMeta(projectGanttFixture.meta)
   isDirty.value = true
-  saveMessage.value = ''
+}
+
+const openResultDialog = ({ heading, message, isError = false }) => {
+  resultDialogHeading.value = heading
+  resultDialogMessage.value = message
+  resultDialogIsError.value = isError
+  resultDialogOpen.value = true
+}
+
+const closeResultDialog = () => {
+  resultDialogOpen.value = false
 }
 
 const loadAll = async () => {
   loading.value = true
   loadError.value = ''
-  saveMessage.value = ''
+  resultDialogOpen.value = false
   project.value = null
   isDirty.value = false
   tasks.value = []
@@ -258,7 +293,6 @@ const loadAll = async () => {
 
 const saveGantt = async () => {
   saving.value = true
-  saveMessage.value = ''
   try {
     const { data } = await axios.put(
       `/api/migration-dashboard/projects/${route.params.id}/gantt/`,
@@ -266,14 +300,17 @@ const saveGantt = async () => {
     )
     applyGanttPayload(data || {})
     isDirty.value = false
-    saveAppearance.value = 'success'
-    saveHeading.value = 'Saved'
-    saveMessage.value = 'Gantt plan and project parameters saved for this project.'
+    openResultDialog({
+      heading: 'Saved',
+      message: 'Gantt plan and project parameters saved for this project.',
+      isError: false
+    })
   } catch (error) {
-    saveAppearance.value = 'error'
-    saveHeading.value = 'Save failed'
-    saveMessage.value =
-      error?.response?.data?.error ?? 'Unable to save Gantt. Please try again.'
+    openResultDialog({
+      heading: 'Save failed',
+      message: error?.response?.data?.error ?? 'Unable to save Gantt. Please try again.',
+      isError: true
+    })
   } finally {
     saving.value = false
   }
@@ -282,7 +319,6 @@ const saveGantt = async () => {
 onMounted(loadAll)
 watch(() => route.params.id, loadAll)
 </script>
-
 <style scoped>
 .gantt-panel {
   display: flex;
@@ -349,5 +385,89 @@ watch(() => route.params.id, loadAll)
 
 .gantt-notes li + li {
   margin-top: 4px;
+}
+
+.result-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 4px;
+  padding: 16px 16px 14px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  animation: result-dialog-in 220ms ease-out;
+}
+
+.result-dialog--success {
+  background: linear-gradient(165deg, #f0fdf6 0%, #ecfdf5 48%, #f8fafc 100%);
+  border-color: #bbf7d0;
+}
+
+.result-dialog--error {
+  background: linear-gradient(165deg, #fff1f2 0%, #fef2f2 48%, #f8fafc 100%);
+  border-color: #fecaca;
+}
+
+.result-dialog__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.result-dialog--success .result-dialog__badge {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.result-dialog--error .result-dialog__badge {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.result-dialog__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.result-dialog--success .result-dialog__eyebrow {
+  color: #047857;
+}
+
+.result-dialog--error .result-dialog__eyebrow {
+  color: #b91c1c;
+}
+
+.result-dialog__message {
+  margin: 0;
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 28rem;
+}
+
+.result-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@keyframes result-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

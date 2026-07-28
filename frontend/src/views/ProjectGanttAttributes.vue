@@ -96,6 +96,40 @@
         />
       </template>
     </div>
+
+    <mc-dialog
+      :open="resultDialogOpen"
+      :heading="resultDialogHeading"
+      dimension="small"
+      showclosebutton
+      @closing="closeResultDialog"
+    >
+      <div
+        class="result-dialog"
+        :class="resultDialogIsError ? 'result-dialog--error' : 'result-dialog--success'"
+      >
+        <div class="result-dialog__badge" aria-hidden="true">
+          <mc-icon
+            :icon="resultDialogIsError ? 'mi-times' : 'mi-check-circle'"
+            size="28"
+          />
+        </div>
+        <p class="result-dialog__eyebrow">
+          {{ resultDialogIsError ? 'Something went wrong' : 'All set' }}
+        </p>
+        <p class="result-dialog__message">{{ resultDialogMessage }}</p>
+      </div>
+      <div slot="footer" class="result-dialog-footer">
+        <mc-button
+          type="button"
+          appearance="primary"
+          variant="filled"
+          fit="medium"
+          :label="resultDialogIsError ? 'Close' : 'Done'"
+          @click="closeResultDialog"
+        />
+      </div>
+    </mc-dialog>
   </div>
 </template>
 
@@ -109,6 +143,8 @@ import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-input'
 import '@maersk-global/mds-components-core/mc-notification'
+import '@maersk-global/mds-components-core/mc-dialog'
+import '@maersk-global/mds-components-core/mc-icon'
 import {
   hasStoredColumnWidths,
   loadColumnWidths,
@@ -149,6 +185,10 @@ const saving = ref(false)
 const error = ref('')
 const loaded = ref(false)
 const isDirty = ref(false)
+const resultDialogOpen = ref(false)
+const resultDialogHeading = ref('Saved')
+const resultDialogMessage = ref('')
+const resultDialogIsError = ref(false)
 const migrationId = ref('')
 const migrationRequestId = ref('')
 const projectName = ref('')
@@ -405,11 +445,31 @@ async function saveData() {
     isDirty.value = false
     await nextTick()
     initHot(data.rows || [])
+    openResultDialog({
+      heading: 'Saved',
+      message: 'Project Gantt data saved successfully.',
+      isError: false
+    })
   } catch (err) {
-    error.value = err?.response?.data?.error || 'Unable to save Project Gantt data.'
+    openResultDialog({
+      heading: 'Save failed',
+      message: err?.response?.data?.error || 'Unable to save Project Gantt data.',
+      isError: true
+    })
   } finally {
     saving.value = false
   }
+}
+
+function openResultDialog({ heading, message, isError = false }) {
+  resultDialogHeading.value = heading
+  resultDialogMessage.value = message
+  resultDialogIsError.value = isError
+  resultDialogOpen.value = true
+}
+
+function closeResultDialog() {
+  resultDialogOpen.value = false
 }
 
 onMounted(() => {
@@ -554,6 +614,90 @@ onBeforeUnmount(() => {
 .handsontable-host.is-hidden {
   visibility: hidden;
   pointer-events: none;
+}
+
+.result-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 4px;
+  padding: 16px 16px 14px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  animation: result-dialog-in 220ms ease-out;
+}
+
+.result-dialog--success {
+  background: linear-gradient(165deg, #f0fdf6 0%, #ecfdf5 48%, #f8fafc 100%);
+  border-color: #bbf7d0;
+}
+
+.result-dialog--error {
+  background: linear-gradient(165deg, #fff1f2 0%, #fef2f2 48%, #f8fafc 100%);
+  border-color: #fecaca;
+}
+
+.result-dialog__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.result-dialog--success .result-dialog__badge {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.result-dialog--error .result-dialog__badge {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.result-dialog__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.result-dialog--success .result-dialog__eyebrow {
+  color: #047857;
+}
+
+.result-dialog--error .result-dialog__eyebrow {
+  color: #b91c1c;
+}
+
+.result-dialog__message {
+  margin: 0;
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 28rem;
+}
+
+.result-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@keyframes result-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 900px) {
