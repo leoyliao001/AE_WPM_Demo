@@ -30,11 +30,13 @@
             <h2>{{ fieldLabels.migrationKeySteps }}</h2>
             <p>
               {{
-                isDirty
-                  ? 'Unsaved changes — edit summary or bars, then Save.'
-                  : savedAt
-                    ? `Saved plan · last update ${savedAtLabel}`
-                    : 'Using template defaults — edit summary or bars, then Save for this project.'
+                !editMode
+                  ? 'View mode — turn on Edit to change summary or Gantt bars.'
+                  : isDirty
+                    ? 'Unsaved changes — edit summary or bars, then Save.'
+                    : savedAt
+                      ? `Saved plan · last update ${savedAtLabel}`
+                      : 'Using template defaults — edit summary or bars, then Save for this project.'
               }}
             </p>
           </div>
@@ -45,11 +47,20 @@
               :label="`${tasks.length} steps · ${weeks.length} weeks`"
             />
             <mc-button
+              :appearance="editMode ? 'primary' : 'neutral'"
+              :variant="editMode ? 'filled' : 'outlined'"
+              fit="small"
+              :label="editMode ? 'Editing on' : 'Enable edit'"
+              :icon="editMode ? 'mi-pencil' : 'mi-lock'"
+              :disabled="saving || loading"
+              @click="editMode = !editMode"
+            />
+            <mc-button
               appearance="neutral"
               variant="outlined"
               fit="small"
               label="Reset template"
-              :disabled="saving || loading"
+              :disabled="saving || loading || !editMode"
               @click="resetToTemplate"
             />
             <mc-button
@@ -65,7 +76,7 @@
 
         <ProjectGanttChart
           v-if="!loading"
-          editable
+          :editable="editMode"
           :weeks="weeks"
           :tasks="tasks"
           :phases="phases"
@@ -128,6 +139,7 @@ const saveAppearance = ref('success')
 const saveHeading = ref('Saved')
 const savedAt = ref(null)
 const isDirty = ref(false)
+const editMode = ref(false)
 
 const fieldLabels = projectGanttFixture.fieldLabels
 const weeks = projectGanttFixture.weeks

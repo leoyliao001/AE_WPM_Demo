@@ -5,11 +5,32 @@
     role="region"
     aria-label="Project Gantt chart"
   >
-    <div class="gantt-legend">
-      <div v-for="phase in phases" :key="phase.id" class="gantt-legend__item">
-        <span class="gantt-legend__swatch" :style="{ background: phase.color }" />
-        <span class="gantt-legend__label">{{ phase.label }}</span>
+    <div class="gantt-summary" role="group" aria-label="Project parameters">
+      <div v-if="editable" class="gantt-summary__cue" aria-hidden="true">
+        <span class="gantt-summary__cue-icon">✎</span>
+        <span>Editable — click a value to type, then Save</span>
       </div>
+      <label
+        v-for="field in summaryFields"
+        :key="field.key"
+        class="gantt-summary__item"
+        :class="{ 'gantt-summary__item--editable': editable }"
+        :title="editable ? `Edit ${fieldLabels[field.key]}` : fieldLabels[field.key]"
+      >
+        <span class="gantt-summary__dot" :style="{ background: field.color }" />
+        <span class="gantt-summary__name">{{ fieldLabels[field.key] }}</span>
+        <input
+          class="gantt-summary__value"
+          :type="field.type"
+          :inputmode="field.type === 'number' ? 'decimal' : 'text'"
+          :step="field.type === 'number' ? 'any' : undefined"
+          :value="metaValue(field.key)"
+          :readonly="!editable"
+          :placeholder="editable ? 'Type…' : ''"
+          :aria-label="fieldLabels[field.key]"
+          @input="onMetaInput(field.key, field.type, $event)"
+        />
+      </label>
     </div>
 
     <div v-if="editable" class="gantt-editor">
@@ -71,32 +92,11 @@
       </div>
     </div>
 
-    <div class="gantt-summary" role="group" aria-label="Project parameters">
-      <div v-if="editable" class="gantt-summary__cue" aria-hidden="true">
-        <span class="gantt-summary__cue-icon">✎</span>
-        <span>Editable — click a value to type, then Save</span>
+    <div class="gantt-legend">
+      <div v-for="phase in phases" :key="phase.id" class="gantt-legend__item">
+        <span class="gantt-legend__swatch" :style="{ background: phase.color }" />
+        <span class="gantt-legend__label">{{ phase.label }}</span>
       </div>
-      <label
-        v-for="field in summaryFields"
-        :key="field.key"
-        class="gantt-summary__item"
-        :class="{ 'gantt-summary__item--editable': editable }"
-        :title="editable ? `Edit ${fieldLabels[field.key]}` : fieldLabels[field.key]"
-      >
-        <span class="gantt-summary__dot" :style="{ background: field.color }" />
-        <span class="gantt-summary__name">{{ fieldLabels[field.key] }}</span>
-        <input
-          class="gantt-summary__value"
-          :type="field.type"
-          :inputmode="field.type === 'number' ? 'decimal' : 'text'"
-          :step="field.type === 'number' ? 'any' : undefined"
-          :value="metaValue(field.key)"
-          :readonly="!editable"
-          :placeholder="editable ? 'Type…' : ''"
-          :aria-label="fieldLabels[field.key]"
-          @input="onMetaInput(field.key, field.type, $event)"
-        />
-      </label>
     </div>
 
     <div class="gantt-scroll">
@@ -655,8 +655,8 @@ onUnmounted(() => {
 }
 
 .gantt-legend__swatch {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
@@ -936,13 +936,13 @@ onUnmounted(() => {
 }
 
 .gantt-cell--subhead {
-  background: #1e293b;
+  background: #475569;
   font-weight: 500;
-  color: #cbd5e1;
+  color: #f1f5f9;
 }
 
 .gantt-cell--subhead.gantt-cell--label-blank {
-  background: #1e293b;
+  background: #475569;
 }
 
 .gantt-cell--label-head {
