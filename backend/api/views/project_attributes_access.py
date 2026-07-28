@@ -19,6 +19,7 @@ ALL_FIELDS = [
     ("fpo_mapping", "FPO Mapping (Y/N)"),
     ("product_ownership", "Product Ownership (Y/N)"),
     ("gsc_site_mapping", "GSC Site Mapping (Y/N)"),
+    ("project_gantt", "Project Gantt (Y/N)"),
     ("access_control", "Access Control (Y/N)"),
 ]
 
@@ -27,6 +28,7 @@ BOOL_FIELDS = {
     "fpo_mapping",
     "product_ownership",
     "gsc_site_mapping",
+    "project_gantt",
     "access_control",
 }
 
@@ -43,6 +45,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "fpo_mapping": _yn(item.fpo_mapping),
         "product_ownership": _yn(item.product_ownership),
         "gsc_site_mapping": _yn(item.gsc_site_mapping),
+        "project_gantt": _yn(item.project_gantt),
         "access_control": _yn(item.access_control),
     }
 
@@ -61,6 +64,7 @@ def my_attributes_access(request):
                     "fpo_mapping": False,
                     "product_ownership": False,
                     "gsc_site_mapping": False,
+                    "project_gantt": False,
                     "access_control": False,
                 },
             }

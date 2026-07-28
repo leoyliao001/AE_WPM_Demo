@@ -16,6 +16,7 @@ WRITABLE_FIELDS = [
     "fpo_mapping",
     "product_ownership",
     "gsc_site_mapping",
+    "project_gantt",
     "access_control",
 ]
 
@@ -39,6 +40,7 @@ def _extract_payload(item: dict) -> dict:
         payload["fpo_mapping"] = True
         payload["product_ownership"] = True
         payload["gsc_site_mapping"] = True
+        payload["project_gantt"] = True
         payload["access_control"] = True
     return payload
 

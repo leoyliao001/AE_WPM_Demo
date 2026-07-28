@@ -195,6 +195,7 @@ class ProjectAttributesAccess(models.Model):
     fpo_mapping = models.BooleanField(default=False)
     product_ownership = models.BooleanField(default=False)
     gsc_site_mapping = models.BooleanField(default=False)
+    project_gantt = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

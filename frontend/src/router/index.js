@@ -12,6 +12,7 @@ import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
 import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 import ProjectGantt from '../views/ProjectGantt.vue'
+import ProjectGanttAttributes from '../views/ProjectGanttAttributes.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -21,6 +22,7 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/fpo-mapping': 'fpo_mapping',
   '/product-ownership': 'product_ownership',
   '/gsc-site-mapping': 'gsc_site_mapping',
+  '/project-gantt-attributes': 'project_gantt',
   '/attributes-access-control': 'access_control'
 }
 
@@ -61,6 +63,11 @@ const routes = [
   { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
   { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping },
+  {
+    path: '/project-gantt-attributes',
+    name: 'ProjectGanttAttributes',
+    component: ProjectGanttAttributes
+  },
   {
     path: '/attributes-access-control',
     name: 'AttributesAccessControl',

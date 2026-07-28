@@ -22,7 +22,7 @@
           >
             How to use
           </button>
-          <span v-if="loading" class="meta-pill meta-pill--loading">Loadingù</span>
+          <span v-if="loading" class="meta-pill meta-pill--loading">Loading?</span>
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
@@ -32,7 +32,7 @@
           <mc-button
             appearance="primary"
             fit="small"
-            :label="saving ? 'Savingù' : 'Save'"
+            :label="saving ? 'Saving?' : 'Save'"
             icon="mi-floppy-disk"
             :disabled="loading || saving || deleting || pendingCount === 0"
             :title="saving ? saveProgressMessage : 'Ctrl + S'"
@@ -52,7 +52,7 @@
 
       <div v-if="loading && !hotReady" class="table-loading">
         <mc-loading-indicator size="large" />
-        <span>Loading access controlù</span>
+        <span>Loading access control?</span>
       </div>
 
       <div
@@ -64,7 +64,7 @@
 
       <mc-dialog
         :open="helpDialogOpen"
-        heading="Access Control ù User Guide"
+        heading="Access Control ? User Guide"
         dimension="medium"
         showclosebutton
         @closing="helpDialogOpen = false"
@@ -117,6 +117,7 @@ const YN_KEYS = new Set([
   'fpo_mapping',
   'product_ownership',
   'gsc_site_mapping',
+  'project_gantt',
   'access_control'
 ])
 
@@ -126,6 +127,7 @@ const ALL_COLUMNS = [
   { key: 'fpo_mapping', label: 'FPO Mapping (Y/N)', width: 150 },
   { key: 'product_ownership', label: 'Product Ownership (Y/N)', width: 180 },
   { key: 'gsc_site_mapping', label: 'GSC Site Mapping (Y/N)', width: 170 },
+  { key: 'project_gantt', label: 'Project Gantt (Y/N)', width: 150 },
   { key: 'access_control', label: 'Access Control (Y/N)', width: 160 }
 ]
 
@@ -340,7 +342,7 @@ function initHot(rows) {
     },
     beforeRemoveRow(index, amount, physicalRows) {
       if (deleting.value) {
-        alert('Delete in progress, please waitù')
+        alert('Delete in progress, please wait?')
         return false
       }
 
@@ -409,7 +411,7 @@ async function saveData() {
   }
 
   saving.value = true
-  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)ù`
+  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)?`
   error.value = ''
   try {
     const { data } = await axios.post('/api/project-attributes-access/data/', { uniqueData })
