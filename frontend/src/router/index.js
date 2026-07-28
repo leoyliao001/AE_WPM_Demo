@@ -83,7 +83,8 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const tableKey = ATTRIBUTE_ROUTE_KEYS[to.path]
   if (!tableKey) return true
-  const access = await fetchMyAttributesAccess()
+  // Always re-fetch so Access Control edits apply without a full app reload.
+  const access = await fetchMyAttributesAccess({ force: true })
   if (!canAccessAttributesTable(access, tableKey)) {
     return { path: '/project-attributes' }
   }

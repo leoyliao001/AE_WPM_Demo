@@ -67,7 +67,7 @@
         appearance="info"
         fit="medium"
         heading="Enter a Migration ID"
-        body="Project Gantt data is scoped by Migration Request ID. Enter an ID and click Load to view or edit tasks."
+        body="Enter a Migration Request ID and Load. Task rows are generated from Opportunity Assessment submissions for that ID."
       />
 
       <template v-if="loaded">

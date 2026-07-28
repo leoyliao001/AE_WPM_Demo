@@ -38,6 +38,18 @@ def _yn(value: bool) -> str:
 
 
 def _serialize_row(item: ProjectAttributesAccess) -> dict:
+    # Super Admin effectively has every table; surface that so the grid matches runtime ACL.
+    if item.is_super_admin:
+        return {
+            "id": item.id,
+            "email": item.email,
+            "is_super_admin": "Y",
+            "fpo_mapping": "Y",
+            "product_ownership": "Y",
+            "gsc_site_mapping": "Y",
+            "project_gantt": "Y",
+            "access_control": "Y",
+        }
     return {
         "id": item.id,
         "email": item.email,
