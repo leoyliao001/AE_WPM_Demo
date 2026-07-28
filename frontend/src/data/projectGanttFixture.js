@@ -1,6 +1,7 @@
 /**
  * Project Gantt fixture — field names match `gant graph.xlsx` (sheet: Project Gantt).
  * Timeline weeks are 1-based (wk01 = 1 … wk44 = 44).
+ * Calendar weeks start at (intake submission ISO week) + 1.
  */
 
 /** Excel row-3 / row-4 headers (columns A–J). */
@@ -19,29 +20,75 @@ export const projectGanttFieldLabels = {
   timelineWeeks: 'Timeline weeks'
 }
 
-const calendarWeeks = [
-  'Wk9', 'Wk10', 'Wk11', 'Wk12', 'Wk13', 'Wk14', 'Wk15', 'Wk16',
-  'Wk17', 'Wk18', 'Wk19', 'Wk20', 'Wk21', 'Wk22', 'Wk23', 'Wk24',
-  'Wk25', 'Wk26', 'Wk27', 'Wk28', 'Wk29', 'Wk30', 'Wk31', 'Wk32',
-  'Wk33', 'Wk34', 'Wk35', 'Wk36', 'Wk37', 'Wk38', 'Wk39', 'Wk40',
-  'Wk41', 'Wk42', 'Wk43', 'Wk44', 'Wk45', 'Wk46', 'Wk47', 'Wk48',
-  'Wk49', 'Wk50', 'Wk51', 'Wk52'
-]
+export const PROJECT_GANTT_TIMELINE_COUNT = 44
+export const PROJECT_GANTT_DEFAULT_CALENDAR_START = 9
 
-const timelineWeeks = [
-  'wk01', 'wk02', 'wk03', 'wk04', 'wk05', 'wk06', 'wk07', 'wk08',
-  'wk09', 'wk10', 'wk11', 'wk12', 'wk13', 'wk14', 'wk15', 'wk16',
-  'wk17', 'wk18', 'wk19', 'wk20', 'wk21', 'wk22', 'wk23', 'wk24',
-  'wk25', 'wk26', 'wk27', 'wk28', 'wk29', 'wk30', 'wk31', 'wk32',
-  'wk33', 'wk34', 'wk35', 'wk36', 'wk37', 'wk38', 'wk39', 'wk40',
-  'wk41', 'wk42', 'wk43', 'wk44'
-]
+const timelineWeeks = Array.from({ length: PROJECT_GANTT_TIMELINE_COUNT }, (_, index) => {
+  const n = index + 1
+  return `wk${String(n).padStart(2, '0')}`
+})
 
-export const projectGanttWeeks = timelineWeeks.map((timelineWeek, index) => ({
-  index: index + 1,
-  timelineWeek,
-  calendarWeek: calendarWeeks[index] || ''
-}))
+/** Monday of an ISO week (UTC-safe date parts). */
+const mondayOfIsoWeek = (year, week) => {
+  // ISO week 1: week containing Jan 4
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const day = jan4.getUTCDay() || 7
+  const monday = new Date(jan4)
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7)
+  return monday
+}
+
+const isoWeekParts = (date) => {
+  const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = tmp.getUTCDay() || 7
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1))
+  const week = Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7)
+  return { year: tmp.getUTCFullYear(), week }
+}
+
+/**
+ * Build Gantt week columns.
+ * @param {number|Date|string|null} startOrDate - calendar start week number, or intake createdAt
+ */
+export const buildProjectGanttWeeks = (startOrDate = PROJECT_GANTT_DEFAULT_CALENDAR_START) => {
+  let startMonday
+
+  if (startOrDate instanceof Date || typeof startOrDate === 'string') {
+    const d = startOrDate instanceof Date ? startOrDate : new Date(startOrDate)
+    if (!Number.isNaN(d.getTime())) {
+      const { year, week } = isoWeekParts(d)
+      startMonday = mondayOfIsoWeek(year, week)
+      startMonday.setUTCDate(startMonday.getUTCDate() + 7) // work week + 1
+    }
+  }
+
+  if (!startMonday) {
+    const weekNum = Number(startOrDate)
+    const safeWeek =
+      Number.isFinite(weekNum) && weekNum >= 1 && weekNum <= 53
+        ? weekNum
+        : PROJECT_GANTT_DEFAULT_CALENDAR_START
+    startMonday = mondayOfIsoWeek(new Date().getFullYear(), safeWeek)
+  }
+
+  return timelineWeeks.map((timelineWeek, index) => {
+    const day = new Date(startMonday)
+    day.setUTCDate(startMonday.getUTCDate() + index * 7)
+    const { year, week } = isoWeekParts(
+      new Date(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate())
+    )
+    return {
+      index: index + 1,
+      timelineWeek,
+      calendarWeek: `Wk${week}`,
+      calendarWeekNumber: week,
+      calendarYear: year
+    }
+  })
+}
+
+export const projectGanttWeeks = buildProjectGanttWeeks(PROJECT_GANTT_DEFAULT_CALENDAR_START)
 
 /** Top legend + phase summary — attachment strip, slightly more vivid. */
 export const projectGanttPhases = [

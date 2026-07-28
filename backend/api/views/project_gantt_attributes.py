@@ -22,7 +22,7 @@ from api.views.project_gantt import (
     MAX_WEEK,
     MIN_WEEK,
     _normalize_meta,
-    merge_gantt_tasks_with_oa,
+    merge_gantt_tasks_with_template,
 )
 
 TASK_COLUMNS = [
@@ -175,8 +175,7 @@ def get_project_gantt_attributes(request):
     if plan and isinstance(plan.meta, dict):
         meta.update({k: plan.meta.get(k, meta.get(k)) for k in meta})
 
-    merged_tasks, oa_tasks = merge_gantt_tasks_with_oa(
-        project.migration_request_id,
+    merged_tasks, template_tasks = merge_gantt_tasks_with_template(
         plan.tasks if plan else None,
     )
     rows = [_serialize_task_row(task) for task in merged_tasks]
@@ -193,7 +192,7 @@ def get_project_gantt_attributes(request):
             "columns": [{"key": key, "label": label} for key, label in TASK_COLUMNS],
             "phase_options": sorted(ALLOWED_PHASE_IDS),
             "rows": rows,
-            "oa_task_count": len(oa_tasks),
+            "template_task_count": len(template_tasks),
             "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
         }
     )

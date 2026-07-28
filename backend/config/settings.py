@@ -86,13 +86,47 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+#
+# Default: local SQLite.
+# SQL Server: set DJANGO_DB_ENGINE=mssql (uses Windows Trusted Connection).
+# Optional overrides: DJANGO_DB_NAME, DJANGO_DB_HOST, DJANGO_DB_PORT, DJANGO_DB_DRIVER
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_DB_ENGINE = os.environ.get("DJANGO_DB_ENGINE", "sqlite").strip().lower()
+
+if _DB_ENGINE in ("mssql", "sqlserver"):
+    _db_user = os.environ.get("DJANGO_DB_USER", "").strip()
+    _db_password = os.environ.get("DJANGO_DB_PASSWORD", "")
+    _db_config = {
+        "ENGINE": "mssql",
+        "NAME": os.environ.get("DJANGO_DB_NAME", "WPM Project"),
+        "HOST": os.environ.get("DJANGO_DB_HOST", "SCRBAEXDEFRM218"),
+        "PORT": os.environ.get("DJANGO_DB_PORT", "1433"),
+        "OPTIONS": {
+            "driver": os.environ.get(
+                "DJANGO_DB_DRIVER", "ODBC Driver 17 for SQL Server"
+            ),
+            "extra_params": os.environ.get(
+                "DJANGO_DB_EXTRA_PARAMS",
+                "Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;",
+            ),
+        },
     }
-}
+    # If USER is set, switch to SQL authentication (disable Trusted_Connection).
+    if _db_user:
+        _db_config["USER"] = _db_user
+        _db_config["PASSWORD"] = _db_password
+        _db_config["OPTIONS"]["extra_params"] = os.environ.get(
+            "DJANGO_DB_EXTRA_PARAMS",
+            "Encrypt=yes;TrustServerCertificate=yes;",
+        )
+    DATABASES = {"default": _db_config}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
