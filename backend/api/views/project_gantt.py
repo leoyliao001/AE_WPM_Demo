@@ -125,6 +125,7 @@ def _serialize_plan(plan: Optional[ProjectGanttPlan], project_id: int) -> dict:
     if not plan:
         return {
             "project_id": project_id,
+            "migration_request_id": None,
             "saved": False,
             "tasks": [],
             "meta": {},
@@ -132,6 +133,7 @@ def _serialize_plan(plan: Optional[ProjectGanttPlan], project_id: int) -> dict:
         }
     return {
         "project_id": project_id,
+        "migration_request_id": plan.migration_request_id or None,
         "saved": True,
         "tasks": plan.tasks or [],
         "meta": plan.meta or {},
@@ -147,7 +149,10 @@ def project_gantt(request, project_id: int):
 
     if request.method == "GET":
         plan = ProjectGanttPlan.objects.filter(project=project).first()
-        return Response(_serialize_plan(plan, project.id))
+        payload = _serialize_plan(plan, project.id)
+        if not plan:
+            payload["migration_request_id"] = project.migration_request_id
+        return Response(payload)
 
     try:
         tasks = _normalize_tasks(request.data.get("tasks"))
@@ -157,6 +162,10 @@ def project_gantt(request, project_id: int):
 
     plan, _created = ProjectGanttPlan.objects.update_or_create(
         project=project,
-        defaults={"tasks": tasks, "meta": meta},
+        defaults={
+            "tasks": tasks,
+            "meta": meta,
+            "migration_request_id": project.migration_request_id or "",
+        },
     )
     return Response(_serialize_plan(plan, project.id))
