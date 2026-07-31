@@ -38,3 +38,6 @@ Thumbs.db
 
 # Local tooling (do not commit)
 .tools/
+
+# Local CA bundle (generated from corporate cert, do not commit)
+combined-ca.pem

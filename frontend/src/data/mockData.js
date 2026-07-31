@@ -209,8 +209,8 @@ export const projectMilestoneDetails = {
 }
 
 export const chatbotSuggestions = [
-  'What documents are required for a migration request?',
-  'How is FTE allocation calculated?',
-  'What are the approval steps before go-live?',
-  'Show me risks for Ocean OPS migration'
+  'List all active migration projects',
+  'Show me tasks for the Ocean OPS migration',
+  'Which projects have high complexity tasks?',
+  'What are the risks in APAC region projects?'
 ]
