@@ -15,6 +15,7 @@
     "axios": "^1.13.4",
     "element-plus": "^2.4.4",
     "handsontable": "^16.2.0",
+    "marked": "^18.0.7",
     "vue": "^3.3.8",
     "vue-router": "^4.6.4"
   },

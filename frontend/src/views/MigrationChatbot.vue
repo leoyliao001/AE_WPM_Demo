@@ -15,7 +15,8 @@
             :class="`chat-bubble--${msg.role}`"
           >
             <span class="chat-role">{{ msg.role === 'bot' ? 'Assistant' : 'You' }}</span>
-            <p>{{ msg.text }}</p>
+            <div v-if="msg.role === 'bot'" class="chat-md" v-html="renderMarkdown(msg.text)" />
+            <p v-else>{{ msg.text }}</p>
           </div>
         </div>
 
@@ -77,6 +78,8 @@
 
 <script setup>
 import { nextTick, ref } from 'vue'
+import axios from 'axios'
+import { marked } from 'marked'
 import PageShell from '../components/PageShell.vue'
 import { chatbotSuggestions } from '../data/mockData'
 import '@maersk-global/mds-components-core/mc-input'
@@ -90,24 +93,18 @@ const thinking = ref(false)
 const messagesRef = ref(null)
 const messageId = ref(2)
 
+// Conversation history sent to the backend on each request
+const chatHistory = ref([])
+
 const messages = ref([
   {
     id: 1,
     role: 'bot',
-    text: 'Hello! I can help with migration intake, dashboards, approvals, and training planning. What would you like to know?'
+    text: 'Hello! I can answer questions about migration projects and tasks — status updates, risks, FTE, complexity, and more. What would you like to know?'
   }
 ])
 
-const botReplies = {
-  'What documents are required for a migration request?':
-    'You need project name, migration type, region/area, product selection, scope description, language dependency, FTE estimate, and optional risk notes.',
-  'How is FTE allocation calculated?':
-    'FTE allocation is based on scoping inputs from the intake form and refined during discovery. The Migration Dashboard tracks allocation by site and product.',
-  'What are the approval steps before go-live?':
-    'Typical steps: Steering Committee → IT Security → Regional Ops sign-off → Final Go-Live approval. See the Approvals milestone for status.',
-  'Show me risks for Ocean OPS migration':
-    'Key risks: data mapping delays, regional compliance variance, and training readiness. Capture detailed risks in the intake form Risk Assessment section.'
-}
+const renderMarkdown = (text) => marked.parse(text ?? '')
 
 const scrollToBottom = async () => {
   await nextTick()
@@ -136,15 +133,22 @@ const sendQuestion = async () => {
   await scrollToBottom()
 
   thinking.value = true
-  await new Promise((resolve) => setTimeout(resolve, 500))
-
-  const reply =
-    botReplies[text] ||
-    'Thanks for your question. This is a demo chatbot — connect me to the backend API for live migration knowledge base answers.'
-
-  messages.value.push({ id: messageId.value++, role: 'bot', text: reply })
-  thinking.value = false
-  await scrollToBottom()
+  try {
+    const { data } = await axios.post('/api/migration-chatbot/chat/', {
+      question: text,
+      history: chatHistory.value
+    })
+    chatHistory.value.push({ role: 'user', content: text })
+    chatHistory.value.push({ role: 'assistant', content: data.answer })
+    messages.value.push({ id: messageId.value++, role: 'bot', text: data.answer })
+  } catch (error) {
+    const msg =
+      error?.response?.data?.error ?? 'Unable to get a response. Please try again.'
+    messages.value.push({ id: messageId.value++, role: 'bot', text: msg })
+  } finally {
+    thinking.value = false
+    await scrollToBottom()
+  }
 }
 
 const askSuggestion = (text) => {
@@ -211,6 +215,81 @@ const askSuggestion = (text) => {
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
+}
+
+/* Markdown content inside bot bubbles */
+.chat-md {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.chat-md :deep(p) {
+  margin: 0 0 8px;
+}
+
+.chat-md :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.chat-md :deep(h1),
+.chat-md :deep(h2),
+.chat-md :deep(h3) {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 12px 0 6px;
+  color: #161616;
+}
+
+.chat-md :deep(h1:first-child),
+.chat-md :deep(h2:first-child),
+.chat-md :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.chat-md :deep(ul),
+.chat-md :deep(ol) {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+}
+
+.chat-md :deep(li) {
+  margin-bottom: 3px;
+}
+
+.chat-md :deep(table) {
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.chat-md :deep(th) {
+  background: rgba(0, 119, 184, 0.1);
+  border: 1px solid rgba(0, 119, 184, 0.2);
+  font-weight: 600;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.chat-md :deep(td) {
+  border: 1px solid rgba(22, 22, 22, 0.1);
+  padding: 5px 10px;
+  vertical-align: top;
+}
+
+.chat-md :deep(tr:nth-child(even) td) {
+  background: rgba(22, 22, 22, 0.02);
+}
+
+.chat-md :deep(strong) {
+  font-weight: 600;
+}
+
+.chat-md :deep(code) {
+  background: rgba(22, 22, 22, 0.06);
+  border-radius: 3px;
+  font-size: 12px;
+  padding: 1px 4px;
 }
 
 .chat-suggestions {
