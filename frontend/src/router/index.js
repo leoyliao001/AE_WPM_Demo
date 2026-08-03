@@ -84,12 +84,21 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  // Project Attributes hub is Super Admin only (nav entry + direct URL).
+  if (to.path === '/project-attributes') {
+    const access = await fetchMyAttributesAccess({ force: true })
+    if (!access?.is_super_admin) {
+      return { path: '/' }
+    }
+    return true
+  }
+
   const tableKey = ATTRIBUTE_ROUTE_KEYS[to.path]
   if (!tableKey) return true
   // Always re-fetch so Access Control edits apply without a full app reload.
   const access = await fetchMyAttributesAccess({ force: true })
   if (!canAccessAttributesTable(access, tableKey)) {
-    return { path: '/project-attributes' }
+    return access?.is_super_admin ? { path: '/project-attributes' } : { path: '/' }
   }
   return true
 })
