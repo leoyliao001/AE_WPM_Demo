@@ -1,0 +1,46 @@
+=== identity === 
+nt authority\system
+=== migrate === 
+Operations to perform:
+  Apply all migrations: admin, api, auth, contenttypes, sessions
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying api.0001_initial... OK
+  Applying api.0002_consolidate_to_single_table... OK
+  Applying api.0003_rename_location_strategy_fields... OK
+  Applying api.0004_fpo_mapping... OK
+  Applying api.0005_fpo_mapping_is_reference... OK
+  Applying api.0006_opportunity_assessment... OK
+  Applying api.0007_product_ownership... OK
+  Applying api.0008_gsc_site_mapping... OK
+  Applying api.0009_rename_gsc_site_ma_region_8a2c1f_idx_gsc_site_ma_region_5b7743_idx_and_more... OK
+  Applying api.0010_rename_oa_volume_and_task_time... OK
+  Applying api.0011_product_ownership_region_area... OK
+  Applying api.0012_opportunityassessment_area_gsc_site... OK
+  Applying api.0013_project_attributes_access... OK
+  Applying api.0014_project_gantt_plan... OK
+  Applying api.0015_project_gantt_plan_meta... OK
+  Applying api.0016_project_gantt_plan_migration_request_id... OK
+  Applying api.0017_project_attributes_access_project_gantt... OK
+  Applying api.0018_backfill_super_admin_project_gantt... OK
+  Applying api.0019_service_catalogue... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying sessions.0001_initial... OK
+=== loaddata === 
+Installed 2656 object(s) from 1 fixture(s)
+=== done === 
