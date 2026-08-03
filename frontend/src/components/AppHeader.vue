@@ -14,7 +14,7 @@
           :key="item.to"
           :to="item.to"
           class="nav-link"
-          :class="{ 'nav-link--active': isActive(item.to) }"
+          :class="{ 'nav-link--active': isActive(item) }"
         >
           <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
           <span>{{ item.label }}</span>
@@ -40,14 +40,17 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-top-bar'
 import '@maersk-global/mds-components-core/mc-icon'
 import { azureAuthState } from '../auth/azureAuth.js'
+import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 
 const route = useRoute()
+const isSuperAdmin = ref(false)
 
-const navItems = [
+const baseNavItems = [
   { label: 'Welcome', to: '/', icon: 'mi-house' },
   // Hidden for now: Future Service Model, Final CI Review
   { label: 'Intake', to: '/migration-intake', icon: 'mi-file-arrows-square' },
@@ -57,12 +60,50 @@ const navItems = [
   { label: 'Chatbot', to: '/migration-chatbot', icon: 'mi-chatbot' }
 ]
 
-const isActive = (path) => {
-  if (path === '/') {
+const databaseNavItem = {
+  label: 'Database',
+  to: '/project-attributes',
+  icon: 'mi-database',
+  matchPaths: [
+    '/project-attributes',
+    '/fpo-mapping',
+    '/product-ownership',
+    '/gsc-site-mapping',
+    '/service-catalogue',
+    '/project-gantt-attributes',
+    '/attributes-access-control'
+  ]
+}
+
+const navItems = computed(() => {
+  if (!isSuperAdmin.value) return baseNavItems
+  return [...baseNavItems, databaseNavItem]
+})
+
+const refreshSuperAdmin = async () => {
+  const access = await fetchMyAttributesAccess({ force: true })
+  isSuperAdmin.value = !!access?.is_super_admin
+}
+
+const isActive = (item) => {
+  if (Array.isArray(item.matchPaths)) {
+    return item.matchPaths.some(
+      (path) => route.path === path || route.path.startsWith(`${path}/`)
+    )
+  }
+  if (item.to === '/') {
     return route.path === '/'
   }
-  return route.path === path || route.path.startsWith(`${path}/`)
+  return route.path === item.to || route.path.startsWith(`${item.to}/`)
 }
+
+onMounted(refreshSuperAdmin)
+watch(
+  () => azureAuthState.user?.username || azureAuthState.user?.name || azureAuthState.status,
+  () => {
+    refreshSuperAdmin()
+  }
+)
 </script>
 
 <style scoped>
