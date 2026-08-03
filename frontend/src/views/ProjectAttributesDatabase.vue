@@ -128,6 +128,17 @@ const allTables = [
     actionLabel: 'Open Service Catalogue'
   },
   {
+    id: 'migration-intake',
+    tableKey: 'migration_intake',
+    title: 'Migration Intake',
+    description:
+      'Submitted migration intake forms — browse and maintain project request records online.',
+    icon: 'mi-file-arrows-square',
+    accent: '#0077B8',
+    route: '/migration-intake-submissions',
+    actionLabel: 'Open Migration Intake'
+  },
+  {
     id: 'project-gantt',
     tableKey: 'project_gantt',
     title: 'Project Gantt',

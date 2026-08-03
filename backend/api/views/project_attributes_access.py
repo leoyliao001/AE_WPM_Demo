@@ -21,6 +21,7 @@ ALL_FIELDS = [
     ("gsc_site_mapping", "GSC Site Mapping (Y/N)"),
     ("service_catalogue", "Service Catalogue (Y/N)"),
     ("project_gantt", "Project Gantt (Y/N)"),
+    ("migration_intake", "Migration Intake (Y/N)"),
     ("access_control", "Access Control (Y/N)"),
 ]
 
@@ -31,6 +32,7 @@ BOOL_FIELDS = {
     "gsc_site_mapping",
     "service_catalogue",
     "project_gantt",
+    "migration_intake",
     "access_control",
 }
 
@@ -51,6 +53,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "gsc_site_mapping": "Y",
             "service_catalogue": "Y",
             "project_gantt": "Y",
+            "migration_intake": "Y",
             "access_control": "Y",
         }
     return {
@@ -62,6 +65,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "gsc_site_mapping": _yn(item.gsc_site_mapping),
         "service_catalogue": _yn(item.service_catalogue),
         "project_gantt": _yn(item.project_gantt),
+        "migration_intake": _yn(item.migration_intake),
         "access_control": _yn(item.access_control),
     }
 
@@ -82,6 +86,7 @@ def my_attributes_access(request):
                     "gsc_site_mapping": False,
                     "service_catalogue": False,
                     "project_gantt": False,
+                    "migration_intake": False,
                     "access_control": False,
                 },
             }

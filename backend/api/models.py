@@ -223,6 +223,7 @@ class ProjectAttributesAccess(models.Model):
     gsc_site_mapping = models.BooleanField(default=False)
     service_catalogue = models.BooleanField(default=False)
     project_gantt = models.BooleanField(default=False)
+    migration_intake = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

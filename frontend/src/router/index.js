@@ -9,6 +9,7 @@ import FpoMapping from '../views/FpoMapping.vue'
 import ProductOwnership from '../views/ProductOwnership.vue'
 import GscSiteMapping from '../views/GscSiteMapping.vue'
 import ServiceCatalogue from '../views/ServiceCatalogue.vue'
+import MigrationIntakeSubmissions from '../views/MigrationIntakeSubmissions.vue'
 import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
 import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
@@ -24,6 +25,7 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/product-ownership': 'product_ownership',
   '/gsc-site-mapping': 'gsc_site_mapping',
   '/service-catalogue': 'service_catalogue',
+  '/migration-intake-submissions': 'migration_intake',
   '/project-gantt-attributes': 'project_gantt',
   '/attributes-access-control': 'access_control'
 }
@@ -65,6 +67,11 @@ const routes = [
   { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
   { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },
   { path: '/service-catalogue', name: 'ServiceCatalogue', component: ServiceCatalogue },
+  {
+    path: '/migration-intake-submissions',
+    name: 'MigrationIntakeSubmissions',
+    component: MigrationIntakeSubmissions
+  },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping },
   {
     path: '/project-gantt-attributes',

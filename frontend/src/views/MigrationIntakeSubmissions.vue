@@ -1,7 +1,7 @@
 <template>
-  <div class="aac-page">
-    <div class="aac-page-inner">
-      <header class="aac-toolbar">
+  <div class="sc-page">
+    <div class="sc-page-inner">
+      <header class="sc-toolbar">
         <div class="toolbar-left">
           <router-link class="back-link" to="/project-attributes">
             <mc-button
@@ -12,8 +12,8 @@
               icon="mi-arrow-left"
             />
           </router-link>
-          <mc-tag appearance="info" fit="small" label="Access Control" />
-          <h1 class="page-title">Access Control</h1>
+          <mc-tag appearance="info" fit="small" label="Migration Intake" />
+          <h1 class="page-title">Migration Intake Submissions</h1>
           <span class="meta-pill">{{ rowCount }} rows</span>
           <button
             type="button"
@@ -22,7 +22,7 @@
           >
             How to use
           </button>
-          <span v-if="loading" class="meta-pill meta-pill--loading">Loading?</span>
+          <span v-if="loading" class="meta-pill meta-pill--loading">Loading…</span>
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
@@ -32,7 +32,7 @@
           <mc-button
             appearance="primary"
             fit="small"
-            :label="saving ? 'Saving?' : 'Save'"
+            :label="saving ? 'Saving…' : 'Save'"
             icon="mi-floppy-disk"
             :disabled="loading || saving || deleting || pendingCount === 0"
             :title="saving ? saveProgressMessage : 'Ctrl + S'"
@@ -52,11 +52,11 @@
 
       <div v-if="loading && !hotReady" class="table-loading">
         <mc-loading-indicator size="large" />
-        <span>Loading access control?</span>
+        <span>Loading migration intake submissions…</span>
       </div>
 
       <div
-        id="aac-handsontable"
+        id="sc-handsontable"
         ref="hotContainer"
         class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
@@ -64,7 +64,7 @@
 
       <mc-dialog
         :open="helpDialogOpen"
-        heading="Access Control ? User Guide"
+        heading="Migration Intake — User Guide"
         dimension="medium"
         showclosebutton
         @closing="helpDialogOpen = false"
@@ -73,19 +73,34 @@
           <section class="help-section">
             <h3>What this table is for</h3>
             <p>
-              Manage who can open Project Attributes tables using SSO <strong>email</strong>.
-              Set <strong>Super Admin (Y)</strong> to grant access to every table (including
-              Service Catalogue and Project Gantt). Otherwise enable individual tables with Y/N. Edit rows, then click
+              Maintain submitted <strong>Migration Intake</strong> records stored in
+              <code>migration_intake_submission</code>. Edit cells, add or remove rows, then click
               <strong>Save</strong>.
             </p>
           </section>
           <section class="help-section">
+            <h3>List / pair fields</h3>
+            <ul>
+              <li>
+                Simple lists (Areas, Products, …): use comma-separated values, e.g.
+                <code>Area A, Area B</code>.
+              </li>
+              <li>
+                Area–Country Pairs: JSON
+                <code>[{"area":"X","country":"Y"}]</code>
+                or <code>X|Y; A|B</code>.
+              </li>
+              <li>Location Strategy Custom: <code>Y</code> or <code>N</code>.</li>
+            </ul>
+          </section>
+          <section class="help-section">
             <h3>Edit and save</h3>
             <ul>
+              <li>Migration Request ID and Project Name are required.</li>
               <li>Edit any cell directly. Pending changes are tracked until you Save.</li>
               <li>Use the context menu to insert or remove rows.</li>
               <li>Press <strong>Ctrl + S</strong> (Cmd + S on Mac) to save.</li>
-              <li>Use column filters via the ? menu on each header.</li>
+              <li>Use column filters via the ⋮ menu on each header.</li>
             </ul>
           </section>
         </div>
@@ -110,34 +125,41 @@ import {
   persistColumnWidths,
   resolveColumnWidth
 } from '../utils/handsontableColumnWidths.js'
-import { clearAttributesAccessCache } from '../utils/attributesAccess.js'
-
-const YN_OPTIONS = ['Y', 'N']
-const YN_KEYS = new Set([
-  'is_super_admin',
-  'fpo_mapping',
-  'product_ownership',
-  'gsc_site_mapping',
-  'service_catalogue',
-  'project_gantt',
-  'migration_intake',
-  'access_control'
-])
 
 const ALL_COLUMNS = [
-  { key: 'email', label: 'Email', width: 260 },
-  { key: 'is_super_admin', label: 'Super Admin (Y/N)', width: 140 },
-  { key: 'fpo_mapping', label: 'FPO Mapping (Y/N)', width: 150 },
-  { key: 'product_ownership', label: 'Product Ownership (Y/N)', width: 180 },
-  { key: 'gsc_site_mapping', label: 'GSC Site Mapping (Y/N)', width: 170 },
-  { key: 'service_catalogue', label: 'Service Catalogue (Y/N)', width: 170 },
-  { key: 'project_gantt', label: 'Project Gantt (Y/N)', width: 150 },
-  { key: 'migration_intake', label: 'Migration Intake (Y/N)', width: 160 },
-  { key: 'access_control', label: 'Access Control (Y/N)', width: 160 }
+  { key: 'migration_request_id', label: 'Migration Request ID', width: 200 },
+  { key: 'requested_date', label: 'Requested Date', width: 130 },
+  { key: 'requestor', label: 'Requestor', width: 180 },
+  { key: 'status', label: 'Status', width: 100 },
+  { key: 'project_name', label: 'Project Name', width: 200 },
+  { key: 'migration_type', label: 'Migration Type', width: 160 },
+  { key: 'migration_type_value', label: 'Migration Type Value', width: 150 },
+  { key: 'region', label: 'Region', width: 100 },
+  { key: 'areas', label: 'Areas', width: 180 },
+  { key: 'countries', label: 'Countries', width: 180 },
+  { key: 'area_country_pairs', label: 'Area–Country Pairs', width: 220 },
+  { key: 'default_location_strategies', label: 'Default Location Strategies', width: 200 },
+  { key: 'custom_location_strategies', label: 'Custom Location Strategies', width: 200 },
+  { key: 'location_strategy_custom', label: 'Location Strategy Custom (Y/N)', width: 160 },
+  { key: 'custom_location_strategy_justification', label: 'Custom Strategy Justification', width: 220 },
+  { key: 'custom_approval_file_name', label: 'Approval File Name', width: 160 },
+  { key: 'custom_approval_file_size', label: 'Approval File Size', width: 130 },
+  { key: 'custom_approval_file_type', label: 'Approval File Type', width: 140 },
+  { key: 'function_name', label: 'Function', width: 160 },
+  { key: 'products', label: 'Products', width: 180 },
+  { key: 'proposed_scope', label: 'Proposed Scope', width: 240 },
+  { key: 'language_dependencies', label: 'Language Dependencies', width: 160 },
+  { key: 'fte_number', label: 'FTE Number', width: 100 },
+  { key: 'jl2', label: 'JL2', width: 70 },
+  { key: 'jl3', label: 'JL3', width: 70 },
+  { key: 'jl4', label: 'JL4', width: 70 },
+  { key: 'job_level_total', label: 'Job Level Total', width: 120 },
+  { key: 'risks', label: 'Risks', width: 220 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
-const COLUMN_WIDTH_STORAGE_ID = 'project-attributes-access'
+const COLUMN_WIDTH_STORAGE_ID = 'migration-intake-submissions'
+const YN_OPTIONS = ['Y', 'N']
 
 const hotContainer = ref(null)
 const hotInstance = shallowRef(null)
@@ -156,7 +178,7 @@ const pendingCount = computed(() => allChanges.value.length)
 function emptyRow() {
   const row = { id: null, _cid: crypto.randomUUID() }
   ALL_KEYS.forEach((key) => {
-    row[key] = YN_KEYS.has(key) ? 'N' : ''
+    row[key] = ''
   })
   return row
 }
@@ -167,7 +189,7 @@ function normalizeCellValue(value) {
 }
 
 function isBlankRow(item) {
-  return !normalizeCellValue(item.email)
+  return ALL_KEYS.every((key) => !normalizeCellValue(item[key]))
 }
 
 function trackChangedRow(hot, visualRow) {
@@ -200,22 +222,20 @@ function trackChangedRow(hot, visualRow) {
 function buildColumns() {
   const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
   return ALL_COLUMNS.map((col) => {
-    const width = resolveColumnWidth(col.width, col.key, storedWidths)
-    if (YN_KEYS.has(col.key)) {
+    const base = {
+      data: col.key,
+      width: resolveColumnWidth(col.width, col.key, storedWidths)
+    }
+    if (col.key === 'location_strategy_custom') {
       return {
-        data: col.key,
+        ...base,
         type: 'dropdown',
-        strict: true,
-        allowInvalid: false,
         source: YN_OPTIONS,
-        width
+        strict: true,
+        allowInvalid: false
       }
     }
-    return {
-      data: col.key,
-      type: 'text',
-      width
-    }
+    return { ...base, type: 'text' }
   })
 }
 
@@ -347,7 +367,7 @@ function initHot(rows) {
     },
     beforeRemoveRow(index, amount, physicalRows) {
       if (deleting.value) {
-        alert('Delete in progress, please wait?')
+        alert('Delete in progress, please wait…')
         return false
       }
 
@@ -416,10 +436,10 @@ async function saveData() {
   }
 
   saving.value = true
-  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)?`
+  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)…`
   error.value = ''
   try {
-    const { data } = await axios.post('/api/project-attributes-access/data/', { uniqueData })
+    const { data } = await axios.post('/api/migration-intake-submissions/data/', { uniqueData })
     const created = data.created_count || 0
     const updated = data.updated_count || 0
     const errCount = data.error_count || 0
@@ -429,7 +449,6 @@ async function saveData() {
       alert(`Saved: created ${created}, updated ${updated}.`)
     }
     allChanges.value = []
-    clearAttributesAccessCache()
     await loadData()
   } catch (e) {
     console.error(e)
@@ -451,7 +470,7 @@ async function runDeleteRows(idsToRemove) {
   deleting.value = true
   error.value = ''
   try {
-    const { data } = await axios.delete('/api/project-attributes-access/data/delete/', {
+    const { data } = await axios.delete('/api/migration-intake-submissions/data/delete/', {
       data: { removedIds: idsToRemove }
     })
     const deletedCount = data.deleted_count || 0
@@ -481,13 +500,13 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await axios.get('/api/project-attributes-access/')
+    const { data } = await axios.get('/api/migration-intake-submissions/')
     rowCount.value = data.count || 0
     await nextTick()
     initHot(data.rows || [])
   } catch (e) {
     console.error(e)
-    error.value = e?.response?.data?.detail || e.message || 'Failed to load access control'
+    error.value = e?.response?.data?.detail || e.message || 'Failed to load migration intake submissions'
     destroyHot()
   } finally {
     loading.value = false
@@ -517,7 +536,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.aac-page {
+.sc-page {
   background: #f3f4f6;
   box-sizing: border-box;
   display: flex;
@@ -528,7 +547,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.aac-page-inner {
+.sc-page-inner {
   box-sizing: border-box;
   display: flex;
   flex: 1;
@@ -540,7 +559,7 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.aac-toolbar {
+.sc-toolbar {
   align-items: center;
   background: #fff;
   border: 1px solid #e5e7eb;
