@@ -14,6 +14,7 @@ TABLE_KEYS = (
     "gsc_site_mapping",
     "service_catalogue",
     "project_gantt",
+    "migration_intake",
     "access_control",
 )
 
@@ -80,6 +81,7 @@ def build_access_snapshot(email: str) -> dict:
         "gsc_site_mapping": is_super or bool(row.gsc_site_mapping),
         "service_catalogue": is_super or bool(row.service_catalogue),
         "project_gantt": is_super or bool(row.project_gantt),
+        "migration_intake": is_super or bool(row.migration_intake),
         "access_control": is_super or bool(row.access_control),
     }
     return {

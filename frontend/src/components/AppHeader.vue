@@ -70,6 +70,7 @@ const databaseNavItem = {
     '/product-ownership',
     '/gsc-site-mapping',
     '/service-catalogue',
+    '/migration-intake-submissions',
     '/project-gantt-attributes',
     '/attributes-access-control'
   ]
