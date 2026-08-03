@@ -6,10 +6,13 @@ Config (project root .env):
     LLM_MODEL_NAME  — model identifier
     LLM_SSL_VERIFY  — true|false (default true). Set false behind corporate SSL proxy.
     LLM_CA_BUNDLE   — optional path to a custom CA PEM (also accepts project-root combined-ca.pem)
+    LLM_HTTP_PROXY / HTTP_PROXY / HTTPS_PROXY — corporate outbound proxy
+      (needed when Django runs as LocalSystem and cannot use the interactive user's IE proxy)
 """
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import requests
@@ -72,6 +75,20 @@ def _resolve_ssl_verify(env: dict[str, str]):
     return True
 
 
+def _resolve_proxies(env: dict[str, str]) -> dict[str, str] | None:
+    """Corporate proxy for LocalSystem / service accounts (no HKCU IE proxy)."""
+    proxy = (
+        (env.get("LLM_HTTP_PROXY") or "").strip()
+        or (env.get("HTTPS_PROXY") or "").strip()
+        or (env.get("HTTP_PROXY") or "").strip()
+        or (os.environ.get("HTTPS_PROXY") or "").strip()
+        or (os.environ.get("HTTP_PROXY") or "").strip()
+    )
+    if not proxy:
+        return None
+    return {"http": proxy, "https": proxy}
+
+
 def chat_completion(messages: list[dict], *, json_mode: bool = False) -> str:
     """Send messages to the LLM and return the assistant reply text.
 
@@ -91,6 +108,7 @@ def chat_completion(messages: list[dict], *, json_mode: bool = False) -> str:
         payload["response_format"] = {"type": "json_object"}
 
     verify = _resolve_ssl_verify(env)
+    proxies = _resolve_proxies(env)
 
     response = requests.post(
         f"{api_url}/chat/completions",
@@ -100,6 +118,7 @@ def chat_completion(messages: list[dict], *, json_mode: bool = False) -> str:
             "Content-Type": "application/json",
         },
         verify=verify,
+        proxies=proxies,
         timeout=120,
     )
 
