@@ -10,6 +10,7 @@ PUT  /api/migration-dashboard/projects/<id>/gantt/
 
 from typing import Optional
 from datetime import date, datetime, timedelta
+import re
 
 from django.utils import timezone
 from rest_framework import status
@@ -33,6 +34,20 @@ ALLOWED_PHASE_IDS = {
     "hypercare",
     "closure",
 }
+
+# Built-in Status legend (id / label / color). Custom phases are stored per project.
+BUILTIN_PHASES = [
+    {"id": "opportunity", "label": "Opportunity Assessment", "color": "#6E6E6E"},
+    {"id": "onboarding", "label": "Resource Onboarding", "color": "#0086E6"},
+    {"id": "gss-training", "label": "GSS Training", "color": "#A3450A"},
+    {"id": "knowledge-transfer", "label": "Knowledge Transfer", "color": "#FFA008"},
+    {"id": "volume-rampup", "label": "Volume Ramp-up", "color": "#1A9EBE"},
+    {"id": "hypercare", "label": "Hypercare", "color": "#001A75"},
+    {"id": "closure", "label": "Project Closure", "color": "#00C853"},
+]
+
+HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+CUSTOM_PHASE_ID_RE = re.compile(r"^custom-[a-z0-9-]{2,48}$")
 
 META_TEXT_KEYS = ("projectPhase", "scope")
 META_NUMBER_KEYS = (
@@ -246,11 +261,109 @@ def build_template_tasks() -> list[dict]:
     ]
 
 
-def merge_gantt_tasks_with_template(saved_tasks=None) -> tuple[list[dict], list[dict]]:
+def _slugify_phase_id(label: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", (label or "").strip().lower()).strip("-") or "status"
+    return f"custom-{base[:40]}"
+
+
+def _normalize_custom_phases(raw_phases) -> list[dict]:
+    """Normalize user-defined Status options: [{id, label, color}, ...]."""
+    if raw_phases is None:
+        return []
+    if not isinstance(raw_phases, list):
+        raise ValueError("customPhases must be a list.")
+
+    normalized: list[dict] = []
+    seen: set[str] = set()
+    for index, item in enumerate(raw_phases):
+        if not isinstance(item, dict):
+            raise ValueError(f"customPhases[{index}] must be an object.")
+
+        label = str(item.get("label") or "").strip()
+        if not label:
+            raise ValueError(f"customPhases[{index}]: label is required.")
+        if len(label) > 80:
+            raise ValueError(f"customPhases[{index}]: label is too long (max 80).")
+
+        phase_id = str(item.get("id") or "").strip()
+        if not phase_id:
+            phase_id = _slugify_phase_id(label)
+        if phase_id in ALLOWED_PHASE_IDS:
+            raise ValueError(f"customPhases[{index}]: id '{phase_id}' is reserved.")
+        if not CUSTOM_PHASE_ID_RE.match(phase_id):
+            # Allow auto-generated ids that may include a short suffix
+            if not phase_id.startswith("custom-"):
+                phase_id = f"custom-{phase_id}"
+            phase_id = re.sub(r"[^a-z0-9-]", "-", phase_id.lower()).strip("-")
+            if not CUSTOM_PHASE_ID_RE.match(phase_id):
+                phase_id = f"{_slugify_phase_id(label)}-{index + 1}"
+        if phase_id in seen:
+            raise ValueError(f"Duplicate custom phase id: {phase_id}")
+        seen.add(phase_id)
+
+        color = str(item.get("color") or "").strip() or "#64748B"
+        if not HEX_COLOR_RE.match(color):
+            raise ValueError(f"customPhases[{index}]: color must be a hex value like #RRGGBB.")
+
+        normalized.append(
+            {
+                "id": phase_id,
+                "label": label,
+                "color": color.upper() if len(color) == 7 else color,
+                "custom": True,
+            }
+        )
+    return normalized
+
+
+def _extract_custom_phases_from_meta(meta) -> list[dict]:
+    if not isinstance(meta, dict):
+        return []
+    try:
+        return _normalize_custom_phases(meta.get("customPhases"))
+    except ValueError:
+        return []
+
+
+def _allowed_phase_ids(custom_phases: list[dict] | None = None) -> set[str]:
+    allowed = set(ALLOWED_PHASE_IDS)
+    for phase in custom_phases or []:
+        phase_id = str(phase.get("id") or "").strip()
+        if phase_id:
+            allowed.add(phase_id)
+    return allowed
+
+
+def _merged_phases(custom_phases: list[dict] | None = None) -> list[dict]:
+    phases = [
+        {
+            "id": p["id"],
+            "label": p["label"],
+            "color": p["color"],
+            "custom": False,
+        }
+        for p in BUILTIN_PHASES
+    ]
+    for phase in custom_phases or []:
+        phases.append(
+            {
+                "id": phase["id"],
+                "label": phase["label"],
+                "color": phase["color"],
+                "custom": True,
+            }
+        )
+    return phases
+
+
+def merge_gantt_tasks_with_template(
+    saved_tasks=None, allowed_phase_ids: set[str] | None = None
+) -> tuple[list[dict], list[dict]]:
     """
     Overlay saved week/phase onto the fixed template by task id.
     Returns (merged_tasks, baseline_tasks).
     """
+    allowed = set(allowed_phase_ids) if allowed_phase_ids is not None else set(ALLOWED_PHASE_IDS)
     baseline = build_template_tasks()
     saved_by_id: dict[str, dict] = {}
     if isinstance(saved_tasks, list):
@@ -270,8 +383,8 @@ def merge_gantt_tasks_with_template(saved_tasks=None) -> tuple[list[dict], list[
             start_i, end_i = base["startWeek"], base["endWeek"]
 
         phase_id = str(saved.get("phaseId") or base["phaseId"] or DEFAULT_TASK_PHASE).strip()
-        if phase_id not in ALLOWED_PHASE_IDS:
-            phase_id = base["phaseId"]
+        if phase_id not in allowed:
+            phase_id = base["phaseId"] if base["phaseId"] in allowed else DEFAULT_TASK_PHASE
 
         merged.append(
             {
@@ -290,10 +403,11 @@ def merge_gantt_tasks_with_oa(migration_request_id: str, saved_tasks=None):
     return merge_gantt_tasks_with_template(saved_tasks)
 
 
-def _normalize_tasks(raw_tasks):
+def _normalize_tasks(raw_tasks, allowed_phase_ids: set[str] | None = None):
     if not isinstance(raw_tasks, list):
         raise ValueError("tasks must be a list.")
 
+    allowed = set(allowed_phase_ids) if allowed_phase_ids is not None else set(ALLOWED_PHASE_IDS)
     normalized = []
     seen = set()
     for item in raw_tasks:
@@ -321,7 +435,7 @@ def _normalize_tasks(raw_tasks):
             )
 
         phase_id = str(item.get("phaseId") or "").strip()
-        if phase_id and phase_id not in ALLOWED_PHASE_IDS:
+        if phase_id and phase_id not in allowed:
             raise ValueError(f"Invalid phaseId for task {task_id}: {phase_id}")
 
         normalized.append(
@@ -372,10 +486,15 @@ def _serialize_plan(
     project: MigrationIntakeSubmission,
 ) -> dict:
     mid = (project.migration_request_id or "").strip()
+    saved_meta = (plan.meta if plan else {}) or {}
+    custom_phases = _extract_custom_phases_from_meta(saved_meta)
+    allowed = _allowed_phase_ids(custom_phases)
     saved_tasks = plan.tasks if plan else None
-    tasks, template_tasks = merge_gantt_tasks_with_template(saved_tasks)
+    tasks, template_tasks = merge_gantt_tasks_with_template(saved_tasks, allowed)
     weeks = build_gantt_weeks(project.created_at)
     start_week = weeks[0]["calendarWeekNumber"] if weeks else DEFAULT_CALENDAR_START_WEEK
+    # Public meta excludes customPhases (returned separately).
+    public_meta = {k: v for k, v in saved_meta.items() if k != "customPhases"}
     return {
         "project_id": project.id,
         "migration_request_id": mid or None,
@@ -385,7 +504,9 @@ def _serialize_plan(
         "weeks": weeks,
         "calendar_start_week": start_week,
         "intake_created_at": project.created_at.isoformat() if project.created_at else None,
-        "meta": (plan.meta if plan else {}) or {},
+        "customPhases": custom_phases,
+        "phases": _merged_phases(custom_phases),
+        "meta": public_meta,
         "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
     }
 
@@ -401,8 +522,18 @@ def project_gantt(request, project_id: int):
         return Response(_serialize_plan(plan, project))
 
     try:
-        tasks = _normalize_tasks(request.data.get("tasks"))
+        # Prefer explicit customPhases; fall back to existing plan meta.
+        existing = ProjectGanttPlan.objects.filter(project=project).first()
+        if "customPhases" in request.data:
+            custom_phases = _normalize_custom_phases(request.data.get("customPhases"))
+        else:
+            custom_phases = _extract_custom_phases_from_meta(
+                existing.meta if existing else {}
+            )
+        allowed = _allowed_phase_ids(custom_phases)
+        tasks = _normalize_tasks(request.data.get("tasks"), allowed)
         meta = _normalize_meta(request.data.get("meta"))
+        meta["customPhases"] = custom_phases
     except ValueError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 

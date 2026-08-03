@@ -21,6 +21,9 @@ from api.views.project_gantt import (
     META_TEXT_KEYS,
     MAX_WEEK,
     MIN_WEEK,
+    _allowed_phase_ids,
+    _extract_custom_phases_from_meta,
+    _merged_phases,
     _normalize_meta,
     merge_gantt_tasks_with_template,
 )
@@ -83,10 +86,11 @@ def _slug_task_id(name: str, used: set[str]) -> str:
     return candidate
 
 
-def _normalize_task_rows(raw_tasks) -> list[dict]:
+def _normalize_task_rows(raw_tasks, allowed_phase_ids: set[str] | None = None) -> list[dict]:
     if not isinstance(raw_tasks, list):
         raise ValueError("tasks must be a list.")
 
+    allowed = set(allowed_phase_ids) if allowed_phase_ids is not None else set(ALLOWED_PHASE_IDS)
     normalized: list[dict] = []
     used_ids: set[str] = set()
 
@@ -132,7 +136,7 @@ def _normalize_task_rows(raw_tasks) -> list[dict]:
                 f"Task {task_id}: week range must be between {MIN_WEEK} and {MAX_WEEK}."
             )
 
-        if phase_id not in ALLOWED_PHASE_IDS:
+        if phase_id not in allowed:
             raise ValueError(f"Task {task_id}: invalid phaseId '{phase_id}'.")
 
         normalized.append(
@@ -172,13 +176,18 @@ def get_project_gantt_attributes(request):
 
     plan = ProjectGanttPlan.objects.filter(project=project).first()
     meta = _default_meta()
-    if plan and isinstance(plan.meta, dict):
-        meta.update({k: plan.meta.get(k, meta.get(k)) for k in meta})
+    saved_meta = (plan.meta if plan else {}) or {}
+    if isinstance(saved_meta, dict):
+        meta.update({k: saved_meta.get(k, meta.get(k)) for k in meta})
 
+    custom_phases = _extract_custom_phases_from_meta(saved_meta)
+    allowed = _allowed_phase_ids(custom_phases)
     merged_tasks, template_tasks = merge_gantt_tasks_with_template(
         plan.tasks if plan else None,
+        allowed,
     )
     rows = [_serialize_task_row(task) for task in merged_tasks]
+    phases = _merged_phases(custom_phases)
 
     return Response(
         {
@@ -190,7 +199,9 @@ def get_project_gantt_attributes(request):
             "meta": meta,
             "meta_columns": [{"key": key, "label": label} for key, label in META_COLUMNS],
             "columns": [{"key": key, "label": label} for key, label in TASK_COLUMNS],
-            "phase_options": sorted(ALLOWED_PHASE_IDS),
+            "phase_options": [p["id"] for p in phases],
+            "phases": phases,
+            "customPhases": custom_phases,
             "rows": rows,
             "template_task_count": len(template_tasks),
             "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
@@ -227,7 +238,17 @@ def save_project_gantt_attributes(request):
         for key in (*META_TEXT_KEYS, *META_NUMBER_KEYS):
             if key in meta:
                 merged_meta[key] = meta[key]
-        tasks = _normalize_task_rows(request.data.get("tasks") or request.data.get("uniqueData") or [])
+        # Preserve per-project custom Status options (managed on the Gantt page).
+        custom_phases = _extract_custom_phases_from_meta(merged_meta)
+        if custom_phases:
+            merged_meta["customPhases"] = custom_phases
+        else:
+            merged_meta.pop("customPhases", None)
+        allowed = _allowed_phase_ids(custom_phases)
+        tasks = _normalize_task_rows(
+            request.data.get("tasks") or request.data.get("uniqueData") or [],
+            allowed,
+        )
     except ValueError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
