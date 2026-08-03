@@ -93,9 +93,51 @@
     </div>
 
     <div class="gantt-legend">
-      <div v-for="phase in phases" :key="phase.id" class="gantt-legend__item">
+      <div
+        v-for="phase in phases"
+        :key="phase.id"
+        class="gantt-legend__item"
+        :class="{ 'gantt-legend__item--custom': phase.custom }"
+      >
         <span class="gantt-legend__swatch" :style="{ background: phase.color }" />
         <span class="gantt-legend__label">{{ phase.label }}</span>
+        <button
+          v-if="editable && phase.custom"
+          type="button"
+          class="gantt-legend__remove"
+          :title="`Remove ${phase.label}`"
+          :aria-label="`Remove status ${phase.label}`"
+          @click="onRemovePhase(phase.id)"
+        >
+          ×
+        </button>
+      </div>
+
+      <div v-if="editable" class="gantt-legend__add">
+        <input
+          v-model.trim="newPhaseLabel"
+          class="gantt-legend__add-input"
+          type="text"
+          maxlength="80"
+          placeholder="New status name"
+          aria-label="New status name"
+          @keydown.enter.prevent="onAddPhase"
+        />
+        <input
+          v-model="newPhaseColor"
+          class="gantt-legend__add-color"
+          type="color"
+          :title="newPhaseColor"
+          aria-label="Status color"
+        />
+        <button
+          type="button"
+          class="gantt-legend__add-btn"
+          :disabled="!newPhaseLabel"
+          @click="onAddPhase"
+        >
+          Add status
+        </button>
       </div>
     </div>
 
@@ -223,7 +265,11 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { projectGanttFieldLabels } from '../data/projectGanttFixture.js'
+import {
+  customPhaseColorPalette,
+  projectGanttFieldLabels,
+  slugifyCustomPhaseId
+} from '../data/projectGanttFixture.js'
 
 const COL_WIDTH_STORAGE_KEY = 'ae-wpm-project-gantt-col-widths'
 
@@ -302,13 +348,15 @@ const props = defineProps({
   editable: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update-task', 'update-meta'])
+const emit = defineEmits(['update-task', 'update-meta', 'add-phase', 'remove-phase'])
 
 const selectedTaskId = ref('')
 const drag = ref(null)
 const preview = ref(null)
 const colWidths = ref(loadColWidths())
 const colResize = ref(null)
+const newPhaseLabel = ref('')
+const newPhaseColor = ref(customPhaseColorPalette[0])
 
 const gridStyle = computed(() => {
   const widths = colWidths.value
@@ -466,6 +514,36 @@ const onSelectPhase = (taskId, event) => {
   const phaseId = String(event.target.value || '').trim()
   if (!phaseId) return
   emitRange(taskId, task.startWeek, task.endWeek, phaseId)
+}
+
+const onAddPhase = () => {
+  const label = String(newPhaseLabel.value || '').trim()
+  if (!label) return
+  const existingIds = new Set(props.phases.map((phase) => phase.id))
+  const existingLabels = new Set(
+    props.phases.map((phase) => String(phase.label || '').trim().toLowerCase())
+  )
+  if (existingLabels.has(label.toLowerCase())) {
+    return
+  }
+  let id = slugifyCustomPhaseId(label)
+  let suffix = 2
+  while (existingIds.has(id)) {
+    id = `${slugifyCustomPhaseId(label)}-${suffix}`
+    suffix += 1
+  }
+  const color = String(newPhaseColor.value || customPhaseColorPalette[0])
+  emit('add-phase', { id, label, color })
+  newPhaseLabel.value = ''
+  const nextColorIndex =
+    (customPhaseColorPalette.indexOf(color) + 1) % customPhaseColorPalette.length
+  newPhaseColor.value = customPhaseColorPalette[nextColorIndex] || customPhaseColorPalette[0]
+}
+
+const onRemovePhase = (phaseId) => {
+  const id = String(phaseId || '').trim()
+  if (!id) return
+  emit('remove-phase', { id })
 }
 
 const clearColResizeCursor = () => {
@@ -654,12 +732,88 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
+.gantt-legend__item--custom {
+  border-style: dashed;
+}
+
 .gantt-legend__swatch {
   width: 14px;
   height: 14px;
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.gantt-legend__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.gantt-legend__remove:hover {
+  background: #fecaca;
+}
+
+.gantt-legend__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 999px;
+  border: 1px dashed #cbd5e1;
+  background: #fff;
+}
+
+.gantt-legend__add-input {
+  width: 140px;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  color: #334155;
+}
+
+.gantt-legend__add-input::placeholder {
+  color: #94a3b8;
+}
+
+.gantt-legend__add-color {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gantt-legend__add-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gantt-legend__add-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .gantt-editor {

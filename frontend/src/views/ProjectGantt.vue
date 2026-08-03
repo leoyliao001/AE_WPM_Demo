@@ -77,6 +77,8 @@
           :today-week="todayWeek"
           @update-task="onUpdateTask"
           @update-meta="onUpdateMeta"
+          @add-phase="onAddPhase"
+          @remove-phase="onRemovePhase"
         />
 
         <aside v-for="note in notes" :key="note.title" class="gantt-notes">
@@ -130,7 +132,7 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import ProjectGanttChart from '../components/ProjectGanttChart.vue'
-import { projectGanttFixture, buildProjectGanttWeeks } from '../data/projectGanttFixture.js'
+import { projectGanttFixture, buildProjectGanttWeeks, mergeGanttPhases } from '../data/projectGanttFixture.js'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
@@ -170,7 +172,8 @@ const isDirty = ref(false)
 const editMode = ref(false)
 const fieldLabels = projectGanttFixture.fieldLabels
 const weeks = ref(buildProjectGanttWeeks())
-const phases = projectGanttFixture.phases
+const customPhases = ref([])
+const phases = computed(() => mergeGanttPhases(customPhases.value))
 const notes = projectGanttFixture.notes
 const todayWeek = projectGanttFixture.todayWeek
 const tasks = ref(cloneTasks(projectGanttFixture.tasks))
@@ -227,6 +230,23 @@ const applyGanttPayload = (data, projectData = null) => {
   if (data?.meta && typeof data.meta === 'object') {
     meta.value = mergeSavedMeta(data.meta)
   }
+  if (Array.isArray(data?.customPhases)) {
+    customPhases.value = data.customPhases.map((phase) => ({
+      id: String(phase.id),
+      label: String(phase.label),
+      color: String(phase.color || '#64748B'),
+      custom: true
+    }))
+  } else if (Array.isArray(data?.phases)) {
+    customPhases.value = data.phases
+      .filter((phase) => phase?.custom)
+      .map((phase) => ({
+        id: String(phase.id),
+        label: String(phase.label),
+        color: String(phase.color || '#64748B'),
+        custom: true
+      }))
+  }
   savedAt.value = data?.updated_at || null
 }
 
@@ -266,6 +286,39 @@ const onUpdateMeta = ({ key, value }) => {
   isDirty.value = true
 }
 
+const onAddPhase = ({ id, label, color }) => {
+  const phaseId = String(id || '').trim()
+  const phaseLabel = String(label || '').trim()
+  if (!phaseId || !phaseLabel) return
+  if (customPhases.value.some((phase) => phase.id === phaseId)) return
+  customPhases.value = [
+    ...customPhases.value,
+    {
+      id: phaseId,
+      label: phaseLabel,
+      color: String(color || '#64748B'),
+      custom: true
+    }
+  ]
+  isDirty.value = true
+}
+
+const onRemovePhase = ({ id }) => {
+  const phaseId = String(id || '').trim()
+  if (!phaseId) return
+  if (!customPhases.value.some((phase) => phase.id === phaseId)) return
+  customPhases.value = customPhases.value.filter((phase) => phase.id !== phaseId)
+  // Reassign bars that used the removed status.
+  let tasksChanged = false
+  const nextTasks = tasks.value.map((task) => {
+    if (task.phaseId !== phaseId) return task
+    tasksChanged = true
+    return { ...task, phaseId: 'opportunity' }
+  })
+  if (tasksChanged) tasks.value = nextTasks
+  isDirty.value = true
+}
+
 const resetToTemplate = () => {
   tasks.value = cloneTasks(templateTasks.value.length ? templateTasks.value : projectGanttFixture.tasks)
   meta.value = cloneMeta(projectGanttFixture.meta)
@@ -292,6 +345,7 @@ const loadAll = async () => {
   tasks.value = cloneTasks(projectGanttFixture.tasks)
   templateTasks.value = cloneTasks(projectGanttFixture.tasks)
   meta.value = cloneMeta(projectGanttFixture.meta)
+  customPhases.value = []
   savedAt.value = null
 
   try {
@@ -314,7 +368,15 @@ const saveGantt = async () => {
   try {
     const { data } = await axios.put(
       `/api/migration-dashboard/projects/${route.params.id}/gantt/`,
-      { tasks: tasks.value, meta: meta.value }
+      {
+        tasks: tasks.value,
+        meta: meta.value,
+        customPhases: customPhases.value.map((phase) => ({
+          id: phase.id,
+          label: phase.label,
+          color: phase.color
+        }))
+      }
     )
     applyGanttPayload(data || {})
     isDirty.value = false

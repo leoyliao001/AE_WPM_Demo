@@ -92,14 +92,54 @@ export const projectGanttWeeks = buildProjectGanttWeeks(PROJECT_GANTT_DEFAULT_CA
 
 /** Top legend + phase summary — attachment strip, slightly more vivid. */
 export const projectGanttPhases = [
-  { id: 'opportunity', label: 'Opportunity Assessment', color: '#6E6E6E', startWeek: 1, endWeek: 5 },
-  { id: 'onboarding', label: 'Resource Onboarding', color: '#0086E6', startWeek: 6, endWeek: 23 },
-  { id: 'gss-training', label: 'GSS Training', color: '#A3450A', startWeek: 24, endWeek: 27 },
-  { id: 'knowledge-transfer', label: 'Knowledge Transfer', color: '#FFA008', startWeek: 28, endWeek: 30 },
-  { id: 'volume-rampup', label: 'Volume Ramp-up', color: '#1A9EBE', startWeek: 31, endWeek: 36 },
-  { id: 'hypercare', label: 'Hypercare', color: '#001A75', startWeek: 37, endWeek: 41 },
-  { id: 'closure', label: 'Project Closure', color: '#00C853', startWeek: 42, endWeek: 44 }
+  { id: 'opportunity', label: 'Opportunity Assessment', color: '#6E6E6E', custom: false },
+  { id: 'onboarding', label: 'Resource Onboarding', color: '#0086E6', custom: false },
+  { id: 'gss-training', label: 'GSS Training', color: '#A3450A', custom: false },
+  { id: 'knowledge-transfer', label: 'Knowledge Transfer', color: '#FFA008', custom: false },
+  { id: 'volume-rampup', label: 'Volume Ramp-up', color: '#1A9EBE', custom: false },
+  { id: 'hypercare', label: 'Hypercare', color: '#001A75', custom: false },
+  { id: 'closure', label: 'Project Closure', color: '#00C853', custom: false }
 ]
+
+/** Suggested colors when users add a custom Status. */
+export const customPhaseColorPalette = [
+  '#64748B',
+  '#7C3AED',
+  '#DB2777',
+  '#EA580C',
+  '#0D9488',
+  '#4F46E5',
+  '#CA8A04',
+  '#BE123C'
+]
+
+export const mergeGanttPhases = (customPhases = []) => {
+  const builtin = projectGanttPhases.map((phase) => ({
+    id: phase.id,
+    label: phase.label,
+    color: phase.color,
+    custom: false
+  }))
+  const extras = (Array.isArray(customPhases) ? customPhases : [])
+    .filter((phase) => phase && phase.id && phase.label)
+    .map((phase) => ({
+      id: String(phase.id),
+      label: String(phase.label),
+      color: String(phase.color || '#64748B'),
+      custom: true
+    }))
+  return [...builtin, ...extras]
+}
+
+export const slugifyCustomPhaseId = (label) => {
+  const base = String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'status'
+  return `custom-${base}`
+}
 
 export const projectGanttMeta = {
   projectPhase: 'Phase 1 ',
