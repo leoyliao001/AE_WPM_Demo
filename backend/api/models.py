@@ -254,7 +254,7 @@ class ProjectGanttPlan(models.Model):
     )
     tasks = models.JSONField(
         default=list,
-        help_text="[{id, name, startWeek, endWeek, phaseId}, ...]",
+        help_text="[{id, name, plan:{startWeek,endWeek}, actual, completedAt}, ...]",
     )
     meta = models.JSONField(
         default=dict,

@@ -90,56 +90,28 @@ export const buildProjectGanttWeeks = (startOrDate = PROJECT_GANTT_DEFAULT_CALEN
 
 export const projectGanttWeeks = buildProjectGanttWeeks(PROJECT_GANTT_DEFAULT_CALENDAR_START)
 
-/** Top legend + phase summary — attachment strip, slightly more vivid. */
-export const projectGanttPhases = [
-  { id: 'opportunity', label: 'Opportunity Assessment', color: '#6E6E6E', custom: false },
-  { id: 'onboarding', label: 'Resource Onboarding', color: '#0086E6', custom: false },
-  { id: 'gss-training', label: 'GSS Training', color: '#A3450A', custom: false },
-  { id: 'knowledge-transfer', label: 'Knowledge Transfer', color: '#FFA008', custom: false },
-  { id: 'volume-rampup', label: 'Volume Ramp-up', color: '#1A9EBE', custom: false },
-  { id: 'hypercare', label: 'Hypercare', color: '#001A75', custom: false },
-  { id: 'closure', label: 'Project Closure', color: '#00C853', custom: false }
+/** Legend tips for Standard / Plan / Actual bar types (Excel column J). */
+export const projectGanttBarTypes = [
+  {
+    id: 'standard',
+    label: 'Standard',
+    hint: 'Standard cycle (fixed)',
+    color: '#7A8B9A'
+  },
+  {
+    id: 'plan',
+    label: 'Plan',
+    hint: 'Editable plan',
+    color: '#0077B8'
+  },
+  {
+    id: 'actual',
+    label: 'Actual',
+    hint: 'Auto from completion · green if within Plan, red if beyond',
+    color: '#6DAA28',
+    lateColor: '#C62828'
+  }
 ]
-
-/** Suggested colors when users add a custom Status. */
-export const customPhaseColorPalette = [
-  '#64748B',
-  '#7C3AED',
-  '#DB2777',
-  '#EA580C',
-  '#0D9488',
-  '#4F46E5',
-  '#CA8A04',
-  '#BE123C'
-]
-
-export const mergeGanttPhases = (customPhases = []) => {
-  const builtin = projectGanttPhases.map((phase) => ({
-    id: phase.id,
-    label: phase.label,
-    color: phase.color,
-    custom: false
-  }))
-  const extras = (Array.isArray(customPhases) ? customPhases : [])
-    .filter((phase) => phase && phase.id && phase.label)
-    .map((phase) => ({
-      id: String(phase.id),
-      label: String(phase.label),
-      color: String(phase.color || '#64748B'),
-      custom: true
-    }))
-  return [...builtin, ...extras]
-}
-
-export const slugifyCustomPhaseId = (label) => {
-  const base = String(label || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40) || 'status'
-  return `custom-${base}`
-}
 
 export const projectGanttMeta = {
   projectPhase: 'Phase 1 ',
@@ -152,65 +124,137 @@ export const projectGanttMeta = {
   total: 4
 }
 
-/** Task names copied from Excel column I; phaseId maps to legend status. */
+const range = (startWeek, endWeek) => ({ startWeek, endWeek })
+
+/** Task names from Excel; each step has Standard / Plan / Actual ranges. */
 export const projectGanttTasks = [
-  { id: 'business-case', name: 'Business Case (Memo)', startWeek: 1, endWeek: 5, phaseId: 'opportunity' },
-  { id: 'fbp-approval', name: 'FBP approval', startWeek: 1, endWeek: 5, phaseId: 'opportunity' },
-  { id: 'functional-head', name: 'Functional head approval', startWeek: 3, endWeek: 5, phaseId: 'opportunity' },
-  { id: 'elt-approval', name: 'ELT approg', startWeek: 3, endWeek: 5, phaseId: 'opportunity' },
-  { id: 'gsc-head', name: 'GSC Head -1 approval', startWeek: 3, endWeek: 5, phaseId: 'opportunity' },
+  {
+    id: 'business-case',
+    name: 'Business Case (Memo)',
+    standard: range(1, 5),
+    plan: range(1, 5),
+    actual: null,
+    completedAt: null
+  },
+  {
+    id: 'fbp-approval',
+    name: 'FBP approval',
+    standard: range(1, 5),
+    plan: range(1, 5),
+    actual: null,
+    completedAt: null
+  },
+  {
+    id: 'functional-head',
+    name: 'Functional head approval',
+    standard: range(3, 5),
+    plan: range(3, 5),
+    actual: null,
+    completedAt: null
+  },
+  {
+    id: 'elt-approval',
+    name: 'ELT approg',
+    standard: range(3, 5),
+    plan: range(3, 5),
+    actual: null,
+    completedAt: null
+  },
+  {
+    id: 'gsc-head',
+    name: 'GSC Head -1 approval',
+    standard: range(3, 5),
+    plan: range(3, 5),
+    actual: null,
+    completedAt: null
+  },
   {
     id: 'opportunity-assessment',
     name: 'Opportunity Assessment (Detailed task scoping)',
-    startWeek: 1,
-    endWeek: 5,
-    phaseId: 'opportunity'
+    standard: range(1, 5),
+    plan: range(1, 5),
+    actual: null,
+    completedAt: null
   },
-  { id: 'pid-approval', name: 'PID Approval', startWeek: 6, endWeek: 12, phaseId: 'onboarding' },
-  { id: 'hiring-request', name: 'Hiring Request approval', startWeek: 6, endWeek: 12, phaseId: 'onboarding' },
-  { id: 'resource-mobilization', name: 'Resource mobilization', startWeek: 13, endWeek: 23, phaseId: 'onboarding' },
+  {
+    id: 'pid-approval',
+    name: 'PID Approval',
+    standard: range(6, 12),
+    plan: range(6, 12),
+    actual: null,
+    completedAt: null
+  },
+  {
+    id: 'hiring-request',
+    name: 'Hiring Request approval',
+    standard: range(6, 12),
+    plan: range(6, 12),
+    actual: null,
+    completedAt: null
+  },
+  {
+    id: 'resource-mobilization',
+    name: 'Resource mobilization',
+    standard: range(13, 23),
+    plan: range(13, 23),
+    actual: null,
+    completedAt: null
+  },
   {
     id: 'neo-training',
     name: 'NEO + GSC L&D business & training stage',
-    startWeek: 24,
-    endWeek: 27,
-    phaseId: 'gss-training'
+    standard: range(24, 27),
+    plan: range(24, 27),
+    actual: null,
+    completedAt: null
   },
   {
     id: 'knowledge-transfer',
     name: 'Knowledge Transfer Business + System Training sessions + Assessments',
-    startWeek: 28,
-    endWeek: 30,
-    phaseId: 'knowledge-transfer'
+    standard: range(28, 30),
+    plan: range(28, 30),
+    actual: null,
+    completedAt: null
   },
   {
     id: 'volume-transfer',
     name: 'Volume Transfer/Ramp-up stage',
-    startWeek: 31,
-    endWeek: 36,
-    phaseId: 'volume-rampup'
+    standard: range(31, 36),
+    plan: range(31, 36),
+    actual: null,
+    completedAt: null
   },
-  { id: 'hypercare', name: 'Hypercare stage', startWeek: 37, endWeek: 41, phaseId: 'hypercare' },
+  {
+    id: 'hypercare',
+    name: 'Hypercare stage',
+    standard: range(37, 41),
+    plan: range(37, 41),
+    actual: null,
+    completedAt: null
+  },
   {
     id: 'hypercare-exit',
     name: 'Hypercare Exit Success Criteria Review',
-    startWeek: 42,
-    endWeek: 42,
-    phaseId: 'closure'
+    standard: range(42, 42),
+    plan: range(42, 42),
+    actual: null,
+    completedAt: null
   },
   {
     id: 'sign-off',
     name: 'Migration Sign-off recommendation',
-    startWeek: 43,
-    endWeek: 43,
-    phaseId: 'closure'
+    standard: range(43, 43),
+    plan: range(43, 43),
+    actual: null,
+    completedAt: null
   },
   {
     id: 'capacity-release',
     name: 'Recommended soonest Capacity Release',
-    startWeek: 44,
-    endWeek: 44,
-    phaseId: 'closure'
+    standard: range(44, 44),
+    plan: range(44, 44),
+    actual: null,
+    completedAt: null
   }
 ]
 
@@ -232,7 +276,7 @@ export const projectGanttFixture = {
   fieldLabels: projectGanttFieldLabels,
   title: projectGanttFieldLabels.migrationKeySteps,
   weeks: projectGanttWeeks,
-  phases: projectGanttPhases,
+  barTypes: projectGanttBarTypes,
   tasks: projectGanttTasks,
   meta: projectGanttMeta,
   notes: projectGanttNotes,

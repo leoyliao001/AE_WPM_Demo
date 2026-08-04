@@ -67,7 +67,7 @@
         appearance="info"
         fit="medium"
         heading="Enter a Migration ID"
-        body="Enter a Migration Request ID and Load. Task rows use the fixed Migration Key Steps template; saved week/phase edits are preserved."
+        body="Enter a Migration Request ID and Load. Task rows use the fixed Migration Key Steps template; edit Plan weeks and Completed At as primary fields."
       />
 
       <template v-if="loaded">
@@ -155,12 +155,25 @@ import {
 const ALL_COLUMNS = [
   { key: 'task_id', label: 'Task ID', width: 180 },
   { key: 'name', label: 'Task Name', width: 280 },
-  { key: 'startWeek', label: 'Start Week', width: 110 },
-  { key: 'endWeek', label: 'End Week', width: 110 },
-  { key: 'phaseId', label: 'Phase ID', width: 180 }
+  { key: 'standardStartWeek', label: 'Standard Start', width: 110, readOnly: true },
+  { key: 'standardEndWeek', label: 'Standard End', width: 110, readOnly: true },
+  { key: 'planStartWeek', label: 'Plan Start', width: 110 },
+  { key: 'planEndWeek', label: 'Plan End', width: 110 },
+  { key: 'actualStartWeek', label: 'Actual Start', width: 110, readOnly: true },
+  { key: 'actualEndWeek', label: 'Actual End', width: 110, readOnly: true },
+  { key: 'completedAt', label: 'Completed At', width: 160 },
+  { key: 'actualStatus', label: 'Actual Status', width: 120, readOnly: true }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
+const WEEK_KEYS = new Set([
+  'standardStartWeek',
+  'standardEndWeek',
+  'planStartWeek',
+  'planEndWeek',
+  'actualStartWeek',
+  'actualEndWeek'
+])
 const COLUMN_WIDTH_STORAGE_ID = 'project-gantt-attributes'
 
 const metaFields = [
@@ -193,15 +206,6 @@ const migrationId = ref('')
 const migrationRequestId = ref('')
 const projectName = ref('')
 const meta = ref(defaultMeta())
-const phaseOptions = ref([
-  'opportunity',
-  'onboarding',
-  'gss-training',
-  'knowledge-transfer',
-  'volume-rampup',
-  'hypercare',
-  'closure'
-])
 const rowCount = ref(0)
 
 const readInputValue = (event) => event?.target?.value ?? event?.detail?.value ?? ''
@@ -252,18 +256,10 @@ function buildColumns() {
   return ALL_COLUMNS.map((col) => {
     const base = {
       data: col.key,
-      width: resolveColumnWidth(col.width, col.key, storedWidths)
+      width: resolveColumnWidth(col.width, col.key, storedWidths),
+      readOnly: Boolean(col.readOnly)
     }
-    if (col.key === 'phaseId') {
-      return {
-        ...base,
-        type: 'dropdown',
-        source: phaseOptions.value,
-        strict: true,
-        allowInvalid: false
-      }
-    }
-    if (col.key === 'startWeek' || col.key === 'endWeek') {
+    if (WEEK_KEYS.has(col.key)) {
       return { ...base, type: 'numeric' }
     }
     return { ...base, type: 'text' }
@@ -305,9 +301,14 @@ function collectTasksFromHot() {
       id: normalizeCellValue(row.task_id) || null,
       task_id: normalizeCellValue(row.task_id),
       name: normalizeCellValue(row.name),
-      startWeek: normalizeCellValue(row.startWeek),
-      endWeek: normalizeCellValue(row.endWeek),
-      phaseId: normalizeCellValue(row.phaseId) || 'opportunity'
+      standardStartWeek: normalizeCellValue(row.standardStartWeek),
+      standardEndWeek: normalizeCellValue(row.standardEndWeek),
+      planStartWeek: normalizeCellValue(row.planStartWeek),
+      planEndWeek: normalizeCellValue(row.planEndWeek),
+      actualStartWeek: normalizeCellValue(row.actualStartWeek),
+      actualEndWeek: normalizeCellValue(row.actualEndWeek),
+      completedAt: normalizeCellValue(row.completedAt),
+      actualStatus: normalizeCellValue(row.actualStatus)
     }))
 }
 
@@ -414,9 +415,6 @@ async function loadData() {
     migrationRequestId.value = data.migration_request_id || mid
     projectName.value = data.project_name || ''
     meta.value = { ...defaultMeta(), ...(data.meta || {}) }
-    if (Array.isArray(data.phase_options) && data.phase_options.length) {
-      phaseOptions.value = data.phase_options
-    }
     loaded.value = true
     isDirty.value = false
     await nextTick()

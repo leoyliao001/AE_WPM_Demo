@@ -10,7 +10,6 @@ PUT  /api/migration-dashboard/projects/<id>/gantt/
 
 from typing import Optional
 from datetime import date, datetime, timedelta
-import re
 
 from django.utils import timezone
 from rest_framework import status
@@ -22,32 +21,30 @@ from api.models import MigrationIntakeSubmission, ProjectGanttPlan
 MAX_WEEK = 44
 MIN_WEEK = 1
 TIMELINE_WEEK_COUNT = 44
-DEFAULT_TASK_PHASE = "opportunity"
 DEFAULT_CALENDAR_START_WEEK = 9
 
-ALLOWED_PHASE_IDS = {
-    "opportunity",
-    "onboarding",
-    "gss-training",
-    "knowledge-transfer",
-    "volume-rampup",
-    "hypercare",
-    "closure",
-}
-
-# Built-in Status legend (id / label / color). Custom phases are stored per project.
-BUILTIN_PHASES = [
-    {"id": "opportunity", "label": "Opportunity Assessment", "color": "#6E6E6E"},
-    {"id": "onboarding", "label": "Resource Onboarding", "color": "#0086E6"},
-    {"id": "gss-training", "label": "GSS Training", "color": "#A3450A"},
-    {"id": "knowledge-transfer", "label": "Knowledge Transfer", "color": "#FFA008"},
-    {"id": "volume-rampup", "label": "Volume Ramp-up", "color": "#1A9EBE"},
-    {"id": "hypercare", "label": "Hypercare", "color": "#001A75"},
-    {"id": "closure", "label": "Project Closure", "color": "#00C853"},
+BAR_TYPES = ("standard", "plan", "actual")
+BAR_TYPE_META = [
+    {
+        "id": "standard",
+        "label": "Standard",
+        "hint": "Standard cycle (fixed)",
+        "color": "#7A8B9A",
+    },
+    {
+        "id": "plan",
+        "label": "Plan",
+        "hint": "Editable plan",
+        "color": "#0077B8",
+    },
+    {
+        "id": "actual",
+        "label": "Actual",
+        "hint": "Auto from completion · green if within Plan, red if beyond",
+        "color": "#6DAA28",
+        "lateColor": "#C62828",
+    },
 ]
-
-HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
-CUSTOM_PHASE_ID_RE = re.compile(r"^custom-[a-z0-9-]{2,48}$")
 
 META_TEXT_KEYS = ("projectPhase", "scope")
 META_NUMBER_KEYS = (
@@ -59,119 +56,48 @@ META_NUMBER_KEYS = (
     "total",
 )
 
-# Fixed Migration Key Steps (matches Excel / fixture attachment).
+# Fixed Migration Key Steps — Standard ranges match Excel template.
 TEMPLATE_TASKS = [
-    {
-        "id": "business-case",
-        "name": "Business Case (Memo)",
-        "startWeek": 1,
-        "endWeek": 5,
-        "phaseId": "opportunity",
-    },
-    {
-        "id": "fbp-approval",
-        "name": "FBP approval",
-        "startWeek": 1,
-        "endWeek": 5,
-        "phaseId": "opportunity",
-    },
-    {
-        "id": "functional-head",
-        "name": "Functional head approval",
-        "startWeek": 3,
-        "endWeek": 5,
-        "phaseId": "opportunity",
-    },
-    {
-        "id": "elt-approval",
-        "name": "ELT approg",
-        "startWeek": 3,
-        "endWeek": 5,
-        "phaseId": "opportunity",
-    },
-    {
-        "id": "gsc-head",
-        "name": "GSC Head -1 approval",
-        "startWeek": 3,
-        "endWeek": 5,
-        "phaseId": "opportunity",
-    },
+    {"id": "business-case", "name": "Business Case (Memo)", "startWeek": 1, "endWeek": 5},
+    {"id": "fbp-approval", "name": "FBP approval", "startWeek": 1, "endWeek": 5},
+    {"id": "functional-head", "name": "Functional head approval", "startWeek": 3, "endWeek": 5},
+    {"id": "elt-approval", "name": "ELT approg", "startWeek": 3, "endWeek": 5},
+    {"id": "gsc-head", "name": "GSC Head -1 approval", "startWeek": 3, "endWeek": 5},
     {
         "id": "opportunity-assessment",
         "name": "Opportunity Assessment (Detailed task scoping)",
         "startWeek": 1,
         "endWeek": 5,
-        "phaseId": "opportunity",
     },
-    {
-        "id": "pid-approval",
-        "name": "PID Approval",
-        "startWeek": 6,
-        "endWeek": 12,
-        "phaseId": "onboarding",
-    },
-    {
-        "id": "hiring-request",
-        "name": "Hiring Request approval",
-        "startWeek": 6,
-        "endWeek": 12,
-        "phaseId": "onboarding",
-    },
-    {
-        "id": "resource-mobilization",
-        "name": "Resource mobilization",
-        "startWeek": 13,
-        "endWeek": 23,
-        "phaseId": "onboarding",
-    },
+    {"id": "pid-approval", "name": "PID Approval", "startWeek": 6, "endWeek": 12},
+    {"id": "hiring-request", "name": "Hiring Request approval", "startWeek": 6, "endWeek": 12},
+    {"id": "resource-mobilization", "name": "Resource mobilization", "startWeek": 13, "endWeek": 23},
     {
         "id": "neo-training",
         "name": "NEO + GSC L&D business & training stage",
         "startWeek": 24,
         "endWeek": 27,
-        "phaseId": "gss-training",
     },
     {
         "id": "knowledge-transfer",
         "name": "Knowledge Transfer Business + System Training sessions + Assessments",
         "startWeek": 28,
         "endWeek": 30,
-        "phaseId": "knowledge-transfer",
     },
-    {
-        "id": "volume-transfer",
-        "name": "Volume Transfer/Ramp-up stage",
-        "startWeek": 31,
-        "endWeek": 36,
-        "phaseId": "volume-rampup",
-    },
-    {
-        "id": "hypercare",
-        "name": "Hypercare stage",
-        "startWeek": 37,
-        "endWeek": 41,
-        "phaseId": "hypercare",
-    },
+    {"id": "volume-transfer", "name": "Volume Transfer/Ramp-up stage", "startWeek": 31, "endWeek": 36},
+    {"id": "hypercare", "name": "Hypercare stage", "startWeek": 37, "endWeek": 41},
     {
         "id": "hypercare-exit",
         "name": "Hypercare Exit Success Criteria Review",
         "startWeek": 42,
         "endWeek": 42,
-        "phaseId": "closure",
     },
-    {
-        "id": "sign-off",
-        "name": "Migration Sign-off recommendation",
-        "startWeek": 43,
-        "endWeek": 43,
-        "phaseId": "closure",
-    },
+    {"id": "sign-off", "name": "Migration Sign-off recommendation", "startWeek": 43, "endWeek": 43},
     {
         "id": "capacity-release",
         "name": "Recommended soonest Capacity Release",
         "startWeek": 44,
         "endWeek": 44,
-        "phaseId": "closure",
     },
 ]
 
@@ -247,123 +173,104 @@ def _clamp_week_range(start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def build_template_tasks() -> list[dict]:
-    """Return a copy of the fixed Migration Key Steps."""
-    return [
-        {
-            "id": task["id"],
-            "name": task["name"],
-            "startWeek": task["startWeek"],
-            "endWeek": task["endWeek"],
-            "phaseId": task["phaseId"],
-        }
-        for task in TEMPLATE_TASKS
-    ]
+def _range_dict(start: int, end: int) -> dict:
+    start_i, end_i = _clamp_week_range(int(start), int(end))
+    return {"startWeek": start_i, "endWeek": end_i}
 
 
-def _slugify_phase_id(label: str) -> str:
-    base = re.sub(r"[^a-z0-9]+", "-", (label or "").strip().lower()).strip("-") or "status"
-    return f"custom-{base[:40]}"
+def _parse_range(raw, fallback: dict | None = None) -> dict | None:
+    """Parse {startWeek,endWeek} or legacy flat start/end. None if empty and no fallback."""
+    if isinstance(raw, dict):
+        start = raw.get("startWeek")
+        end = raw.get("endWeek")
+        if start in (None, "") and end in (None, ""):
+            return dict(fallback) if fallback else None
+        try:
+            return _range_dict(int(start), int(end))
+        except (TypeError, ValueError):
+            return dict(fallback) if fallback else None
+    return dict(fallback) if fallback else None
 
 
-def _normalize_custom_phases(raw_phases) -> list[dict]:
-    """Normalize user-defined Status options: [{id, label, color}, ...]."""
-    if raw_phases is None:
-        return []
-    if not isinstance(raw_phases, list):
-        raise ValueError("customPhases must be a list.")
+def _week_index_for_date(created_at, target) -> Optional[int]:
+    """
+    Map a calendar date to timeline week index (1..N).
+    Dates outside the chart are clamped to the nearest week.
+    """
+    target_date = _as_local_date(target)
+    if not target_date:
+        return None
+    weeks = build_gantt_weeks(created_at)
+    if not weeks:
+        return None
+    local_date = _as_local_date(created_at)
+    if local_date:
+        year, week, _weekday = local_date.isocalendar()
+        start_monday = date.fromisocalendar(year, week, 1) + timedelta(weeks=1)
+    else:
+        start_monday = date.fromisocalendar(date.today().year, DEFAULT_CALENDAR_START_WEEK, 1)
 
-    normalized: list[dict] = []
-    seen: set[str] = set()
-    for index, item in enumerate(raw_phases):
-        if not isinstance(item, dict):
-            raise ValueError(f"customPhases[{index}] must be an object.")
-
-        label = str(item.get("label") or "").strip()
-        if not label:
-            raise ValueError(f"customPhases[{index}]: label is required.")
-        if len(label) > 80:
-            raise ValueError(f"customPhases[{index}]: label is too long (max 80).")
-
-        phase_id = str(item.get("id") or "").strip()
-        if not phase_id:
-            phase_id = _slugify_phase_id(label)
-        if phase_id in ALLOWED_PHASE_IDS:
-            raise ValueError(f"customPhases[{index}]: id '{phase_id}' is reserved.")
-        if not CUSTOM_PHASE_ID_RE.match(phase_id):
-            # Allow auto-generated ids that may include a short suffix
-            if not phase_id.startswith("custom-"):
-                phase_id = f"custom-{phase_id}"
-            phase_id = re.sub(r"[^a-z0-9-]", "-", phase_id.lower()).strip("-")
-            if not CUSTOM_PHASE_ID_RE.match(phase_id):
-                phase_id = f"{_slugify_phase_id(label)}-{index + 1}"
-        if phase_id in seen:
-            raise ValueError(f"Duplicate custom phase id: {phase_id}")
-        seen.add(phase_id)
-
-        color = str(item.get("color") or "").strip() or "#64748B"
-        if not HEX_COLOR_RE.match(color):
-            raise ValueError(f"customPhases[{index}]: color must be a hex value like #RRGGBB.")
-
-        normalized.append(
-            {
-                "id": phase_id,
-                "label": label,
-                "color": color.upper() if len(color) == 7 else color,
-                "custom": True,
-            }
-        )
-    return normalized
+    delta_days = (target_date - start_monday).days
+    index = delta_days // 7 + 1
+    return max(MIN_WEEK, min(len(weeks), index))
 
 
-def _extract_custom_phases_from_meta(meta) -> list[dict]:
-    if not isinstance(meta, dict):
-        return []
+def _actual_status(plan: dict | None, actual: dict | None) -> Optional[str]:
+    """Return 'on_time' | 'late' | None for Actual bar coloring."""
+    if not plan or not actual:
+        return None
     try:
-        return _normalize_custom_phases(meta.get("customPhases"))
-    except ValueError:
-        return []
+        if int(actual["endWeek"]) <= int(plan["endWeek"]):
+            return "on_time"
+        return "late"
+    except (TypeError, ValueError, KeyError):
+        return None
 
 
-def _allowed_phase_ids(custom_phases: list[dict] | None = None) -> set[str]:
-    allowed = set(ALLOWED_PHASE_IDS)
-    for phase in custom_phases or []:
-        phase_id = str(phase.get("id") or "").strip()
-        if phase_id:
-            allowed.add(phase_id)
-    return allowed
+def _refresh_actual(
+    plan: dict | None,
+    saved_actual: dict | None,
+    completed_at,
+    created_at,
+) -> dict | None:
+    """
+    Actual is driven by completion date when present:
+    start = plan.startWeek (or completion week), end = completion week.
+    Falls back to saved actual range.
+    """
+    completed_week = _week_index_for_date(created_at, completed_at)
+    if completed_week is not None and plan:
+        start = min(int(plan["startWeek"]), completed_week)
+        return _range_dict(start, completed_week)
+    return saved_actual
 
 
-def _merged_phases(custom_phases: list[dict] | None = None) -> list[dict]:
-    phases = [
-        {
-            "id": p["id"],
-            "label": p["label"],
-            "color": p["color"],
-            "custom": False,
-        }
-        for p in BUILTIN_PHASES
-    ]
-    for phase in custom_phases or []:
-        phases.append(
+def build_template_tasks() -> list[dict]:
+    """Return Standard baseline + default Plan (= Standard), Actual empty."""
+    tasks = []
+    for task in TEMPLATE_TASKS:
+        standard = _range_dict(task["startWeek"], task["endWeek"])
+        tasks.append(
             {
-                "id": phase["id"],
-                "label": phase["label"],
-                "color": phase["color"],
-                "custom": True,
+                "id": task["id"],
+                "name": task["name"],
+                "standard": standard,
+                "plan": dict(standard),
+                "actual": None,
+                "completedAt": None,
+                "actualStatus": None,
             }
         )
-    return phases
+    return tasks
 
 
 def merge_gantt_tasks_with_template(
-    saved_tasks=None, allowed_phase_ids: set[str] | None = None
+    saved_tasks=None, created_at=None
 ) -> tuple[list[dict], list[dict]]:
     """
-    Overlay saved week/phase onto the fixed template by task id.
+    Overlay saved Plan/Actual onto fixed Standard template by task id.
     Returns (merged_tasks, baseline_tasks).
     """
-    allowed = set(allowed_phase_ids) if allowed_phase_ids is not None else set(ALLOWED_PHASE_IDS)
     baseline = build_template_tasks()
     saved_by_id: dict[str, dict] = {}
     if isinstance(saved_tasks, list):
@@ -375,24 +282,33 @@ def merge_gantt_tasks_with_template(
     for base in baseline:
         task_id = base["id"]
         saved = saved_by_id.get(task_id) or {}
-        start = saved.get("startWeek", base["startWeek"])
-        end = saved.get("endWeek", base["endWeek"])
-        try:
-            start_i, end_i = _clamp_week_range(int(start), int(end))
-        except (TypeError, ValueError):
-            start_i, end_i = base["startWeek"], base["endWeek"]
+        standard = dict(base["standard"])
 
-        phase_id = str(saved.get("phaseId") or base["phaseId"] or DEFAULT_TASK_PHASE).strip()
-        if phase_id not in allowed:
-            phase_id = base["phaseId"] if base["phaseId"] in allowed else DEFAULT_TASK_PHASE
+        # Legacy flat startWeek/endWeek → treat as Plan.
+        if "plan" in saved or "standard" in saved or "actual" in saved:
+            plan = _parse_range(saved.get("plan"), fallback=standard) or dict(standard)
+            actual_raw = _parse_range(saved.get("actual"), fallback=None)
+        else:
+            plan = _parse_range(
+                {"startWeek": saved.get("startWeek"), "endWeek": saved.get("endWeek")},
+                fallback=standard,
+            ) or dict(standard)
+            actual_raw = None
+
+        completed_at = saved.get("completedAt") or saved.get("completed_at") or None
+        if completed_at == "":
+            completed_at = None
+        actual = _refresh_actual(plan, actual_raw, completed_at, created_at)
 
         merged.append(
             {
                 "id": task_id,
                 "name": base["name"],
-                "startWeek": start_i,
-                "endWeek": end_i,
-                "phaseId": phase_id,
+                "standard": standard,
+                "plan": plan,
+                "actual": actual,
+                "completedAt": completed_at,
+                "actualStatus": _actual_status(plan, actual),
             }
         )
     return merged, baseline
@@ -403,11 +319,10 @@ def merge_gantt_tasks_with_oa(migration_request_id: str, saved_tasks=None):
     return merge_gantt_tasks_with_template(saved_tasks)
 
 
-def _normalize_tasks(raw_tasks, allowed_phase_ids: set[str] | None = None):
+def _normalize_tasks(raw_tasks):
     if not isinstance(raw_tasks, list):
         raise ValueError("tasks must be a list.")
 
-    allowed = set(allowed_phase_ids) if allowed_phase_ids is not None else set(ALLOWED_PHASE_IDS)
     normalized = []
     seen = set()
     for item in raw_tasks:
@@ -421,30 +336,30 @@ def _normalize_tasks(raw_tasks, allowed_phase_ids: set[str] | None = None):
             raise ValueError(f"Duplicate task id: {task_id}")
         seen.add(task_id)
 
-        try:
-            start = int(item.get("startWeek"))
-            end = int(item.get("endWeek"))
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"Invalid week range for task {task_id}.") from exc
-
-        if start > end:
-            start, end = end, start
-        if start < MIN_WEEK or end > MAX_WEEK:
-            raise ValueError(
-                f"Week range for task {task_id} must be between {MIN_WEEK} and {MAX_WEEK}."
+        # Plan is the editable range. Accept nested plan or legacy flat weeks.
+        if isinstance(item.get("plan"), dict):
+            plan = _parse_range(item.get("plan"))
+        else:
+            plan = _parse_range(
+                {"startWeek": item.get("startWeek"), "endWeek": item.get("endWeek")}
             )
+        if not plan:
+            raise ValueError(f"Invalid plan week range for task {task_id}.")
 
-        phase_id = str(item.get("phaseId") or "").strip()
-        if phase_id and phase_id not in allowed:
-            raise ValueError(f"Invalid phaseId for task {task_id}: {phase_id}")
+        actual = _parse_range(item.get("actual"), fallback=None)
+        completed_at = item.get("completedAt") or item.get("completed_at") or None
+        if completed_at == "":
+            completed_at = None
+        if completed_at is not None:
+            completed_at = str(completed_at).strip() or None
 
         normalized.append(
             {
                 "id": task_id,
                 "name": name,
-                "startWeek": start,
-                "endWeek": end,
-                "phaseId": phase_id or "opportunity",
+                "plan": plan,
+                "actual": actual,
+                "completedAt": completed_at,
             }
         )
     return normalized
@@ -487,14 +402,15 @@ def _serialize_plan(
 ) -> dict:
     mid = (project.migration_request_id or "").strip()
     saved_meta = (plan.meta if plan else {}) or {}
-    custom_phases = _extract_custom_phases_from_meta(saved_meta)
-    allowed = _allowed_phase_ids(custom_phases)
     saved_tasks = plan.tasks if plan else None
-    tasks, template_tasks = merge_gantt_tasks_with_template(saved_tasks, allowed)
+    tasks, template_tasks = merge_gantt_tasks_with_template(
+        saved_tasks, created_at=project.created_at
+    )
     weeks = build_gantt_weeks(project.created_at)
     start_week = weeks[0]["calendarWeekNumber"] if weeks else DEFAULT_CALENDAR_START_WEEK
-    # Public meta excludes customPhases (returned separately).
-    public_meta = {k: v for k, v in saved_meta.items() if k != "customPhases"}
+    public_meta = {
+        k: v for k, v in saved_meta.items() if k not in {"customPhases"}
+    }
     return {
         "project_id": project.id,
         "migration_request_id": mid or None,
@@ -504,8 +420,7 @@ def _serialize_plan(
         "weeks": weeks,
         "calendar_start_week": start_week,
         "intake_created_at": project.created_at.isoformat() if project.created_at else None,
-        "customPhases": custom_phases,
-        "phases": _merged_phases(custom_phases),
+        "barTypes": BAR_TYPE_META,
         "meta": public_meta,
         "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
     }
@@ -522,18 +437,20 @@ def project_gantt(request, project_id: int):
         return Response(_serialize_plan(plan, project))
 
     try:
-        # Prefer explicit customPhases; fall back to existing plan meta.
-        existing = ProjectGanttPlan.objects.filter(project=project).first()
-        if "customPhases" in request.data:
-            custom_phases = _normalize_custom_phases(request.data.get("customPhases"))
-        else:
-            custom_phases = _extract_custom_phases_from_meta(
-                existing.meta if existing else {}
-            )
-        allowed = _allowed_phase_ids(custom_phases)
-        tasks = _normalize_tasks(request.data.get("tasks"), allowed)
+        tasks = _normalize_tasks(request.data.get("tasks"))
         meta = _normalize_meta(request.data.get("meta"))
-        meta["customPhases"] = custom_phases
+        existing = ProjectGanttPlan.objects.filter(project=project).first()
+        # Drop obsolete customPhases from meta on save.
+        if existing and isinstance(existing.meta, dict):
+            preserved = {
+                k: v
+                for k, v in existing.meta.items()
+                if k not in META_TEXT_KEYS
+                and k not in META_NUMBER_KEYS
+                and k != "customPhases"
+            }
+            preserved.update(meta)
+            meta = preserved
     except ValueError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
