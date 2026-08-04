@@ -122,19 +122,22 @@
         <template v-if="barType.id === 'actual'">
           <span
             class="gantt-legend__swatch"
-            :style="{ background: barType.color }"
+            :style="{ backgroundColor: barType.color }"
             title="On time"
           />
           <span
             class="gantt-legend__swatch"
-            :style="{ background: barType.lateColor || '#C62828' }"
+            :style="{ backgroundColor: barType.lateColor || '#C62828' }"
             title="Late"
           />
           <span class="gantt-legend__label">{{ barType.label }}</span>
           <span class="gantt-legend__hint">green · red late</span>
         </template>
         <template v-else>
-          <span class="gantt-legend__swatch" :style="{ background: barType.color }" />
+          <span
+            class="gantt-legend__swatch"
+            :style="{ backgroundColor: barType.color }"
+          />
           <span class="gantt-legend__label">{{ barType.label }}</span>
         </template>
       </button>
@@ -875,6 +878,13 @@ onUnmounted(() => {
   border-radius: 4px;
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.22) 0,
+    rgba(255, 255, 255, 0.22) 0.75px,
+    transparent 0.75px,
+    transparent 5px
+  );
 }
 
 .gantt-legend__hint {
@@ -1384,9 +1394,17 @@ onUnmounted(() => {
   justify-content: center;
   border-radius: 4px;
   border: 0;
-  background: var(--bar-color);
+  overflow: hidden;
+  background-color: var(--bar-color);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.22) 0,
+    rgba(255, 255, 255, 0.22) 0.75px,
+    transparent 0.75px,
+    transparent 5px
+  );
   box-shadow:
-    inset 2px 0 0 rgba(255, 255, 255, 0.22),
+    inset 2px 0 0 rgba(255, 255, 255, 0.18),
     0 1px 2px rgba(0, 63, 110, 0.12);
   z-index: 1;
   min-width: calc(100% / var(--week-count));
@@ -1415,6 +1433,8 @@ onUnmounted(() => {
 }
 
 .gantt-bar__label {
+  position: relative;
+  z-index: 1;
   font-size: 8px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -1424,7 +1444,7 @@ onUnmounted(() => {
   padding: 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 1px rgba(0, 63, 110, 0.28);
+  text-shadow: 0 1px 1px rgba(0, 63, 110, 0.35);
 }
 
 .gantt-bar__handle {
