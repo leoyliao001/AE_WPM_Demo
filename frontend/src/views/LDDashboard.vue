@@ -40,8 +40,8 @@ const tableColumns = ldDashboardColumns
 .table-panel {
   background: #fff;
   border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(22, 22, 22, 0.04);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   padding: 22px 20px;
 }
 

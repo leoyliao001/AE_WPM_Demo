@@ -401,7 +401,8 @@ watch(() => route.params.id, loadProject)
 }
 
 .summary-card::part(container) {
-  border-radius: 16px;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   overflow: hidden;
 }
 
@@ -649,8 +650,9 @@ watch(() => route.params.id, loadProject)
 .detail-section {
   background: #fff;
   border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(22, 22, 22, 0.04);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
+  overflow: hidden;
   padding: 22px 20px;
 }
 
@@ -660,7 +662,6 @@ watch(() => route.params.id, loadProject)
 
 .detail-section::before {
   background: var(--section-accent, #0077b8);
-  border-radius: 16px 16px 0 0;
   content: '';
   height: 3px;
   left: 0;
@@ -695,7 +696,9 @@ watch(() => route.params.id, loadProject)
 
 .milestone-card::part(container) {
   border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   height: 100%;
+  overflow: hidden;
   position: relative;
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }

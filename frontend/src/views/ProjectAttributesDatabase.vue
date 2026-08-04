@@ -214,7 +214,8 @@ onMounted(async () => {
 }
 
 .table-card::part(container) {
-  border-radius: 16px;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   min-height: 220px;
   overflow: hidden;
   position: relative;
@@ -224,7 +225,7 @@ onMounted(async () => {
 .table-card::part(container)::before {
   background: var(--card-accent, #0077b8);
   content: '';
-  height: 4px;
+  height: 3px;
   left: 0;
   position: absolute;
   right: 0;
