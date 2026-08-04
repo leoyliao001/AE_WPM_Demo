@@ -158,6 +158,7 @@ const onCardClick = (item) => {
   display: grid;
   gap: 22px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  perspective: 1200px;
 }
 
 .tool-card {
@@ -165,24 +166,29 @@ const onCardClick = (item) => {
   animation: fade-up 0.55s ease both;
   animation-delay: var(--card-delay, 0ms);
   min-height: 210px;
-  transition: transform 0.22s ease;
+  transform-style: preserve-3d;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tool-card:not(.tool-card--empty):hover {
-  transform: translateY(-4px);
+  transform: translateY(-7px) scale(1.015);
 }
 
 .tool-card::part(container) {
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
   border-color: rgba(22, 22, 22, 0.08);
   border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
+  box-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.04),
+    0 4px 10px rgba(15, 23, 42, 0.05),
+    0 12px 28px rgba(0, 63, 110, 0.06);
   height: 100%;
   overflow: hidden;
   position: relative;
   transition:
-    border-color 0.22s ease,
-    box-shadow 0.22s ease;
+    border-color 0.28s ease,
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.28s ease;
 }
 
 .tool-card:not(.tool-card--empty)::part(container)::before {
@@ -196,10 +202,13 @@ const onCardClick = (item) => {
 }
 
 .tool-card:not(.tool-card--empty):hover::part(container) {
-  border-color: color-mix(in srgb, var(--card-accent) 40%, transparent);
+  background: #fff;
+  border-color: color-mix(in srgb, var(--card-accent) 36%, transparent);
   box-shadow:
-    0 12px 32px rgba(22, 22, 22, 0.08),
-    0 0 0 1px color-mix(in srgb, var(--card-accent) 12%, transparent);
+    0 2px 4px rgba(15, 23, 42, 0.04),
+    0 10px 24px rgba(15, 23, 42, 0.08),
+    0 22px 48px rgba(0, 63, 110, 0.12),
+    0 0 0 1px color-mix(in srgb, var(--card-accent) 14%, transparent);
 }
 
 .tool-card--empty::part(container) {
@@ -207,6 +216,7 @@ const onCardClick = (item) => {
   background: rgba(255, 255, 255, 0.55);
   border: 1.5px dashed rgba(22, 22, 22, 0.14);
   border-radius: 14px;
+  box-shadow: none;
   display: flex;
   justify-content: center;
 }
@@ -244,17 +254,26 @@ const onCardClick = (item) => {
 .card-icon-badge {
   align-items: center;
   background: color-mix(in srgb, var(--card-accent, #0077b8) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--card-accent, #0077b8) 16%, transparent);
   border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 2px 6px color-mix(in srgb, var(--card-accent, #0077b8) 18%, transparent);
   color: var(--card-accent, #0077b8);
   display: inline-flex;
   height: 48px;
   justify-content: center;
-  transition: transform 0.22s ease;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease;
   width: 48px;
 }
 
 .tool-card:not(.tool-card--empty):hover .card-icon-badge {
-  transform: scale(1.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 12px color-mix(in srgb, var(--card-accent, #0077b8) 28%, transparent);
+  transform: translateY(-2px) scale(1.06);
 }
 
 .empty-slot {
@@ -283,6 +302,18 @@ const onCardClick = (item) => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-header,
+  .tool-card {
+    animation: none;
+  }
+
+  .tool-card:not(.tool-card--empty):hover,
+  .tool-card:not(.tool-card--empty):hover .card-icon-badge {
+    transform: none;
   }
 }
 

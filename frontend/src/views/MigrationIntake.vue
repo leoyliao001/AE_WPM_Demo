@@ -1485,14 +1485,15 @@ onMounted(loadDraft)
   animation: fade-up 0.45s ease both;
   background: #fff;
   border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(22, 22, 22, 0.04);
-  overflow: visible;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }
 
 .form-section--elevated {
+  overflow: visible;
   z-index: 200;
 }
 
@@ -1504,12 +1505,14 @@ onMounted(loadDraft)
 
 .form-section::before {
   background: var(--section-accent, #0077b8);
+  border-radius: 14px 14px 0 0;
   content: '';
   height: 3px;
   left: 0;
   position: absolute;
   top: 0;
   width: 100%;
+  z-index: 1;
 }
 
 .section-head {
@@ -2039,7 +2042,8 @@ onMounted(loadDraft)
   align-items: center;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, #fff 100%);
   border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 16px;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   display: flex;
   flex-wrap: wrap;
   gap: 16px;

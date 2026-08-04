@@ -701,21 +701,21 @@ watch(isMyProjectsView, () => {
 .preview-panel {
   background: #fff;
   border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(22, 22, 22, 0.04);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   padding: 22px 20px;
 }
 
 .overview-panel {
   border-color: rgba(0, 119, 184, 0.18);
-  overflow: visible;
+  overflow: hidden;
   position: relative;
 }
 
 .overview-panel::before {
-  background: linear-gradient(90deg, #0077b8 0%, #42b0d5 55%, #003f6e 100%);
+  background: #0077b8;
   content: '';
-  height: 4px;
+  height: 3px;
   left: 0;
   position: absolute;
   right: 0;
@@ -843,6 +843,7 @@ watch(isMyProjectsView, () => {
 
 .project-card::part(container) {
   border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   height: 100%;
   overflow: hidden;
   position: relative;
@@ -850,7 +851,7 @@ watch(isMyProjectsView, () => {
 }
 
 .project-card::part(container)::before {
-  background: linear-gradient(90deg, #0077b8, #42b0d5);
+  background: #0077b8;
   content: '';
   height: 3px;
   left: 0;

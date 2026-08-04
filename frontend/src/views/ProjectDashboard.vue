@@ -85,7 +85,7 @@ const openMilestone = (id) => {
 <style scoped>
 .opportunity-card {
   background: linear-gradient(135deg, #0077b8 0%, #003f6e 100%);
-  border-radius: 16px;
+  border-radius: 14px;
   color: #fff;
   padding: 24px;
 }
@@ -157,7 +157,9 @@ const openMilestone = (id) => {
 
 .milestone-card::part(container) {
   border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
   height: 100%;
+  overflow: hidden;
   position: relative;
 }
 
