@@ -35,8 +35,9 @@
 
     <div v-if="editable" class="gantt-editor">
       <p class="gantt-hint">
-        Click a task to select it. Choose a <strong>Status</strong>, drag the
-        <strong>ends</strong> to resize, or drag the <strong>bar</strong> to move.
+        Only <strong>Plan</strong> is editable. Standard is fixed. Actual updates from
+        completion. Drag Plan <strong>ends</strong> to resize, or drag the
+        <strong>bar</strong> to move.
       </p>
 
       <div v-if="selectedTask" class="gantt-inspector">
@@ -44,21 +45,10 @@
           {{ selectedTask.name }}
         </div>
         <label class="gantt-inspector__field">
-          <span>Status</span>
+          <span>Plan start</span>
           <select
-            :value="selectedTask.phaseId || 'opportunity'"
-            @change="onSelectPhase(selectedTask.id, $event)"
-          >
-            <option v-for="phase in phases" :key="phase.id" :value="phase.id">
-              {{ phase.label }}
-            </option>
-          </select>
-        </label>
-        <label class="gantt-inspector__field">
-          <span>Start</span>
-          <select
-            :value="selectedTask.startWeek"
-            @change="onSelectWeek(selectedTask.id, 'start', $event)"
+            :value="selectedTask.plan?.startWeek"
+            @change="onSelectPlanWeek(selectedTask.id, 'start', $event)"
           >
             <option v-for="week in weeks" :key="`s-${week.index}`" :value="week.index">
               {{ week.timelineWeek }} ({{ week.calendarWeek }})
@@ -66,10 +56,10 @@
           </select>
         </label>
         <label class="gantt-inspector__field">
-          <span>End</span>
+          <span>Plan end</span>
           <select
-            :value="selectedTask.endWeek"
-            @change="onSelectWeek(selectedTask.id, 'end', $event)"
+            :value="selectedTask.plan?.endWeek"
+            @change="onSelectPlanWeek(selectedTask.id, 'end', $event)"
           >
             <option v-for="week in weeks" :key="`e-${week.index}`" :value="week.index">
               {{ week.timelineWeek }} ({{ week.calendarWeek }})
@@ -79,66 +69,76 @@
         <div class="gantt-inspector__meta">
           <span
             class="gantt-inspector__swatch"
-            :style="{ background: phaseColor(selectedTask.phaseId) }"
+            :style="{ background: barTypeColor('plan') }"
           />
           {{ selectedDuration }} week{{ selectedDuration === 1 ? '' : 's' }}
         </div>
+        <label class="gantt-inspector__field">
+          <span>Completed at</span>
+          <input
+            type="date"
+            :value="completedAtInputValue(selectedTask.completedAt)"
+            @change="onCompletedAtChange(selectedTask.id, $event)"
+          />
+        </label>
+        <p class="gantt-inspector__hint">
+          Set a completion date to refresh Actual (green if within Plan, red if beyond).
+          Prefer a date inside the chart calendar
+          <template v-if="weeks.length">
+            ({{ weeks[0].calendarWeek }}–{{ weeks[weeks.length - 1].calendarWeek }}).
+            Dates outside are clamped to the nearest week.
+          </template>
+        </p>
         <button type="button" class="gantt-inspector__clear" @click="selectedTaskId = ''">
           Clear selection
         </button>
       </div>
       <div v-else class="gantt-inspector gantt-inspector--empty">
-        No task selected — click a task name or bar to edit.
+        No task selected — click a task name or Plan bar to edit.
       </div>
     </div>
 
-    <div class="gantt-legend">
-      <div
-        v-for="phase in phases"
-        :key="phase.id"
-        class="gantt-legend__item"
-        :class="{ 'gantt-legend__item--custom': phase.custom }"
+    <div class="gantt-legend" role="group" aria-label="Show bar types">
+      <span class="gantt-legend__title">Show</span>
+      <button
+        type="button"
+        class="gantt-legend__all"
+        :class="{ 'gantt-legend__all--active': allLanesVisible }"
+        title="Show Standard, Plan and Actual"
+        @click="showAllLanes"
       >
-        <span class="gantt-legend__swatch" :style="{ background: phase.color }" />
-        <span class="gantt-legend__label">{{ phase.label }}</span>
-        <button
-          v-if="editable && phase.custom"
-          type="button"
-          class="gantt-legend__remove"
-          :title="`Remove ${phase.label}`"
-          :aria-label="`Remove status ${phase.label}`"
-          @click="onRemovePhase(phase.id)"
-        >
-          ×
-        </button>
-      </div>
-
-      <div v-if="editable" class="gantt-legend__add">
-        <input
-          v-model.trim="newPhaseLabel"
-          class="gantt-legend__add-input"
-          type="text"
-          maxlength="80"
-          placeholder="New status name"
-          aria-label="New status name"
-          @keydown.enter.prevent="onAddPhase"
-        />
-        <input
-          v-model="newPhaseColor"
-          class="gantt-legend__add-color"
-          type="color"
-          :title="newPhaseColor"
-          aria-label="Status color"
-        />
-        <button
-          type="button"
-          class="gantt-legend__add-btn"
-          :disabled="!newPhaseLabel"
-          @click="onAddPhase"
-        >
-          Add status
-        </button>
-      </div>
+        All
+      </button>
+      <button
+        v-for="barType in barTypes"
+        :key="barType.id"
+        type="button"
+        class="gantt-legend__item"
+        :class="{ 'gantt-legend__item--off': !isLaneVisible(barType.id) }"
+        :title="toggleLaneTitle(barType)"
+        :aria-pressed="isLaneVisible(barType.id)"
+        @click="toggleLane(barType.id)"
+      >
+        <template v-if="barType.id === 'actual'">
+          <span
+            class="gantt-legend__swatch"
+            :style="{ background: barType.color }"
+            title="On time"
+          />
+          <span
+            class="gantt-legend__swatch"
+            :style="{ background: barType.lateColor || '#C62828' }"
+            title="Late"
+          />
+          <span class="gantt-legend__label">{{ barType.label }}</span>
+          <span class="gantt-legend__hint">green · red late</span>
+        </template>
+        <template v-else>
+          <span class="gantt-legend__swatch" :style="{ background: barType.color }" />
+          <span class="gantt-legend__label">{{ barType.label }}</span>
+        </template>
+      </button>
+      <span class="gantt-legend__tip">Click to show / hide · multi-select</span>
     </div>
 
     <div class="gantt-scroll">
@@ -191,72 +191,88 @@
           {{ week.timelineWeek }}
         </div>
 
-        <!-- Tasks -->
+        <!-- Tasks: 3 sub-rows each (Standard / Plan / Actual) -->
         <template v-for="(task, taskIndex) in displayTasks" :key="task.id">
           <div
-            class="gantt-cell gantt-cell--label gantt-row-band"
+            class="gantt-cell gantt-cell--label gantt-cell--label-span gantt-row-band"
             :class="{
               'gantt-cell--label-clickable': editable,
               'gantt-row--selected': isSelected(task.id),
               'gantt-row--alt': taskIndex % 2 === 1
             }"
+            :style="{ gridRow: `span ${laneSpan}` }"
             :title="task.name"
             @click="selectTask(task.id)"
           >
             {{ task.name }}
           </div>
-          <div
-            class="gantt-cell gantt-cell--axis-blank gantt-row-band"
-            :class="{
-              'gantt-row--selected': isSelected(task.id),
-              'gantt-row--alt': taskIndex % 2 === 1
-            }"
-          />
-          <div
-            class="gantt-lane gantt-row-band"
-            :class="{
-              'gantt-lane--editable': editable,
-              'gantt-lane--selected': isSelected(task.id),
-              'gantt-row--alt': taskIndex % 2 === 1
-            }"
-            :data-task-id="task.id"
-            :style="{ gridColumn: `span ${weeks.length}` }"
-            @mousedown="onLaneMouseDown($event, task)"
-          >
+
+          <template v-for="lane in visibleTaskLanes" :key="`${task.id}-${lane.id}`">
             <div
-              v-for="week in weeks"
-              :key="`${task.id}-bg-${week.index}`"
-              class="gantt-lane__cell"
-              :class="{ 'gantt-lane__cell--today': isTodayWeek(week.index) }"
-            />
-            <div
-              class="gantt-bar"
-              :class="{ 'gantt-bar--selected': isSelected(task.id) }"
-              :style="barStyle(task)"
-              :title="`${task.name}: ${phaseLabel(task.phaseId)} · ${weekLabel(task.startWeek)} – ${weekLabel(task.endWeek)}`"
-              @mousedown.stop="onBarMouseDown($event, task, 'move')"
+              class="gantt-cell gantt-cell--type gantt-row-band"
+              :class="{
+                'gantt-row--selected': isSelected(task.id),
+                'gantt-row--alt': taskIndex % 2 === 1,
+                [`gantt-cell--type-${lane.id}`]: true
+              }"
             >
-              <button
-                v-if="editable"
-                type="button"
-                class="gantt-bar__handle gantt-bar__handle--start"
-                title="Drag to change start week"
-                aria-label="Resize start"
-                @mousedown.stop.prevent="onBarMouseDown($event, task, 'resize-start')"
-              />
-              <span class="gantt-bar__label">
-                {{ weekLabel(task.startWeek) }}–{{ weekLabel(task.endWeek) }}
-              </span>
-              <button
-                v-if="editable"
-                type="button"
-                class="gantt-bar__handle gantt-bar__handle--end"
-                title="Drag to change end week"
-                aria-label="Resize end"
-                @mousedown.stop.prevent="onBarMouseDown($event, task, 'resize-end')"
-              />
+              {{ lane.rowLabel }}
             </div>
-          </div>
+            <div
+              class="gantt-lane gantt-row-band"
+              :class="{
+                'gantt-lane--editable': editable && lane.id === 'plan',
+                'gantt-lane--selected': isSelected(task.id),
+                'gantt-row--alt': taskIndex % 2 === 1,
+                [`gantt-lane--${lane.id}`]: true
+              }"
+              :data-task-id="task.id"
+              :data-bar-type="lane.id"
+              :style="{ gridColumn: `span ${weeks.length}` }"
+              @mousedown="onLaneMouseDown($event, task, lane.id)"
+            >
+              <div
+                v-for="week in weeks"
+                :key="`${task.id}-${lane.id}-bg-${week.index}`"
+                class="gantt-lane__cell"
+                :class="{ 'gantt-lane__cell--today': isTodayWeek(week.index) }"
+              />
+              <div
+                v-if="laneRange(task, lane.id)"
+                class="gantt-bar"
+                :class="{
+                  'gantt-bar--selected': isSelected(task.id) && lane.id === 'plan',
+                  'gantt-bar--readonly': lane.id !== 'plan',
+                  [`gantt-bar--${lane.id}`]: true
+                }"
+                :style="barStyle(laneRange(task, lane.id), barColor(task, lane.id))"
+                :title="barTitle(task, lane.id)"
+                @mousedown.stop="onBarMouseDown($event, task, lane.id, 'move')"
+              >
+                <button
+                  v-if="editable && lane.id === 'plan'"
+                  type="button"
+                  class="gantt-bar__handle gantt-bar__handle--start"
+                  title="Drag to change Plan start week"
+                  aria-label="Resize Plan start"
+                  @mousedown.stop.prevent="onBarMouseDown($event, task, 'plan', 'resize-start')"
+                />
+                <span class="gantt-bar__label">
+                  {{ weekLabel(laneRange(task, lane.id).startWeek) }}–{{
+                    weekLabel(laneRange(task, lane.id).endWeek)
+                  }}
+                </span>
+                <button
+                  v-if="editable && lane.id === 'plan'"
+                  type="button"
+                  class="gantt-bar__handle gantt-bar__handle--end"
+                  title="Drag to change Plan end week"
+                  aria-label="Resize Plan end"
+                  @mousedown.stop.prevent="onBarMouseDown($event, task, 'plan', 'resize-end')"
+                />
+              </div>
+            </div>
+          </template>
         </template>
       </div>
     </div>
@@ -266,9 +282,8 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
-  customPhaseColorPalette,
-  projectGanttFieldLabels,
-  slugifyCustomPhaseId
+  projectGanttBarTypes,
+  projectGanttFieldLabels
 } from '../data/projectGanttFixture.js'
 
 const COL_WIDTH_STORAGE_KEY = 'ae-wpm-project-gantt-col-widths'
@@ -286,15 +301,29 @@ const summaryFields = [
 
 const DEFAULT_COL_WIDTHS = {
   label: 360,
-  axis: 88,
+  axis: 96,
   week: 44
 }
 
 const MIN_COL_WIDTHS = {
   label: 160,
-  axis: 56,
+  axis: 72,
   week: 28
 }
+
+const LANE_ROW_LABELS = {
+  standard: 'Standard',
+  plan: 'Plan',
+  actual: 'Actual'
+}
+
+const ALL_LANE_IDS = ['standard', 'plan', 'actual']
+
+const taskLanes = [
+  { id: 'standard', rowLabel: LANE_ROW_LABELS.standard },
+  { id: 'plan', rowLabel: LANE_ROW_LABELS.plan },
+  { id: 'actual', rowLabel: LANE_ROW_LABELS.actual }
+]
 
 const loadColWidths = () => {
   try {
@@ -326,7 +355,7 @@ const persistColWidths = () => {
 const props = defineProps({
   weeks: { type: Array, default: () => [] },
   tasks: { type: Array, default: () => [] },
-  phases: { type: Array, default: () => [] },
+  barTypes: { type: Array, default: () => projectGanttBarTypes },
   fieldLabels: {
     type: Object,
     default: () => projectGanttFieldLabels
@@ -348,15 +377,50 @@ const props = defineProps({
   editable: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update-task', 'update-meta', 'add-phase', 'remove-phase'])
+const emit = defineEmits(['update-task', 'update-meta'])
 
 const selectedTaskId = ref('')
 const drag = ref(null)
 const preview = ref(null)
 const colWidths = ref(loadColWidths())
 const colResize = ref(null)
-const newPhaseLabel = ref('')
-const newPhaseColor = ref(customPhaseColorPalette[0])
+/** Which Standard / Plan / Actual rows are visible (multi-select). */
+const visibleLaneIds = ref([...ALL_LANE_IDS])
+
+const visibleTaskLanes = computed(() =>
+  taskLanes.filter((lane) => visibleLaneIds.value.includes(lane.id))
+)
+
+const laneSpan = computed(() => Math.max(1, visibleTaskLanes.value.length))
+
+const allLanesVisible = computed(
+  () => visibleLaneIds.value.length === ALL_LANE_IDS.length
+)
+
+const isLaneVisible = (laneId) => visibleLaneIds.value.includes(laneId)
+
+const toggleLane = (laneId) => {
+  const selected = new Set(visibleLaneIds.value)
+  if (selected.has(laneId)) {
+    if (selected.size <= 1) return
+    selected.delete(laneId)
+  } else {
+    selected.add(laneId)
+  }
+  visibleLaneIds.value = ALL_LANE_IDS.filter((id) => selected.has(id))
+}
+
+const showAllLanes = () => {
+  visibleLaneIds.value = [...ALL_LANE_IDS]
+}
+
+const toggleLaneTitle = (barType) => {
+  const on = isLaneVisible(barType.id)
+  const base = barType.hint || barType.label
+  return on
+    ? `${base} · click to hide`
+    : `${base} · click to show`
+}
 
 const gridStyle = computed(() => {
   const widths = colWidths.value
@@ -370,16 +434,25 @@ const gridStyle = computed(() => {
 
 const maxWeek = computed(() => props.weeks.length || 44)
 
+const barTypeById = computed(() => {
+  const map = new Map()
+  for (const item of props.barTypes || []) {
+    map.set(item.id, item)
+  }
+  return map
+})
+
 const displayTasks = computed(() => {
   if (!preview.value) return props.tasks
-  const { taskId, startWeek, endWeek, phaseId } = preview.value
+  const { taskId, startWeek, endWeek } = preview.value
   return props.tasks.map((task) =>
     task.id === taskId
       ? {
           ...task,
-          startWeek: startWeek ?? task.startWeek,
-          endWeek: endWeek ?? task.endWeek,
-          phaseId: phaseId ?? task.phaseId
+          plan: {
+            startWeek: startWeek ?? task.plan?.startWeek,
+            endWeek: endWeek ?? task.plan?.endWeek
+          }
         }
       : task
   )
@@ -391,16 +464,8 @@ const selectedTask = computed(() => {
 })
 
 const selectedDuration = computed(() => {
-  if (!selectedTask.value) return 0
-  return selectedTask.value.endWeek - selectedTask.value.startWeek + 1
-})
-
-const phaseById = computed(() => {
-  const map = new Map()
-  for (const phase of props.phases) {
-    map.set(phase.id, phase)
-  }
-  return map
+  if (!selectedTask.value?.plan) return 0
+  return selectedTask.value.plan.endWeek - selectedTask.value.plan.startWeek + 1
 })
 
 const clampWeek = (week) => Math.max(1, Math.min(maxWeek.value, week))
@@ -416,22 +481,52 @@ const weekLabel = (weekIndex) => {
   return week?.timelineWeek || `wk${String(weekIndex).padStart(2, '0')}`
 }
 
-const phaseColor = (phaseId) =>
-  phaseById.value.get(phaseId)?.color || phaseById.value.get('opportunity')?.color || '#6E6E6E'
+const laneRange = (task, barTypeId) => {
+  if (barTypeId === 'standard') return task.standard || null
+  if (barTypeId === 'plan') return task.plan || null
+  if (barTypeId === 'actual') return task.actual || null
+  return null
+}
 
-const phaseLabel = (phaseId) =>
-  phaseById.value.get(phaseId)?.label || 'Opportunity Assessment'
+const barTypeColor = (barTypeId, late = false) => {
+  const meta = barTypeById.value.get(barTypeId)
+  if (!meta) {
+    if (barTypeId === 'standard') return '#7A8B9A'
+    if (barTypeId === 'plan') return '#0077B8'
+    return late ? '#C62828' : '#6DAA28'
+  }
+  if (barTypeId === 'actual' && late) return meta.lateColor || '#E85454'
+  return meta.color
+}
 
-const barStyle = (task) => {
-  const color = phaseColor(task.phaseId)
+const barColor = (task, barTypeId) => {
+  if (barTypeId === 'actual') {
+    const late = task.actualStatus === 'late'
+    return barTypeColor('actual', late)
+  }
+  return barTypeColor(barTypeId)
+}
+
+const barStyle = (range, color) => {
+  if (!range) return {}
   const count = Math.max(1, maxWeek.value)
-  const start = Math.max(0, task.startWeek - 1)
-  const span = Math.max(1, task.endWeek - task.startWeek + 1)
+  const start = Math.max(0, range.startWeek - 1)
+  const span = Math.max(1, range.endWeek - range.startWeek + 1)
   return {
     left: `${(start / count) * 100}%`,
     width: `${(span / count) * 100}%`,
     '--bar-color': color
   }
+}
+
+const barTitle = (task, barTypeId) => {
+  const range = laneRange(task, barTypeId)
+  if (!range) return `${task.name}: ${LANE_ROW_LABELS[barTypeId] || barTypeId} — none`
+  const status =
+    barTypeId === 'actual' && task.actualStatus
+      ? ` · ${task.actualStatus}`
+      : ''
+  return `${task.name}: ${LANE_ROW_LABELS[barTypeId] || barTypeId}${status} · ${weekLabel(range.startWeek)} – ${weekLabel(range.endWeek)}`
 }
 
 const isTodayWeek = (weekIndex) =>
@@ -475,75 +570,55 @@ const weekFromClientX = (clientX, laneEl) => {
 }
 
 const findLaneEl = (taskId) =>
-  document.querySelector(`.gantt-lane[data-task-id="${taskId}"]`)
+  document.querySelector(`.gantt-lane[data-task-id="${taskId}"][data-bar-type="plan"]`)
 
-const emitRange = (taskId, startWeek, endWeek, phaseId) => {
+const emitPlanRange = (taskId, startWeek, endWeek) => {
   const range = normalizeRange(startWeek, endWeek)
   const current = props.tasks.find((task) => task.id === taskId)
-  const nextPhaseId = phaseId || current?.phaseId || 'opportunity'
   if (
-    current &&
-    current.startWeek === range.startWeek &&
-    current.endWeek === range.endWeek &&
-    (current.phaseId || 'opportunity') === nextPhaseId
+    current?.plan &&
+    current.plan.startWeek === range.startWeek &&
+    current.plan.endWeek === range.endWeek
   ) {
     return
   }
   emit('update-task', {
     id: taskId,
-    ...range,
-    phaseId: nextPhaseId
+    plan: range
   })
 }
 
-const onSelectWeek = (taskId, which, event) => {
+const onSelectPlanWeek = (taskId, which, event) => {
   const task = props.tasks.find((item) => item.id === taskId)
-  if (!task) return
+  if (!task?.plan) return
   const value = Number(event.target.value)
   if (!Number.isFinite(value)) return
   if (which === 'start') {
-    emitRange(taskId, value, Math.max(value, task.endWeek), task.phaseId)
+    emitPlanRange(taskId, value, Math.max(value, task.plan.endWeek))
   } else {
-    emitRange(taskId, Math.min(value, task.startWeek), value, task.phaseId)
+    emitPlanRange(taskId, Math.min(value, task.plan.startWeek), value)
   }
 }
 
-const onSelectPhase = (taskId, event) => {
-  const task = props.tasks.find((item) => item.id === taskId)
-  if (!task) return
-  const phaseId = String(event.target.value || '').trim()
-  if (!phaseId) return
-  emitRange(taskId, task.startWeek, task.endWeek, phaseId)
+const completedAtInputValue = (value) => {
+  if (!value) return ''
+  const text = String(value)
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10)
+  try {
+    const date = new Date(text)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toISOString().slice(0, 10)
+  } catch {
+    return ''
+  }
 }
 
-const onAddPhase = () => {
-  const label = String(newPhaseLabel.value || '').trim()
-  if (!label) return
-  const existingIds = new Set(props.phases.map((phase) => phase.id))
-  const existingLabels = new Set(
-    props.phases.map((phase) => String(phase.label || '').trim().toLowerCase())
-  )
-  if (existingLabels.has(label.toLowerCase())) {
-    return
-  }
-  let id = slugifyCustomPhaseId(label)
-  let suffix = 2
-  while (existingIds.has(id)) {
-    id = `${slugifyCustomPhaseId(label)}-${suffix}`
-    suffix += 1
-  }
-  const color = String(newPhaseColor.value || customPhaseColorPalette[0])
-  emit('add-phase', { id, label, color })
-  newPhaseLabel.value = ''
-  const nextColorIndex =
-    (customPhaseColorPalette.indexOf(color) + 1) % customPhaseColorPalette.length
-  newPhaseColor.value = customPhaseColorPalette[nextColorIndex] || customPhaseColorPalette[0]
-}
-
-const onRemovePhase = (phaseId) => {
-  const id = String(phaseId || '').trim()
-  if (!id) return
-  emit('remove-phase', { id })
+const onCompletedAtChange = (taskId, event) => {
+  const raw = String(event.target.value || '').trim()
+  emit('update-task', {
+    id: taskId,
+    completedAt: raw || null
+  })
 }
 
 const clearColResizeCursor = () => {
@@ -563,38 +638,47 @@ const startColResize = (key, event) => {
   document.body.style.userSelect = 'none'
 }
 
-const onBarMouseDown = (event, task, mode) => {
+const onBarMouseDown = (event, task, barTypeId, mode) => {
+  if (barTypeId !== 'plan') {
+    if (props.editable) selectedTaskId.value = task.id
+    return
+  }
   if (!props.editable || event.button !== 0) return
   selectedTaskId.value = task.id
-  const laneEl = event.currentTarget.closest('.gantt-lane') || findLaneEl(task.id)
-  if (!laneEl) return
+  const laneEl =
+    event.currentTarget.closest('.gantt-lane') || findLaneEl(task.id)
+  if (!laneEl || !task.plan) return
   const anchorWeek = weekFromClientX(event.clientX, laneEl)
   drag.value = {
     mode,
+    barType: 'plan',
     taskId: task.id,
-    originStart: task.startWeek,
-    originEnd: task.endWeek,
+    originStart: task.plan.startWeek,
+    originEnd: task.plan.endWeek,
     anchorWeek,
-    duration: task.endWeek - task.startWeek + 1,
+    duration: task.plan.endWeek - task.plan.startWeek + 1,
     laneEl
   }
   preview.value = {
     taskId: task.id,
-    startWeek: task.startWeek,
-    endWeek: task.endWeek,
-    phaseId: task.phaseId
+    startWeek: task.plan.startWeek,
+    endWeek: task.plan.endWeek
   }
 }
 
-const onLaneMouseDown = (event, task) => {
+const onLaneMouseDown = (event, task, barTypeId) => {
+  if (barTypeId !== 'plan') {
+    if (props.editable) selectedTaskId.value = task.id
+    return
+  }
   if (!props.editable || event.button !== 0) return
-  // Clicking empty lane area starts a redraw from that week
   if (event.target.closest('.gantt-bar')) return
   selectedTaskId.value = task.id
   const laneEl = event.currentTarget
   const week = weekFromClientX(event.clientX, laneEl)
   drag.value = {
     mode: 'draw',
+    barType: 'plan',
     taskId: task.id,
     originStart: week,
     originEnd: week,
@@ -602,7 +686,7 @@ const onLaneMouseDown = (event, task) => {
     duration: 1,
     laneEl
   }
-  preview.value = { taskId: task.id, startWeek: week, endWeek: week, phaseId: task.phaseId }
+  preview.value = { taskId: task.id, startWeek: week, endWeek: week }
 }
 
 const onWindowMouseMove = (event) => {
@@ -614,7 +698,8 @@ const onWindowMouseMove = (event) => {
     return
   }
   if (!drag.value) return
-  const { mode, taskId, originStart, originEnd, anchorWeek, duration, laneEl } = drag.value
+  const { mode, taskId, originStart, originEnd, anchorWeek, duration, laneEl } =
+    drag.value
   const week = weekFromClientX(event.clientX, laneEl)
 
   if (mode === 'resize-start') {
@@ -671,7 +756,7 @@ const onWindowMouseUp = () => {
   const { taskId, startWeek, endWeek } = preview.value
   drag.value = null
   preview.value = null
-  emitRange(taskId, startWeek, endWeek)
+  emitPlanRange(taskId, startWeek, endWeek)
 }
 
 onMounted(() => {
@@ -719,101 +804,89 @@ onUnmounted(() => {
   box-shadow: var(--shadow);
 }
 
+.gantt-legend__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-right: 2px;
+}
+
+.gantt-legend__all {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.gantt-legend__all:hover {
+  border-color: #42b0d5;
+  color: #0077b8;
+}
+
+.gantt-legend__all--active {
+  background: #e8f6fb;
+  border-color: #42b0d5;
+  color: #0077b8;
+}
+
 .gantt-legend__item {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
   background: #fff;
-  border: 1px solid var(--line-soft);
+  border: 1px solid #42b0d5;
+  font: inherit;
   font-size: 12px;
   color: var(--ink-soft);
   font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
 
-.gantt-legend__item--custom {
-  border-style: dashed;
+.gantt-legend__item:hover {
+  background: #f0f9fd;
+}
+
+.gantt-legend__item--off {
+  opacity: 0.42;
+  border-color: var(--line-soft);
+  background: #f8fafc;
+}
+
+.gantt-legend__item--off:hover {
+  opacity: 0.7;
 }
 
 .gantt-legend__swatch {
   width: 14px;
   height: 14px;
-  border-radius: 50%;
+  border-radius: 4px;
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 
-.gantt-legend__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 2px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.gantt-legend__remove:hover {
-  background: #fecaca;
-}
-
-.gantt-legend__add {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 4px;
-  padding: 4px 6px 4px 8px;
-  border-radius: 999px;
-  border: 1px dashed #cbd5e1;
-  background: #fff;
-}
-
-.gantt-legend__add-input {
-  width: 140px;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 12px;
-  color: #334155;
-}
-
-.gantt-legend__add-input::placeholder {
-  color: #94a3b8;
-}
-
-.gantt-legend__add-color {
-  width: 28px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.gantt-legend__add-btn {
-  border: none;
-  border-radius: 999px;
-  padding: 4px 10px;
-  background: #0f172a;
-  color: #fff;
+.gantt-legend__hint {
   font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
+  color: var(--muted);
+  font-weight: 500;
 }
 
-.gantt-legend__add-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.gantt-legend__tip {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .gantt-editor {
@@ -896,6 +969,21 @@ onUnmounted(() => {
   height: 10px;
   border-radius: 3px;
   flex-shrink: 0;
+}
+
+.gantt-inspector__readonly {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.gantt-inspector__hint {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 28rem;
 }
 
 .gantt-inspector__clear {
@@ -1070,7 +1158,7 @@ onUnmounted(() => {
   box-sizing: border-box;
   border-right: 1px solid var(--line-soft);
   border-bottom: none;
-  min-height: 32px;
+  min-height: 28px;
   font-size: 10px;
   line-height: 1.15;
 }
@@ -1124,7 +1212,6 @@ onUnmounted(() => {
   overflow: hidden;
   padding-inline: 2px;
   font-variant-numeric: tabular-nums;
-  /* Timeline weeks: vertical dashed guides only */
   border-bottom: none;
   border-right: 1px dashed rgba(148, 163, 184, 0.45);
 }
@@ -1162,6 +1249,11 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
+.gantt-cell--label-span {
+  align-items: center;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
 .gantt-cell--label-clickable {
   cursor: pointer;
 }
@@ -1170,8 +1262,34 @@ onUnmounted(() => {
   color: #0070c0;
 }
 
-.gantt-cell--axis-blank {
-  background: transparent;
+.gantt-cell--type {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  white-space: nowrap;
+  min-height: 18px;
+  border-right: 1px dashed rgba(148, 163, 184, 0.45);
+}
+
+.gantt-cell--type-standard {
+  color: #5b6b7c;
+}
+
+.gantt-cell--type-plan {
+  color: #0077b8;
+}
+
+.gantt-cell--type-actual {
+  color: #4f7d1e;
+}
+
+.gantt-cell--type-actual {
+  color: #4f7d1e;
 }
 
 /* Row bands: soft fill + diagonal hatch + bottom shadow rail */
@@ -1193,8 +1311,8 @@ onUnmounted(() => {
       transparent 42%
     );
   box-shadow:
-    inset 0 -1px 0 rgba(148, 163, 184, 0.22),
-    0 3px 8px -5px rgba(15, 23, 42, 0.14);
+    inset 0 -1px 0 rgba(148, 163, 184, 0.18),
+    0 2px 6px -5px rgba(15, 23, 42, 0.1);
 }
 
 .gantt-row-band.gantt-row--alt {
@@ -1214,8 +1332,14 @@ onUnmounted(() => {
   position: relative;
   display: grid;
   grid-template-columns: repeat(var(--week-count), minmax(0, 1fr));
-  min-height: 36px;
+  min-height: 18px;
   isolation: isolate;
+}
+
+.gantt-lane--actual {
+  box-shadow:
+    inset 0 -1px 0 rgba(148, 163, 184, 0.28),
+    0 3px 8px -5px rgba(15, 23, 42, 0.14);
 }
 
 .gantt-lane::after {
@@ -1227,8 +1351,8 @@ onUnmounted(() => {
   height: 1px;
   background-image: repeating-linear-gradient(
     90deg,
-    rgba(100, 116, 139, 0.42) 0,
-    rgba(100, 116, 139, 0.42) 4px,
+    rgba(100, 116, 139, 0.28) 0,
+    rgba(100, 116, 139, 0.28) 4px,
     transparent 4px,
     transparent 9px
   );
@@ -1253,62 +1377,65 @@ onUnmounted(() => {
 
 .gantt-bar {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
+  top: 2px;
+  bottom: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 0;
   background: var(--bar-color);
   box-shadow:
-    inset 3px 0 0 rgba(255, 255, 255, 0.28),
-    0 2px 4px rgba(15, 23, 42, 0.16),
-    0 6px 14px -6px rgba(15, 23, 42, 0.22);
+    inset 2px 0 0 rgba(255, 255, 255, 0.22),
+    0 1px 2px rgba(0, 63, 110, 0.12);
   z-index: 1;
   min-width: calc(100% / var(--week-count));
   cursor: default;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.gantt-lane--editable .gantt-bar {
+.gantt-bar--readonly {
+  cursor: default;
+}
+
+.gantt-lane--editable .gantt-bar:not(.gantt-bar--readonly) {
   cursor: grab;
 }
 
-.gantt-lane--editable .gantt-bar:active {
+.gantt-lane--editable .gantt-bar:not(.gantt-bar--readonly):active {
   cursor: grabbing;
 }
 
 .gantt-bar--selected {
   transform: translateY(-1px);
   box-shadow:
-    inset 3px 0 0 rgba(255, 255, 255, 0.35),
-    0 0 0 2px color-mix(in srgb, var(--bar-color) 28%, white),
-    0 8px 18px color-mix(in srgb, var(--bar-color) 28%, transparent);
+    inset 2px 0 0 rgba(255, 255, 255, 0.3),
+    0 0 0 2px color-mix(in srgb, var(--bar-color) 35%, white),
+    0 4px 12px color-mix(in srgb, var(--bar-color) 28%, transparent);
 }
 
 .gantt-bar__label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: #fff;
   white-space: nowrap;
   pointer-events: none;
-  padding: 0 12px;
+  padding: 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 1px rgba(15, 23, 42, 0.25);
+  text-shadow: 0 1px 1px rgba(0, 63, 110, 0.28);
 }
 
 .gantt-bar__handle {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  width: 6px;
+  top: 1px;
+  bottom: 1px;
+  width: 5px;
   border: 0;
   padding: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   cursor: ew-resize;
   opacity: 0;
   transition: opacity 0.12s ease;
@@ -1324,10 +1451,10 @@ onUnmounted(() => {
 }
 
 .gantt-bar__handle--start {
-  left: 4px;
+  left: 3px;
 }
 
 .gantt-bar__handle--end {
-  right: 4px;
+  right: 3px;
 }
 </style>

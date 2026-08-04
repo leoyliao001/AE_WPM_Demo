@@ -16,14 +16,11 @@ from rest_framework.response import Response
 from api.models import MigrationIntakeSubmission, ProjectGanttPlan
 from api.permissions.attributes_access import require_attributes_access
 from api.views.project_gantt import (
-    ALLOWED_PHASE_IDS,
+    BAR_TYPE_META,
     META_NUMBER_KEYS,
     META_TEXT_KEYS,
     MAX_WEEK,
     MIN_WEEK,
-    _allowed_phase_ids,
-    _extract_custom_phases_from_meta,
-    _merged_phases,
     _normalize_meta,
     merge_gantt_tasks_with_template,
 )
@@ -31,9 +28,14 @@ from api.views.project_gantt import (
 TASK_COLUMNS = [
     ("task_id", "Task ID"),
     ("name", "Task Name"),
-    ("startWeek", "Start Week"),
-    ("endWeek", "End Week"),
-    ("phaseId", "Phase ID"),
+    ("standardStartWeek", "Standard Start"),
+    ("standardEndWeek", "Standard End"),
+    ("planStartWeek", "Plan Start"),
+    ("planEndWeek", "Plan End"),
+    ("actualStartWeek", "Actual Start"),
+    ("actualEndWeek", "Actual End"),
+    ("completedAt", "Completed At"),
+    ("actualStatus", "Actual Status"),
 ]
 
 META_COLUMNS = [
@@ -63,14 +65,27 @@ def _default_meta() -> dict:
     }
 
 
+def _range_value(task: dict, key: str, field: str):
+    block = task.get(key)
+    if not isinstance(block, dict):
+        return ""
+    value = block.get(field)
+    return "" if value in (None, "") else value
+
+
 def _serialize_task_row(task: dict) -> dict:
     return {
         "id": str(task.get("id") or ""),
         "task_id": str(task.get("id") or ""),
         "name": str(task.get("name") or ""),
-        "startWeek": task.get("startWeek", ""),
-        "endWeek": task.get("endWeek", ""),
-        "phaseId": str(task.get("phaseId") or "opportunity"),
+        "standardStartWeek": _range_value(task, "standard", "startWeek"),
+        "standardEndWeek": _range_value(task, "standard", "endWeek"),
+        "planStartWeek": _range_value(task, "plan", "startWeek"),
+        "planEndWeek": _range_value(task, "plan", "endWeek"),
+        "actualStartWeek": _range_value(task, "actual", "startWeek"),
+        "actualEndWeek": _range_value(task, "actual", "endWeek"),
+        "completedAt": task.get("completedAt") or "",
+        "actualStatus": task.get("actualStatus") or "",
     }
 
 
@@ -86,11 +101,20 @@ def _slug_task_id(name: str, used: set[str]) -> str:
     return candidate
 
 
-def _normalize_task_rows(raw_tasks, allowed_phase_ids: set[str] | None = None) -> list[dict]:
+def _parse_week(raw, label: str) -> int:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label}: invalid week.") from exc
+    if value < MIN_WEEK or value > MAX_WEEK:
+        raise ValueError(f"{label}: week must be between {MIN_WEEK} and {MAX_WEEK}.")
+    return value
+
+
+def _normalize_task_rows(raw_tasks) -> list[dict]:
     if not isinstance(raw_tasks, list):
         raise ValueError("tasks must be a list.")
 
-    allowed = set(allowed_phase_ids) if allowed_phase_ids is not None else set(ALLOWED_PHASE_IDS)
     normalized: list[dict] = []
     used_ids: set[str] = set()
 
@@ -100,17 +124,17 @@ def _normalize_task_rows(raw_tasks, allowed_phase_ids: set[str] | None = None) -
 
         name = str(item.get("name") or "").strip()
         task_id = str(item.get("task_id") or item.get("id") or "").strip()
-        start_raw = item.get("startWeek")
-        end_raw = item.get("endWeek")
-        phase_id = str(item.get("phaseId") or "").strip() or "opportunity"
 
-        # Skip completely blank rows
-        if (
+        plan_start_raw = item.get("planStartWeek", item.get("startWeek"))
+        plan_end_raw = item.get("planEndWeek", item.get("endWeek"))
+
+        blank = (
             not name
             and not task_id
-            and (start_raw in (None, "", False))
-            and (end_raw in (None, "", False))
-        ):
+            and plan_start_raw in (None, "", False)
+            and plan_end_raw in (None, "", False)
+        )
+        if blank:
             continue
 
         if not name:
@@ -123,29 +147,36 @@ def _normalize_task_rows(raw_tasks, allowed_phase_ids: set[str] | None = None) -
         else:
             used_ids.add(task_id)
 
-        try:
-            start = int(start_raw)
-            end = int(end_raw)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"Task {task_id}: invalid week range.") from exc
+        plan_start = _parse_week(plan_start_raw, f"Task {task_id} Plan Start")
+        plan_end = _parse_week(plan_end_raw, f"Task {task_id} Plan End")
+        if plan_start > plan_end:
+            plan_start, plan_end = plan_end, plan_start
 
-        if start > end:
-            start, end = end, start
-        if start < MIN_WEEK or end > MAX_WEEK:
-            raise ValueError(
-                f"Task {task_id}: week range must be between {MIN_WEEK} and {MAX_WEEK}."
+        actual = None
+        actual_start_raw = item.get("actualStartWeek")
+        actual_end_raw = item.get("actualEndWeek")
+        if actual_start_raw not in (None, "") or actual_end_raw not in (None, ""):
+            a_start = _parse_week(
+                actual_start_raw if actual_start_raw not in (None, "") else plan_start,
+                f"Task {task_id} Actual Start",
             )
+            a_end = _parse_week(
+                actual_end_raw if actual_end_raw not in (None, "") else a_start,
+                f"Task {task_id} Actual End",
+            )
+            if a_start > a_end:
+                a_start, a_end = a_end, a_start
+            actual = {"startWeek": a_start, "endWeek": a_end}
 
-        if phase_id not in allowed:
-            raise ValueError(f"Task {task_id}: invalid phaseId '{phase_id}'.")
+        completed_at = str(item.get("completedAt") or "").strip() or None
 
         normalized.append(
             {
                 "id": task_id,
                 "name": name,
-                "startWeek": start,
-                "endWeek": end,
-                "phaseId": phase_id,
+                "plan": {"startWeek": plan_start, "endWeek": plan_end},
+                "actual": actual,
+                "completedAt": completed_at,
             }
         )
 
@@ -180,14 +211,11 @@ def get_project_gantt_attributes(request):
     if isinstance(saved_meta, dict):
         meta.update({k: saved_meta.get(k, meta.get(k)) for k in meta})
 
-    custom_phases = _extract_custom_phases_from_meta(saved_meta)
-    allowed = _allowed_phase_ids(custom_phases)
     merged_tasks, template_tasks = merge_gantt_tasks_with_template(
         plan.tasks if plan else None,
-        allowed,
+        created_at=project.created_at,
     )
     rows = [_serialize_task_row(task) for task in merged_tasks]
-    phases = _merged_phases(custom_phases)
 
     return Response(
         {
@@ -199,9 +227,7 @@ def get_project_gantt_attributes(request):
             "meta": meta,
             "meta_columns": [{"key": key, "label": label} for key, label in META_COLUMNS],
             "columns": [{"key": key, "label": label} for key, label in TASK_COLUMNS],
-            "phase_options": [p["id"] for p in phases],
-            "phases": phases,
-            "customPhases": custom_phases,
+            "bar_types": BAR_TYPE_META,
             "rows": rows,
             "template_task_count": len(template_tasks),
             "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
@@ -225,29 +251,23 @@ def save_project_gantt_attributes(request):
     if not project:
         return Response(
             {"error": f"No migration project found for '{migration_request_id}'."},
-            status=status.HTTP_404_NOT_FOUND,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     try:
         meta = _normalize_meta(request.data.get("meta") or {})
-        # Keep unspecified meta keys from existing plan / defaults
         existing = ProjectGanttPlan.objects.filter(project=project).first()
         merged_meta = _default_meta()
         if existing and isinstance(existing.meta, dict):
-            merged_meta.update(existing.meta)
+            merged_meta.update(
+                {k: v for k, v in existing.meta.items() if k != "customPhases"}
+            )
         for key in (*META_TEXT_KEYS, *META_NUMBER_KEYS):
             if key in meta:
                 merged_meta[key] = meta[key]
-        # Preserve per-project custom Status options (managed on the Gantt page).
-        custom_phases = _extract_custom_phases_from_meta(merged_meta)
-        if custom_phases:
-            merged_meta["customPhases"] = custom_phases
-        else:
-            merged_meta.pop("customPhases", None)
-        allowed = _allowed_phase_ids(custom_phases)
+        merged_meta.pop("customPhases", None)
         tasks = _normalize_task_rows(
-            request.data.get("tasks") or request.data.get("uniqueData") or [],
-            allowed,
+            request.data.get("tasks") or request.data.get("uniqueData") or []
         )
     except ValueError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -261,14 +281,20 @@ def save_project_gantt_attributes(request):
         },
     )
 
+    merged_tasks, _template = merge_gantt_tasks_with_template(
+        plan.tasks, created_at=project.created_at
+    )
+
     return Response(
         {
             "status": "success",
             "created": created,
             "project_id": project.id,
             "migration_request_id": project.migration_request_id,
-            "meta": plan.meta or {},
-            "rows": [_serialize_task_row(task) for task in (plan.tasks or [])],
+            "meta": {
+                k: v for k, v in (plan.meta or {}).items() if k != "customPhases"
+            },
+            "rows": [_serialize_task_row(task) for task in merged_tasks],
             "updated_at": plan.updated_at.isoformat() if plan.updated_at else None,
         }
     )

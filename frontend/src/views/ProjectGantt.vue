@@ -23,12 +23,12 @@
             <p>
               {{
                 !editMode
-                  ? 'View mode — turn on Edit to change summary or Gantt bars.'
+                  ? 'View mode — turn on Edit to change summary or Plan bars.'
                   : isDirty
-                    ? 'Unsaved changes — edit summary or bars, then Save.'
+                    ? 'Unsaved changes — edit summary or Plan bars, then Save.'
                     : savedAt
                       ? `Saved plan · last update ${savedAtLabel}`
-                      : 'Using fixed Migration Key Steps — edit week bars, then Save for this project.'
+                      : 'Using fixed Migration Key Steps — edit Plan bars, then Save for this project.'
               }}
             </p>
           </div>
@@ -71,14 +71,12 @@
           :editable="editMode"
           :weeks="weeks"
           :tasks="tasks"
-          :phases="phases"
+          :bar-types="barTypes"
           :meta="meta"
           :field-labels="fieldLabels"
           :today-week="todayWeek"
           @update-task="onUpdateTask"
           @update-meta="onUpdateMeta"
-          @add-phase="onAddPhase"
-          @remove-phase="onRemovePhase"
         />
 
         <aside v-for="note in notes" :key="note.title" class="gantt-notes">
@@ -132,19 +130,34 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import ProjectGanttChart from '../components/ProjectGanttChart.vue'
-import { projectGanttFixture, buildProjectGanttWeeks, mergeGanttPhases } from '../data/projectGanttFixture.js'
+import {
+  projectGanttFixture,
+  buildProjectGanttWeeks,
+  projectGanttBarTypes
+} from '../data/projectGanttFixture.js'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-dialog'
 import '@maersk-global/mds-components-core/mc-icon'
+
+const cloneRange = (range) => {
+  if (!range || typeof range !== 'object') return null
+  const startWeek = Number(range.startWeek)
+  const endWeek = Number(range.endWeek)
+  if (!Number.isFinite(startWeek) || !Number.isFinite(endWeek)) return null
+  return { startWeek, endWeek }
+}
+
 const cloneTasks = (rows) =>
   rows.map((task) => ({
     id: task.id,
     name: task.name,
-    startWeek: task.startWeek,
-    endWeek: task.endWeek,
-    phaseId: task.phaseId || 'opportunity'
+    standard: cloneRange(task.standard) || { startWeek: 1, endWeek: 1 },
+    plan: cloneRange(task.plan) || cloneRange(task.standard) || { startWeek: 1, endWeek: 1 },
+    actual: cloneRange(task.actual),
+    completedAt: task.completedAt ?? null,
+    actualStatus: task.actualStatus ?? null
   }))
 
 const cloneMeta = (source = {}) => ({
@@ -172,8 +185,7 @@ const isDirty = ref(false)
 const editMode = ref(false)
 const fieldLabels = projectGanttFixture.fieldLabels
 const weeks = ref(buildProjectGanttWeeks())
-const customPhases = ref([])
-const phases = computed(() => mergeGanttPhases(customPhases.value))
+const barTypes = ref([...projectGanttBarTypes])
 const notes = projectGanttFixture.notes
 const todayWeek = projectGanttFixture.todayWeek
 const tasks = ref(cloneTasks(projectGanttFixture.tasks))
@@ -191,9 +203,9 @@ const pageSubtitle = computed(() => {
     const start = weeks.value?.[0]?.calendarWeek
     return start
       ? `${project.value.migrationRequestId} — Calendar weeks start at ${start} (intake week + 1).`
-      : `${project.value.migrationRequestId} — edit fixed Migration Key Steps week bars for this project.`
+      : `${project.value.migrationRequestId} — edit fixed Migration Key Steps Plan bars for this project.`
   }
-  return 'Edit fixed Migration Key Steps week bars for this project.'
+  return 'Edit fixed Migration Key Steps Plan bars for this project.'
 })
 
 const savedAtLabel = computed(() => {
@@ -230,23 +242,11 @@ const applyGanttPayload = (data, projectData = null) => {
   if (data?.meta && typeof data.meta === 'object') {
     meta.value = mergeSavedMeta(data.meta)
   }
-  if (Array.isArray(data?.customPhases)) {
-    customPhases.value = data.customPhases.map((phase) => ({
-      id: String(phase.id),
-      label: String(phase.label),
-      color: String(phase.color || '#64748B'),
-      custom: true
-    }))
-  } else if (Array.isArray(data?.phases)) {
-    customPhases.value = data.phases
-      .filter((phase) => phase?.custom)
-      .map((phase) => ({
-        id: String(phase.id),
-        label: String(phase.label),
-        color: String(phase.color || '#64748B'),
-        custom: true
-      }))
-  }
+
+  barTypes.value = Array.isArray(data?.barTypes) && data.barTypes.length
+    ? data.barTypes
+    : [...projectGanttBarTypes]
+
   savedAt.value = data?.updated_at || null
 }
 
@@ -256,24 +256,119 @@ const mergeSavedMeta = (savedMeta) => {
   return cloneMeta({ ...base, ...savedMeta })
 }
 
-const onUpdateTask = ({ id, startWeek, endWeek, phaseId }) => {
+const rangesEqual = (a, b) =>
+  a?.startWeek === b?.startWeek && a?.endWeek === b?.endWeek
+
+/** Monday (UTC) of an ISO week. */
+const mondayOfIsoWeek = (year, week) => {
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const day = jan4.getUTCDay() || 7
+  const monday = new Date(jan4)
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7)
+  return monday
+}
+
+const parseLocalDateOnly = (isoDate) => {
+  const text = String(isoDate || '').trim()
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (match) {
+    return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+  }
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) return null
+  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+}
+
+/**
+ * Map a completion date to timeline week index (1..N).
+ * Uses day-offset from the chart's first calendar week Monday.
+ * Dates outside the chart are clamped to the nearest week so Actual can still render.
+ */
+const weekIndexFromDate = (isoDate) => {
+  if (!isoDate || !weeks.value?.length) return null
+  const target = parseLocalDateOnly(isoDate)
+  if (!target) return null
+
+  const first = weeks.value[0]
+  const year = Number(first.calendarYear)
+  const weekNum = Number(first.calendarWeekNumber)
+  if (!Number.isFinite(year) || !Number.isFinite(weekNum)) return null
+
+  const startMonday = mondayOfIsoWeek(year, weekNum)
+  const diffDays = Math.floor((target.getTime() - startMonday.getTime()) / 86400000)
+  const rawIndex = Math.floor(diffDays / 7) + 1
+  const maxIndex = weeks.value.length
+  return Math.min(maxIndex, Math.max(1, rawIndex))
+}
+
+const refreshActualFromCompletion = (task, completedAt, plan) => {
+  if (!completedAt) {
+    return { actual: null, actualStatus: null, completedAt: null }
+  }
+  const week = weekIndexFromDate(completedAt)
+  if (!week || !plan) {
+    return { actual: null, actualStatus: null, completedAt }
+  }
+  const startWeek = Math.min(plan.startWeek, week)
+  const endWeek = week
+  const actual = { startWeek, endWeek }
+  const actualStatus = endWeek <= plan.endWeek ? 'on_time' : 'late'
+  return { actual, actualStatus, completedAt }
+}
+
+const onUpdateTask = (payload) => {
+  const { id } = payload || {}
+  if (!id) return
   const index = tasks.value.findIndex((task) => task.id === id)
   if (index < 0) return
   const current = tasks.value[index]
-  const nextPhaseId = phaseId || current.phaseId || 'opportunity'
-  if (
-    current.startWeek === startWeek &&
-    current.endWeek === endWeek &&
-    current.phaseId === nextPhaseId
+
+  let nextPlan = current.plan
+  if (payload.plan && typeof payload.plan === 'object') {
+    nextPlan = cloneRange(payload.plan) || current.plan
+  } else if (
+    Number.isFinite(Number(payload.startWeek)) &&
+    Number.isFinite(Number(payload.endWeek))
   ) {
-    return
+    nextPlan =
+      cloneRange({
+        startWeek: payload.startWeek,
+        endWeek: payload.endWeek
+      }) || current.plan
   }
+
+  const hasCompletedAt = Object.prototype.hasOwnProperty.call(payload, 'completedAt')
+  const nextCompletedAt = hasCompletedAt
+    ? payload.completedAt || null
+    : current.completedAt || null
+
+  const planChanged = !rangesEqual(current.plan, nextPlan)
+  const completedChanged =
+    hasCompletedAt && String(current.completedAt || '') !== String(nextCompletedAt || '')
+
+  if (!planChanged && !completedChanged) return
+
+  let nextActual = current.actual
+  let nextActualStatus = current.actualStatus
+  let nextCompleted = current.completedAt || null
+
+  if (hasCompletedAt || (planChanged && nextCompletedAt)) {
+    const actualFields = refreshActualFromCompletion(current, nextCompletedAt, nextPlan)
+    nextActual = actualFields.actual
+    nextActualStatus = actualFields.actualStatus
+    nextCompleted = actualFields.completedAt
+  } else if (planChanged && current.actual) {
+    nextActualStatus =
+      current.actual.endWeek <= nextPlan.endWeek ? 'on_time' : 'late'
+  }
+
   const next = [...tasks.value]
   next[index] = {
     ...current,
-    startWeek,
-    endWeek,
-    phaseId: nextPhaseId
+    plan: nextPlan,
+    completedAt: nextCompleted,
+    actual: nextActual,
+    actualStatus: nextActualStatus
   }
   tasks.value = next
   isDirty.value = true
@@ -283,39 +378,6 @@ const onUpdateMeta = ({ key, value }) => {
   if (!(key in meta.value)) return
   if (meta.value[key] === value) return
   meta.value = { ...meta.value, [key]: value }
-  isDirty.value = true
-}
-
-const onAddPhase = ({ id, label, color }) => {
-  const phaseId = String(id || '').trim()
-  const phaseLabel = String(label || '').trim()
-  if (!phaseId || !phaseLabel) return
-  if (customPhases.value.some((phase) => phase.id === phaseId)) return
-  customPhases.value = [
-    ...customPhases.value,
-    {
-      id: phaseId,
-      label: phaseLabel,
-      color: String(color || '#64748B'),
-      custom: true
-    }
-  ]
-  isDirty.value = true
-}
-
-const onRemovePhase = ({ id }) => {
-  const phaseId = String(id || '').trim()
-  if (!phaseId) return
-  if (!customPhases.value.some((phase) => phase.id === phaseId)) return
-  customPhases.value = customPhases.value.filter((phase) => phase.id !== phaseId)
-  // Reassign bars that used the removed status.
-  let tasksChanged = false
-  const nextTasks = tasks.value.map((task) => {
-    if (task.phaseId !== phaseId) return task
-    tasksChanged = true
-    return { ...task, phaseId: 'opportunity' }
-  })
-  if (tasksChanged) tasks.value = nextTasks
   isDirty.value = true
 }
 
@@ -345,7 +407,7 @@ const loadAll = async () => {
   tasks.value = cloneTasks(projectGanttFixture.tasks)
   templateTasks.value = cloneTasks(projectGanttFixture.tasks)
   meta.value = cloneMeta(projectGanttFixture.meta)
-  customPhases.value = []
+  barTypes.value = [...projectGanttBarTypes]
   savedAt.value = null
 
   try {
@@ -370,12 +432,7 @@ const saveGantt = async () => {
       `/api/migration-dashboard/projects/${route.params.id}/gantt/`,
       {
         tasks: tasks.value,
-        meta: meta.value,
-        customPhases: customPhases.value.map((phase) => ({
-          id: phase.id,
-          label: phase.label,
-          color: phase.color
-        }))
+        meta: meta.value
       }
     )
     applyGanttPayload(data || {})
