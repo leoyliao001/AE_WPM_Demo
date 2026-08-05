@@ -262,8 +262,8 @@ export const projectGanttNotes = [
   {
     title: 'PID approval',
     items: [
-      'request window is first 15 days of the monht',
-      'reply period of that request: by end of the respective monht',
+      'request window is first 15 days of the month',
+      'reply period of that request: by end of the respective month',
       'create the hiring approval request: approved every two weeks of each month',
       'workday requisition - that takes about a week'
     ]

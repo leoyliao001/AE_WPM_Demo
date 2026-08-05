@@ -4,7 +4,7 @@
       <header class="welcome-header">
         <h1 class="welcome-title">Welcome</h1>
         <p class="welcome-subtitle">
-          Choose a tool below to manage migrations, reporting, and learning — all powered by a shared project database.
+          Photo-background demo — choose a tool below to manage migrations, reporting, and learning.
         </p>
       </header>
 
@@ -117,22 +117,13 @@ const onCardClick = (item) => {
 <style scoped>
 .welcome-page {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.88) 100%),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0,
-      transparent 23px,
-      rgba(0, 63, 110, 0.035) 23px,
-      rgba(0, 63, 110, 0.035) 24px
+    linear-gradient(
+      165deg,
+      rgba(0, 42, 72, 0.5) 0%,
+      rgba(0, 55, 90, 0.22) 38%,
+      rgba(0, 36, 64, 0.4) 100%
     ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0,
-      transparent 23px,
-      rgba(0, 63, 110, 0.035) 23px,
-      rgba(0, 63, 110, 0.035) 24px
-    ),
-    linear-gradient(165deg, #eef5fa 0%, #f4f7fa 42%, #e8eef4 100%);
+    url('/sea_bridge.png') center 38% / cover no-repeat;
   /* Own the vertical scroll so bottom sections stay reachable */
   flex: 1 1 auto;
   min-height: 0;
@@ -147,33 +138,36 @@ const onCardClick = (item) => {
 .page-content {
   margin: 0 auto;
   max-width: 1140px;
-  padding: 56px 32px 120px;
+  padding: 48px 32px 120px;
   position: relative;
   z-index: 1;
 }
 
 .welcome-header {
   animation: fade-up 0.55s ease both;
-  margin-bottom: 44px;
-  max-width: 640px;
+  margin-bottom: 36px;
+  max-width: 560px;
+  padding: 4px 2px;
 }
 
 .welcome-title {
-  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  color: #fff;
   font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
   font-size: clamp(36px, 5vw, 52px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.1;
   margin: 0 0 12px;
+  text-shadow: 0 2px 16px rgba(0, 20, 40, 0.45);
 }
 
 .welcome-subtitle {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 15px;
   line-height: 1.6;
   margin: 0;
   max-width: 520px;
+  text-shadow: 0 1px 10px rgba(0, 20, 40, 0.4);
 }
 
 .card-grid {
@@ -191,15 +185,16 @@ const onCardClick = (item) => {
 }
 
 .tool-card::part(container) {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
-  border-color: rgba(22, 22, 22, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.45);
   border-radius: 14px;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 2px 3px rgba(15, 23, 42, 0.05),
-    0 8px 16px rgba(15, 23, 42, 0.07),
-    0 18px 36px rgba(0, 63, 110, 0.1),
-    0 28px 56px -12px rgba(0, 63, 110, 0.12);
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 2px 3px rgba(0, 30, 60, 0.06),
+    0 10px 20px rgba(0, 30, 60, 0.1),
+    0 22px 44px rgba(0, 30, 60, 0.12);
   height: 100%;
   overflow: hidden;
   position: relative;
@@ -222,14 +217,13 @@ const onCardClick = (item) => {
 }
 
 .tool-card:not(.tool-card--empty):hover::part(container) {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.48);
   border-color: color-mix(in srgb, var(--card-accent) 36%, transparent);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 4px 8px rgba(15, 23, 42, 0.06),
-    0 14px 28px rgba(15, 23, 42, 0.1),
-    0 28px 56px rgba(0, 63, 110, 0.16),
-    0 40px 72px -16px rgba(0, 63, 110, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 4px 8px rgba(0, 30, 60, 0.08),
+    0 14px 28px rgba(0, 30, 60, 0.12),
+    0 28px 56px rgba(0, 30, 60, 0.16),
     0 0 0 1px color-mix(in srgb, var(--card-accent) 14%, transparent);
   transform: translateY(-8px) scale(1.02);
 }
@@ -239,23 +233,33 @@ const onCardClick = (item) => {
 }
 
 .tool-card:not(.tool-card--empty):focus-visible::part(container) {
+  background: rgba(255, 255, 255, 0.48);
   border-color: color-mix(in srgb, var(--card-accent) 55%, transparent);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 4px 8px rgba(15, 23, 42, 0.06),
-    0 14px 28px rgba(15, 23, 42, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 4px 8px rgba(0, 30, 60, 0.08),
+    0 14px 28px rgba(0, 30, 60, 0.12),
     0 0 0 3px color-mix(in srgb, var(--card-accent) 35%, white);
   transform: translateY(-4px);
 }
 
 .tool-card--empty::part(container) {
   align-items: center;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1.5px dashed rgba(22, 22, 22, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.28);
+  border: 1.5px dashed rgba(255, 255, 255, 0.65);
   border-radius: 14px;
-  box-shadow: none;
+  box-shadow: 0 10px 28px rgba(0, 30, 60, 0.12);
   display: flex;
   justify-content: center;
+}
+
+.empty-slot-text {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  margin: 0;
+  text-shadow: 0 1px 6px rgba(0, 20, 40, 0.35);
 }
 
 .tool-card::part(header-container) {
@@ -321,12 +325,6 @@ const onCardClick = (item) => {
   padding: 24px;
   text-align: center;
   width: 100%;
-}
-
-.empty-slot-text {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #9aa0a6);
-  font-size: 13px;
-  margin: 0;
 }
 
 @keyframes fade-up {
