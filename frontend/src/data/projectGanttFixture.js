@@ -96,20 +96,20 @@ export const projectGanttBarTypes = [
     id: 'standard',
     label: 'Standard',
     hint: 'Standard cycle (fixed)',
-    color: '#7A8B9A'
+    color: '#8E9BA8'
   },
   {
     id: 'plan',
     label: 'Plan',
     hint: 'Editable plan',
-    color: '#0077B8'
+    color: '#1E8BB5'
   },
   {
     id: 'actual',
     label: 'Actual',
-    hint: 'Auto from completion · green if within Plan, red if beyond',
-    color: '#6DAA28',
-    lateColor: '#C62828'
+    hint: 'Auto from completion · green if within Plan, pink if beyond',
+    color: '#6DBF80',
+    lateColor: '#E57F90'
   }
 ]
 

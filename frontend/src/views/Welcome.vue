@@ -166,12 +166,6 @@ const onCardClick = (item) => {
   animation: fade-up 0.55s ease both;
   animation-delay: var(--card-delay, 0ms);
   min-height: 210px;
-  transform-style: preserve-3d;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.tool-card:not(.tool-card--empty):hover {
-  transform: translateY(-7px) scale(1.015);
 }
 
 .tool-card::part(container) {
@@ -179,16 +173,20 @@ const onCardClick = (item) => {
   border-color: rgba(22, 22, 22, 0.08);
   border-radius: 14px;
   box-shadow:
-    0 1px 1px rgba(15, 23, 42, 0.04),
-    0 4px 10px rgba(15, 23, 42, 0.05),
-    0 12px 28px rgba(0, 63, 110, 0.06);
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 3px rgba(15, 23, 42, 0.05),
+    0 8px 16px rgba(15, 23, 42, 0.07),
+    0 18px 36px rgba(0, 63, 110, 0.1),
+    0 28px 56px -12px rgba(0, 63, 110, 0.12);
   height: 100%;
   overflow: hidden;
   position: relative;
+  transform-origin: center center;
   transition:
     border-color 0.28s ease,
     box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.28s ease;
+    background 0.28s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tool-card:not(.tool-card--empty)::part(container)::before {
@@ -205,10 +203,13 @@ const onCardClick = (item) => {
   background: #fff;
   border-color: color-mix(in srgb, var(--card-accent) 36%, transparent);
   box-shadow:
-    0 2px 4px rgba(15, 23, 42, 0.04),
-    0 10px 24px rgba(15, 23, 42, 0.08),
-    0 22px 48px rgba(0, 63, 110, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 4px 8px rgba(15, 23, 42, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.1),
+    0 28px 56px rgba(0, 63, 110, 0.16),
+    0 40px 72px -16px rgba(0, 63, 110, 0.18),
     0 0 0 1px color-mix(in srgb, var(--card-accent) 14%, transparent);
+  transform: translateY(-10px) scale(1.045);
 }
 
 .tool-card--empty::part(container) {
@@ -271,9 +272,8 @@ const onCardClick = (item) => {
 
 .tool-card:not(.tool-card--empty):hover .card-icon-badge {
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 4px 12px color-mix(in srgb, var(--card-accent, #0077b8) 28%, transparent);
-  transform: translateY(-2px) scale(1.06);
 }
 
 .empty-slot {
@@ -311,7 +311,7 @@ const onCardClick = (item) => {
     animation: none;
   }
 
-  .tool-card:not(.tool-card--empty):hover,
+  .tool-card:not(.tool-card--empty):hover::part(container),
   .tool-card:not(.tool-card--empty):hover .card-icon-badge {
     transform: none;
   }
