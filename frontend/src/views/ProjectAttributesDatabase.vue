@@ -200,6 +200,7 @@ onMounted(async () => {
   display: grid;
   gap: 22px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  perspective: 1200px;
 }
 
 @media (min-width: 1100px) {
@@ -209,17 +210,34 @@ onMounted(async () => {
 }
 
 .table-card {
+  --card-accent: #0077b8;
   animation: card-in 420ms ease both;
   animation-delay: var(--card-delay, 0ms);
+  transform-style: preserve-3d;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.table-card:hover {
+  transform: translateY(-10px) scale(1.02);
 }
 
 .table-card::part(container) {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+  border-color: rgba(22, 22, 22, 0.08);
   border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(22, 22, 22, 0.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 3px rgba(15, 23, 42, 0.05),
+    0 8px 16px rgba(15, 23, 42, 0.07),
+    0 18px 36px rgba(0, 63, 110, 0.1),
+    0 28px 56px -12px rgba(0, 63, 110, 0.12);
   min-height: 220px;
   overflow: hidden;
   position: relative;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  transition:
+    border-color 0.28s ease,
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.28s ease;
 }
 
 .table-card::part(container)::before {
@@ -233,25 +251,47 @@ onMounted(async () => {
 }
 
 .table-card:hover::part(container) {
-  box-shadow: 0 10px 28px rgba(22, 22, 22, 0.1);
-  transform: translateY(-2px);
+  background: #fff;
+  border-color: color-mix(in srgb, var(--card-accent) 36%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 4px 8px rgba(15, 23, 42, 0.06),
+    0 14px 28px rgba(15, 23, 42, 0.1),
+    0 28px 56px rgba(0, 63, 110, 0.16),
+    0 40px 72px -16px rgba(0, 63, 110, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--card-accent) 14%, transparent);
 }
 
 .table-icon-wrap {
   display: flex;
   justify-content: center;
   margin-bottom: 8px;
+  padding: 4px 0 8px;
 }
 
 .table-icon-badge {
   align-items: center;
-  background: color-mix(in srgb, var(--card-accent, #0077b8) 14%, white);
-  border-radius: 14px;
+  background: color-mix(in srgb, var(--card-accent, #0077b8) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--card-accent, #0077b8) 16%, transparent);
+  border-radius: 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 2px 6px color-mix(in srgb, var(--card-accent, #0077b8) 18%, transparent);
   color: var(--card-accent, #0077b8);
   display: inline-flex;
   height: 52px;
   justify-content: center;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease;
   width: 52px;
+}
+
+.table-card:hover .table-icon-badge {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 16px color-mix(in srgb, var(--card-accent, #0077b8) 36%, transparent);
+  transform: translateY(-3px) scale(1.08);
 }
 
 @keyframes card-in {
@@ -268,6 +308,14 @@ onMounted(async () => {
 @media (max-width: 720px) {
   .table-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-card,
+  .table-card:hover,
+  .table-card:hover .table-icon-badge {
+    transform: none;
   }
 }
 </style>

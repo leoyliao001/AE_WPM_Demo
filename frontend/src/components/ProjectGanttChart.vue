@@ -82,7 +82,7 @@
           />
         </label>
         <p class="gantt-inspector__hint">
-          Set a completion date to refresh Actual (green if within Plan, red if beyond).
+          Set a completion date to refresh Actual (green if within Plan, pink if beyond).
           Prefer a date inside the chart calendar
           <template v-if="weeks.length">
             ({{ weeks[0].calendarWeek }}–{{ weeks[weeks.length - 1].calendarWeek }}).
@@ -127,11 +127,11 @@
           />
           <span
             class="gantt-legend__swatch"
-            :style="{ backgroundColor: barType.lateColor || '#C62828' }"
+            :style="{ backgroundColor: barType.lateColor || '#E57F90' }"
             title="Late"
           />
           <span class="gantt-legend__label">{{ barType.label }}</span>
-          <span class="gantt-legend__hint">green · red late</span>
+          <span class="gantt-legend__hint">green · pink late</span>
         </template>
         <template v-else>
           <span
@@ -494,11 +494,11 @@ const laneRange = (task, barTypeId) => {
 const barTypeColor = (barTypeId, late = false) => {
   const meta = barTypeById.value.get(barTypeId)
   if (!meta) {
-    if (barTypeId === 'standard') return '#7A8B9A'
-    if (barTypeId === 'plan') return '#0077B8'
-    return late ? '#C62828' : '#6DAA28'
+    if (barTypeId === 'standard') return '#8E9BA8'
+    if (barTypeId === 'plan') return '#1E8BB5'
+    return late ? '#E57F90' : '#6DBF80'
   }
-  if (barTypeId === 'actual' && late) return meta.lateColor || '#E85454'
+  if (barTypeId === 'actual' && late) return meta.lateColor || '#E57F90'
   return meta.color
 }
 
@@ -1287,19 +1287,15 @@ onUnmounted(() => {
 }
 
 .gantt-cell--type-standard {
-  color: #5b6b7c;
+  color: #7a8794;
 }
 
 .gantt-cell--type-plan {
-  color: #0077b8;
+  color: #1a8bb0;
 }
 
 .gantt-cell--type-actual {
-  color: #4f7d1e;
-}
-
-.gantt-cell--type-actual {
-  color: #4f7d1e;
+  color: #3d7a4a;
 }
 
 /* Row bands: soft fill + diagonal hatch + bottom shadow rail */
@@ -1444,6 +1440,16 @@ onUnmounted(() => {
   padding: 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 1px rgba(0, 63, 110, 0.35);
+}
+
+.gantt-bar--actual .gantt-bar__label {
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 63, 110, 0.35);
+}
+
+.gantt-bar--standard .gantt-bar__label {
+  color: #fff;
   text-shadow: 0 1px 1px rgba(0, 63, 110, 0.35);
 }
 
