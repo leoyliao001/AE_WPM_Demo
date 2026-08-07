@@ -1,8 +1,9 @@
 """
 Project Gantt API — per-project editable task week spans + summary meta.
 
-Migration Key Steps are a fixed template (Excel / Project Gantt sheet). Saved
-plan tasks are merged by id to preserve week/phase edits.
+Default (unsaved) projects use the Migration Key Steps template.
+Once saved, the task list (order, names, add/remove/duplicates) is authoritative.
+Template task ids keep Standard ranges from the Excel baseline.
 
 GET  /api/migration-dashboard/projects/<id>/gantt/
 PUT  /api/migration-dashboard/projects/<id>/gantt/
@@ -22,6 +23,8 @@ MAX_WEEK = 44
 MIN_WEEK = 1
 TIMELINE_WEEK_COUNT = 44
 DEFAULT_CALENDAR_START_WEEK = 9
+# Append-only Plan change log per stage (kept in tasks JSON).
+MAX_PLAN_COMMENTS_PER_TASK = 100
 
 BAR_TYPES = ("standard", "plan", "actual")
 BAR_TYPE_META = [
@@ -246,7 +249,7 @@ def _refresh_actual(
 
 
 def build_template_tasks() -> list[dict]:
-    """Return Standard baseline + default Plan (= Standard), Actual empty."""
+    """Return Standard baseline + empty Plan/Actual by default."""
     tasks = []
     for task in TEMPLATE_TASKS:
         standard = _range_dict(task["startWeek"], task["endWeek"])
@@ -255,10 +258,11 @@ def build_template_tasks() -> list[dict]:
                 "id": task["id"],
                 "name": task["name"],
                 "standard": standard,
-                "plan": dict(standard),
+                "plan": None,
                 "actual": None,
                 "completedAt": None,
                 "actualStatus": None,
+                "comments": [],
             }
         )
     return tasks
@@ -268,47 +272,71 @@ def merge_gantt_tasks_with_template(
     saved_tasks=None, created_at=None
 ) -> tuple[list[dict], list[dict]]:
     """
-    Overlay saved Plan/Actual onto fixed Standard template by task id.
+    Build display tasks from saved plan when present; otherwise use template.
+
+    - No saved plan (None): return full Standard template with empty Plan.
+    - Saved list (including empty): authoritative order / membership.
+      Template ids keep Standard from template; custom / duplicated ids keep
+      saved Standard and names.
     Returns (merged_tasks, baseline_tasks).
     """
     baseline = build_template_tasks()
-    saved_by_id: dict[str, dict] = {}
-    if isinstance(saved_tasks, list):
-        for item in saved_tasks:
-            if isinstance(item, dict) and item.get("id"):
-                saved_by_id[str(item["id"])] = item
+    baseline_by_id = {task["id"]: task for task in baseline}
+
+    if not isinstance(saved_tasks, list):
+        return baseline, baseline
 
     merged: list[dict] = []
-    for base in baseline:
-        task_id = base["id"]
-        saved = saved_by_id.get(task_id) or {}
-        standard = dict(base["standard"])
+    for saved in saved_tasks:
+        if not isinstance(saved, dict):
+            continue
+        task_id = str(saved.get("id") or "").strip()
+        if not task_id:
+            continue
 
-        # Legacy flat startWeek/endWeek → treat as Plan.
-        if "plan" in saved or "standard" in saved or "actual" in saved:
-            plan = _parse_range(saved.get("plan"), fallback=standard) or dict(standard)
-            actual_raw = _parse_range(saved.get("actual"), fallback=None)
+        base = baseline_by_id.get(task_id)
+        saved_name = str(saved.get("name") or "").strip()
+
+        if base:
+            standard = dict(base["standard"])
+            name = saved_name or base["name"]
         else:
+            standard = _parse_range(saved.get("standard"), fallback=None)
+            name = saved_name or "Untitled stage"
+
+        # Nested plan/standard/actual, or legacy flat startWeek/endWeek as Plan.
+        if "plan" in saved or "standard" in saved or "actual" in saved:
+            if "plan" in saved and saved.get("plan") is None:
+                plan = None
+            else:
+                plan = _parse_range(saved.get("plan"), fallback=None)
+            actual_raw = _parse_range(saved.get("actual"), fallback=None)
+        elif "startWeek" in saved or "endWeek" in saved:
             plan = _parse_range(
                 {"startWeek": saved.get("startWeek"), "endWeek": saved.get("endWeek")},
-                fallback=standard,
-            ) or dict(standard)
+                fallback=None,
+            )
+            actual_raw = None
+        else:
+            plan = None
             actual_raw = None
 
         completed_at = saved.get("completedAt") or saved.get("completed_at") or None
         if completed_at == "":
             completed_at = None
         actual = _refresh_actual(plan, actual_raw, completed_at, created_at)
+        comments = _normalize_comments(saved.get("comments"))
 
         merged.append(
             {
                 "id": task_id,
-                "name": base["name"],
+                "name": name,
                 "standard": standard,
                 "plan": plan,
                 "actual": actual,
                 "completedAt": completed_at,
                 "actualStatus": _actual_status(plan, actual),
+                "comments": comments,
             }
         )
     return merged, baseline
@@ -332,19 +360,29 @@ def _normalize_tasks(raw_tasks):
         name = str(item.get("name") or "").strip()
         if not task_id:
             raise ValueError("Each task requires an id.")
+        if not name:
+            raise ValueError(f"Each task requires a name ({task_id}).")
         if task_id in seen:
             raise ValueError(f"Duplicate task id: {task_id}")
         seen.add(task_id)
 
-        # Plan is the editable range. Accept nested plan or legacy flat weeks.
-        if isinstance(item.get("plan"), dict):
+        # Plan is editable and may be empty (null) for duplicated stages.
+        if "plan" in item and item.get("plan") is None:
+            plan = None
+        elif isinstance(item.get("plan"), dict):
             plan = _parse_range(item.get("plan"))
-        else:
+        elif "startWeek" in item or "endWeek" in item:
             plan = _parse_range(
                 {"startWeek": item.get("startWeek"), "endWeek": item.get("endWeek")}
             )
-        if not plan:
-            raise ValueError(f"Invalid plan week range for task {task_id}.")
+        else:
+            plan = None
+
+        standard = None
+        if "standard" in item and item.get("standard") is None:
+            standard = None
+        elif isinstance(item.get("standard"), dict):
+            standard = _parse_range(item.get("standard"), fallback=None)
 
         actual = _parse_range(item.get("actual"), fallback=None)
         completed_at = item.get("completedAt") or item.get("completed_at") or None
@@ -353,16 +391,106 @@ def _normalize_tasks(raw_tasks):
         if completed_at is not None:
             completed_at = str(completed_at).strip() or None
 
+        comments = _normalize_comments(item.get("comments"))
+
+        payload = {
+            "id": task_id,
+            "name": name,
+            "standard": standard,
+            "plan": plan,
+            "actual": actual,
+            "completedAt": completed_at,
+            "comments": comments,
+        }
+        normalized.append(payload)
+    return normalized
+
+
+def _normalize_comments(raw_comments) -> list[dict]:
+    """Normalize Plan-change comment history (append-only log per stage)."""
+    if not isinstance(raw_comments, list):
+        return []
+    normalized = []
+    for entry in raw_comments:
+        if not isinstance(entry, dict):
+            continue
+        text = str(entry.get("text") or "").strip()
+        if not text:
+            continue
+        comment_id = str(entry.get("id") or "").strip() or None
+        at = str(entry.get("at") or "").strip() or None
         normalized.append(
             {
-                "id": task_id,
-                "name": name,
-                "plan": plan,
-                "actual": actual,
-                "completedAt": completed_at,
+                "id": comment_id,
+                "at": at,
+                "text": text[:500],
+                "fromPlan": _parse_range(entry.get("fromPlan"), fallback=None),
+                "toPlan": _parse_range(entry.get("toPlan"), fallback=None),
             }
         )
     return normalized
+
+
+def _comment_identity(entry: dict) -> str:
+    """Stable key so merge can dedupe without dropping legitimate repeats of same text."""
+    comment_id = str(entry.get("id") or "").strip()
+    if comment_id:
+        return f"id:{comment_id}"
+    at = str(entry.get("at") or "").strip()
+    text = str(entry.get("text") or "").strip()
+    from_plan = entry.get("fromPlan") or {}
+    to_plan = entry.get("toPlan") or {}
+    return (
+        f"fp:{at}|{text}|"
+        f"{from_plan.get('startWeek')}-{from_plan.get('endWeek')}|"
+        f"{to_plan.get('startWeek')}-{to_plan.get('endWeek')}"
+    )
+
+
+def _merge_comments(existing_comments, incoming_comments) -> list[dict]:
+    """
+    Append-only merge: keep prior history, add new entries, never replace with a shorter list.
+    Caps length to MAX_PLAN_COMMENTS_PER_TASK (keeps newest).
+    """
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for entry in list(existing_comments or []) + list(incoming_comments or []):
+        if not isinstance(entry, dict):
+            continue
+        key = _comment_identity(entry)
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(entry)
+    if len(merged) > MAX_PLAN_COMMENTS_PER_TASK:
+        merged = merged[-MAX_PLAN_COMMENTS_PER_TASK:]
+    return merged
+
+
+def _merge_saved_task_comments(existing_tasks, incoming_tasks) -> list[dict]:
+    """Preserve per-stage comment history across saves (by task id)."""
+    if not isinstance(existing_tasks, list):
+        return incoming_tasks
+    existing_by_id = {}
+    for item in existing_tasks:
+        if not isinstance(item, dict):
+            continue
+        task_id = str(item.get("id") or "").strip()
+        if task_id:
+            existing_by_id[task_id] = _normalize_comments(item.get("comments"))
+
+    merged_tasks = []
+    for task in incoming_tasks:
+        task_id = task.get("id")
+        prior = existing_by_id.get(task_id, [])
+        incoming = task.get("comments") or []
+        merged_tasks.append(
+            {
+                **task,
+                "comments": _merge_comments(prior, incoming),
+            }
+        )
+    return merged_tasks
 
 
 def _normalize_meta(raw_meta):
@@ -409,7 +537,9 @@ def _serialize_plan(
     weeks = build_gantt_weeks(project.created_at)
     start_week = weeks[0]["calendarWeekNumber"] if weeks else DEFAULT_CALENDAR_START_WEEK
     public_meta = {
-        k: v for k, v in saved_meta.items() if k not in {"customPhases"}
+        k: v
+        for k, v in saved_meta.items()
+        if k not in {"customPhases", "planVersionSaved"}
     }
     return {
         "project_id": project.id,
@@ -440,6 +570,9 @@ def project_gantt(request, project_id: int):
         tasks = _normalize_tasks(request.data.get("tasks"))
         meta = _normalize_meta(request.data.get("meta"))
         existing = ProjectGanttPlan.objects.filter(project=project).first()
+        # Keep full Plan-comment history per stage (append-only merge with DB).
+        if existing:
+            tasks = _merge_saved_task_comments(existing.tasks, tasks)
         # Drop obsolete customPhases from meta on save.
         if existing and isinstance(existing.meta, dict):
             preserved = {

@@ -4,6 +4,7 @@
     subtitle="Choose a reference table to browse or maintain. Access is controlled by your SSO email."
     tag="Central data layer"
     back-label="Back to Welcome"
+    atmosphere
   >
     <mc-notification
       v-if="accessError"

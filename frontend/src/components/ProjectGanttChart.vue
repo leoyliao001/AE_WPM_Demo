@@ -35,9 +35,10 @@
 
     <div v-if="editable" class="gantt-editor">
       <p class="gantt-hint">
-        Only <strong>Plan</strong> is editable. Standard is fixed. Actual updates from
-        completion. Drag Plan <strong>ends</strong> to resize, or drag the
-        <strong>bar</strong> to move.
+        Only <strong>Plan</strong> is editable. Actual updates from completion.
+        Drag Plan <strong>ends</strong> to resize, or drag the <strong>bar</strong> to
+        move. Use <strong>+</strong> / <strong>−</strong> on a stage to duplicate or
+        remove it.
       </p>
 
       <div v-if="selectedTask" class="gantt-inspector">
@@ -47,9 +48,10 @@
         <label class="gantt-inspector__field">
           <span>Plan start</span>
           <select
-            :value="selectedTask.plan?.startWeek"
+            :value="selectedTask.plan?.startWeek ?? ''"
             @change="onSelectPlanWeek(selectedTask.id, 'start', $event)"
           >
+            <option disabled value="">Select week</option>
             <option v-for="week in weeks" :key="`s-${week.index}`" :value="week.index">
               {{ week.timelineWeek }} ({{ week.calendarWeek }})
             </option>
@@ -58,9 +60,10 @@
         <label class="gantt-inspector__field">
           <span>Plan end</span>
           <select
-            :value="selectedTask.plan?.endWeek"
+            :value="selectedTask.plan?.endWeek ?? ''"
             @change="onSelectPlanWeek(selectedTask.id, 'end', $event)"
           >
+            <option disabled value="">Select week</option>
             <option v-for="week in weeks" :key="`e-${week.index}`" :value="week.index">
               {{ week.timelineWeek }} ({{ week.calendarWeek }})
             </option>
@@ -207,7 +210,57 @@
             :title="task.name"
             @click="selectTask(task.id)"
           >
-            {{ task.name }}
+            <div class="gantt-label__main">
+              <input
+                v-if="editable"
+                class="gantt-label__name"
+                type="text"
+                :value="task.name"
+                :aria-label="`Stage name: ${task.name}`"
+                @click.stop
+                @mousedown.stop
+                @input="onStageNameInput(task.id, $event)"
+              />
+              <span v-else class="gantt-label__text">{{ task.name }}</span>
+            </div>
+            <div
+              v-if="editable || taskCommentCount(task) > 0"
+              class="gantt-label__actions"
+              @click.stop
+              @mousedown.stop
+            >
+              <button
+                v-if="taskCommentCount(task) > 0"
+                type="button"
+                class="gantt-label__btn gantt-label__btn--comments"
+                :title="`View ${taskCommentCount(task)} Plan comment(s)`"
+                :aria-label="`View comments for ${task.name}`"
+                @click="emit('view-comments', { id: task.id })"
+              >
+                {{ taskCommentCount(task) }}
+              </button>
+              <template v-if="editable">
+                <button
+                  type="button"
+                  class="gantt-label__btn gantt-label__btn--add"
+                  title="Duplicate stage below (keeps Standard; Plan/Actual empty)"
+                  aria-label="Duplicate stage"
+                  @click="emit('duplicate-task', { id: task.id })"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  class="gantt-label__btn gantt-label__btn--remove"
+                  title="Remove this stage"
+                  aria-label="Remove stage"
+                  :disabled="displayTasks.length <= 1"
+                  @click="emit('remove-task', { id: task.id })"
+                >
+                  −
+                </button>
+              </template>
+            </div>
           </div>
 
           <template v-for="lane in visibleTaskLanes" :key="`${task.id}-${lane.id}`">
@@ -380,7 +433,13 @@ const props = defineProps({
   editable: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update-task', 'update-meta'])
+const emit = defineEmits([
+  'update-task',
+  'update-meta',
+  'duplicate-task',
+  'remove-task',
+  'view-comments'
+])
 
 const selectedTaskId = ref('')
 const drag = ref(null)
@@ -537,6 +596,11 @@ const isTodayWeek = (weekIndex) =>
 
 const isSelected = (taskId) => selectedTaskId.value === taskId
 
+const taskCommentCount = (task) => {
+  if (!Array.isArray(task?.comments)) return 0
+  return task.comments.filter((entry) => entry && String(entry.text || '').trim()).length
+}
+
 const selectTask = (taskId) => {
   if (!props.editable) return
   selectedTaskId.value = taskId
@@ -593,14 +657,23 @@ const emitPlanRange = (taskId, startWeek, endWeek) => {
 
 const onSelectPlanWeek = (taskId, which, event) => {
   const task = props.tasks.find((item) => item.id === taskId)
-  if (!task?.plan) return
+  if (!task) return
   const value = Number(event.target.value)
   if (!Number.isFinite(value)) return
+  const currentStart = task.plan?.startWeek ?? value
+  const currentEnd = task.plan?.endWeek ?? value
   if (which === 'start') {
-    emitPlanRange(taskId, value, Math.max(value, task.plan.endWeek))
+    emitPlanRange(taskId, value, Math.max(value, currentEnd))
   } else {
-    emitPlanRange(taskId, Math.min(value, task.plan.startWeek), value)
+    emitPlanRange(taskId, Math.min(value, currentStart), value)
   }
+}
+
+const onStageNameInput = (taskId, event) => {
+  emit('update-task', {
+    id: taskId,
+    name: String(event.target.value ?? '')
+  })
 }
 
 const completedAtInputValue = (value) => {
@@ -1249,14 +1322,97 @@ onUnmounted(() => {
 .gantt-cell--label {
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 0 8px 0 12px;
   background: transparent;
   color: var(--ink);
   font-size: 12px;
   font-weight: 500;
-  white-space: nowrap;
+  overflow: hidden;
+}
+
+.gantt-label__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.gantt-label__text {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-label__name {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 112, 192, 0.22);
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  padding: 4px 8px;
+  width: 100%;
+}
+
+.gantt-label__name:focus {
+  border-color: #0070c0;
+  box-shadow: 0 0 0 2px rgba(0, 112, 192, 0.15);
+  outline: none;
+}
+
+.gantt-label__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+
+.gantt-label__btn {
+  align-items: center;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 6px;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 600;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 24px;
+}
+
+.gantt-label__btn:hover:not(:disabled) {
+  border-color: rgba(0, 112, 192, 0.45);
+  color: #0070c0;
+}
+
+.gantt-label__btn--add:hover:not(:disabled) {
+  background: rgba(0, 112, 192, 0.08);
+}
+
+.gantt-label__btn--comments {
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 24px;
+  width: auto;
+  padding: 0 5px;
+}
+
+.gantt-label__btn--comments:hover:not(:disabled) {
+  background: rgba(0, 112, 192, 0.08);
+}
+
+.gantt-label__btn--remove:hover:not(:disabled) {
+  background: rgba(229, 127, 144, 0.12);
+  border-color: rgba(229, 127, 144, 0.5);
+  color: #c45b6c;
+}
+
+.gantt-label__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .gantt-cell--label-span {

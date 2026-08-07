@@ -117,22 +117,26 @@ const onCardClick = (item) => {
 <style scoped>
 .welcome-page {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.88) 100%),
+    /* Maersk theme blue (#42B0D5) atmosphere */
+    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(66, 176, 213, 0.22) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 92% 18%, rgba(66, 176, 213, 0.14) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(66, 176, 213, 0.12) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(247, 252, 254, 0.7) 100%),
     repeating-linear-gradient(
       0deg,
       transparent 0,
       transparent 23px,
-      rgba(0, 63, 110, 0.035) 23px,
-      rgba(0, 63, 110, 0.035) 24px
+      rgba(66, 176, 213, 0.04) 23px,
+      rgba(66, 176, 213, 0.04) 24px
     ),
     repeating-linear-gradient(
       90deg,
       transparent 0,
       transparent 23px,
-      rgba(0, 63, 110, 0.035) 23px,
-      rgba(0, 63, 110, 0.035) 24px
+      rgba(66, 176, 213, 0.04) 23px,
+      rgba(66, 176, 213, 0.04) 24px
     ),
-    linear-gradient(165deg, #eef5fa 0%, #f4f7fa 42%, #e8eef4 100%);
+    linear-gradient(165deg, #f0f9fc 0%, #eaf5fa 40%, #e3f1f7 100%);
   /* Own the vertical scroll so bottom sections stay reachable */
   flex: 1 1 auto;
   min-height: 0;

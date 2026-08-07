@@ -1,5 +1,12 @@
 <template>
-  <div class="page-shell" :class="{ 'page-shell--full-width': fullWidth }">
+  <div
+    class="page-shell"
+    :class="{
+      'page-shell--full-width': fullWidth,
+      'page-shell--atmosphere': atmosphere
+    }"
+  >
+    <div v-if="atmosphere" class="page-shell__glow" aria-hidden="true" />
     <div class="page-content">
       <header v-if="showHeader" class="page-header">
         <router-link v-if="backTo" class="back-link" :to="backTo">
@@ -41,16 +48,86 @@ defineProps({
   backTo: { type: String, default: '/' },
   backLabel: { type: String, default: 'Back to Welcome' },
   showHeader: { type: Boolean, default: true },
-  fullWidth: { type: Boolean, default: false }
+  fullWidth: { type: Boolean, default: false },
+  /** Soft Maersk-blue atmospheric background (hub / landing-style pages). */
+  atmosphere: { type: Boolean, default: false }
 })
 </script>
 
 <style scoped>
 .page-shell {
   background: #fff;
-  min-height: 100vh;
+  /* Fill app-main scrollport; grow with content (avoid 100vh gap under header) */
+  flex: 1 0 auto;
+  min-height: 100%;
   overflow-x: clip;
   position: relative;
+}
+
+.page-shell--atmosphere {
+  background:
+    radial-gradient(ellipse 58% 42% at 8% 0%, rgba(66, 176, 213, 0.16) 0%, transparent 62%),
+    radial-gradient(ellipse 48% 36% at 96% 12%, rgba(0, 119, 184, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 48% at 50% 100%, rgba(66, 176, 213, 0.12) 0%, transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 252, 254, 0.88) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 31px,
+      rgba(66, 176, 213, 0.035) 31px,
+      rgba(66, 176, 213, 0.035) 32px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 31px,
+      rgba(66, 176, 213, 0.035) 31px,
+      rgba(66, 176, 213, 0.035) 32px
+    ),
+    linear-gradient(168deg, #f4fafc 0%, #eef6fa 45%, #e8f2f7 100%);
+}
+
+.page-shell__glow {
+  background:
+    radial-gradient(circle at 78% 72%, rgba(66, 176, 213, 0.12) 0%, transparent 42%),
+    linear-gradient(
+      125deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.45) 48%,
+      transparent 56%
+    );
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 0;
+}
+
+.page-shell__glow::before,
+.page-shell__glow::after {
+  border: 1px solid rgba(66, 176, 213, 0.14);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+  position: absolute;
+}
+
+.page-shell__glow::before {
+  height: 280px;
+  opacity: 0.55;
+  right: -80px;
+  top: 48px;
+  width: 280px;
+}
+
+.page-shell__glow::after {
+  bottom: 12%;
+  height: 420px;
+  left: -160px;
+  opacity: 0.35;
+  width: 420px;
 }
 
 .page-content {
