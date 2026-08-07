@@ -132,7 +132,7 @@ export const projectGanttTasks = [
     id: 'business-case',
     name: 'Business Case (Memo)',
     standard: range(1, 5),
-    plan: range(1, 5),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -140,7 +140,7 @@ export const projectGanttTasks = [
     id: 'fbp-approval',
     name: 'FBP approval',
     standard: range(1, 5),
-    plan: range(1, 5),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -148,7 +148,7 @@ export const projectGanttTasks = [
     id: 'functional-head',
     name: 'Functional head approval',
     standard: range(3, 5),
-    plan: range(3, 5),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -156,7 +156,7 @@ export const projectGanttTasks = [
     id: 'elt-approval',
     name: 'ELT approg',
     standard: range(3, 5),
-    plan: range(3, 5),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -164,7 +164,7 @@ export const projectGanttTasks = [
     id: 'gsc-head',
     name: 'GSC Head -1 approval',
     standard: range(3, 5),
-    plan: range(3, 5),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -172,7 +172,7 @@ export const projectGanttTasks = [
     id: 'opportunity-assessment',
     name: 'Opportunity Assessment (Detailed task scoping)',
     standard: range(1, 5),
-    plan: range(1, 5),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -180,7 +180,7 @@ export const projectGanttTasks = [
     id: 'pid-approval',
     name: 'PID Approval',
     standard: range(6, 12),
-    plan: range(6, 12),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -188,7 +188,7 @@ export const projectGanttTasks = [
     id: 'hiring-request',
     name: 'Hiring Request approval',
     standard: range(6, 12),
-    plan: range(6, 12),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -196,7 +196,7 @@ export const projectGanttTasks = [
     id: 'resource-mobilization',
     name: 'Resource mobilization',
     standard: range(13, 23),
-    plan: range(13, 23),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -204,7 +204,7 @@ export const projectGanttTasks = [
     id: 'neo-training',
     name: 'NEO + GSC L&D business & training stage',
     standard: range(24, 27),
-    plan: range(24, 27),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -212,7 +212,7 @@ export const projectGanttTasks = [
     id: 'knowledge-transfer',
     name: 'Knowledge Transfer Business + System Training sessions + Assessments',
     standard: range(28, 30),
-    plan: range(28, 30),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -220,7 +220,7 @@ export const projectGanttTasks = [
     id: 'volume-transfer',
     name: 'Volume Transfer/Ramp-up stage',
     standard: range(31, 36),
-    plan: range(31, 36),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -228,7 +228,7 @@ export const projectGanttTasks = [
     id: 'hypercare',
     name: 'Hypercare stage',
     standard: range(37, 41),
-    plan: range(37, 41),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -236,7 +236,7 @@ export const projectGanttTasks = [
     id: 'hypercare-exit',
     name: 'Hypercare Exit Success Criteria Review',
     standard: range(42, 42),
-    plan: range(42, 42),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -244,7 +244,7 @@ export const projectGanttTasks = [
     id: 'sign-off',
     name: 'Migration Sign-off recommendation',
     standard: range(43, 43),
-    plan: range(43, 43),
+    plan: null,
     actual: null,
     completedAt: null
   },
@@ -252,7 +252,7 @@ export const projectGanttTasks = [
     id: 'capacity-release',
     name: 'Recommended soonest Capacity Release',
     standard: range(44, 44),
-    plan: range(44, 44),
+    plan: null,
     actual: null,
     completedAt: null
   }

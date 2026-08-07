@@ -147,17 +147,27 @@ def _normalize_task_rows(raw_tasks) -> list[dict]:
         else:
             used_ids.add(task_id)
 
-        plan_start = _parse_week(plan_start_raw, f"Task {task_id} Plan Start")
-        plan_end = _parse_week(plan_end_raw, f"Task {task_id} Plan End")
-        if plan_start > plan_end:
-            plan_start, plan_end = plan_end, plan_start
+        plan = None
+        if plan_start_raw not in (None, "", False) or plan_end_raw not in (None, "", False):
+            plan_start = _parse_week(
+                plan_start_raw if plan_start_raw not in (None, "", False) else plan_end_raw,
+                f"Task {task_id} Plan Start",
+            )
+            plan_end = _parse_week(
+                plan_end_raw if plan_end_raw not in (None, "", False) else plan_start,
+                f"Task {task_id} Plan End",
+            )
+            if plan_start > plan_end:
+                plan_start, plan_end = plan_end, plan_start
+            plan = {"startWeek": plan_start, "endWeek": plan_end}
 
         actual = None
         actual_start_raw = item.get("actualStartWeek")
         actual_end_raw = item.get("actualEndWeek")
         if actual_start_raw not in (None, "") or actual_end_raw not in (None, ""):
+            fallback_week = plan["startWeek"] if plan else 1
             a_start = _parse_week(
-                actual_start_raw if actual_start_raw not in (None, "") else plan_start,
+                actual_start_raw if actual_start_raw not in (None, "") else fallback_week,
                 f"Task {task_id} Actual Start",
             )
             a_end = _parse_week(
@@ -170,15 +180,32 @@ def _normalize_task_rows(raw_tasks) -> list[dict]:
 
         completed_at = str(item.get("completedAt") or "").strip() or None
 
-        normalized.append(
-            {
-                "id": task_id,
-                "name": name,
-                "plan": {"startWeek": plan_start, "endWeek": plan_end},
-                "actual": actual,
-                "completedAt": completed_at,
-            }
-        )
+        # Optional Standard for custom / duplicated stages
+        standard = None
+        std_start_raw = item.get("standardStartWeek")
+        std_end_raw = item.get("standardEndWeek")
+        if std_start_raw not in (None, "") or std_end_raw not in (None, ""):
+            s_start = _parse_week(
+                std_start_raw if std_start_raw not in (None, "") else std_end_raw,
+                f"Task {task_id} Standard Start",
+            )
+            s_end = _parse_week(
+                std_end_raw if std_end_raw not in (None, "") else s_start,
+                f"Task {task_id} Standard End",
+            )
+            if s_start > s_end:
+                s_start, s_end = s_end, s_start
+            standard = {"startWeek": s_start, "endWeek": s_end}
+
+        payload = {
+            "id": task_id,
+            "name": name,
+            "plan": plan,
+            "actual": actual,
+            "completedAt": completed_at,
+            "standard": standard,
+        }
+        normalized.append(payload)
 
     return normalized
 
