@@ -105,6 +105,25 @@ python manage.py runserver
 
 Backend URL: **http://127.0.0.1:8000**
 
+### Migration Intake submit email notification (SendGrid)
+
+When a Migration Intake request is submitted, backend now sends an email notification.
+
+Required environment variables for backend process:
+
+- `DJANGO_EMAIL_HOST=smtp.sendgrid.net`
+- `DJANGO_EMAIL_PORT=587`
+- `DJANGO_EMAIL_HOST_USER=apikey`
+- `DJANGO_EMAIL_HOST_PASSWORD=<your_sendgrid_api_key>`
+- `DJANGO_EMAIL_USE_TLS=True`
+- `DJANGO_DEFAULT_FROM_EMAIL=noreply@maersk.com`
+- `DJANGO_MIGRATION_INTAKE_NOTIFY_TO=<comma-separated team emails>`
+
+Notes:
+
+- Email subject includes migration ID, for example: `Migration Request MIR-20260808-001 - New Submission`.
+- Email body includes submitted intake details (project, scope, products, countries, location strategy, FTE/job levels, risks, and more).
+
 **Window 2 — Frontend:**
 
 ```cmd
