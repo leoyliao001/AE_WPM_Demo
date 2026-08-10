@@ -185,3 +185,28 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ],
 }
+
+# Email (SendGrid SMTP)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "smtp.sendgrid.net")
+EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "apikey")
+EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("DJANGO_EMAIL_USE_TLS", "True").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+EMAIL_USE_SSL = os.environ.get("DJANGO_EMAIL_USE_SSL", "False").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+# Sender must be a verified sender in SendGrid.
+DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "noreply@maersk.com")
+MIGRATION_INTAKE_NOTIFY_TO = [
+    email.strip()
+    for email in os.environ.get("DJANGO_MIGRATION_INTAKE_NOTIFY_TO", "").split(",")
+    if email.strip()
+]
