@@ -4,6 +4,8 @@
     :subtitle="pageSubtitle"
     :tag="pageTag"
     back-label="Back to Welcome"
+    atmosphere
+    :atmosphere-src="SKY_PHOTOS.dashboard"
   >
     <mc-notification
       v-if="loadError"
@@ -356,6 +358,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import MigrationProjectsTable from '../components/MigrationProjectsTable.vue'
+import { SKY_PHOTOS } from '../data/skyPhotos'
 import { regions } from '../data/regionAreaMapping.js'
 import {
   buildMigrationMilestones,
