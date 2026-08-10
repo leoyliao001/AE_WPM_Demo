@@ -4,12 +4,17 @@ Migration intake API views.
 Frontend page: /migration-intake
 """
 
+import logging
+
 from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.services.migration_intake import create_submission_from_payload
+from api.services.migration_intake_notifications import send_migration_intake_notification
+
+logger = logging.getLogger(__name__)
 
 REQUIRED_FIELDS = [
     "migrationRequestId",
@@ -75,15 +80,33 @@ def submit_intake(request):
             status=status.HTTP_409_CONFLICT,
         )
 
+    email_sent = False
+    email_error = None
+    try:
+        email_sent = send_migration_intake_notification(submission)
+    except Exception as exc:
+        logger.exception(
+            "Failed to send migration intake notification for %s",
+            submission.migration_request_id,
+        )
+        email_error = str(exc)
+
+    message = (
+        f"Migration request {submission.migration_request_id} "
+        "has been saved to the database."
+    )
+    if email_error:
+        message = f"{message} Email notification failed: {email_error}"
+    elif not email_sent:
+        message = f"{message} Email notification skipped: no recipients configured."
+
     return Response(
         {
             "ok": True,
             "id": submission.id,
             "migrationRequestId": submission.migration_request_id,
-            "message": (
-                f"Migration request {submission.migration_request_id} "
-                "has been saved to the database."
-            ),
+            "emailSent": email_sent,
+            "message": message,
         },
         status=status.HTTP_201_CREATED,
     )
