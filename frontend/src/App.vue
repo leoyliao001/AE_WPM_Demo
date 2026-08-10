@@ -49,9 +49,12 @@ import AppHeader from './components/AppHeader.vue'
   -webkit-overflow-scrolling: touch;
 }
 
-/* Match atmosphere pages so scroll edges never flash plain white */
-.app-main:has(.page-shell--atmosphere) {
-  background: #e8f2f7;
+/* Atmosphere pages scroll internally (like Welcome); keep edge color matched */
+.app-main:has(.welcome-page),
+.app-main:has(.page-shell--atmosphere),
+.app-main:has(.intake-page--atmosphere) {
+  background: #dff3fa;
+  overflow: hidden;
 }
 
 /* Handsontable pages: page owns scroll via Handsontable only */

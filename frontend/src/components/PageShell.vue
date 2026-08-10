@@ -6,32 +6,35 @@
       'page-shell--atmosphere': atmosphere
     }"
   >
-    <div v-if="atmosphere" class="page-shell__glow" aria-hidden="true" />
-    <div class="page-content">
-      <header v-if="showHeader" class="page-header">
-        <router-link v-if="backTo" class="back-link" :to="backTo">
-          <mc-button
-            class="back-button"
-            appearance="neutral"
-            variant="plain"
-            fit="small"
-            :label="backLabel"
-            icon="mi-arrow-left"
-          />
-        </router-link>
+    <SkyAtmosphere v-if="atmosphere" :src="atmosphereSrc" />
+    <!-- Scroll only this layer so the photo stays pinned to the viewport -->
+    <div class="page-shell__scroll">
+      <div class="page-content">
+        <header v-if="showHeader" class="page-header">
+          <router-link v-if="backTo" class="back-link" :to="backTo">
+            <mc-button
+              class="back-button"
+              appearance="neutral"
+              variant="plain"
+              fit="small"
+              :label="backLabel"
+              icon="mi-arrow-left"
+            />
+          </router-link>
 
-        <div class="header-main">
-          <mc-tag v-if="tag" :appearance="tagAppearance" fit="small" :label="tag" />
-          <h1 class="page-title">{{ title }}</h1>
-          <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
-        </div>
+          <div class="header-main">
+            <mc-tag v-if="tag" :appearance="tagAppearance" fit="small" :label="tag" />
+            <h1 class="page-title">{{ title }}</h1>
+            <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
+          </div>
 
-        <slot name="header-extra" />
-      </header>
+          <slot name="header-extra" />
+        </header>
 
-      <main class="page-main">
-        <slot />
-      </main>
+        <main class="page-main">
+          <slot />
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -39,6 +42,8 @@
 <script setup>
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
+import SkyAtmosphere from './SkyAtmosphere.vue'
+import { SKY_PHOTOS } from '../data/skyPhotos'
 
 defineProps({
   title: { type: String, required: true },
@@ -49,85 +54,49 @@ defineProps({
   backLabel: { type: String, default: 'Back to Welcome' },
   showHeader: { type: Boolean, default: true },
   fullWidth: { type: Boolean, default: false },
-  /** Soft Maersk-blue atmospheric background (hub / landing-style pages). */
-  atmosphere: { type: Boolean, default: false }
+  /** Same viewport-locked photo atmosphere as Welcome. */
+  atmosphere: { type: Boolean, default: false },
+  /** Public image path — vary per page via SKY_PHOTOS. */
+  atmosphereSrc: { type: String, default: SKY_PHOTOS.welcome }
 })
 </script>
 
 <style scoped>
 .page-shell {
   background: #fff;
-  /* Fill app-main scrollport; grow with content (avoid 100vh gap under header) */
   flex: 1 0 auto;
   min-height: 100%;
   overflow-x: clip;
   position: relative;
 }
 
+/*
+  Atmosphere: shell fills the main viewport and does NOT scroll.
+  SkyAtmosphere stays absolute over the shell; only .page-shell__scroll scrolls.
+*/
 .page-shell--atmosphere {
-  background:
-    radial-gradient(ellipse 58% 42% at 8% 0%, rgba(66, 176, 213, 0.16) 0%, transparent 62%),
-    radial-gradient(ellipse 48% 36% at 96% 12%, rgba(0, 119, 184, 0.09) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 48% at 50% 100%, rgba(66, 176, 213, 0.12) 0%, transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 252, 254, 0.88) 100%),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0,
-      transparent 31px,
-      rgba(66, 176, 213, 0.035) 31px,
-      rgba(66, 176, 213, 0.035) 32px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0,
-      transparent 31px,
-      rgba(66, 176, 213, 0.035) 31px,
-      rgba(66, 176, 213, 0.035) 32px
-    ),
-    linear-gradient(168deg, #f4fafc 0%, #eef6fa 45%, #e8f2f7 100%);
+  background: #dff3fa;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  isolation: isolate;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
 }
 
-.page-shell__glow {
-  background:
-    radial-gradient(circle at 78% 72%, rgba(66, 176, 213, 0.12) 0%, transparent 42%),
-    linear-gradient(
-      125deg,
-      transparent 40%,
-      rgba(255, 255, 255, 0.45) 48%,
-      transparent 56%
-    );
-  bottom: 0;
-  left: 0;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-  top: 0;
-  z-index: 0;
+.page-shell__scroll {
+  position: relative;
+  z-index: 1;
 }
 
-.page-shell__glow::before,
-.page-shell__glow::after {
-  border: 1px solid rgba(66, 176, 213, 0.14);
-  border-radius: 50%;
-  content: '';
-  pointer-events: none;
-  position: absolute;
-}
-
-.page-shell__glow::before {
-  height: 280px;
-  opacity: 0.55;
-  right: -80px;
-  top: 48px;
-  width: 280px;
-}
-
-.page-shell__glow::after {
-  bottom: 12%;
-  height: 420px;
-  left: -160px;
-  opacity: 0.35;
-  width: 420px;
+.page-shell--atmosphere .page-shell__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .page-content {
@@ -178,6 +147,7 @@ defineProps({
   letter-spacing: -0.02em;
   line-height: 1.15;
   margin: 12px 0 10px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .page-subtitle {

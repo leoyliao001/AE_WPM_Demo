@@ -1,16 +1,18 @@
 <template>
-  <div class="intake-page">
-    <div class="page-content">
-      <header class="page-header">
-        <router-link class="back-link" to="/">
-          <mc-button
-            appearance="neutral"
-            variant="plain"
-            fit="small"
-            label="Back to Welcome"
-            icon="mi-arrow-left"
-          />
-        </router-link>
+  <div class="intake-page intake-page--atmosphere">
+    <SkyAtmosphere :src="SKY_PHOTOS.intake" />
+    <div class="intake-scroll">
+      <div class="page-content">
+        <header class="page-header">
+          <router-link class="back-link" to="/">
+            <mc-button
+              appearance="neutral"
+              variant="plain"
+              fit="small"
+              label="Back to Welcome"
+              icon="mi-arrow-left"
+            />
+          </router-link>
 
         <div class="header-main">
           <mc-tag appearance="info" fit="small" label="Migration Request" />
@@ -694,6 +696,7 @@
           @close="clearNotice"
         />
       </div>
+      </div>
     </div>
   </div>
 </template>
@@ -701,6 +704,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import RequiredMark from '../components/RequiredMark.vue'
+import SkyAtmosphere from '../components/SkyAtmosphere.vue'
+import { SKY_PHOTOS } from '../data/skyPhotos'
 import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
 import {
@@ -1371,9 +1376,30 @@ onMounted(loadDraft)
 <style scoped>
 .intake-page {
   background: #fff;
-  min-height: 100vh;
   overflow-x: clip;
   position: relative;
+}
+
+.intake-page--atmosphere {
+  background: #dff3fa;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  isolation: isolate;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.intake-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  position: relative;
+  z-index: 1;
 }
 
 .page-content {
@@ -1402,6 +1428,7 @@ onMounted(loadDraft)
   letter-spacing: -0.02em;
   line-height: 1.15;
   margin: 12px 0 10px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .page-subtitle {

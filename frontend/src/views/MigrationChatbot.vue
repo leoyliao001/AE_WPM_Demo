@@ -4,6 +4,8 @@
     subtitle="Ask questions about migration processes, approvals, risks, and documentation."
     tag="Migration Chatbot"
     back-label="Back to Welcome"
+    atmosphere
+    :atmosphere-src="SKY_PHOTOS.chatbot"
   >
     <section class="chat-layout">
       <div class="chat-panel">
@@ -82,6 +84,7 @@ import axios from 'axios'
 import { marked } from 'marked'
 import PageShell from '../components/PageShell.vue'
 import { chatbotSuggestions } from '../data/mockData'
+import { SKY_PHOTOS } from '../data/skyPhotos'
 import '@maersk-global/mds-components-core/mc-input'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-card'
