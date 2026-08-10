@@ -424,6 +424,10 @@ def _normalize_comments(raw_comments) -> list[dict]:
                 "id": comment_id,
                 "at": at,
                 "text": text[:500],
+                "updatedBy": (
+                    str(entry.get("updatedBy") or entry.get("updated_by") or "").strip()[:200]
+                    or None
+                ),
                 "fromPlan": _parse_range(entry.get("fromPlan"), fallback=None),
                 "toPlan": _parse_range(entry.get("toPlan"), fallback=None),
             }

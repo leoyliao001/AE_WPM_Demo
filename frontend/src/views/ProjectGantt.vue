@@ -175,6 +175,9 @@
                     {{ formatCommentDateTime(entry.at) }}
                   </time>
                 </header>
+                <p v-if="entry.updatedBy" class="history-dialog__by">
+                  Updated by <strong>{{ entry.updatedBy }}</strong>
+                </p>
                 <div class="history-dialog__range-row">
                   <div class="history-dialog__chip">
                     <span>From</span>
@@ -291,6 +294,7 @@ import {
   buildProjectGanttWeeks,
   projectGanttBarTypes
 } from '../data/projectGanttFixture.js'
+import { getCurrentUserEmail } from '../auth/azureAuth.js'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
@@ -310,6 +314,11 @@ const hasPlanData = (plan) => Boolean(cloneRange(plan))
 const makeCommentId = () =>
   `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
+const currentUpdaterLabel = () => {
+  const email = String(getCurrentUserEmail() || '').trim()
+  return email || 'unknown'
+}
+
 const cloneComments = (comments) => {
   if (!Array.isArray(comments)) return []
   return comments
@@ -318,10 +327,12 @@ const cloneComments = (comments) => {
       const text = String(entry.text || '').trim()
       if (!text) return null
       const id = entry.id != null && String(entry.id).trim() ? String(entry.id).trim() : null
+      const updatedBy = String(entry.updatedBy || entry.updated_by || '').trim() || null
       return {
         id,
         at: entry.at ? String(entry.at) : new Date().toISOString(),
         text,
+        updatedBy,
         fromPlan: cloneRange(entry.fromPlan),
         toPlan: cloneRange(entry.toPlan)
       }
@@ -568,13 +579,16 @@ const formatPlanLabel = (range) => {
 
 const formatCommentHistoryMeta = (entry) => {
   const when = formatCommentDateTime(entry?.at)
+  const by = entry?.updatedBy ? String(entry.updatedBy).trim() : ''
   const range =
     entry?.fromPlan || entry?.toPlan
       ? `${formatPlanLabel(entry.fromPlan)} → ${formatPlanLabel(entry.toPlan)}`
       : ''
-  if (when !== 'Unknown time' && range) return `${when} · ${range}`
-  if (when !== 'Unknown time') return when
-  return range || 'Previous'
+  const parts = []
+  if (when !== 'Unknown time') parts.push(when)
+  if (by) parts.push(`by ${by}`)
+  if (range) parts.push(range)
+  return parts.join(' · ') || 'Previous'
 }
 
 const formatCommentDateTime = (iso) => {
@@ -731,6 +745,7 @@ const confirmReasonDialog = async () => {
       id: makeCommentId(),
       at: new Date().toISOString(),
       text: reason,
+      updatedBy: currentUpdaterLabel(),
       fromPlan: cloneRange(pending.fromPlan),
       toPlan: cloneRange(pending.toPlan)
     }
@@ -1356,6 +1371,18 @@ watch(() => route.params.id, loadAll)
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.history-dialog__by {
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: -2px 0 0;
+}
+
+.history-dialog__by strong {
+  color: #0f172a;
+  font-weight: 650;
 }
 
 .history-dialog__range-row {

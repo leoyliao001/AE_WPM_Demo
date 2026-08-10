@@ -1,5 +1,12 @@
 <template>
   <div class="welcome-page">
+    <div class="welcome-atmosphere" aria-hidden="true">
+      <div class="sky-photo" />
+      <div class="sky-tint" />
+      <div class="sky-softlight" />
+      <div class="sky-vignette" />
+    </div>
+
     <div class="page-content">
       <header class="welcome-header">
         <h1 class="welcome-title">Welcome</h1>
@@ -115,30 +122,15 @@ const onCardClick = (item) => {
 </script>
 
 <style scoped>
+
+
 .welcome-page {
-  background:
-    /* Maersk theme blue (#42B0D5) atmosphere */
-    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(66, 176, 213, 0.22) 0%, transparent 58%),
-    radial-gradient(ellipse 55% 45% at 92% 18%, rgba(66, 176, 213, 0.14) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(66, 176, 213, 0.12) 0%, transparent 60%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(247, 252, 254, 0.7) 100%),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0,
-      transparent 23px,
-      rgba(66, 176, 213, 0.04) 23px,
-      rgba(66, 176, 213, 0.04) 24px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0,
-      transparent 23px,
-      rgba(66, 176, 213, 0.04) 23px,
-      rgba(66, 176, 213, 0.04) 24px
-    ),
-    linear-gradient(165deg, #f0f9fc 0%, #eaf5fa 40%, #e3f1f7 100%);
-  /* Own the vertical scroll so bottom sections stay reachable */
+  --mb: #42b0d5;
+  --mm: #0077b8;
+  --md: #003f6e;
+  background: #dff3fa;
   flex: 1 1 auto;
+  isolation: isolate;
   min-height: 0;
   overflow-x: clip;
   overflow-y: auto;
@@ -146,6 +138,71 @@ const onCardClick = (item) => {
   overscroll-behavior-y: contain;
   position: relative;
   width: 100%;
+}
+
+.welcome-atmosphere {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.sky-photo {
+  background:
+    url('/welcome-sky.jpg') center 42% / cover no-repeat;
+  inset: -2%;
+  position: absolute;
+  transform: scale(1.03);
+  animation: sky-drift 48s ease-in-out infinite alternate;
+}
+
+.sky-tint {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.42) 0%,
+      rgba(236, 248, 252, 0.22) 28%,
+      rgba(66, 176, 213, 0.12) 62%,
+      rgba(0, 119, 184, 0.18) 100%
+    ),
+    radial-gradient(
+      ellipse 55% 40% at 82% 12%,
+      rgba(255, 244, 210, 0.35) 0%,
+      transparent 60%
+    );
+  inset: 0;
+  position: absolute;
+}
+
+.sky-softlight {
+  background: radial-gradient(
+    ellipse 70% 50% at 50% 0%,
+    rgba(255, 255, 255, 0.55) 0%,
+    transparent 65%
+  );
+  inset: 0;
+  position: absolute;
+}
+
+.sky-vignette {
+  background: radial-gradient(
+    ellipse 85% 75% at 50% 40%,
+    transparent 40%,
+    rgba(0, 63, 110, 0.08) 100%
+  );
+  inset: 0;
+  position: absolute;
+}
+
+@keyframes sky-drift {
+  from {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: scale(1.07) translate3d(-1.2%, -0.6%, 0);
+  }
 }
 
 .page-content {
@@ -160,6 +217,7 @@ const onCardClick = (item) => {
   animation: fade-up 0.55s ease both;
   margin-bottom: 44px;
   max-width: 640px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .welcome-title {
@@ -195,15 +253,15 @@ const onCardClick = (item) => {
 }
 
 .tool-card::part(container) {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcfd 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(251, 252, 253, 0.92) 100%);
   border-color: rgba(22, 22, 22, 0.08);
   border-radius: 14px;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
     0 2px 3px rgba(15, 23, 42, 0.05),
-    0 8px 16px rgba(15, 23, 42, 0.07),
-    0 18px 36px rgba(0, 63, 110, 0.1),
-    0 28px 56px -12px rgba(0, 63, 110, 0.12);
+    0 10px 22px rgba(15, 23, 42, 0.08),
+    0 22px 44px rgba(0, 63, 110, 0.12),
+    0 28px 56px -12px rgba(0, 63, 110, 0.14);
   height: 100%;
   overflow: hidden;
   position: relative;
@@ -348,6 +406,10 @@ const onCardClick = (item) => {
 @media (prefers-reduced-motion: reduce) {
   .welcome-header,
   .tool-card {
+    animation: none;
+  }
+
+  .sky-photo {
     animation: none;
   }
 
