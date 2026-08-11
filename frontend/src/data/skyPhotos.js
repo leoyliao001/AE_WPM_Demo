@@ -6,9 +6,8 @@ export const SKY_PHOTOS = {
   welcome: '/welcome-sky.jpg',
   intake: '/ocean-freight-shipping.jpeg',
   chatbot: '/sea_bridge.png',
-  dashboard: '/25749323.jpg',
-  projectDetail:
-    '/large-cargo-ship-sailing-smoothly-across-ocean-loaded-shipping-containers-horizon-stretching-out-under-clear-blue-sky-343947087.webp',
+  dashboard: '/08264a2c-c018-46dd-8aae-8a9b008c0604.webp',
+  projectDetail: '/port-twilight.webp',
   gantt: '/119190818-sunny-sea-sunset-ocean-water-nature.jpg',
   attributes:
     '/sunny-beach-blue-ocean-background-illustration-ai-generative-free-photo.jpg'
