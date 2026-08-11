@@ -49,14 +49,19 @@ BAR_TYPE_META = [
     },
 ]
 
-META_TEXT_KEYS = ("projectPhase", "scope")
-META_NUMBER_KEYS = (
-    "migratableFte",
-    "learningCurve",
-    "tlTmHc",
-    "mngrHc",
-    "totalWoBuffer",
-    "total",
+META_TEXT_KEYS = ()
+META_NUMBER_KEYS = ("total",)
+# Legacy Gantt summary fields — dropped from UI; strip on save/serialize.
+OBSOLETE_META_KEYS = frozenset(
+    {
+        "projectPhase",
+        "scope",
+        "migratableFte",
+        "learningCurve",
+        "tlTmHc",
+        "mngrHc",
+        "totalWoBuffer",
+    }
 )
 
 # Fixed Migration Key Steps — Standard ranges match Excel template.
@@ -543,8 +548,9 @@ def _serialize_plan(
     public_meta = {
         k: v
         for k, v in saved_meta.items()
-        if k not in {"customPhases", "planVersionSaved"}
+        if k not in {"customPhases", "planVersionSaved"} and k not in OBSOLETE_META_KEYS
     }
+    areas = [str(a).strip() for a in (project.areas or []) if str(a).strip()]
     return {
         "project_id": project.id,
         "migration_request_id": mid or None,
@@ -554,6 +560,8 @@ def _serialize_plan(
         "weeks": weeks,
         "calendar_start_week": start_week,
         "intake_created_at": project.created_at.isoformat() if project.created_at else None,
+        "region": (project.region or "").strip(),
+        "areas": areas,
         "barTypes": BAR_TYPE_META,
         "meta": public_meta,
         "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
@@ -577,17 +585,22 @@ def project_gantt(request, project_id: int):
         # Keep full Plan-comment history per stage (append-only merge with DB).
         if existing:
             tasks = _merge_saved_task_comments(existing.tasks, tasks)
-        # Drop obsolete customPhases from meta on save.
+        # Drop obsolete customPhases / legacy summary fields from meta on save.
         if existing and isinstance(existing.meta, dict):
             preserved = {
                 k: v
                 for k, v in existing.meta.items()
                 if k not in META_TEXT_KEYS
                 and k not in META_NUMBER_KEYS
+                and k not in OBSOLETE_META_KEYS
                 and k != "customPhases"
             }
             preserved.update(meta)
             meta = preserved
+        else:
+            meta = {
+                k: v for k, v in meta.items() if k not in OBSOLETE_META_KEYS
+            }
     except ValueError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
