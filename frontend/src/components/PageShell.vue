@@ -3,10 +3,11 @@
     class="page-shell"
     :class="{
       'page-shell--full-width': fullWidth,
-      'page-shell--atmosphere': atmosphere
+      'page-shell--atmosphere': atmosphere,
+      'page-shell--plain': atmosphere && !showAtmosphere
     }"
   >
-    <SkyAtmosphere v-if="atmosphere" :src="atmosphereSrc" />
+    <SkyAtmosphere v-if="atmosphere && showAtmosphere" :src="atmosphereSrc" />
     <!-- Scroll only this layer so the photo stays pinned to the viewport -->
     <div class="page-shell__scroll">
       <div class="page-content">
@@ -36,6 +37,12 @@
         </main>
       </div>
     </div>
+
+    <AtmosphereToggle
+      v-if="atmosphere"
+      :on="showAtmosphere"
+      @toggle="toggleAtmosphere"
+    />
   </div>
 </template>
 
@@ -43,7 +50,9 @@
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import SkyAtmosphere from './SkyAtmosphere.vue'
+import AtmosphereToggle from './AtmosphereToggle.vue'
 import { SKY_PHOTOS } from '../data/skyPhotos'
+import { useAtmospherePreference } from '../composables/useAtmospherePreference'
 
 defineProps({
   title: { type: String, required: true },
@@ -59,6 +68,8 @@ defineProps({
   /** Public image path — vary per page via SKY_PHOTOS. */
   atmosphereSrc: { type: String, default: SKY_PHOTOS.welcome }
 })
+
+const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
 </script>
 
 <style scoped>
@@ -83,6 +94,14 @@ defineProps({
   min-height: 0;
   overflow: hidden;
   width: 100%;
+}
+
+.page-shell--plain {
+  background: #fff;
+}
+
+.page-shell--plain .page-title {
+  text-shadow: none;
 }
 
 .page-shell__scroll {
