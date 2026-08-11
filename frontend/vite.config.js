@@ -2,11 +2,32 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import http from 'node:http'
+import fs from 'node:fs'
 
 const localAgent = new http.Agent({ keepAlive: true })
 
 // Set VITE_BEHIND_APACHE=1 when using enable-dev-proxy.bat (HTTPS → Vite)
 const behindApache = process.env.VITE_BEHIND_APACHE === '1'
+
+function copyMdsIconsPlugin() {
+  return {
+    name: 'copy-mds-icons',
+    apply: 'build',
+    writeBundle(options) {
+      const outDir = options.dir || resolve(__dirname, 'dist')
+      const sourceDir = resolve(__dirname, 'node_modules/@maersk-global/icons/js')
+      const targetDir = resolve(outDir, 'assets/node_modules/@maersk-global/icons/js')
+
+      if (!fs.existsSync(sourceDir)) {
+        this.warn(`MDS icons source not found: ${sourceDir}`)
+        return
+      }
+
+      fs.mkdirSync(targetDir, { recursive: true })
+      fs.cpSync(sourceDir, targetDir, { recursive: true, force: true })
+    }
+  }
+}
 
 export default defineConfig(({ command }) => ({
   // Absolute base when served via Apache HTTPS proxy; relative for production build
@@ -27,7 +48,8 @@ export default defineConfig(({ command }) => ({
           isCustomElement: (tag) => tag.startsWith('mc-')
         }
       }
-    })
+    }),
+    copyMdsIconsPlugin()
   ],
   server: {
     host: '127.0.0.1',
