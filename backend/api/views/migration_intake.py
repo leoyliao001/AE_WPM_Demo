@@ -11,6 +11,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from api.permissions.attributes_access import get_request_email
 from api.services.migration_intake import create_submission_from_payload
 from api.services.migration_intake_notifications import send_migration_intake_notification
 
@@ -82,8 +83,12 @@ def submit_intake(request):
 
     email_sent = False
     email_error = None
+    signed_in_email = get_request_email(request)
     try:
-        email_sent = send_migration_intake_notification(submission)
+        email_sent = send_migration_intake_notification(
+            submission,
+            signed_in_email=signed_in_email,
+        )
     except Exception as exc:
         logger.exception(
             "Failed to send migration intake notification for %s",

@@ -33,6 +33,7 @@ if (typeof window !== 'undefined') {
   MdsConfig.iconsDynamicImportPath = iconBasePath
   window.MdsConfig = {
     ...(window.MdsConfig || {}),
+    iconsDynamicImportPath: iconBasePath,
     _iconsDynamicImportPath: iconBasePath
   }
 }

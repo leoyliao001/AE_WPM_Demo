@@ -37,6 +37,7 @@ class MigrationIntakeSubmission(models.Model):
     jl4 = models.CharField(max_length=8, default="0")
     job_level_total = models.PositiveSmallIntegerField(default=0)
     risks = models.TextField(blank=True)
+    business_case_submission_date = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

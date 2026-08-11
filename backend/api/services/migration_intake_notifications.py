@@ -1,15 +1,84 @@
 import logging
+import re
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.db.models import Q
 
-from api.models import MigrationIntakeSubmission
+from api.models import MigrationIntakeSubmission, ProductOwnership
 
 logger = logging.getLogger(__name__)
+
+EMAIL_RE = re.compile(r"[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+", re.I)
 
 
 def _csv(values) -> str:
     return ", ".join([str(value).strip() for value in (values or []) if str(value).strip()])
+
+
+def _normalize_email(value: str) -> str:
+    return (value or "").strip().lower()
+
+
+def _extract_emails(value: str) -> list[str]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+    seen = set()
+    emails = []
+    for match in EMAIL_RE.findall(text):
+        email = _normalize_email(match)
+        if not email or email in seen:
+            continue
+        seen.add(email)
+        emails.append(email)
+    return emails
+
+
+def _manager_emails_for_submission(submission: MigrationIntakeSubmission) -> list[str]:
+    region = str(submission.region or "").strip()
+    areas = [str(area).strip() for area in (submission.areas or []) if str(area).strip()]
+
+    if not region:
+        return []
+
+    qs = ProductOwnership.objects.filter(region=region)
+    if areas:
+        qs = qs.filter(Q(area__in=areas) | Q(area=""))
+
+    recipients = []
+    seen = set()
+    for row in qs.order_by("id"):
+        for email in _extract_emails(row.migration_manager):
+            if email in seen:
+                continue
+            seen.add(email)
+            recipients.append(email)
+    return recipients
+
+
+def resolve_notification_recipients(
+    submission: MigrationIntakeSubmission,
+    *,
+    signed_in_email: str = "",
+) -> list[str]:
+    recipients = []
+    seen = set()
+
+    def add_many(values):
+        for value in values:
+            email = _normalize_email(value)
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            recipients.append(email)
+
+    add_many(getattr(settings, "MIGRATION_INTAKE_NOTIFY_TO", []) or [])
+    add_many(_extract_emails(signed_in_email))
+    add_many(_extract_emails(submission.requestor))
+    add_many(_manager_emails_for_submission(submission))
+
+    return recipients
 
 
 def _render_submission_email_text(submission: MigrationIntakeSubmission) -> str:
@@ -59,8 +128,15 @@ def _render_submission_email_text(submission: MigrationIntakeSubmission) -> str:
     return "\n".join(lines)
 
 
-def send_migration_intake_notification(submission: MigrationIntakeSubmission) -> bool:
-    recipients = list(getattr(settings, "MIGRATION_INTAKE_NOTIFY_TO", []) or [])
+def send_migration_intake_notification(
+    submission: MigrationIntakeSubmission,
+    *,
+    signed_in_email: str = "",
+) -> bool:
+    recipients = resolve_notification_recipients(
+        submission,
+        signed_in_email=signed_in_email,
+    )
     if not recipients:
         logger.warning(
             "Migration intake notification skipped for %s: no recipients configured.",
