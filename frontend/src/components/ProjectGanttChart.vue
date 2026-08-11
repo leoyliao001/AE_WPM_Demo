@@ -14,8 +14,17 @@
         v-for="field in summaryFields"
         :key="field.key"
         class="gantt-summary__item"
-        :class="{ 'gantt-summary__item--editable': editable }"
-        :title="editable ? `Edit ${fieldLabels[field.key]}` : fieldLabels[field.key]"
+        :class="{
+          'gantt-summary__item--editable': editable && !field.locked,
+          'gantt-summary__item--locked': field.locked
+        }"
+        :title="
+          field.locked
+            ? `${fieldLabels[field.key]} (from Migration Intake)`
+            : editable
+              ? `Edit ${fieldLabels[field.key]}`
+              : fieldLabels[field.key]
+        "
       >
         <span class="gantt-summary__dot" :style="{ background: field.color }" />
         <span class="gantt-summary__name">{{ fieldLabels[field.key] }}</span>
@@ -25,8 +34,8 @@
           :inputmode="field.type === 'number' ? 'decimal' : 'text'"
           :step="field.type === 'number' ? 'any' : undefined"
           :value="metaValue(field.key)"
-          :readonly="!editable"
-          :placeholder="editable ? 'Type…' : ''"
+          :readonly="!editable || field.locked"
+          :placeholder="editable && !field.locked ? 'Type…' : ''"
           :aria-label="fieldLabels[field.key]"
           @input="onMetaInput(field.key, field.type, $event)"
         />
@@ -345,13 +354,8 @@ import {
 const COL_WIDTH_STORAGE_KEY = 'ae-wpm-project-gantt-col-widths'
 
 const summaryFields = [
-  { key: 'projectPhase', type: 'text', color: '#808080' },
-  { key: 'scope', type: 'text', color: '#0070C0' },
-  { key: 'migratableFte', type: 'number', color: '#803808' },
-  { key: 'learningCurve', type: 'number', color: '#F09810' },
-  { key: 'tlTmHc', type: 'number', color: '#2088A8' },
-  { key: 'mngrHc', type: 'number', color: '#002060' },
-  { key: 'totalWoBuffer', type: 'number', color: '#00B04E' },
+  { key: 'region', type: 'text', color: '#0070C0', locked: true },
+  { key: 'area', type: 'text', color: '#2088A8', locked: true },
   { key: 'total', type: 'number', color: '#6E6E6E' }
 ]
 
@@ -419,13 +423,8 @@ const props = defineProps({
   meta: {
     type: Object,
     default: () => ({
-      projectPhase: '',
-      scope: '',
-      migratableFte: '',
-      learningCurve: '',
-      tlTmHc: '',
-      mngrHc: '',
-      totalWoBuffer: '',
+      region: '',
+      area: '',
       total: ''
     })
   },
@@ -615,6 +614,8 @@ const readInputValue = (event) => event?.target?.value ?? event?.detail?.value ?
 
 const onMetaInput = (key, type, event) => {
   if (!props.editable) return
+  const field = summaryFields.find((row) => row.key === key)
+  if (field?.locked) return
   const raw = readInputValue(event)
   if (type === 'number') {
     if (raw === '') {
@@ -1147,6 +1148,17 @@ onUnmounted(() => {
   border-color: #0070c0;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(0, 112, 192, 0.14);
+}
+
+.gantt-summary__item--locked {
+  cursor: default;
+}
+
+.gantt-summary__item--locked .gantt-summary__value {
+  border-style: solid;
+  border-color: rgba(22, 22, 22, 0.1);
+  background: rgba(22, 22, 22, 0.03);
+  max-width: 16rem;
 }
 
 .gantt-summary__dot {

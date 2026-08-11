@@ -25,7 +25,7 @@
             <p>
               {{
                 !editMode
-                  ? 'View mode — turn on Edit to change summary, Plan bars, or stages (+/−).'
+                  ? 'View mode — turn on Edit to change Total, Plan bars, or stages (+/−).'
                   : isDirty
                     ? 'Unsaved changes — first Plan save is free; later Plan updates need a comment on Save.'
                     : savedAt
@@ -74,7 +74,7 @@
           :weeks="weeks"
           :tasks="tasks"
           :bar-types="barTypes"
-          :meta="meta"
+          :meta="summaryMeta"
           :field-labels="fieldLabels"
           :today-week="todayWeek"
           @update-task="onUpdateTask"
@@ -387,15 +387,18 @@ const serializeTasksForSave = (rows, draftCommentsByTaskId = {}) =>
   })
 
 const cloneMeta = (source = {}) => ({
-  projectPhase: source.projectPhase ?? '',
-  scope: source.scope ?? '',
-  migratableFte: source.migratableFte ?? '',
-  learningCurve: source.learningCurve ?? '',
-  tlTmHc: source.tlTmHc ?? '',
-  mngrHc: source.mngrHc ?? '',
-  totalWoBuffer: source.totalWoBuffer ?? '',
   total: source.total ?? ''
 })
+
+const formatAreasLabel = (areas) => {
+  const list = Array.isArray(areas)
+    ? areas.map((item) => String(item || '').trim()).filter(Boolean)
+    : String(areas || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+  return list.length ? list.join(', ') : '—'
+}
 
 const route = useRoute()
 const project = ref(null)
@@ -430,6 +433,12 @@ const todayWeek = projectGanttFixture.todayWeek
 const tasks = ref(cloneTasks(projectGanttFixture.tasks))
 const templateTasks = ref(cloneTasks(projectGanttFixture.tasks))
 const meta = ref(cloneMeta(projectGanttFixture.meta))
+
+const summaryMeta = computed(() => ({
+  region: String(project.value?.region || '').trim() || '—',
+  area: formatAreasLabel(project.value?.areas),
+  total: meta.value.total ?? ''
+}))
 
 const currentPendingPlanChange = computed(
   () => pendingPlanChanges.value[reasonStepIndex.value] || null
@@ -822,6 +831,7 @@ const onRemoveTask = ({ id } = {}) => {
 }
 
 const onUpdateMeta = ({ key, value }) => {
+  if (key !== 'total') return
   if (!(key in meta.value)) return
   if (meta.value[key] === value) return
   meta.value = { ...meta.value, [key]: value }

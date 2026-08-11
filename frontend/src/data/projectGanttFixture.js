@@ -6,13 +6,8 @@
 
 /** Excel row-3 / row-4 headers (columns A–J). */
 export const projectGanttFieldLabels = {
-  projectPhase: 'Project Phase',
-  scope: 'Scope',
-  migratableFte: 'Migratable FTE',
-  learningCurve: 'Learning Curve',
-  tlTmHc: 'TL/TM HC',
-  mngrHc: 'Mngr. HC',
-  totalWoBuffer: 'Total wo/buffer',
+  region: 'Region',
+  area: 'Area',
   total: 'Total',
   migrationKeySteps:
     'Migration Key Steps -  A view at expected critical outcomes, items and activities.',
@@ -114,13 +109,6 @@ export const projectGanttBarTypes = [
 ]
 
 export const projectGanttMeta = {
-  projectPhase: 'Phase 1 ',
-  scope: 'Project',
-  migratableFte: 1,
-  learningCurve: 1,
-  tlTmHc: 1,
-  mngrHc: 1,
-  totalWoBuffer: 3,
   total: 4
 }
 
