@@ -57,6 +57,12 @@ import AppHeader from './components/AppHeader.vue'
   overflow: hidden;
 }
 
+.app-main:has(.welcome-page--plain),
+.app-main:has(.page-shell--plain),
+.app-main:has(.intake-page--plain) {
+  background: #fff;
+}
+
 /* Handsontable pages: page owns scroll via Handsontable only */
 .app-main:has(.fpo-page),
 .app-main:has(.po-page),

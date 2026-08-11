@@ -1,6 +1,6 @@
 <template>
-  <div class="welcome-page">
-    <SkyAtmosphere :src="SKY_PHOTOS.welcome" />
+  <div class="welcome-page" :class="{ 'welcome-page--plain': !showAtmosphere }">
+    <SkyAtmosphere v-if="showAtmosphere" :src="SKY_PHOTOS.welcome" />
 
     <div class="welcome-scroll">
       <div class="page-content">
@@ -53,6 +53,8 @@
         </section>
       </div>
     </div>
+
+    <AtmosphereToggle :on="showAtmosphere" @toggle="toggleAtmosphere" />
   </div>
 </template>
 
@@ -63,9 +65,12 @@ import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import SkyAtmosphere from '../components/SkyAtmosphere.vue'
+import AtmosphereToggle from '../components/AtmosphereToggle.vue'
 import { SKY_PHOTOS } from '../data/skyPhotos'
+import { useAtmospherePreference } from '../composables/useAtmospherePreference'
 
 const router = useRouter()
+const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
 
 const menuItems = [
   {
@@ -136,6 +141,10 @@ const onCardClick = (item) => {
   width: 100%;
 }
 
+.welcome-page--plain {
+  background: #fff;
+}
+
 .welcome-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -160,6 +169,10 @@ const onCardClick = (item) => {
   margin-bottom: 44px;
   max-width: 640px;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.welcome-page--plain .welcome-header {
+  text-shadow: none;
 }
 
 .welcome-title {

@@ -1,6 +1,12 @@
 <template>
-  <div class="intake-page intake-page--atmosphere">
-    <SkyAtmosphere :src="SKY_PHOTOS.intake" />
+  <div
+    class="intake-page"
+    :class="{
+      'intake-page--atmosphere': true,
+      'intake-page--plain': !showAtmosphere
+    }"
+  >
+    <SkyAtmosphere v-if="showAtmosphere" :src="SKY_PHOTOS.intake" />
     <div class="intake-scroll">
       <div class="page-content">
         <header class="page-header">
@@ -698,6 +704,7 @@
       </div>
       </div>
     </div>
+    <AtmosphereToggle :on="showAtmosphere" @toggle="toggleAtmosphere" />
   </div>
 </template>
 
@@ -705,7 +712,9 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import RequiredMark from '../components/RequiredMark.vue'
 import SkyAtmosphere from '../components/SkyAtmosphere.vue'
+import AtmosphereToggle from '../components/AtmosphereToggle.vue'
 import { SKY_PHOTOS } from '../data/skyPhotos'
+import { useAtmospherePreference } from '../composables/useAtmospherePreference'
 import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
 import {
@@ -740,6 +749,7 @@ import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-dialog'
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
+const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
 
 const migrationTypes = [
   { value: '1:1-transfer', label: '1:1 Transfer' },
@@ -1389,6 +1399,14 @@ onMounted(loadDraft)
   min-height: 0;
   overflow: hidden;
   width: 100%;
+}
+
+.intake-page--plain {
+  background: #fff;
+}
+
+.intake-page--plain .page-title {
+  text-shadow: none;
 }
 
 .intake-scroll {
