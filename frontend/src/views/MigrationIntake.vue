@@ -3,10 +3,15 @@
     class="intake-page"
     :class="{
       'intake-page--atmosphere': true,
-      'intake-page--plain': !showAtmosphere
+      'intake-page--plain': isPlain,
+      'intake-page--night': isNight
     }"
   >
-    <SkyAtmosphere v-if="showAtmosphere" :src="SKY_PHOTOS.intake" />
+    <SkyAtmosphere
+      v-if="showAtmosphere"
+      :src="SKY_PHOTOS.intake"
+      :variant="isNight ? 'night' : 'day'"
+    />
     <div class="intake-scroll">
       <div class="page-content">
         <header class="page-header">
@@ -704,7 +709,7 @@
       </div>
       </div>
     </div>
-    <AtmosphereToggle :on="showAtmosphere" @toggle="toggleAtmosphere" />
+    <AtmosphereToggle :mode="atmosphereMode" @cycle="cycleAtmosphere" />
   </div>
 </template>
 
@@ -749,7 +754,13 @@ import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-dialog'
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
-const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
+const {
+  atmosphereMode,
+  isPlain,
+  isNight,
+  showAtmosphere,
+  cycleAtmosphere
+} = useAtmospherePreference()
 
 const migrationTypes = [
   { value: '1:1-transfer', label: '1:1 Transfer' },
@@ -1405,8 +1416,21 @@ onMounted(loadDraft)
   background: #fff;
 }
 
+.intake-page--night {
+  background: #0a1628;
+}
+
 .intake-page--plain .page-title {
   text-shadow: none;
+}
+
+.intake-page--night .page-title {
+  color: #f2f6fb;
+  text-shadow: none;
+}
+
+.intake-page--night .page-subtitle {
+  color: rgba(210, 222, 236, 0.78);
 }
 
 .intake-scroll {

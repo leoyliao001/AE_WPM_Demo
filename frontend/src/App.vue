@@ -63,6 +63,12 @@ import AppHeader from './components/AppHeader.vue'
   background: #fff;
 }
 
+.app-main:has(.welcome-page--night),
+.app-main:has(.page-shell--night),
+.app-main:has(.intake-page--night) {
+  background: #0a1628;
+}
+
 /* Handsontable pages: page owns scroll via Handsontable only */
 .app-main:has(.fpo-page),
 .app-main:has(.po-page),
