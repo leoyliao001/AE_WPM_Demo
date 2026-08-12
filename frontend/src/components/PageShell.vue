@@ -4,10 +4,15 @@
     :class="{
       'page-shell--full-width': fullWidth,
       'page-shell--atmosphere': atmosphere,
-      'page-shell--plain': atmosphere && !showAtmosphere
+      'page-shell--plain': atmosphere && isPlain,
+      'page-shell--night': atmosphere && isNight
     }"
   >
-    <SkyAtmosphere v-if="atmosphere && showAtmosphere" :src="atmosphereSrc" />
+    <SkyAtmosphere
+      v-if="atmosphere && showAtmosphere"
+      :src="atmosphereSrc"
+      :variant="isNight ? 'night' : 'day'"
+    />
     <!-- Scroll only this layer so the photo stays pinned to the viewport -->
     <div class="page-shell__scroll">
       <div class="page-content">
@@ -40,8 +45,8 @@
 
     <AtmosphereToggle
       v-if="atmosphere"
-      :on="showAtmosphere"
-      @toggle="toggleAtmosphere"
+      :mode="atmosphereMode"
+      @cycle="cycleAtmosphere"
     />
   </div>
 </template>
@@ -69,7 +74,13 @@ defineProps({
   atmosphereSrc: { type: String, default: SKY_PHOTOS.welcome }
 })
 
-const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
+const {
+  atmosphereMode,
+  isPlain,
+  isNight,
+  showAtmosphere,
+  cycleAtmosphere
+} = useAtmospherePreference()
 </script>
 
 <style scoped>
@@ -100,8 +111,21 @@ const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
   background: #fff;
 }
 
-.page-shell--plain .page-title {
+.page-shell--night {
+  background: #0a1628;
+}
+
+.page-shell--plain .page-title,
+.page-shell--night .page-title {
   text-shadow: none;
+}
+
+.page-shell--night .page-title {
+  color: #f2f6fb;
+}
+
+.page-shell--night .page-subtitle {
+  color: rgba(210, 222, 236, 0.78);
 }
 
 .page-shell__scroll {
@@ -190,5 +214,9 @@ const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
   justify-content: flex-start;
   padding-inline-start: 0;
   text-align: left;
+}
+
+.page-shell--night .back-link mc-button.back-button::part(button) {
+  color: rgba(226, 236, 248, 0.92);
 }
 </style>

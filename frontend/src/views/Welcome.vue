@@ -1,6 +1,16 @@
 <template>
-  <div class="welcome-page" :class="{ 'welcome-page--plain': !showAtmosphere }">
-    <SkyAtmosphere v-if="showAtmosphere" :src="SKY_PHOTOS.welcome" />
+  <div
+    class="welcome-page"
+    :class="{
+      'welcome-page--plain': isPlain,
+      'welcome-page--night': isNight
+    }"
+  >
+    <SkyAtmosphere
+      v-if="showAtmosphere"
+      :src="SKY_PHOTOS.welcome"
+      :variant="isNight ? 'night' : 'day'"
+    />
 
     <div class="welcome-scroll">
       <div class="page-content">
@@ -54,7 +64,7 @@
       </div>
     </div>
 
-    <AtmosphereToggle :on="showAtmosphere" @toggle="toggleAtmosphere" />
+    <AtmosphereToggle :mode="atmosphereMode" @cycle="cycleAtmosphere" />
   </div>
 </template>
 
@@ -70,7 +80,13 @@ import { SKY_PHOTOS } from '../data/skyPhotos'
 import { useAtmospherePreference } from '../composables/useAtmospherePreference'
 
 const router = useRouter()
-const { showAtmosphere, toggleAtmosphere } = useAtmospherePreference()
+const {
+  atmosphereMode,
+  isPlain,
+  isNight,
+  showAtmosphere,
+  cycleAtmosphere
+} = useAtmospherePreference()
 
 const menuItems = [
   {
@@ -145,6 +161,10 @@ const onCardClick = (item) => {
   background: #fff;
 }
 
+.welcome-page--night {
+  background: #0a1628;
+}
+
 .welcome-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -173,6 +193,56 @@ const onCardClick = (item) => {
 
 .welcome-page--plain .welcome-header {
   text-shadow: none;
+}
+
+.welcome-page--night .welcome-header {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+.welcome-page--night .welcome-title {
+  color: #f2f6fb;
+}
+
+.welcome-page--night .welcome-subtitle {
+  color: rgba(210, 222, 236, 0.78);
+}
+
+.welcome-page--night .tool-card::part(container) {
+  background: linear-gradient(
+    180deg,
+    rgba(22, 38, 62, 0.92) 0%,
+    rgba(14, 26, 44, 0.94) 100%
+  );
+  border-color: rgba(180, 208, 240, 0.16);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+.welcome-page--night .tool-card:not(.tool-card--empty):hover::part(container) {
+  background: linear-gradient(
+    180deg,
+    rgba(28, 48, 76, 0.96) 0%,
+    rgba(18, 32, 54, 0.98) 100%
+  );
+  border-color: color-mix(in srgb, var(--card-accent) 45%, transparent);
+}
+
+.welcome-page--night .tool-card::part(header-container) {
+  color: #eef4fb;
+}
+
+.welcome-page--night .tool-card::part(body-container) {
+  color: rgba(198, 214, 232, 0.78);
+}
+
+.welcome-page--night .tool-card--empty::part(container) {
+  background: rgba(16, 28, 46, 0.55);
+  border-color: rgba(180, 208, 240, 0.18);
+}
+
+.welcome-page--night .empty-slot-text {
+  color: rgba(170, 188, 210, 0.7);
 }
 
 .welcome-title {

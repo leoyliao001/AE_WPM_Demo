@@ -2,28 +2,47 @@
   <button
     type="button"
     class="bg-toggle"
-    :class="{ 'bg-toggle--on': on, 'bg-toggle--off': !on }"
-    :aria-pressed="on"
-    :title="on ? 'Hide background photo' : 'Show background photo'"
-    @click="$emit('toggle')"
+    :class="`bg-toggle--${mode}`"
+    :aria-label="ariaLabel"
+    :title="ariaLabel"
+    @click="$emit('cycle')"
   >
-    <mc-icon
-      class="bg-toggle__icon"
-      :icon="on ? 'mi-image' : 'mi-eye-slash'"
-      size="16"
-    />
-    <span class="bg-toggle__label">{{ on ? 'Photo' : 'Plain' }}</span>
+    <mc-icon class="bg-toggle__icon" :icon="icon" size="16" />
+    <span class="bg-toggle__label">{{ label }}</span>
   </button>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import '@maersk-global/mds-components-core/mc-icon'
 
-defineProps({
-  on: { type: Boolean, default: true }
+const props = defineProps({
+  mode: {
+    type: String,
+    default: 'photo',
+    validator: (value) => ['photo', 'plain', 'night'].includes(value)
+  }
 })
 
-defineEmits(['toggle'])
+defineEmits(['cycle'])
+
+const label = computed(() => {
+  if (props.mode === 'plain') return 'Plain'
+  if (props.mode === 'night') return 'Night'
+  return 'Photo'
+})
+
+const icon = computed(() => {
+  if (props.mode === 'plain') return 'mi-eye-slash'
+  if (props.mode === 'night') return 'mi-moon'
+  return 'mi-image'
+})
+
+const ariaLabel = computed(() => {
+  if (props.mode === 'plain') return 'Background: plain. Click for night mode.'
+  if (props.mode === 'night') return 'Background: night. Click for photo mode.'
+  return 'Background: photo. Click for plain mode.'
+})
 </script>
 
 <style scoped>
@@ -55,6 +74,7 @@ defineEmits(['toggle'])
     background 0.2s ease,
     border-color 0.2s ease,
     box-shadow 0.2s ease,
+    color 0.2s ease,
     transform 0.2s ease;
   z-index: 3;
 }
@@ -75,10 +95,28 @@ defineEmits(['toggle'])
   opacity: 1;
 }
 
-.bg-toggle--off {
+.bg-toggle--plain {
   background: rgba(248, 250, 252, 0.88);
   border-color: rgba(22, 22, 22, 0.1);
   color: rgba(22, 22, 22, 0.55);
+}
+
+.bg-toggle--night {
+  background: rgba(12, 24, 44, 0.72);
+  border-color: rgba(148, 183, 224, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 6px 18px rgba(0, 0, 0, 0.35);
+  color: rgba(210, 228, 248, 0.88);
+}
+
+.bg-toggle--night:hover {
+  background: rgba(18, 34, 60, 0.9);
+  border-color: rgba(148, 183, 224, 0.45);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 8px 22px rgba(0, 0, 0, 0.4);
+  color: #e8f1fb;
 }
 
 .bg-toggle__icon {
