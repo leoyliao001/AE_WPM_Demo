@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Welcome from '../views/Welcome.vue'
-import WelcomePhotoDemo from '../views/WelcomePhotoDemo.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
 import MigrationProjectDetail from '../views/MigrationProjectDetail.vue'
@@ -34,11 +33,7 @@ const ATTRIBUTE_ROUTE_KEYS = {
 const routes = [
   { path: '/', name: 'Welcome', component: Welcome },
   { path: '/welcome', redirect: '/' },
-  {
-    path: '/welcome-photo-demo',
-    name: 'WelcomePhotoDemo',
-    component: WelcomePhotoDemo
-  },
+  { path: '/welcome-photo-demo', redirect: '/' },
   // Hidden for now — redirect direct URLs back to Welcome
   { path: '/future-service-model', redirect: '/' },
   { path: '/welcome2', redirect: '/' },

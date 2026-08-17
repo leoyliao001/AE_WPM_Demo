@@ -4,8 +4,6 @@
     subtitle="Choose a reference table to browse or maintain. Access is controlled by your SSO email."
     tag="Central data layer"
     back-label="Back to Welcome"
-    atmosphere
-    :atmosphere-src="SKY_PHOTOS.attributes"
   >
     <mc-notification
       v-if="accessError"
@@ -69,7 +67,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageShell from '../components/PageShell.vue'
-import { SKY_PHOTOS } from '../data/skyPhotos'
 import {
   canAccessAttributesTable,
   clearAttributesAccessCache,

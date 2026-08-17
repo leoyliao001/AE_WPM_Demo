@@ -6,8 +6,6 @@
     :back-to="backTo"
     back-label="Back to project"
     full-width
-    atmosphere
-    :atmosphere-src="SKY_PHOTOS.gantt"
   >
     <mc-notification
       v-if="loadError"
@@ -291,7 +289,6 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import ProjectGanttChart from '../components/ProjectGanttChart.vue'
-import { SKY_PHOTOS } from '../data/skyPhotos'
 import {
   projectGanttFixture,
   buildProjectGanttWeeks,
