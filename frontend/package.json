@@ -13,6 +13,7 @@
   "dependencies": {
     "@maersk-global/mds-components-core": "^2.170.3",
     "axios": "^1.13.4",
+    "docx": "^9.7.1",
     "element-plus": "^2.4.4",
     "handsontable": "^16.2.0",
     "marked": "^18.0.7",
