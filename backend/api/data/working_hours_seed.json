@@ -1,0 +1,218 @@
+[
+  {
+    "area": "GCA",
+    "aera_working_hours": "176000.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "MEK",
+    "aera_working_hours": "142350.50",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "NEA",
+    "aera_working_hours": "158720.25",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "OCE",
+    "aera_working_hours": "98740.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "SEA",
+    "aera_working_hours": "165480.75",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "CSE",
+    "aera_working_hours": "121300.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "EME",
+    "aera_working_hours": "134560.40",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "NDC",
+    "aera_working_hours": "110220.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "NEC",
+    "aera_working_hours": "188900.10",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "SWE",
+    "aera_working_hours": "147680.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "UKI",
+    "aera_working_hours": "129450.80",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "EAF",
+    "aera_working_hours": "86400.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "IBS",
+    "aera_working_hours": "201340.60",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "PAK",
+    "aera_working_hours": "72350.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "SAA",
+    "aera_working_hours": "95680.25",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "SAI",
+    "aera_working_hours": "81220.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "UAE",
+    "aera_working_hours": "104780.90",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "WAF",
+    "aera_working_hours": "68910.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "CAC",
+    "aera_working_hours": "91240.35",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "ESA",
+    "aera_working_hours": "118760.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "WSA",
+    "aera_working_hours": "87550.45",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "CAN",
+    "aera_working_hours": "132480.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "MEX",
+    "aera_working_hours": "154320.70",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "USA",
+    "aera_working_hours": "246800.00",
+    "gsc": "",
+    "gsc_working_hours": ""
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "others",
+    "gsc_working_hours": "98620.69"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "MNL",
+    "gsc_working_hours": "88280.46"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "MEX",
+    "gsc_working_hours": "91687.36"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "CDG",
+    "gsc_working_hours": "102340.20"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "CQG",
+    "gsc_working_hours": "76450.80"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "TAO",
+    "gsc_working_hours": "69320.15"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "SGN",
+    "gsc_working_hours": "84510.00"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "BOM",
+    "gsc_working_hours": "121780.55"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "MAA",
+    "gsc_working_hours": "109640.00"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "PNQ",
+    "gsc_working_hours": "97820.40"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "POZ",
+    "gsc_working_hours": "73490.00"
+  },
+  {
+    "area": "",
+    "aera_working_hours": "",
+    "gsc": "GRU",
+    "gsc_working_hours": "81260.75"
+  }
+]

@@ -9,12 +9,15 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.http import FileResponse
 
+import re
+
 from api.models import (
     FpoMapping,
     MigrationIntakeSubmission,
     OpportunityAssessment,
     ProductOwnership,
     ServiceCatalogue,
+    WorkingHours,
 )
 from api.permissions.attributes_access import get_request_email, normalize_email
 from api.services.opportunity_assessment_excel import (
@@ -73,6 +76,30 @@ ALL_FIELDS = _all_fields()
 WRITABLE_FIELDS = [key for key, _label in ALL_FIELDS if key != "migration_request_id"]
 CASCADE_FIELD_KEYS = {"l1", "l2", "l3", "l4"}
 
+# Working-hours lookup aliases (OA / intake names → Working Hours keys).
+FTE_AREA_ALIASES = {
+    "mekong": "mek",
+    "oceania": "oce",
+    "uki": "uki",
+    "eaa": "eaf",
+    "ecsa": "esa",
+    "wcsa": "wsa",
+    "caa": "can",
+}
+FTE_GSC_ALIASES = {
+    "manila": "mnl",
+    "mexico": "mex",
+    "chengdu": "cdg",
+    "chongqing": "cqg",
+    "qingdao": "tao",
+    "vietnam": "sgn",
+    "mumbai": "bom",
+    "chennai": "maa",
+    "pune": "pnq",
+    "poland": "poz",
+    "brazil": "gru",
+}
+
 
 def _normalize_l3_key(value: str) -> str:
     return _normalize_value(value).casefold()
@@ -125,6 +152,152 @@ def _normalize_value(value) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _norm_hours_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", _normalize_value(value).lower())
+
+
+def _parse_number(value):
+    text = _normalize_value(value).replace(",", "")
+    if not text:
+        return None
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    if number != number or number in (float("inf"), float("-inf")):  # NaN / inf
+        return None
+    return number
+
+
+def _format_fte(value: float) -> str:
+    return f"{value:.4f}"
+
+
+def _fte_hours_mode(project: MigrationIntakeSubmission) -> str:
+    """area = 1:1 Transfer; gsc = New/Additional work."""
+    value = _normalize_value(getattr(project, "migration_type_value", "")).lower()
+    label = _normalize_value(getattr(project, "migration_type", "")).lower()
+    if value in {"1:1-transfer", "1:1_transfer"} or "1:1 transfer" in label:
+        return "area"
+    if value in {"new-additional", "new_additional"} or "new/additional" in label or "additional work" in label:
+        return "gsc"
+    return ""
+
+
+def _build_working_hours_lookup() -> dict:
+    area_hours: dict[str, float] = {}
+    gsc_hours: dict[str, float] = {}
+    area_options: list[str] = []
+    gsc_options: list[str] = []
+
+    for item in WorkingHours.objects.all().order_by("id"):
+        area = _normalize_value(item.area)
+        area_val = _parse_number(item.aera_working_hours)
+        if area and area_val and area_val > 0:
+            key = _norm_hours_key(area)
+            canon = FTE_AREA_ALIASES.get(key, key)
+            if canon not in area_hours:
+                area_hours[canon] = area_val
+            if key not in area_hours:
+                area_hours[key] = area_val
+            if area not in area_options:
+                area_options.append(area)
+
+        gsc = _normalize_value(item.gsc)
+        gsc_val = _parse_number(item.gsc_working_hours)
+        if gsc and gsc_val and gsc_val > 0:
+            key = _norm_hours_key(gsc)
+            canon = FTE_GSC_ALIASES.get(key, key)
+            if canon not in gsc_hours:
+                gsc_hours[canon] = gsc_val
+            if key not in gsc_hours:
+                gsc_hours[key] = gsc_val
+            if gsc not in gsc_options:
+                gsc_options.append(gsc)
+
+    for alias, canon in FTE_AREA_ALIASES.items():
+        if canon in area_hours:
+            area_hours.setdefault(alias, area_hours[canon])
+    for alias, canon in FTE_GSC_ALIASES.items():
+        if canon in gsc_hours:
+            gsc_hours.setdefault(alias, gsc_hours[canon])
+
+    return {
+        "area": area_hours,
+        "gsc": gsc_hours,
+        "area_options": area_options,
+        "gsc_options": gsc_options,
+    }
+
+
+def _lookup_working_hours(hours_map: dict, *candidates) -> float | None:
+    for raw in candidates:
+        key = _norm_hours_key(raw)
+        if not key:
+            continue
+        if key in hours_map:
+            return hours_map[key]
+        canon_area = FTE_AREA_ALIASES.get(key)
+        if canon_area and canon_area in hours_map:
+            return hours_map[canon_area]
+        canon_gsc = FTE_GSC_ALIASES.get(key)
+        if canon_gsc and canon_gsc in hours_map:
+            return hours_map[canon_gsc]
+    return None
+
+
+def _calculate_fte_value(volume_monthly, task_time_per_unit, working_hours) -> str:
+    volume = _parse_number(volume_monthly)
+    task_time = _parse_number(task_time_per_unit)
+    hours = _parse_number(working_hours) if not isinstance(working_hours, (int, float)) else float(working_hours)
+    if volume is None or task_time is None or hours is None or hours <= 0:
+        return ""
+    return _format_fte(((volume * 12) * task_time) / hours)
+
+
+def _apply_fte_calculation(payload: dict, mode: str, lookup: dict, defaults: dict | None = None) -> dict:
+    defaults = defaults or {}
+    hours = None
+    if mode == "area":
+        hours = _lookup_working_hours(
+            lookup.get("area") or {},
+            payload.get("area"),
+            defaults.get("area"),
+        )
+    elif mode == "gsc":
+        hours = _lookup_working_hours(
+            lookup.get("gsc") or {},
+            payload.get("gsc_site"),
+            payload.get("location"),
+            defaults.get("gsc_site"),
+        )
+    payload["fte_calculation"] = _calculate_fte_value(
+        payload.get("volume_monthly"),
+        payload.get("task_time_per_unit_min"),
+        hours,
+    )
+    return payload
+
+
+def _build_fte_context(project: MigrationIntakeSubmission, setup: dict | None = None) -> dict:
+    setup = setup or {}
+    lookup = _build_working_hours_lookup()
+    areas = setup.get("areas") or []
+    locations = setup.get("location_options") or []
+    mode = _fte_hours_mode(project)
+    return {
+        "mode": mode,
+        "migration_type": project.migration_type or "",
+        "migration_type_value": project.migration_type_value or "",
+        "area_hours": {key: str(val) for key, val in lookup["area"].items()},
+        "gsc_hours": {key: str(val) for key, val in lookup["gsc"].items()},
+        "area_options": lookup["area_options"],
+        "gsc_options": lookup["gsc_options"],
+        "default_area": areas[0] if len(areas) == 1 else "",
+        "default_gsc_site": locations[0] if len(locations) == 1 else "",
+    }
 
 
 def _build_setup_context(project: MigrationIntakeSubmission) -> dict:
@@ -180,6 +353,10 @@ def _build_setup_context(project: MigrationIntakeSubmission) -> dict:
         "owner_options": owner_options,
         "matched_ownership_areas": matched_areas,
         "matched_ownership_rows": matched_rows,
+        "migration_type": project.migration_type or "",
+        "migration_type_value": project.migration_type_value or "",
+        "default_area": areas[0] if len(areas) == 1 else "",
+        "default_gsc_site": locations[0] if len(locations) == 1 else "",
     }
 
 
@@ -237,6 +414,8 @@ def list_opportunity_assessment(request, project_id: int):
     ).order_by("id")
     rows = [_serialize_row(item) for item in qs]
     sc_lookup = _build_service_catalogue_l3_lookup()
+    setup = _build_setup_context(project)
+    fte = _build_fte_context(project, setup)
 
     return Response(
         {
@@ -245,7 +424,8 @@ def list_opportunity_assessment(request, project_id: int):
             "project_name": project.project_name,
             "count": len(rows),
             "has_existing_rows": len(rows) > 0,
-            "setup": _build_setup_context(project),
+            "setup": setup,
+            "fte": fte,
             "columns": [{"key": key, "label": label} for key, label in _all_fields()],
             "cascade_keys": sorted(CASCADE_FIELD_KEYS),
             "cascade": _build_l1_l4_cascade(),
@@ -277,6 +457,16 @@ def save_opportunity_assessment(request, project_id: int):
     updated_ids: list[int] = []
     errors: list[dict] = []
     sc_lookup = _build_service_catalogue_l3_lookup()
+    setup = _build_setup_context(project)
+    fte = _build_fte_context(project, setup)
+    hours_lookup = {
+        "area": {key: float(val) for key, val in fte["area_hours"].items()},
+        "gsc": {key: float(val) for key, val in fte["gsc_hours"].items()},
+    }
+    fte_defaults = {
+        "area": fte.get("default_area") or "",
+        "gsc_site": fte.get("default_gsc_site") or "",
+    }
 
     for index, item in enumerate(unique_data):
         if not isinstance(item, dict):
@@ -291,6 +481,7 @@ def save_opportunity_assessment(request, project_id: int):
         }
         payload["migration_request_id"] = migration_request_id
         payload = _apply_service_catalogue_link(payload, sc_lookup)
+        payload = _apply_fte_calculation(payload, fte["mode"], hours_lookup, fte_defaults)
 
         try:
             if _is_new_record(record_id):
@@ -484,7 +675,22 @@ def upload_opportunity_excel(request, project_id: int):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    objs = [OpportunityAssessment(**row) for row in rows]
+    objs = []
+    sc_lookup = _build_service_catalogue_l3_lookup()
+    setup = _build_setup_context(project)
+    fte = _build_fte_context(project, setup)
+    hours_lookup = {
+        "area": {key: float(val) for key, val in fte["area_hours"].items()},
+        "gsc": {key: float(val) for key, val in fte["gsc_hours"].items()},
+    }
+    fte_defaults = {
+        "area": fte.get("default_area") or "",
+        "gsc_site": fte.get("default_gsc_site") or "",
+    }
+    for row in rows:
+        payload = _apply_service_catalogue_link(dict(row), sc_lookup)
+        payload = _apply_fte_calculation(payload, fte["mode"], hours_lookup, fte_defaults)
+        objs.append(OpportunityAssessment(**payload))
     created = OpportunityAssessment.objects.bulk_create(objs, batch_size=200)
 
     return Response(

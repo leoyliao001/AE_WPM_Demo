@@ -16,6 +16,7 @@
           <h1 class="page-title">Task-level Scoping</h1>
           <span class="meta-pill">{{ migrationRequestId || '—' }}</span>
           <span class="meta-pill">{{ rowCount }} rows</span>
+          <span v-if="fteModeLabel" class="meta-pill" :title="fteFormulaHint">{{ fteModeLabel }}</span>
           <button
             type="button"
             class="meta-pill meta-pill--help"
@@ -195,15 +196,19 @@
                 <strong>Add new</strong> to append more rows — there are no spare blank rows.
               </li>
               <li>
-                <strong>L1 → L2 → L3 → L4</strong> — cascading dropdowns only. Start with L1; each
-                level filters the next. Free typing is blocked on these columns.
+                Use <strong>Generate rows</strong> / <strong>Add new</strong> so the Migration
+                Manager can pick one <strong>L1 → L2 → L3</strong> in the popup. Generated rows
+                inherit those values. Then choose <strong>L4</strong> per task in the grid.
               </li>
               <li>
-                Changing L1 clears L2/L3/L4; changing L2 clears L3/L4; changing L3 clears L4.
+                After generate, <strong>L1 / L2 / L3</strong> are locked in the grid and cannot be
+                edited. Choose <strong>L4</strong> per task (filtered by the locked L3).
               </li>
               <li>
-                Other columns (Owner, Location, Task Name, Description, Complexity, Volume, FTE,
-                etc.) are free-text fields you can type or paste into.
+                <strong>FTE Calculation</strong> is automatic and read-only:
+                <code>((Volume Monthly × 12) × Task time per unit) ÷ working hours</code>.
+                <strong>1:1 Transfer</strong> uses Area working hours (match the Area column).
+                <strong>New/Additional work</strong> uses GSC working hours (match GSC Site).
               </li>
               <li>
                 Edits are tracked as <strong>pending</strong> until you click
@@ -321,15 +326,15 @@
       <mc-dialog
         :open="setupDialogOpen"
         :heading="setupMode === 'append' ? 'Add new assessment rows' : 'Generate assessment rows'"
-        dimension="medium"
+        dimension="large"
         showclosebutton
         @closing="closeSetupDialog"
       >
         <div class="setup-dialog-body">
           <div class="setup-dialog-scroll">
             <p class="setup-dialog-intro">
-              Prefill from Migration Intake and Product Ownership. Migration ID and Product are locked;
-              you can adjust Location and Owner before generating rows.
+              Prefill from Migration Intake and Product Ownership. Migration ID and Product are locked.
+              The Migration Manager chooses one L1, L2, and L3; generated rows inherit those values.
             </p>
 
             <div class="setup-field">
@@ -417,6 +422,83 @@
             </div>
 
             <div class="setup-field">
+              <label class="setup-label">L1<RequiredMark /></label>
+              <mc-select
+                label="L1"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                placeholder="Select L1"
+                :value="setupForm.l1"
+                @optionselected="onSetupL1Select"
+              >
+                <mc-option
+                  v-for="item in setupL1Options"
+                  :key="item"
+                  :value="item"
+                >
+                  {{ item }}
+                </mc-option>
+              </mc-select>
+            </div>
+
+            <div class="setup-field">
+              <label class="setup-label">L2<RequiredMark /></label>
+              <mc-select
+                :key="`setup-l2-${setupForm.l1}`"
+                label="L2"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                placeholder="Select L2"
+                :value="setupForm.l2"
+                :disabled="!setupForm.l1 || !setupL2Options.length"
+                @optionselected="onSetupL2Select"
+              >
+                <mc-option
+                  v-for="item in setupL2Options"
+                  :key="item"
+                  :value="item"
+                >
+                  {{ item }}
+                </mc-option>
+              </mc-select>
+              <p v-if="setupForm.l1 && !setupL2Options.length" class="setup-hint setup-hint--warn">
+                No L2 options under this L1.
+              </p>
+            </div>
+
+            <div class="setup-field">
+              <label class="setup-label">L3<RequiredMark /></label>
+              <mc-select
+                :key="`setup-l3-${setupForm.l1}-${setupForm.l2}`"
+                label="L3"
+                hiddenlabel
+                fit="medium"
+                width="full-width"
+                placeholder="Select L3"
+                :value="setupForm.l3"
+                :disabled="!setupForm.l2 || !setupL3Options.length"
+                @optionselected="onSetupL3Select"
+              >
+                <mc-option
+                  v-for="item in setupL3Options"
+                  :key="item"
+                  :value="item"
+                >
+                  {{ item }}
+                </mc-option>
+              </mc-select>
+              <p v-if="setupForm.l2 && !setupL3Options.length" class="setup-hint setup-hint--warn">
+                No L3 options under this L2.
+              </p>
+              <p v-else class="setup-hint">
+                Single selection. After generate, L1 / L2 / L3 cannot be changed in the grid.
+                Pick L4 for each task there.
+              </p>
+            </div>
+
+            <div class="setup-field">
               <label class="setup-label">Number of rows</label>
               <mc-input
                 label="Number of rows"
@@ -451,6 +533,9 @@
               @click="confirmSetupDialog"
             />
           </div>
+          <p v-if="!setupForm.l1 || !setupForm.l2 || !setupForm.l3" class="setup-hint setup-hint--warn setup-hint--footer">
+            Select L1, L2, and L3 before generating rows.
+          </p>
         </div>
       </mc-dialog>
 
@@ -508,6 +593,7 @@ import '@maersk-global/mds-components-core/mc-input'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
 import '@maersk-global/mds-components-core/mc-notification'
+import RequiredMark from '../components/RequiredMark.vue'
 import {
   createAfterColumnResizeHandler,
   loadColumnWidths,
@@ -515,6 +601,7 @@ import {
 } from '../utils/handsontableColumnWidths.js'
 
 const CASCADE_KEYS = ['l1', 'l2', 'l3', 'l4']
+const LOCKED_LEVEL_KEYS = ['l1', 'l2', 'l3']
 const YN_DROPDOWN_KEYS = []
 const YN_OPTIONS = ['Y', 'N']
 
@@ -524,9 +611,9 @@ const COLUMN_META = {
   product: { width: 140, readOnly: true },
   owner: { width: 90 },
   location: { width: 140 },
-  l1: { width: 200 },
-  l2: { width: 180 },
-  l3: { width: 200 },
+  l1: { width: 200, readOnly: true },
+  l2: { width: 180, readOnly: true },
+  l3: { width: 200, readOnly: true },
   l4: { width: 220 },
   task_name: { width: 160 },
   task_description: { width: 220 },
@@ -545,7 +632,7 @@ const COLUMN_META = {
   gsc_site: { width: 160 },
   task_found_in_service_catalog: { width: 220, readOnly: true },
   migratable_to_gsc: { width: 240, readOnly: true },
-  fte_calculation: { width: 110 }
+  fte_calculation: { width: 110, readOnly: true }
 }
 
 const tableColumns = shallowRef([])
@@ -568,6 +655,14 @@ function getAllKeys() {
 }
 
 const CASCADE_SET = new Set(CASCADE_KEYS)
+const LOCKED_LEVEL_SET = new Set(LOCKED_LEVEL_KEYS)
+const FTE_INPUT_KEYS = new Set([
+  'volume_monthly',
+  'task_time_per_unit_min',
+  'area',
+  'gsc_site',
+  'location'
+])
 const YN_DROPDOWN_SET = new Set(YN_DROPDOWN_KEYS)
 const COLUMN_WIDTH_STORAGE_ID = 'opportunity-assessment'
 const MAX_ROWS = 200
@@ -617,7 +712,20 @@ const setupForm = ref({
   products: [],
   location: '',
   owner: '',
+  l1: '',
+  l2: '',
+  l3: '',
   rowCount: 10
+})
+const fteContext = ref({
+  mode: '',
+  migration_type: '',
+  area_hours: {},
+  gsc_hours: {},
+  area_options: [],
+  gsc_options: [],
+  default_area: '',
+  default_gsc_site: ''
 })
 
 function openUploadDialog({ heading, message, details = [], isError = false }) {
@@ -634,6 +742,21 @@ function closeUploadDialog() {
 
 const projectId = computed(() => route.params.id)
 const backTo = computed(() => `/migration-dashboard/${projectId.value}`)
+const fteModeLabel = computed(() => {
+  if (fteContext.value.mode === 'area') return 'FTE: Area hours'
+  if (fteContext.value.mode === 'gsc') return 'FTE: GSC hours'
+  return ''
+})
+const fteFormulaHint = computed(() => {
+  const typeLabel = fteContext.value.migration_type || 'migration type'
+  if (fteContext.value.mode === 'area') {
+    return `1:1 Transfer (${typeLabel}): ((Volume Monthly × 12) × Task time per unit) ÷ Area working hours`
+  }
+  if (fteContext.value.mode === 'gsc') {
+    return `New/Additional (${typeLabel}): ((Volume Monthly × 12) × Task time per unit) ÷ GSC working hours`
+  }
+  return ''
+})
 
 const pendingCount = computed(() => {
   const map = new Map()
@@ -646,8 +769,19 @@ const pendingCount = computed(() => {
 
 const canConfirmSetup = computed(() => {
   const n = Number(setupForm.value.rowCount)
-  return Number.isFinite(n) && n >= 1 && n <= MAX_ROWS
+  return (
+    Number.isFinite(n) &&
+    n >= 1 &&
+    n <= MAX_ROWS &&
+    Boolean(setupForm.value.l1) &&
+    Boolean(setupForm.value.l2) &&
+    Boolean(setupForm.value.l3)
+  )
 })
+
+const setupL1Options = computed(() => cascade.value.l1_list || [])
+const setupL2Options = computed(() => getL1Node(setupForm.value.l1)?.l2_list || [])
+const setupL3Options = computed(() => getL2Node(setupForm.value.l1, setupForm.value.l2)?.l3_list || [])
 
 function eventValue(event) {
   const target = event?.currentTarget ?? event?.target
@@ -672,6 +806,25 @@ function onSetupRowCountInput(event) {
   setupForm.value.rowCount = Number.isFinite(n) ? n : raw
 }
 
+function onSetupL1Select(event) {
+  const next = eventValue(event)
+  if (setupForm.value.l1 === next) return
+  setupForm.value.l1 = next
+  setupForm.value.l2 = ''
+  setupForm.value.l3 = ''
+}
+
+function onSetupL2Select(event) {
+  const next = eventValue(event)
+  if (setupForm.value.l2 === next) return
+  setupForm.value.l2 = next
+  setupForm.value.l3 = ''
+}
+
+function onSetupL3Select(event) {
+  setupForm.value.l3 = eventValue(event)
+}
+
 function applySetupPayload(setup = {}) {
   setupMeta.value = {
     region: setup.region || '',
@@ -679,7 +832,9 @@ function applySetupPayload(setup = {}) {
     ownerOptions: Array.isArray(setup.owner_options) ? setup.owner_options : [],
     matchedOwnershipAreas: Array.isArray(setup.matched_ownership_areas)
       ? setup.matched_ownership_areas
-      : []
+      : [],
+    defaultArea: setup.default_area || '',
+    defaultGscSite: setup.default_gsc_site || ''
   }
   setupForm.value = {
     migrationRequestId: setup.migration_request_id || migrationRequestId.value || '',
@@ -687,6 +842,9 @@ function applySetupPayload(setup = {}) {
     products: Array.isArray(setup.products) ? setup.products : [],
     location: setup.location_default || '',
     owner: setup.owner_default || '',
+    l1: '',
+    l2: '',
+    l3: '',
     rowCount: 10
   }
 }
@@ -704,13 +862,26 @@ function buildSeedRows(count) {
   const product = setupForm.value.productsDisplay || ''
   const location = String(setupForm.value.location || '').trim()
   const owner = String(setupForm.value.owner || '').trim()
+  const l1 = String(setupForm.value.l1 || '').trim()
+  const l2 = String(setupForm.value.l2 || '').trim()
+  const l3 = String(setupForm.value.l3 || '').trim()
   const rows = []
   for (let i = 0; i < count; i += 1) {
     const row = emptyRow()
     row.product = product
     row.location = location
     row.owner = owner
+    row.l1 = l1
+    row.l2 = l2
+    row.l3 = l3
+    row.area = setupMeta.value.defaultArea || ''
+    row.gsc_site = setupMeta.value.defaultGscSite || ''
     row.migration_request_id = migrationRequestId.value || setupForm.value.migrationRequestId || ''
+    const linked = applyServiceCatalogueValues(row)
+    row.task_found_in_service_catalog = linked.task_found_in_service_catalog
+    row.migratable_to_gsc = linked.migratable_to_gsc
+    const withFte = applyFteValues(row)
+    row.fte_calculation = withFte.fte_calculation
     row.id = null
     row._cid = makeClientId()
     rows.push(row)
@@ -866,6 +1037,64 @@ function applyServiceCatalogueLink(hot, visualRow, physicalRow) {
   }
 }
 
+function normalizeHoursKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function parseHoursNumber(value) {
+  const text = String(value ?? '').trim().replace(/,/g, '')
+  if (!text) return null
+  const number = Number(text)
+  return Number.isFinite(number) ? number : null
+}
+
+function lookupWorkingHours(map, ...candidates) {
+  const hoursMap = map || {}
+  for (const raw of candidates) {
+    const key = normalizeHoursKey(raw)
+    if (key && hoursMap[key] != null && hoursMap[key] !== '') {
+      return parseHoursNumber(hoursMap[key])
+    }
+  }
+  return null
+}
+
+function resolveFteHours(row) {
+  const ctx = fteContext.value || {}
+  if (ctx.mode === 'area') {
+    return lookupWorkingHours(ctx.area_hours, row?.area, ctx.default_area)
+  }
+  if (ctx.mode === 'gsc') {
+    return lookupWorkingHours(ctx.gsc_hours, row?.gsc_site, row?.location, ctx.default_gsc_site)
+  }
+  return null
+}
+
+function calculateFteValue(row) {
+  const volume = parseHoursNumber(row?.volume_monthly)
+  const taskTime = parseHoursNumber(row?.task_time_per_unit_min)
+  const hours = resolveFteHours(row)
+  if (volume == null || taskTime == null || hours == null || hours <= 0) return ''
+  return (((volume * 12) * taskTime) / hours).toFixed(4)
+}
+
+function applyFteValues(row) {
+  return {
+    ...row,
+    fte_calculation: calculateFteValue(row)
+  }
+}
+
+function applyFteCalculation(hot, visualRow, physicalRow) {
+  const data = { ...(hot.getSourceDataAtRow(physicalRow) || emptyRow()) }
+  const next = calculateFteValue(data)
+  if ((data.fte_calculation || '') === next) return
+  hot.setDataAtRowProp([[visualRow, 'fte_calculation', next]], 'fte-calc')
+}
+
 function optionsFor(prop, rowData) {
   const { l1, l2, l3 } = rowData || {}
   switch (prop) {
@@ -940,6 +1169,43 @@ function buildColumns() {
   const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
   return tableColumns.value.map((col) => {
     const width = resolveColumnWidth(col.width, col.key, storedWidths)
+    if (LOCKED_LEVEL_SET.has(col.key) || (col.readOnly && col.key !== 'fte_calculation')) {
+      return {
+        data: col.key,
+        type: 'text',
+        readOnly: true,
+        width
+      }
+    }
+
+    if (col.key === 'area' && (fteContext.value.area_options || []).length) {
+      return {
+        data: col.key,
+        type: 'dropdown',
+        source: fteContext.value.area_options,
+        strict: false,
+        allowInvalid: true,
+        filter: false,
+        visibleRows: 12,
+        trimDropdown: false,
+        width
+      }
+    }
+
+    if (col.key === 'gsc_site' && (fteContext.value.gsc_options || []).length) {
+      return {
+        data: col.key,
+        type: 'dropdown',
+        source: fteContext.value.gsc_options,
+        strict: false,
+        allowInvalid: true,
+        filter: false,
+        visibleRows: 12,
+        trimDropdown: false,
+        width
+      }
+    }
+
     if (CASCADE_SET.has(col.key)) {
       return {
         data: col.key,
@@ -1029,6 +1295,7 @@ function initHot(rows) {
     const linked = applyServiceCatalogueValues(row)
     row.task_found_in_service_catalog = linked.task_found_in_service_catalog
     row.migratable_to_gsc = linked.migratable_to_gsc
+    row.fte_calculation = applyFteValues(row).fte_calculation
     return row
   })
 
@@ -1111,11 +1378,27 @@ function initHot(rows) {
     themeName: 'ht-theme-horizon',
     className: 'htLeft htMiddle',
     headerClassName: 'htLeft',
+    beforeChange(changes, source) {
+      if (!changes || source === 'loadData' || source === 'api') return
+      for (let i = 0; i < changes.length; i += 1) {
+        const prop = changes[i]?.[1]
+        if (LOCKED_LEVEL_SET.has(prop)) {
+          changes[i] = null
+        }
+      }
+    },
     beforeKeyDown(event) {
       const sel = this.getSelectedLast()
       if (!sel) return
       const prop = this.colToProp(sel[1])
-      if (!CASCADE_SET.has(prop)) return
+      if (LOCKED_LEVEL_SET.has(prop)) {
+        if (event.key === 'Delete' || event.key === 'Backspace' || event.key === 'F2') {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+        }
+        return
+      }
+      if (prop !== 'l4') return
       if (event.ctrlKey || event.metaKey || event.altKey) return
       const allowed = new Set([
         'ArrowUp',
@@ -1144,6 +1427,7 @@ function initHot(rows) {
         !changes ||
         source === 'cascade' ||
         source === 'sc-link' ||
+        source === 'fte-calc' ||
         source === 'loadData' ||
         source === 'api'
       ) {
@@ -1171,6 +1455,10 @@ function initHot(rows) {
           }
         } else if (prop === 'l3') {
           applyServiceCatalogueLink(this, visualRow, physicalRow)
+        }
+
+        if (FTE_INPUT_KEYS.has(prop)) {
+          applyFteCalculation(this, visualRow, physicalRow)
         }
 
         if (prop === 'migration_request_id' && src) {
@@ -1462,6 +1750,16 @@ async function loadData() {
     projectName.value = data.project_name || ''
     cascade.value = data.cascade || { l1_list: [], by_l1: {} }
     serviceCatalogueByL3.value = data.service_catalogue_by_l3 || {}
+    fteContext.value = {
+      mode: data.fte?.mode || '',
+      migration_type: data.fte?.migration_type || data.setup?.migration_type || '',
+      area_hours: data.fte?.area_hours || {},
+      gsc_hours: data.fte?.gsc_hours || {},
+      area_options: data.fte?.area_options || [],
+      gsc_options: data.fte?.gsc_options || [],
+      default_area: data.fte?.default_area || data.setup?.default_area || '',
+      default_gsc_site: data.fte?.default_gsc_site || data.setup?.default_gsc_site || ''
+    }
     rowCount.value = data.count || 0
     hasExistingRows.value = !!data.has_existing_rows || (data.count || 0) > 0
     applySetupPayload(data.setup || {})
@@ -1733,7 +2031,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: min(70vh, 640px);
+  max-height: min(76vh, 760px);
 }
 
 .setup-dialog-scroll {
@@ -1772,6 +2070,11 @@ onBeforeUnmount(() => {
 
 .setup-hint--warn {
   color: #9a3412;
+}
+
+.setup-hint--footer {
+  margin-top: 8px;
+  text-align: right;
 }
 
 .setup-dialog-footer {
@@ -1885,5 +2188,11 @@ onBeforeUnmount(() => {
 
 :deep(.handsontable) {
   font-size: 11px;
+}
+</style>
+
+<style>
+.setup-dialog-body mc-select::part(popover-content) {
+  z-index: 10000;
 }
 </style>

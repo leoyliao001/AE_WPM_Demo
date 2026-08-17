@@ -214,6 +214,27 @@ class ServiceCatalogue(models.Model):
         return f"{self.product} / {self.l4 or self.l3 or self.id}"
 
 
+class WorkingHours(models.Model):
+    """Area / GSC working hours reference data."""
+
+    area = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    aera_working_hours = models.CharField(max_length=32, blank=True, default="")
+    gsc = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    gsc_working_hours = models.CharField(max_length=32, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "working_hours"
+        ordering = ["id"]
+        indexes = [
+            models.Index(fields=["area", "gsc"]),
+        ]
+
+    def __str__(self):
+        return f"{self.area or '-'} / {self.gsc or '-'} / {self.gsc_working_hours}"
+
+
 class ProjectAttributesAccess(models.Model):
     """SSO email-based access control for Project Attributes Database tables."""
 
@@ -223,6 +244,7 @@ class ProjectAttributesAccess(models.Model):
     product_ownership = models.BooleanField(default=False)
     gsc_site_mapping = models.BooleanField(default=False)
     service_catalogue = models.BooleanField(default=False)
+    working_hours = models.BooleanField(default=False)
     project_gantt = models.BooleanField(default=False)
     migration_intake = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)

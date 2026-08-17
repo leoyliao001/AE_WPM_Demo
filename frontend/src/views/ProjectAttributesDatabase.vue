@@ -128,6 +128,17 @@ const allTables = [
     actionLabel: 'Open Service Catalogue'
   },
   {
+    id: 'working-hours',
+    tableKey: 'working_hours',
+    title: 'Working Hours',
+    description:
+      'Area and GSC working hours — maintain aera_working_hours and gsc_working_hours reference data.',
+    icon: 'mi-clock',
+    accent: '#B45309',
+    route: '/working-hours',
+    actionLabel: 'Open Working Hours'
+  },
+  {
     id: 'migration-intake',
     tableKey: 'migration_intake',
     title: 'Migration Intake',
