@@ -5,8 +5,6 @@
     tag="Migration Project"
     back-to="/migration-dashboard"
     back-label="Back to Migration Dashboard"
-    atmosphere
-    :atmosphere-src="SKY_PHOTOS.projectDetail"
   >
     <mc-notification
       v-if="loadError"
@@ -266,7 +264,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
-import { SKY_PHOTOS } from '../data/skyPhotos'
 import {
   buildDetailSections,
   buildMigrationMilestones,

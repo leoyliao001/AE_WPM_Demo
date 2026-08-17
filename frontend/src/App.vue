@@ -49,24 +49,8 @@ import AppHeader from './components/AppHeader.vue'
   -webkit-overflow-scrolling: touch;
 }
 
-/* Atmosphere pages scroll internally (like Welcome); keep edge color matched */
-.app-main:has(.welcome-page),
-.app-main:has(.page-shell--atmosphere),
-.app-main:has(.intake-page--atmosphere) {
-  background: #dff3fa;
+.app-main:has(.welcome-page) {
   overflow: hidden;
-}
-
-.app-main:has(.welcome-page--plain),
-.app-main:has(.page-shell--plain),
-.app-main:has(.intake-page--plain) {
-  background: #fff;
-}
-
-.app-main:has(.welcome-page--night),
-.app-main:has(.page-shell--night),
-.app-main:has(.intake-page--night) {
-  background: #0a1628;
 }
 
 /* Handsontable pages: page owns scroll via Handsontable only */

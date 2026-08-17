@@ -1,17 +1,5 @@
 <template>
-  <div
-    class="intake-page"
-    :class="{
-      'intake-page--atmosphere': true,
-      'intake-page--plain': isPlain,
-      'intake-page--night': isNight
-    }"
-  >
-    <SkyAtmosphere
-      v-if="showAtmosphere"
-      :src="SKY_PHOTOS.intake"
-      :variant="isNight ? 'night' : 'day'"
-    />
+  <div class="intake-page">
     <div class="intake-scroll">
       <div class="page-content">
         <header class="page-header">
@@ -709,17 +697,12 @@
       </div>
       </div>
     </div>
-    <AtmosphereToggle :mode="atmosphereMode" @cycle="cycleAtmosphere" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import RequiredMark from '../components/RequiredMark.vue'
-import SkyAtmosphere from '../components/SkyAtmosphere.vue'
-import AtmosphereToggle from '../components/AtmosphereToggle.vue'
-import { SKY_PHOTOS } from '../data/skyPhotos'
-import { useAtmospherePreference } from '../composables/useAtmospherePreference'
 import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
 import {
@@ -754,13 +737,6 @@ import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-dialog'
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
-const {
-  atmosphereMode,
-  isPlain,
-  isNight,
-  showAtmosphere,
-  cycleAtmosphere
-} = useAtmospherePreference()
 
 const migrationTypes = [
   { value: '1:1-transfer', label: '1:1 Transfer' },
@@ -1401,38 +1377,6 @@ onMounted(loadDraft)
   position: relative;
 }
 
-.intake-page--atmosphere {
-  background: #dff3fa;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  isolation: isolate;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
-}
-
-.intake-page--plain {
-  background: #fff;
-}
-
-.intake-page--night {
-  background: #0a1628;
-}
-
-.intake-page--plain .page-title {
-  text-shadow: none;
-}
-
-.intake-page--night .page-title {
-  color: #f2f6fb;
-  text-shadow: none;
-}
-
-.intake-page--night .page-subtitle {
-  color: rgba(210, 222, 236, 0.78);
-}
-
 .intake-scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -1470,7 +1414,6 @@ onMounted(loadDraft)
   letter-spacing: -0.02em;
   line-height: 1.15;
   margin: 12px 0 10px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .page-subtitle {
