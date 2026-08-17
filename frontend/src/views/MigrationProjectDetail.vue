@@ -146,8 +146,9 @@
                 appearance="neutral"
                 variant="plain"
                 fit="small"
-                label="View"
-                trailingicon="mi-arrow-right"
+                :label="item.id === 'business_case' ? 'Download' : 'View'"
+                :trailingicon="item.id === 'business_case' ? 'mi-download' : 'mi-arrow-right'"
+                :loading="item.id === 'business_case' && businessCaseDownloading"
                 tabindex="-1"
               />
             </div>
@@ -276,6 +277,7 @@ import {
   statusAppearance
 } from '../utils/migrationDashboardProgress.js'
 import { getCurrentUserEmail } from '../auth/azureAuth.js'
+import { generateBusinessCaseDocx } from '../utils/businessCaseDocx.js'
 import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-icon'
@@ -298,6 +300,7 @@ const loadError = ref('')
 const project = ref(null)
 const intakeDialogOpen = ref(false)
 const accessDeniedOpen = ref(false)
+const businessCaseDownloading = ref(false)
 
 const progressPct = computed(() => overallProgress(project.value?.status))
 const migrationMilestones = computed(() =>
@@ -334,6 +337,9 @@ const detailSubtitle = computed(() => {
 })
 
 const milestoneCardBody = (item) => {
+  if (item.id === 'business_case') {
+    return 'Download a Word document summary of this project\'s business case.'
+  }
   if (item.state === 'complete') return 'Milestone completed for this project.'
   if (item.state === 'active') return 'Currently up to date — review artifacts and owners.'
   if (item.state === 'at_risk') return 'Needs attention — review blockers and recovery plan.'
@@ -357,6 +363,13 @@ const onMilestoneClick = (item) => {
   }
   if (item.id === 'gantt') {
     router.push(`/migration-dashboard/${route.params.id}/gantt`)
+    return
+  }
+  if (item.id === 'business_case') {
+    businessCaseDownloading.value = true
+    generateBusinessCaseDocx(project.value).finally(() => {
+      businessCaseDownloading.value = false
+    })
     return
   }
   console.log('[Migration Project] Milestone selected', item.id)
