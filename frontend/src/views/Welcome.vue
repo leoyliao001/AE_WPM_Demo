@@ -22,7 +22,6 @@
             :clickable="!item.empty"
             :tabindex="item.empty ? -1 : 0"
             :heading="item.empty ? undefined : item.title"
-            :body="item.empty ? undefined : item.description"
             @click="onCardClick(item)"
             @keydown.enter.prevent="onCardClick(item)"
             @keydown.space.prevent="onCardClick(item)"
@@ -33,6 +32,7 @@
                   <mc-icon :icon="item.icon" size="24" />
                 </span>
               </div>
+              <p class="card-description">{{ item.description }}</p>
               <mc-button
                 slot="actions"
                 appearance="neutral"
@@ -133,7 +133,10 @@ const onCardClick = (item) => {
 }
 
 .welcome-scroll {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: safe center;
   min-height: 0;
   overflow-x: clip;
   overflow-y: auto;
@@ -145,9 +148,11 @@ const onCardClick = (item) => {
 
 .page-content {
   margin: 0 auto;
-  max-width: 1140px;
-  padding: 56px 32px 120px;
+  max-width: none;
+  padding: 40px 24px;
   position: relative;
+  transform: translateY(-56px);
+  width: 100%;
   z-index: 1;
 }
 
@@ -176,17 +181,20 @@ const onCardClick = (item) => {
 }
 
 .card-grid {
+  column-gap: 28px;
   display: grid;
-  gap: 22px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   perspective: 1200px;
+  row-gap: 28px;
+  width: 100%;
 }
 
 .tool-card {
   --card-accent: #0077b8;
   animation: fade-up 0.55s ease both;
   animation-delay: var(--card-delay, 0ms);
-  min-height: 210px;
+  min-height: 256px;
+  width: 100%;
 }
 
 .tool-card::part(container) {
@@ -281,6 +289,14 @@ const onCardClick = (item) => {
   transform: translateY(0);
 }
 
+.card-description {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  text-align: left;
+}
+
 .card-icon-wrap {
   display: flex;
   justify-content: flex-start;
@@ -353,15 +369,16 @@ const onCardClick = (item) => {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .card-grid {
+    column-gap: 28px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .page-content {
-    padding: 32px 16px 96px;
+    padding: 32px 16px;
   }
 
   .card-grid {
