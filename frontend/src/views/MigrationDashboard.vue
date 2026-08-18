@@ -4,6 +4,7 @@
     :subtitle="pageSubtitle"
     :tag="pageTag"
     back-label="Back to Welcome"
+    full-width
   >
     <mc-notification
       v-if="loadError"

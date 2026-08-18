@@ -5,6 +5,7 @@
     tag="Migration Project"
     back-to="/migration-dashboard"
     back-label="Back to Migration Dashboard"
+    full-width
   >
     <mc-notification
       v-if="loadError"
