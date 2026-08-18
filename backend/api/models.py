@@ -228,7 +228,7 @@ class WorkingHours(models.Model):
         db_table = "working_hours"
         ordering = ["id"]
         indexes = [
-            models.Index(fields=["area", "gsc"]),
+            models.Index(fields=["area", "gsc"], name="working_hou_area_gsc_idx"),
         ]
 
     def __str__(self):
