@@ -73,26 +73,34 @@ pip install -r requirements.txt
 | djangorestframework | `>=3.16,<4` | REST API |
 | django-cors-headers | `>=4.0,<5` | CORS support (allows frontend on port 3001) |
 
-### 1b. Backend — create the local database
+### 1b. Backend — the local database
 
-`backend/db.sqlite3` is **not** in the repository (it is a local dev artifact —
-see `.gitignore`). Create it on a fresh clone:
+`backend/db.sqlite3` **is** committed to the repository, so a fresh clone
+already has the demo data and runs without any setup. After a pull, just
+apply any migrations that came with it:
 
 ```cmd
 cd /d "c:\fcous\AE WPM Demo\backend"
 python manage.py migrate
 ```
 
-That gives you an empty schema. To also load the demo data shipped with the
-repo:
+To rebuild the database from scratch, delete `db.sqlite3` and reload the
+fixture:
 
 ```cmd
+python manage.py migrate
 python manage.py loaddata scripts\api_data_dump.json
 ```
 
-> The fixture is a snapshot, not a live export — it can lag behind what a
-> colleague has in their own `db.sqlite3`. Production does not use SQLite at
-> all; the **AE_WPM** service runs against MSSQL (see **Port policy**).
+> Two caveats, because the database is versioned:
+>
+> - `db.sqlite3` is binary, so two people changing data on the same branch
+>   produce a conflict Git cannot merge. Coordinate before committing it.
+> - `scripts/api_data_dump.json` is an older snapshot, not a live export — it
+>   can lag behind what is in `db.sqlite3`.
+>
+> Production does not use SQLite at all; the **AE_WPM** service runs against
+> MSSQL (see **Port policy**).
 
 ### 2. Frontend — install dependencies
 
