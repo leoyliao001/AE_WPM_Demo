@@ -9,6 +9,25 @@ const localAgent = new http.Agent({ keepAlive: true })
 // Set VITE_BEHIND_APACHE=1 when using enable-dev-proxy.bat (HTTPS → Vite)
 const behindApache = process.env.VITE_BEHIND_APACHE === '1'
 
+// Dev backend that /api is proxied to.
+//   default         → 127.0.0.1:8001 — your own `manage.py runserver` (SQLite)
+//   VITE_API_TARGET → override, e.g. http://127.0.0.1:8000 to hit the production
+//                     AE_WPM service (Waitress + MSSQL)
+// Never default to 8000: the AE_WPM Windows service owns that port, and Windows
+// lets a second process bind an already-listening port without any error, so
+// requests end up split unpredictably between the two backends.
+const apiTarget = process.env.VITE_API_TARGET || 'http://127.0.0.1:8001'
+
+function logApiTargetPlugin() {
+  return {
+    name: 'log-api-target',
+    apply: 'serve',
+    configureServer() {
+      console.log(`[vite] /api -> ${apiTarget}`)
+    }
+  }
+}
+
 function copyMdsIconsPlugin() {
   return {
     name: 'copy-mds-icons',
@@ -49,7 +68,8 @@ export default defineConfig(({ command }) => ({
         }
       }
     }),
-    copyMdsIconsPlugin()
+    copyMdsIconsPlugin(),
+    logApiTargetPlugin()
   ],
   server: {
     host: '127.0.0.1',
@@ -70,7 +90,7 @@ export default defineConfig(({ command }) => ({
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: apiTarget,
         changeOrigin: true,
         agent: localAgent,
         bypass(req) {
