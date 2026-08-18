@@ -4,6 +4,7 @@
     subtitle="Learning and development scoping overview across migration projects."
     tag="L&D Dashboard"
     back-label="Back to Welcome"
+    full-width
   >
     <section class="table-panel">
       <div class="panel-head">

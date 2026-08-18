@@ -1373,26 +1373,23 @@ onMounted(loadDraft)
 <style scoped>
 .intake-page {
   background: #fff;
+  flex: 1 0 auto;
+  min-height: 100%;
   overflow-x: clip;
   position: relative;
 }
 
 .intake-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-x: clip;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
   position: relative;
   z-index: 1;
 }
 
 .page-content {
-  margin: 0 auto;
-  max-width: 1180px;
+  margin: 0;
+  max-width: none;
   padding: 40px 24px 72px;
   position: relative;
+  width: 100%;
   z-index: 1;
 }
 

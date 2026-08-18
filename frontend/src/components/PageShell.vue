@@ -77,7 +77,7 @@ defineProps({
 .page-shell--full-width .page-content {
   margin: 0;
   max-width: none;
-  padding: 28px 20px 48px;
+  padding: 40px 24px 72px;
   width: 100%;
 }
 

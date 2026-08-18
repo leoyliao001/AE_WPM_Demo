@@ -4,6 +4,7 @@
     subtitle="Choose a reference table to browse or maintain. Access is controlled by your SSO email."
     tag="Central data layer"
     back-label="Back to Welcome"
+    full-width
   >
     <mc-notification
       v-if="accessError"
@@ -208,13 +209,20 @@ onMounted(async () => {
 }
 
 .table-grid {
+  column-gap: 28px;
   display: grid;
-  gap: 22px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   perspective: 1200px;
+  row-gap: 28px;
 }
 
-@media (min-width: 1100px) {
+@media (max-width: 1400px) {
+  .table-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
   .table-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
