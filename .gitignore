@@ -22,6 +22,16 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Run output from the MSSQL ops scripts - regenerated on every run, machine-specific
+backend/scripts/*_log.txt
+
+# Local dev database - not versioned; bootstrap with `migrate` (+ optional
+# `loaddata scripts/api_data_dump.json`). Production uses MSSQL.
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
 # Env / local overrides
 .env.*
 !.env.example
