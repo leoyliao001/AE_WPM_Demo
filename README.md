@@ -73,6 +73,27 @@ pip install -r requirements.txt
 | djangorestframework | `>=3.16,<4` | REST API |
 | django-cors-headers | `>=4.0,<5` | CORS support (allows frontend on port 3001) |
 
+### 1b. Backend — create the local database
+
+`backend/db.sqlite3` is **not** in the repository (it is a local dev artifact —
+see `.gitignore`). Create it on a fresh clone:
+
+```cmd
+cd /d "c:\fcous\AE WPM Demo\backend"
+python manage.py migrate
+```
+
+That gives you an empty schema. To also load the demo data shipped with the
+repo:
+
+```cmd
+python manage.py loaddata scripts\api_data_dump.json
+```
+
+> The fixture is a snapshot, not a live export — it can lag behind what a
+> colleague has in their own `db.sqlite3`. Production does not use SQLite at
+> all; the **AE_WPM** service runs against MSSQL (see **Port policy**).
+
 ### 2. Frontend — install dependencies
 
 In the same or a new CMD window:
@@ -103,7 +124,17 @@ REM Activate venv if not already active
 python manage.py runserver
 ```
 
-Backend URL: **http://127.0.0.1:8000**
+Backend URL: **http://127.0.0.1:8001**
+
+> **Ports are split between dev and production — do not share 8000.**
+> On the deployment server `SCRBAEXDEFRM217`, the Windows service **AE_WPM**
+> (Waitress + MSSQL) permanently owns `127.0.0.1:8000`. Windows lets a second
+> process bind a port that is already listening *without any error*, so a
+> `runserver` on 8000 would silently run alongside the service and requests
+> would be split at random between two backends using two different databases.
+>
+> `manage.py runserver` therefore defaults to **8001** and refuses to start if
+> the port is already taken. See **Port policy** below.
 
 ### Migration Intake submit email notification (SendGrid)
 
@@ -133,14 +164,19 @@ npm run dev
 
 Frontend URL: **http://localhost:3001** — open this in your browser.
 
-> Use **port 3001** as the main entry point. The backend on port 8000 serves APIs only; Vite proxies `/api` to `http://localhost:8000`.
+> Use **port 3001** as the main entry point. The backend serves APIs only; Vite proxies `/api` to `http://127.0.0.1:8001` by default.
+> To develop against the **production** backend instead, override the target rather than starting a second server:
+>
+> ```powershell
+> $env:VITE_API_TARGET = 'http://127.0.0.1:8000'; npm run dev
+> ```
 
 ### 4. Verify the backend
 
 In CMD:
 
 ```cmd
-curl http://127.0.0.1:8000/api/health/
+curl http://127.0.0.1:8001/api/health/
 ```
 
 Expected response (JSON): `{"status":"ok"}`
@@ -159,6 +195,62 @@ npm run preview
 
 ---
 
+## Port policy
+
+Development and production are deliberately kept on **separate ports** on the
+deployment server `SCRBAEXDEFRM217`. Never run both on the same one.
+
+| Port | Owner | Process | Database |
+|------|-------|---------|----------|
+| `127.0.0.1:8000` | **production** | Windows service **AE_WPM** (NSSM → Waitress), runs as `LocalSystem` | MSSQL `WPM Project` (`DJANGO_DB_ENGINE=mssql`) |
+| `127.0.0.1:8001` | **development** | your own `manage.py runserver` | SQLite `backend/db.sqlite3` |
+| `0.0.0.0:80` | **production** | Windows service **AE_Front_All** (Apache), serves `frontend/dist` and proxies `/api` → 8000 | — |
+
+### Why this matters
+
+Windows allows a second process to bind an address that is **already being
+listened on** — `runserver` starts with no error at all and both processes stay
+in `LISTENING`. New connections then go to whichever process bound last, so
+requests are split unpredictably between two backends that run different code
+against different databases. The symptoms look like "my code changes do
+nothing" and "the data keeps coming and going".
+
+Note also that **stopping Apache does not stop the backend**: `AE_Front_All` and
+`AE_WPM` are independent services, so `Stop-Service AE_Front_All` leaves the
+Waitress process holding 8000.
+
+### What protects you
+
+- `backend/manage.py` defaults `runserver` to `127.0.0.1:8001` and **exits with
+  an error** if the target port is already listening.
+- `frontend/vite.config.js` proxies `/api` to `127.0.0.1:8001` by default, and
+  logs `[vite] /api -> ...` on startup so the target is never a guess.
+
+### Developing against the production backend
+
+Do **not** start a second server on 8000. Repoint the frontend instead:
+
+```powershell
+cd E:\AE_WPM_Demo\frontend
+$env:VITE_API_TARGET = 'http://127.0.0.1:8000'
+npm run dev
+```
+
+### Checking the current state
+
+```powershell
+Get-Service AE_Front_All, AE_WPM
+Get-NetTCPConnection -LocalPort 8000, 8001 -State Listen |
+  ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" } |
+  Select-Object ProcessId, CommandLine
+```
+
+Each port must show **at most one** owner.
+
+Full deployment details: [`E:\Apps\DEPLOYMENT.md`](../Apps/DEPLOYMENT.md).
+
+---
+
 ## Application URLs
 
 When running locally with the default dev setup (`npm run dev` + `python manage.py runserver`), use these addresses:
@@ -166,7 +258,8 @@ When running locally with the default dev setup (`npm run dev` + `python manage.
 | Service | Base URL | Notes |
 |---------|----------|-------|
 | **Frontend (main entry)** | http://localhost:3001 | Open this in your browser |
-| **Backend API** | http://127.0.0.1:8000 | API only — not the UI |
+| **Backend API (dev)** | http://127.0.0.1:8001 | API only — not the UI; `runserver` + SQLite |
+| **Backend API (production service)** | http://127.0.0.1:8000 | Windows service **AE_WPM**, Waitress + MSSQL — never bind this port yourself |
 
 The global `mc-top-bar` header links to the main pages. All frontend routes below are relative to `http://localhost:3001`.
 
@@ -194,9 +287,9 @@ The global `mc-top-bar` header links to the main pages. All frontend routes belo
 
 | Method | URL | View module | Status |
 |--------|-----|-------------|--------|
-| GET | http://127.0.0.1:8000/api/health/ | `api/views/health.py` → `health()` | **Live** |
+| GET | http://127.0.0.1:8001/api/health/ | `api/views/health.py` → `health()` | **Live** |
 
-> In development, the frontend proxies `/api/*` to the backend (see `frontend/vite.config.js`). You can also call endpoints directly on port 8000.
+> In development, the frontend proxies `/api/*` to the backend (see `frontend/vite.config.js`). You can also call endpoints directly on port 8001.
 
 Most page content is still driven by mock data under `frontend/src/data/`. Feature API routes are scaffolded but not yet implemented — see **Backend architecture** below.
 
@@ -283,13 +376,29 @@ Wrap the path in quotes:
 cd /d "c:\fcous\AE WPM Demo\frontend"
 ```
 
-### 3. 404 or Django page when visiting port 8000
+### 3. 404 or Django page when visiting the backend port
 
-Open the app at **http://localhost:3001**, not port 8000. Port 8000 is API-only.
+Open the app at **http://localhost:3001**, not the backend port. The backend is API-only.
 
-### 4. Port already in use
+### 4. `runserver` refuses to start: "already being listened on"
 
-- Backend on a different port: `python manage.py runserver 8001` (also update the proxy `target` in `frontend/vite.config.js`)
+This is the guard in `backend/manage.py` doing its job — something already owns
+that port, and Windows would otherwise let `runserver` bind it silently. Find
+the owner:
+
+```powershell
+Get-NetTCPConnection -LocalPort 8001 -State Listen |
+  ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" } |
+  Select-Object ProcessId, CommandLine
+```
+
+Usually it is a `runserver` you forgot to close. Stop it, or start this one on
+another free port: `python manage.py runserver 8002`.
+
+If the owner is the **AE_WPM** service on 8000, do not stop it and do not bind
+8000 — point the frontend at it with `VITE_API_TARGET` instead (see **Port
+policy**).
+
 - Frontend on a different port: `npm run dev -- --port 3002` (also update `CORS_ALLOWED_ORIGINS` in `backend/config/settings.py`)
 
 ### 5. `npm install` fails (MDS packages not found)
@@ -316,4 +425,4 @@ pip install -r requirements.txt
 |-------|-------|
 | Frontend | Vue 3, Vite 5, Vue Router, MDS Components |
 | Backend | Django 5.2, Django REST Framework, SQLite |
-| Dev ports | Frontend `3001`, Backend `8000` |
+| Dev ports | Frontend `3001`, Backend `8001` (production service owns `8000`) |
