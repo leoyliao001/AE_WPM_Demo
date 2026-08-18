@@ -21,6 +21,7 @@ from api.views.project_gantt import (
     META_TEXT_KEYS,
     MAX_WEEK,
     MIN_WEEK,
+    OBSOLETE_META_KEYS,
     _normalize_meta,
     merge_gantt_tasks_with_template,
 )
@@ -38,14 +39,10 @@ TASK_COLUMNS = [
     ("actualStatus", "Actual Status"),
 ]
 
+# Mirrors META_TEXT_KEYS / META_NUMBER_KEYS in api.views.project_gantt. The legacy
+# summary fields listed in OBSOLETE_META_KEYS were dropped from the Gantt page and
+# are intentionally absent here too.
 META_COLUMNS = [
-    ("projectPhase", "Project Phase"),
-    ("scope", "Scope"),
-    ("migratableFte", "Migratable FTE"),
-    ("learningCurve", "Learning Curve"),
-    ("tlTmHc", "TL/TM HC"),
-    ("mngrHc", "Mngr. HC"),
-    ("totalWoBuffer", "Total wo/buffer"),
     ("total", "Total"),
 ]
 
@@ -53,16 +50,7 @@ SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
 def _default_meta() -> dict:
-    return {
-        "projectPhase": "",
-        "scope": "",
-        "migratableFte": "",
-        "learningCurve": "",
-        "tlTmHc": "",
-        "mngrHc": "",
-        "totalWoBuffer": "",
-        "total": "",
-    }
+    return {key: "" for key, _label in META_COLUMNS}
 
 
 def _range_value(task: dict, key: str, field: str):
@@ -287,7 +275,11 @@ def save_project_gantt_attributes(request):
         merged_meta = _default_meta()
         if existing and isinstance(existing.meta, dict):
             merged_meta.update(
-                {k: v for k, v in existing.meta.items() if k != "customPhases"}
+                {
+                    k: v
+                    for k, v in existing.meta.items()
+                    if k != "customPhases" and k not in OBSOLETE_META_KEYS
+                }
             )
         for key in (*META_TEXT_KEYS, *META_NUMBER_KEYS):
             if key in meta:

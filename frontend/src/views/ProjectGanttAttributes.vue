@@ -176,14 +176,10 @@ const WEEK_KEYS = new Set([
 ])
 const COLUMN_WIDTH_STORAGE_ID = 'project-gantt-attributes'
 
+// Keep in sync with META_COLUMNS in api/views/project_gantt_attributes.py.
+// Project Phase / Scope / Migratable FTE / Learning Curve / TL/TM HC / Mngr. HC /
+// Total wo/buffer were dropped from the Gantt page and are no longer stored.
 const metaFields = [
-  { key: 'projectPhase', label: 'Project Phase', type: 'text' },
-  { key: 'scope', label: 'Scope', type: 'text' },
-  { key: 'migratableFte', label: 'Migratable FTE', type: 'number' },
-  { key: 'learningCurve', label: 'Learning Curve', type: 'number' },
-  { key: 'tlTmHc', label: 'TL/TM HC', type: 'number' },
-  { key: 'mngrHc', label: 'Mngr. HC', type: 'number' },
-  { key: 'totalWoBuffer', label: 'Total wo/buffer', type: 'number' },
   { key: 'total', label: 'Total', type: 'number' }
 ]
 
