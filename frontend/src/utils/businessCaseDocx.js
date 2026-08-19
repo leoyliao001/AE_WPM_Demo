@@ -12,6 +12,7 @@ import {
   BorderStyle,
   WidthType,
   ShadingType,
+  VerticalAlign,
   Header,
   Footer,
   PageNumber,
@@ -41,8 +42,15 @@ const hr = () =>
 const sectionTitle = (text) =>
   new Paragraph({
     heading: HeadingLevel.HEADING_2,
-    spacing: { before: 260, after: 110 },
-    children: [t(text, { color: DARK_BLUE, bold: true, size: 20 })]
+    spacing: { before: 320, after: 130 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: MAERSK_BLUE, space: 4 } },
+    children: [t(text, { color: DARK_BLUE, bold: true, size: 22 })]
+  })
+
+const subTitle = (text) =>
+  new Paragraph({
+    children: [t(text, { bold: true, size: 20, color: MAERSK_BLUE })],
+    spacing: { before: 60, after: 60 }
   })
 
 const labelValue = (label, value) =>
@@ -62,6 +70,15 @@ const bodyText = (text) =>
 
 const spacer = (size = 200) => new Paragraph({ spacing: { before: size, after: 0 } })
 
+const TABLE_BORDERS = {
+  top: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
+  bottom: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
+  left: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
+  right: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
+  insideH: { style: BorderStyle.SINGLE, size: 3, color: MID_GREY },
+  insideV: { style: BorderStyle.SINGLE, size: 3, color: MID_GREY }
+}
+
 const kvTable = (pairs = []) => {
   const headerRow = new TableRow({
     tableHeader: true,
@@ -74,14 +91,15 @@ const kvTable = (pairs = []) => {
               alignment: AlignmentType.LEFT
             })
           ],
+          verticalAlign: VerticalAlign.CENTER,
           shading: { type: ShadingType.SOLID, color: DARK_BLUE },
-          margins: { top: 80, bottom: 80, left: 120, right: 120 }
+          margins: { top: 100, bottom: 100, left: 140, right: 140 }
         })
     )
   })
 
   const rows = pairs.map(
-    ([topic, detail]) =>
+    ([topic, detail], index) =>
       new TableRow({
         children: [
           new TableCell({
@@ -91,8 +109,9 @@ const kvTable = (pairs = []) => {
                 alignment: AlignmentType.LEFT
               })
             ],
+            verticalAlign: VerticalAlign.CENTER,
             shading: { type: ShadingType.SOLID, color: LIGHT_GREY },
-            margins: { top: 80, bottom: 80, left: 120, right: 120 }
+            margins: { top: 100, bottom: 100, left: 140, right: 140 }
           }),
           new TableCell({
             children: [
@@ -103,7 +122,9 @@ const kvTable = (pairs = []) => {
                 alignment: AlignmentType.LEFT
               })
             ],
-            margins: { top: 80, bottom: 80, left: 120, right: 120 }
+            verticalAlign: VerticalAlign.CENTER,
+            shading: index % 2 === 1 ? { type: ShadingType.SOLID, color: LIGHT_GREY } : undefined,
+            margins: { top: 100, bottom: 100, left: 140, right: 140 }
           })
         ]
       })
@@ -112,14 +133,75 @@ const kvTable = (pairs = []) => {
   return new Table({
     rows: [headerRow, ...rows],
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
-      bottom: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
-      left: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
-      right: { style: BorderStyle.SINGLE, size: 6, color: MID_GREY },
-      insideH: { style: BorderStyle.SINGLE, size: 3, color: MID_GREY },
-      insideV: { style: BorderStyle.SINGLE, size: 3, color: MID_GREY }
-    }
+    borders: TABLE_BORDERS
+  })
+}
+
+const bulletList = (items = []) =>
+  items
+    .filter(Boolean)
+    .map(
+      (text) =>
+        new Paragraph({
+          children: [t('•', { size: 20, color: MAERSK_BLUE, bold: true }), t(`  ${text}`, { size: 20, color: '111111' })],
+          indent: { left: 320, hanging: 220 },
+          spacing: { after: 60 }
+        })
+    )
+
+const checklistItem = (label, checked = false) =>
+  new Paragraph({
+    children: [
+      t(checked ? '☑' : '☐', { size: 20, color: MAERSK_BLUE, bold: true }),
+      t(`  ${label}`, { size: 20, color: '111111' })
+    ],
+    indent: { left: 320, hanging: 220 },
+    spacing: { after: 50 }
+  })
+
+const dataTable = (headers = [], rows = []) => {
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: headers.map(
+      (text) =>
+        new TableCell({
+          children: [
+            new Paragraph({
+              children: [t(text, { bold: true, size: 20, color: 'FFFFFF' })],
+              alignment: AlignmentType.LEFT
+            })
+          ],
+          verticalAlign: VerticalAlign.CENTER,
+          shading: { type: ShadingType.SOLID, color: DARK_BLUE },
+          margins: { top: 100, bottom: 100, left: 140, right: 140 }
+        })
+    )
+  })
+
+  const bodyRows = rows.map(
+    (cells, index) =>
+      new TableRow({
+        children: cells.map(
+          (value) =>
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [t(value || '—', { size: 20, color: '111111' })],
+                  alignment: AlignmentType.LEFT
+                })
+              ],
+              verticalAlign: VerticalAlign.CENTER,
+              shading: index % 2 === 1 ? { type: ShadingType.SOLID, color: LIGHT_GREY } : undefined,
+              margins: { top: 100, bottom: 100, left: 140, right: 140 }
+            })
+        )
+      })
+  )
+
+  return new Table({
+    rows: [headerRow, ...bodyRows],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: TABLE_BORDERS
   })
 }
 
@@ -189,31 +271,91 @@ const loadMaerskLogoData = async () => {
 
 const listToText = (values) => (Array.isArray(values) ? values.filter(Boolean).join(', ') : '') || '—'
 
-const makeContextDefinition = (project) => {
+// Key Drivers checklist has no dedicated intake field — rendered unchecked, matching the template.
+const KEY_DRIVER_OPTIONS = [
+  'Cost Optimization',
+  'Capacity Constraints',
+  'Business Continuity',
+  'Vendor Dependency Reduction',
+  'Standardization',
+  'Service Improvement',
+  'New Capability Requirement',
+  'Other'
+]
+
+const DEFAULT_RISK_ROWS = [
+  ['Knowledge transfer dependency', ''],
+  ['Attrition during transition', ''],
+  ['Hiring challenges', ''],
+  ['System/process complexity', ''],
+  ['Business disruption risk', '']
+]
+
+const resolveLocationStrategies = (project) =>
+  listToText(
+    project.locationStrategyCustom ? project.customLocationStrategies : project.defaultLocationStrategies
+  )
+
+const makePurposeOfRequest = (project) => {
   const scope = project.proposedScope || 'the defined migration scope'
+  const currentLocation = listToText(project.countries)
+  const futureLocation = resolveLocationStrategies(project)
   return (
-    `This business case defines the migration intent for ${project.projectName || 'the project'} ` +
-    `(${project.migrationRequestId || 'N/A'}). It outlines why the initiative is needed, the operating context, ` +
-    `the role and delivery setup, key risks, and the expected outcome. The primary scope covers ${scope}.`
+    `This business case seeks approval to migrate ${scope} from ${currentLocation} to ${futureLocation}. ` +
+    `The migration includes ${project.fteNumber || 'N/A'} FTE supporting ${project.function || 'the'} function ` +
+    `and is expected to improve operational resilience, scalability, and cost efficiency.`
   )
 }
 
-const makeBackground = (project, preparedDate) => {
-  return (
-    `The request was submitted by ${project.requestor || 'N/A'} on ${project.requestedDate || preparedDate}. ` +
-    `It is categorized as "${project.migrationType || 'N/A'}" for the ${project.function || 'N/A'} function, ` +
-    `covering ${listToText(project.products)} in region ${project.region || 'N/A'}. ` +
-    `Areas in scope: ${listToText(project.areas)}. Countries in scope: ${listToText(project.countries)}.`
-  )
+const makeCurrentStateRows = (project) => [
+  ['Current operating model', `${project.migrationType || 'N/A'} for the ${project.function || 'N/A'} function.`],
+  ['Current ownership/location', `${listToText(project.areas)} (${listToText(project.countries)})`],
+  ['Existing challenges', project.risks || 'No specific challenges recorded in the intake submission.'],
+  [
+    'Why change is required now',
+    `Requested by ${project.requestor || 'N/A'} on ${project.requestedDate || '—'}, ` +
+      `currently in "${(project.status || 'new').replace(/_/g, ' ')}" status.`
+  ]
+]
+
+const makeScopeRows = (project) => {
+  const currentLocation = listToText(project.countries)
+  const futureLocation = resolveLocationStrategies(project)
+  const products = (project.products || []).filter(Boolean)
+
+  if (!products.length) {
+    return [[project.proposedScope || '—', currentLocation, futureLocation, project.fteNumber || '—']]
+  }
+
+  const rows = products.map((product) => [product, currentLocation, futureLocation, ''])
+  rows.push(['Total', '', '', project.fteNumber || '—'])
+  return rows
 }
 
-const makeSummary = (project) => {
+const makeRiskRows = (project) => {
+  const items = (project.risks || '')
+    .split(/\r?\n|;/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+  if (!items.length) return DEFAULT_RISK_ROWS
+  return items.map((item) => [item, ''])
+}
+
+const makeAssumptions = (project) => [
+  project.migrationTypeValue === '1:1-transfer'
+    ? 'Migration follows a 1:1 FTE transfer model.'
+    : 'Migration follows a new/additional scope resourcing model.',
+  'Required systems access can be provisioned on time.',
+  'Business SMEs will support knowledge transfer.',
+  'Hiring timelines are achievable.'
+]
+
+const makeRecommendation = (project) => {
   const status = (project.status || 'new').replace(/_/g, ' ')
-  const fte = project.fteNumber || 'N/A'
   return (
-    `In summary, this initiative is currently in "${status}" status with an estimated ${fte} FTE in scope. ` +
-    `The business case confirms the migration direction, identifies operational risks, and supports execution readiness ` +
-    `for the next governance decision gate.`
+    `Based on the expected operational, strategic, and financial benefits, approval is requested to proceed with ` +
+    `the proposed migration of ${project.projectName || 'this project'} (${project.migrationRequestId || 'N/A'}), ` +
+    `currently in "${status}" status with ${project.fteNumber || 'N/A'} FTE in scope.`
   )
 }
 
@@ -226,25 +368,7 @@ export async function generateBusinessCaseDocx(project) {
     year: 'numeric'
   })
 
-  const areas = listToText(project.areas)
-  const countries = listToText(project.countries)
-  const products = listToText(project.products)
-  const languages = listToText(project.languageDependencies)
-  const locationStrategies = (
-    project.locationStrategyCustom
-      ? project.customLocationStrategies ?? []
-      : project.defaultLocationStrategies ?? []
-  ).join(', ') || '—'
-
-  const roleOverviewRows = [
-    ['Requestor', project.requestor || '—'],
-    ['Function', project.function || '—'],
-    ['Region', project.region || '—'],
-    ['Products', products],
-    ['Location Strategy', locationStrategies],
-    ['Language Dependencies', languages],
-    ['Workforce Snapshot', `FTE: ${project.fteNumber || '—'} | JL2: ${project.jl2 || '—'} | JL3: ${project.jl3 || '—'} | JL4: ${project.jl4 || '—'}`]
-  ]
+  const locationStrategies = resolveLocationStrategies(project)
 
   const doc = new Document({
     numbering: undefined,
@@ -282,6 +406,7 @@ export async function generateBusinessCaseDocx(project) {
               new Paragraph({
                 children: [
                   new ImageRun({
+                    type: 'png',
                     data: logoData,
                     transformation: { width: 211, height: 73 }
                   })
@@ -322,94 +447,115 @@ export async function generateBusinessCaseDocx(project) {
           // ── Cover block ──────────────────────────────────────────────
           new Paragraph({
             children: [
-              t('Business Case Memo', { bold: true, size: 36, color: DARK_BLUE })
+              t('Migration Business Case', { bold: true, size: 40, color: DARK_BLUE })
             ],
             alignment: AlignmentType.LEFT,
             spacing: { before: 0, after: 80 }
           }),
           new Paragraph({
             children: [
-              t(project.projectName || 'Untitled Project', { bold: true, size: 30, color: MAERSK_BLUE })
+              t(project.projectName || 'Untitled Project', { bold: true, size: 28, color: MAERSK_BLUE })
             ],
             alignment: AlignmentType.LEFT,
-            spacing: { after: 80 }
+            spacing: { after: 60 }
           }),
-          new Paragraph({
-            children: [
-              t(`${project.migrationRequestId}  ·  `, { size: 20, color: '757575' }),
-              t(`Prepared: ${today}`, { size: 20, color: TEXT_GREY })
-            ],
-            spacing: { after: 240 }
-          }),
-
           new Paragraph({
             children: [
               t('Prepared for internal migration governance and decision support.', {
-                size: 19,
+                size: 18,
                 italics: true,
                 color: TEXT_GREY
               })
             ],
-            spacing: { after: 150 }
+            spacing: { after: 180 }
           }),
 
           hr(),
 
-          // ── 1. Definition ─────────────────────────────────────────────
-          sectionTitle('1. Definition'),
-          bodyText(makeContextDefinition(project)),
+          // ── To / From / Date / Ref ───────────────────────────────────
+          spacer(140),
+          labelValue('To', 'Migration Governance Committee'),
+          labelValue('From', project.requestor),
+          labelValue('Date', today),
+          labelValue('Ref', project.migrationRequestId),
+          spacer(100),
 
-          // ── 2. Background ─────────────────────────────────────────────
-          sectionTitle('2. Background'),
-          bodyText(makeBackground(project, today)),
-          labelValue('Migration Request ID', project.migrationRequestId),
-          labelValue('Requested Date', project.requestedDate || today),
-          labelValue('Requestor', project.requestor),
-          labelValue('Current Status', (project.status || '—').replace(/_/g, ' ')),
-          labelValue('Migration Type', project.migrationType),
-          labelValue('Region', project.region),
-          labelValue('Areas', areas),
-          labelValue('Countries', countries),
-          spacer(80),
+          hr(),
 
-          // ── 3. Role Overview ──────────────────────────────────────────
-          sectionTitle('3. Role Overview'),
-          kvTable(roleOverviewRows),
+          // ── 1. Purpose of Request ────────────────────────────────────
+          sectionTitle('1. Purpose of Request'),
+          bodyText(makePurposeOfRequest(project)),
+
+          // ── 2. Background & Business Need ────────────────────────────
+          sectionTitle('2. Background & Business Need'),
+          subTitle('Current State'),
+          kvTable(makeCurrentStateRows(project)),
+          spacer(100),
+
+          subTitle('Key Drivers'),
+          bodyText('Check all that apply:'),
+          ...KEY_DRIVER_OPTIONS.map((driver) => checklistItem(driver)),
           spacer(90),
 
-          new Paragraph({
-            children: [t('Scope Description', { bold: true, size: 20, color: DARK_BLUE })],
-            spacing: { after: 40 }
-          }),
-          bodyText(project.proposedScope),
+          // ── 3. Proposed Scope ─────────────────────────────────────────
+          sectionTitle('3. Proposed Scope'),
+          subTitle('Activities in Scope'),
+          dataTable(['Process / Activity', 'Current Location', 'Future Location', 'FTE'], makeScopeRows(project)),
+          spacer(100),
 
-          // ── 4. Risks & Considerations ────────────────────────────────
-          sectionTitle('4. Risks & Considerations'),
-          new Paragraph({
-            children: [t('Risks', { bold: true, size: 20, color: DARK_BLUE })],
-            spacing: { after: 40 }
-          }),
-          bodyText(project.risks || 'No specific risks were provided in the intake submission.'),
+          subTitle('Migration Approach'),
+          labelValue('Wave approach', 'To be determined based on the migration plan.'),
+          labelValue('Proposed timeline', 'Refer to the project Gantt plan for the detailed schedule.'),
+          labelValue('Knowledge transfer approach', 'To be defined with the receiving GSC site.'),
+          spacer(90),
 
-          new Paragraph({
-            children: [t('Considerations', { bold: true, size: 20, color: DARK_BLUE })],
-            spacing: { after: 40 }
-          }),
-          bodyText(
-            `Location strategy: ${locationStrategies}. Language dependency: ${languages}. ` +
-            `Workforce distribution (JL2/JL3/JL4): ${project.jl2 || '—'}/${project.jl3 || '—'}/${project.jl4 || '—'} ` +
-            `with total ${project.jobLevelTotal ?? '—'}.`
-          ),
+          // ── 4. Expected Benefits ──────────────────────────────────────
+          sectionTitle('4. Expected Benefits'),
+          subTitle('Strategic Benefits'),
+          ...bulletList([
+            `Alignment with GSC strategy: ${locationStrategies}`,
+            'Improved business continuity',
+            'Reduced vendor dependency',
+            'Better standardization and governance',
+            'Greater scalability'
+          ]),
           spacer(80),
 
-          // ── 5. Summary ────────────────────────────────────────────────
-          sectionTitle('5. Summary'),
-          bodyText(makeSummary(project)),
+          subTitle('Operational Benefits'),
+          ...bulletList([
+            'Process improvements',
+            'Improved service levels',
+            'Enhanced capability coverage',
+            'Future automation opportunities'
+          ]),
+          spacer(80),
 
-          // ── 6. Appendix ───────────────────────────────────────────────
-          sectionTitle('6. Appendix'),
-          bodyText(''),
-          spacer(160),
+          subTitle('Financial Benefits'),
+          dataTable(
+            ['Item', 'Annual Impact'],
+            [
+              ['Current Cost', '—'],
+              ['Future Cost', '—'],
+              ['Savings / Cost Avoidance', '—'],
+              ['One-Time Costs', '—'],
+              ['Break-Even (if applicable)', '—']
+            ]
+          ),
+          spacer(90),
+
+          // ── 5. Risks & Considerations ─────────────────────────────────
+          sectionTitle('5. Risks & Considerations'),
+          dataTable(['Risk / Consideration', 'Mitigation'], makeRiskRows(project)),
+          spacer(90),
+
+          // ── 6. Assumptions ─────────────────────────────────────────────
+          sectionTitle('6. Assumptions'),
+          ...bulletList(makeAssumptions(project)),
+          spacer(90),
+
+          // ── 7. Recommendation ─────────────────────────────────────────
+          sectionTitle('7. Recommendation'),
+          bodyText(makeRecommendation(project)),
 
           hr(),
           new Paragraph({

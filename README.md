@@ -81,7 +81,7 @@ apply any migrations that came with it:
 
 ```cmd
 cd /d "c:\fcous\AE WPM Demo\backend"
-python manage.py migrate
+
 ```
 
 To rebuild the database from scratch, delete `db.sqlite3` and reload the
