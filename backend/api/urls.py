@@ -14,6 +14,7 @@ urlpatterns = [
     path("service-catalogue/", include("api.routes.service_catalogue")),
     path("working-hours/", include("api.routes.working_hours")),
     path("migration-intake-submissions/", include("api.routes.migration_intake_submissions")),
+    path("approval-workflow/", include("api.routes.approval_workflow")),
     path("project-attributes-access/", include("api.routes.project_attributes_access")),
     path("project-gantt-attributes/", include("api.routes.project_gantt_attributes")),
 ]

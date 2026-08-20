@@ -11,6 +11,7 @@ import GscSiteMapping from '../views/GscSiteMapping.vue'
 import ServiceCatalogue from '../views/ServiceCatalogue.vue'
 import WorkingHours from '../views/WorkingHours.vue'
 import MigrationIntakeSubmissions from '../views/MigrationIntakeSubmissions.vue'
+import ApprovalWorkflow from '../views/ApprovalWorkflow.vue'
 import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
 import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
@@ -28,6 +29,7 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/service-catalogue': 'service_catalogue',
   '/working-hours': 'working_hours',
   '/migration-intake-submissions': 'migration_intake',
+  '/approval-workflow': 'approval_workflow',
   '/project-gantt-attributes': 'project_gantt',
   '/attributes-access-control': 'access_control'
 }
@@ -75,6 +77,11 @@ const routes = [
     path: '/migration-intake-submissions',
     name: 'MigrationIntakeSubmissions',
     component: MigrationIntakeSubmissions
+  },
+  {
+    path: '/approval-workflow',
+    name: 'ApprovalWorkflow',
+    component: ApprovalWorkflow
   },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping },
   {

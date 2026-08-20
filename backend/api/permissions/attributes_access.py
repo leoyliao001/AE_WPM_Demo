@@ -16,6 +16,7 @@ TABLE_KEYS = (
     "working_hours",
     "project_gantt",
     "migration_intake",
+    "approval_workflow",
     "access_control",
 )
 
@@ -84,6 +85,7 @@ def build_access_snapshot(email: str) -> dict:
         "working_hours": is_super or bool(row.working_hours),
         "project_gantt": is_super or bool(row.project_gantt),
         "migration_intake": is_super or bool(row.migration_intake),
+        "approval_workflow": is_super or bool(row.approval_workflow),
         "access_control": is_super or bool(row.access_control),
     }
     return {

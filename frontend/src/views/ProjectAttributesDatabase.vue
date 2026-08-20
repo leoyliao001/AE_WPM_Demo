@@ -151,6 +151,17 @@ const allTables = [
     actionLabel: 'Open Migration Intake'
   },
   {
+    id: 'approval-workflow',
+    tableKey: 'approval_workflow',
+    title: 'Approval Workflow',
+    description:
+      'Area Head / PMO / BPM / FBP / WPM / GSC / ELT approval statuses — read-only, synced automatically.',
+    icon: 'mi-file-check',
+    accent: '#6DAA28',
+    route: '/approval-workflow',
+    actionLabel: 'View Approvals'
+  },
+  {
     id: 'project-gantt',
     tableKey: 'project_gantt',
     title: 'Project Gantt',

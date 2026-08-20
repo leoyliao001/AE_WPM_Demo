@@ -247,6 +247,7 @@ class ProjectAttributesAccess(models.Model):
     working_hours = models.BooleanField(default=False)
     project_gantt = models.BooleanField(default=False)
     migration_intake = models.BooleanField(default=False)
+    approval_workflow = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -258,6 +259,44 @@ class ProjectAttributesAccess(models.Model):
     def __str__(self):
         role = "super_admin" if self.is_super_admin else "user"
         return f"{self.email} ({role})"
+
+
+class ApprovalWorkflow(models.Model):
+    """Approval Workflow statuses — synced automatically; UI is read-only."""
+
+    migration_request_id = models.CharField(max_length=32, unique=True, db_index=True)
+    business_case_submitted_date = models.DateTimeField(null=True, blank=True)
+    area_head_approval_trigger_date = models.DateTimeField(null=True, blank=True)
+    area_head_comments = models.TextField(blank=True, default="")
+    area_head_final_date = models.DateTimeField(null=True, blank=True)
+    area_head_status = models.CharField(max_length=64, blank=True, default="")
+    pmo_review_comment = models.TextField(blank=True, default="")
+    pmo_review_date = models.DateTimeField(null=True, blank=True)
+    pmo_status = models.CharField(max_length=64, blank=True, default="")
+    bpm_budget_status = models.CharField(max_length=64, blank=True, default="")
+    bpm_comment = models.TextField(blank=True, default="")
+    bpm_review_date = models.DateTimeField(null=True, blank=True)
+    fbp_review_date = models.DateTimeField(null=True, blank=True)
+    fbp_comment = models.TextField(blank=True, default="")
+    fbp_status = models.CharField(max_length=64, blank=True, default="")
+    wpm_review_date = models.DateTimeField(null=True, blank=True)
+    wpm_review_comment = models.TextField(blank=True, default="")
+    wpm_review_status = models.CharField(max_length=64, blank=True, default="")
+    gsc_head_date = models.DateTimeField(null=True, blank=True)
+    gsc_head_comment = models.TextField(blank=True, default="")
+    gsc_head_status = models.CharField(max_length=64, blank=True, default="")
+    elt_date = models.DateTimeField(null=True, blank=True)
+    elt_comment = models.TextField(blank=True, default="")
+    elt_status = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "approval_workflow"
+        ordering = ["-updated_at", "id"]
+
+    def __str__(self):
+        return f"Approval Workflow — {self.migration_request_id}"
 
 
 class ProjectGanttPlan(models.Model):
