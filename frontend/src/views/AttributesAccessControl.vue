@@ -75,7 +75,7 @@
             <p>
               Manage who can open Project Attributes tables using SSO <strong>email</strong>.
               Set <strong>Super Admin (Y)</strong> to grant access to every table (including
-              Service Catalogue, Working Hours, and Project Gantt). Otherwise enable individual tables with Y/N. Edit rows, then click
+              Service Catalogue, Working Hours, Project Gantt, and Approval Workflow). Otherwise enable individual tables with Y/N. Edit rows, then click
               <strong>Save</strong>.
             </p>
           </section>
@@ -122,6 +122,7 @@ const YN_KEYS = new Set([
   'working_hours',
   'project_gantt',
   'migration_intake',
+  'approval_workflow',
   'access_control'
 ])
 
@@ -135,6 +136,7 @@ const ALL_COLUMNS = [
   { key: 'working_hours', label: 'Working Hours (Y/N)', width: 160 },
   { key: 'project_gantt', label: 'Project Gantt (Y/N)', width: 150 },
   { key: 'migration_intake', label: 'Migration Intake (Y/N)', width: 160 },
+  { key: 'approval_workflow', label: 'Approval Workflow (Y/N)', width: 180 },
   { key: 'access_control', label: 'Access Control (Y/N)', width: 160 }
 ]
 
