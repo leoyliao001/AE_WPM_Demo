@@ -2,11 +2,11 @@
   <header class="app-header">
     <mc-top-bar
       class="app-top-bar"
-      product="AE WPM Demo"
+      product="WPM Pulse"
       productshort="WPM"
       logosize="auto"
     >
-      <router-link slot="link" class="home-link" to="/" aria-label="AE WPM Demo home" />
+      <router-link slot="link" class="home-link" to="/" aria-label="WPM Pulse home" />
 
       <nav slot="actions" class="app-nav" aria-label="Main navigation">
         <router-link
