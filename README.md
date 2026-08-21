@@ -101,6 +101,14 @@ python manage.py loaddata scripts\api_data_dump.json
 >
 > Production does not use SQLite at all; the **AE_WPM** service runs against
 > MSSQL (see **Port policy**).
+>
+> On the server (MSSQL), after pulling code that includes new migration files,
+> run:
+>
+> ```cmd
+> cd /d "c:\fcous\AE WPM Demo\backend"
+> python manage.py migrate --database=default
+> ```
 
 ### 2. Frontend — install dependencies
 
