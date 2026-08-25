@@ -162,6 +162,17 @@ const allTables = [
     actionLabel: 'View Approvals'
   },
   {
+    id: 'input-for-approval',
+    tableKey: 'input_for_approval',
+    title: 'Input for Approval',
+    description:
+      'Activity Function / Product stakeholder email mapping — Area Head, PMO, BPM, FBP, WPM, ELT, GSC Head.',
+    icon: 'mi-envelope',
+    accent: '#9333EA',
+    route: '/input-for-approval',
+    actionLabel: 'Open Input for Approval'
+  },
+  {
     id: 'project-gantt',
     tableKey: 'project_gantt',
     title: 'Project Gantt',

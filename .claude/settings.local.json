@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//e/Apps/**)",
+      "Bash(echo \"NO E:\\\\\\\\Apps\\\\\\\\DEPLOYMENT.md\")",
+      "Bash(echo \"=== E:\\\\\\\\Apps ===\")"
+    ]
+  }
+}

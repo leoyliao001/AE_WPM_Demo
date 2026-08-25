@@ -11,7 +11,7 @@ from api.permissions.attributes_access import require_attributes_access
 ALL_FIELDS = [
     ("region", "Region"),
     ("area", "Area"),
-    ("migration_manager", "Migration Manager"),
+    ("migration_manager", "Migration Manager Email(s)"),
 ]
 
 
