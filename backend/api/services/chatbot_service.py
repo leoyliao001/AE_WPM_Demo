@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date
+from datetime import date, datetime
 
 from api.services import llm_service
 
@@ -23,6 +23,8 @@ _SCHEMA_PROMPT = """You are a database query assistant for Maersk's WPM (Work Pl
 Tables and key fields:
 - migration_intake_submission: migration_request_id, project_name, status, requestor, region, function_name, products, fte_number, jl2, jl3, jl4, risks, requested_date
 - opportunity_assessment: migration_request_id, product, owner, location, l1, l2, l3, l4, task_name, task_description, complexity, migratable_to_gsc, risks_related, gsc_site, area, training_time_needed, recommended_handoff_duration, task_frequency, volume_monthly
+- approval_workflow: migration_request_id, area_head_status, pmo_status, bpm_budget_status, fbp_status, wpm_review_status, gsc_head_status, elt_status, business_case_submitted_date, area_head_comments, pmo_review_comment, bpm_comment, fbp_comment, wpm_review_comment, gsc_head_comment, elt_comment
+- project_gantt_plan: migration_request_id, tasks (JSON list of {id, name, plan:{startWeek,endWeek}, actual, completedAt}), meta (JSON with phase, scope, FTE, HC totals)
 
 Extract query intent from the user's question. Your response must be ONLY a valid JSON object — no explanation, no markdown, no code block, just the raw JSON.
 
@@ -46,15 +48,26 @@ Use this exact structure:
     "l1__icontains": null,
     "l2__icontains": null,
     "task_name__icontains": null
-  }
+  },
+  "approval_filters": {
+    "area_head_status__icontains": null,
+    "pmo_status__icontains": null,
+    "bpm_budget_status__icontains": null,
+    "fbp_status__icontains": null,
+    "wpm_review_status__icontains": null,
+    "gsc_head_status__icontains": null,
+    "elt_status__icontains": null
+  },
+  "gantt_filters": {}
 }
 
 Rules:
-- "tables" must be a list containing "migration_intake_submission", "opportunity_assessment", or both.
+- "tables" must be a list containing any of: "migration_intake_submission", "opportunity_assessment", "approval_workflow", "project_gantt_plan".
 - Set filter values only when the user clearly references that field. Leave all others as null.
-- Use both tables when the question spans projects AND their tasks/assessments.
-- Use only "migration_intake_submission" for project-level questions (status, requestor, region, FTE, risks at project level).
-- Use only "opportunity_assessment" for task-level questions (complexity, specific tasks, handoff, training).
+- Use "approval_workflow" for questions about approval status, approvals, reviews, business case, ELT, PMO, BPM, FBP, WPM, GSC head, area head.
+- Use "project_gantt_plan" for questions about timelines, Gantt, schedule, tasks progress, start/end weeks, completion.
+- Use "migration_intake_submission" for project-level questions (status, requestor, region, FTE, risks at project level).
+- Use "opportunity_assessment" for task-level questions (complexity, specific tasks, handoff, training).
 - shared_filters.migration_request_id: set to the exact ID string if mentioned (e.g. "MR-2024-001")."""
 
 # Fields to strip from serialised DB rows (not useful for LLM context)
@@ -69,10 +82,12 @@ _FILTERED_CAP = 200
 
 
 _FALLBACK_SPEC = {
-    "tables": ["migration_intake_submission", "opportunity_assessment"],
+    "tables": ["migration_intake_submission", "opportunity_assessment", "approval_workflow", "project_gantt_plan"],
     "shared_filters": {},
     "intake_filters": {},
     "assessment_filters": {},
+    "approval_filters": {},
+    "gantt_filters": {},
 }
 
 
@@ -99,10 +114,12 @@ def extract_query_filters(question: str) -> dict:
     try:
         raw = llm_service.chat_completion(messages)
         spec = _parse_json_from_text(raw)
-        spec.setdefault("tables", ["migration_intake_submission", "opportunity_assessment"])
+        spec.setdefault("tables", ["migration_intake_submission", "opportunity_assessment", "approval_workflow", "project_gantt_plan"])
         spec.setdefault("shared_filters", {})
         spec.setdefault("intake_filters", {})
         spec.setdefault("assessment_filters", {})
+        spec.setdefault("approval_filters", {})
+        spec.setdefault("gantt_filters", {})
         return spec
     except Exception:
         return _FALLBACK_SPEC.copy()
@@ -115,20 +132,32 @@ def _clean_row(row: dict) -> dict:
             continue
         if v is None or v == "" or v == [] or v == {}:
             continue
+        # Convert datetime/date to ISO string for JSON serialisation
+        if isinstance(v, datetime):
+            v = v.isoformat()
+        elif isinstance(v, date):
+            v = v.isoformat()
         cleaned[k] = v
     return cleaned
 
 
 def fetch_data(filter_spec: dict) -> dict:
-    """Query MigrationIntakeSubmission and/or OpportunityAssessment using extracted filters."""
-    from api.models import MigrationIntakeSubmission, OpportunityAssessment
+    """Query configured tables using extracted filters."""
+    from api.models import ApprovalWorkflow, MigrationIntakeSubmission, OpportunityAssessment, ProjectGanttPlan
 
-    tables = filter_spec.get("tables", ["migration_intake_submission", "opportunity_assessment"])
+    tables = filter_spec.get("tables", ["migration_intake_submission", "opportunity_assessment", "approval_workflow", "project_gantt_plan"])
     shared = {k: v for k, v in filter_spec.get("shared_filters", {}).items() if v is not None}
     intake_f = {k: v for k, v in filter_spec.get("intake_filters", {}).items() if v is not None}
     assess_f = {k: v for k, v in filter_spec.get("assessment_filters", {}).items() if v is not None}
+    approval_f = {k: v for k, v in filter_spec.get("approval_filters", {}).items() if v is not None}
+    gantt_f = {k: v for k, v in filter_spec.get("gantt_filters", {}).items() if v is not None}
 
-    result: dict[str, list] = {"migration_intake": [], "opportunity_assessment": []}
+    result: dict[str, list] = {
+        "migration_intake": [],
+        "opportunity_assessment": [],
+        "approval_workflow": [],
+        "project_gantt_plan": [],
+    }
 
     if "migration_intake_submission" in tables:
         qs = MigrationIntakeSubmission.objects.all()
@@ -148,6 +177,24 @@ def fetch_data(filter_spec: dict) -> dict:
             qs = qs[:_UNFILTERED_CAP]
         result["opportunity_assessment"] = [_clean_row(r) for r in qs.values()]
 
+    if "approval_workflow" in tables:
+        qs = ApprovalWorkflow.objects.all()
+        combined = {**shared, **approval_f}
+        if combined:
+            qs = qs.filter(**combined)[:_FILTERED_CAP]
+        else:
+            qs = qs[:_UNFILTERED_CAP]
+        result["approval_workflow"] = [_clean_row(r) for r in qs.values()]
+
+    if "project_gantt_plan" in tables:
+        qs = ProjectGanttPlan.objects.all()
+        combined = {**shared, **gantt_f}
+        if combined:
+            qs = qs.filter(**combined)[:_FILTERED_CAP]
+        else:
+            qs = qs[:_UNFILTERED_CAP]
+        result["project_gantt_plan"] = [_clean_row(r) for r in qs.values()]
+
     return result
 
 
@@ -155,6 +202,8 @@ def generate_answer(question: str, history: list, data: dict) -> str:
     """Step 2: Ask the LLM to answer the question using the fetched DB records."""
     intake_count = len(data.get("migration_intake", []))
     assess_count = len(data.get("opportunity_assessment", []))
+    approval_count = len(data.get("approval_workflow", []))
+    gantt_count = len(data.get("project_gantt_plan", []))
     today = date.today().isoformat()
 
     system_context = (
@@ -168,7 +217,9 @@ def generate_answer(question: str, history: list, data: dict) -> str:
 
     data_context = (
         f"Database records — {intake_count} migration project(s), "
-        f"{assess_count} opportunity assessment task(s):\n"
+        f"{assess_count} opportunity assessment task(s), "
+        f"{approval_count} approval workflow record(s), "
+        f"{gantt_count} Gantt plan(s):\n"
         + json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     )
 
