@@ -5,6 +5,7 @@ Frontend page: /migration-intake
 """
 
 import logging
+import threading
 
 from django.db import IntegrityError
 from rest_framework import status
@@ -81,37 +82,34 @@ def submit_intake(request):
             status=status.HTTP_409_CONFLICT,
         )
 
-    email_sent = False
-    email_error = None
     signed_in_email = get_request_email(request)
-    try:
-        email_sent = send_migration_intake_notification(
-            submission,
-            signed_in_email=signed_in_email,
-        )
-    except Exception as exc:
-        logger.exception(
-            "Failed to send migration intake notification for %s",
-            submission.migration_request_id,
-        )
-        email_error = str(exc)
 
-    message = (
-        f"Migration request {submission.migration_request_id} "
-        "has been saved to the database."
-    )
-    if email_error:
-        message = f"{message} Email notification failed: {email_error}"
-    elif not email_sent:
-        message = f"{message} Email notification skipped: no recipients configured."
+    def _send_notification():
+        try:
+            send_migration_intake_notification(
+                submission,
+                signed_in_email=signed_in_email,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send migration intake notification for %s",
+                submission.migration_request_id,
+            )
+
+    thread = threading.Thread(target=_send_notification, daemon=True)
+    thread.start()
 
     return Response(
         {
             "ok": True,
             "id": submission.id,
             "migrationRequestId": submission.migration_request_id,
-            "emailSent": email_sent,
-            "message": message,
+            "emailSent": "queued",
+            "message": (
+                f"Migration request {submission.migration_request_id} "
+                "has been saved to the database. "
+                "Email notification is being sent in the background."
+            ),
         },
         status=status.HTTP_201_CREATED,
     )

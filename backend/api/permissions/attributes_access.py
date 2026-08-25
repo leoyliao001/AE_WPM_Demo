@@ -17,6 +17,7 @@ TABLE_KEYS = (
     "project_gantt",
     "migration_intake",
     "approval_workflow",
+    "input_for_approval",
     "access_control",
 )
 

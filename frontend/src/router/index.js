@@ -12,6 +12,7 @@ import ServiceCatalogue from '../views/ServiceCatalogue.vue'
 import WorkingHours from '../views/WorkingHours.vue'
 import MigrationIntakeSubmissions from '../views/MigrationIntakeSubmissions.vue'
 import ApprovalWorkflow from '../views/ApprovalWorkflow.vue'
+import ApprovalInput from '../views/ApprovalInput.vue'
 import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
 import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
@@ -30,6 +31,7 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/working-hours': 'working_hours',
   '/migration-intake-submissions': 'migration_intake',
   '/approval-workflow': 'approval_workflow',
+  '/input-for-approval': 'input_for_approval',
   '/project-gantt-attributes': 'project_gantt',
   '/attributes-access-control': 'access_control'
 }
@@ -82,6 +84,11 @@ const routes = [
     path: '/approval-workflow',
     name: 'ApprovalWorkflow',
     component: ApprovalWorkflow
+  },
+  {
+    path: '/input-for-approval',
+    name: 'ApprovalInput',
+    component: ApprovalInput
   },
   { path: '/fpo-mapping', name: 'FpoMapping', component: FpoMapping },
   {

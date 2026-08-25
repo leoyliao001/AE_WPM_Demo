@@ -1,7 +1,7 @@
 <template>
-  <div class="aac-page">
-    <div class="aac-page-inner">
-      <header class="aac-toolbar">
+  <div class="ai-page">
+    <div class="ai-page-inner">
+      <header class="ai-toolbar">
         <div class="toolbar-left">
           <router-link class="back-link" to="/project-attributes">
             <mc-button
@@ -12,8 +12,8 @@
               icon="mi-arrow-left"
             />
           </router-link>
-          <mc-tag appearance="info" fit="small" label="Access Control" />
-          <h1 class="page-title">Access Control</h1>
+          <mc-tag appearance="info" fit="small" label="Input for Approval" />
+          <h1 class="page-title">Input for Approval</h1>
           <span class="meta-pill">{{ rowCount }} rows</span>
           <button
             type="button"
@@ -22,7 +22,7 @@
           >
             How to use
           </button>
-          <span v-if="loading" class="meta-pill meta-pill--loading">Loading?</span>
+          <span v-if="loading" class="meta-pill meta-pill--loading">Loading…</span>
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
@@ -32,7 +32,7 @@
           <mc-button
             appearance="primary"
             fit="small"
-            :label="saving ? 'Saving?' : 'Save'"
+            :label="saving ? 'Saving…' : 'Save'"
             icon="mi-floppy-disk"
             :disabled="loading || saving || deleting || pendingCount === 0"
             :title="saving ? saveProgressMessage : 'Ctrl + S'"
@@ -52,11 +52,11 @@
 
       <div v-if="loading && !hotReady" class="table-loading">
         <mc-loading-indicator size="large" />
-        <span>Loading access control?</span>
+        <span>Loading input for approval…</span>
       </div>
 
       <div
-        id="aac-handsontable"
+        id="ai-handsontable"
         ref="hotContainer"
         class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
@@ -64,7 +64,7 @@
 
       <mc-dialog
         :open="helpDialogOpen"
-        heading="Access Control ? User Guide"
+        heading="Input for Approval — User Guide"
         dimension="medium"
         showclosebutton
         @closing="helpDialogOpen = false"
@@ -73,10 +73,10 @@
           <section class="help-section">
             <h3>What this table is for</h3>
             <p>
-              Manage who can open Project Attributes tables using SSO <strong>email</strong>.
-              Set <strong>Super Admin (Y)</strong> to grant access to every table (including
-              Service Catalogue, Working Hours, Project Gantt, and Approval Workflow). Otherwise enable individual tables with Y/N. Edit rows, then click
-              <strong>Save</strong>.
+              Maintain the mapping between <strong>Activity Function</strong>,
+              <strong>Product</strong>, and the stakeholder email addresses for each approval role
+              (Area Head, PMO, BPM, FBP, WPM, ELT, GSC Head). Edit cells, add or remove rows,
+              then click <strong>Save</strong>.
             </p>
           </section>
           <section class="help-section">
@@ -85,7 +85,7 @@
               <li>Edit any cell directly. Pending changes are tracked until you Save.</li>
               <li>Use the context menu to insert or remove rows.</li>
               <li>Press <strong>Ctrl + S</strong> (Cmd + S on Mac) to save.</li>
-              <li>Use column filters via the ? menu on each header.</li>
+              <li>Use column filters via the ⋮ menu on each header.</li>
             </ul>
           </section>
         </div>
@@ -110,40 +110,21 @@ import {
   persistColumnWidths,
   resolveColumnWidth
 } from '../utils/handsontableColumnWidths.js'
-import { clearAttributesAccessCache } from '../utils/attributesAccess.js'
-
-const YN_OPTIONS = ['Y', 'N']
-const YN_KEYS = new Set([
-  'is_super_admin',
-  'fpo_mapping',
-  'product_ownership',
-  'gsc_site_mapping',
-  'service_catalogue',
-  'working_hours',
-  'project_gantt',
-  'migration_intake',
-  'approval_workflow',
-  'input_for_approval',
-  'access_control'
-])
 
 const ALL_COLUMNS = [
-  { key: 'email', label: 'Email', width: 260 },
-  { key: 'is_super_admin', label: 'Super Admin (Y/N)', width: 140 },
-  { key: 'fpo_mapping', label: 'FPO Mapping (Y/N)', width: 150 },
-  { key: 'product_ownership', label: 'Product Ownership (Y/N)', width: 180 },
-  { key: 'gsc_site_mapping', label: 'GSC Site Mapping (Y/N)', width: 170 },
-  { key: 'service_catalogue', label: 'Service Catalogue (Y/N)', width: 170 },
-  { key: 'working_hours', label: 'Working Hours (Y/N)', width: 160 },
-  { key: 'project_gantt', label: 'Project Gantt (Y/N)', width: 150 },
-  { key: 'migration_intake', label: 'Migration Intake (Y/N)', width: 160 },
-  { key: 'approval_workflow', label: 'Approval Workflow (Y/N)', width: 180 },
-  { key: 'input_for_approval', label: 'Input for Approval (Y/N)', width: 200 },
-  { key: 'access_control', label: 'Access Control (Y/N)', width: 160 }
+  { key: 'activity_function', label: 'Activity Function', width: 220 },
+  { key: 'product',           label: 'Product',           width: 200 },
+  { key: 'area_head',         label: 'Area Head',         width: 220 },
+  { key: 'pmo',               label: 'PMO',               width: 220 },
+  { key: 'bpm',               label: 'BPM',               width: 220 },
+  { key: 'fbp',               label: 'FBP',               width: 220 },
+  { key: 'wpm',               label: 'WPM',               width: 220 },
+  { key: 'elt',               label: 'ELT',               width: 220 },
+  { key: 'gsc_head',          label: 'GSC Head',          width: 220 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
-const COLUMN_WIDTH_STORAGE_ID = 'project-attributes-access'
+const COLUMN_WIDTH_STORAGE_ID = 'input-for-approval'
 
 const hotContainer = ref(null)
 const hotInstance = shallowRef(null)
@@ -161,9 +142,7 @@ const pendingCount = computed(() => allChanges.value.length)
 
 function emptyRow() {
   const row = { id: null, _cid: crypto.randomUUID() }
-  ALL_KEYS.forEach((key) => {
-    row[key] = YN_KEYS.has(key) ? 'N' : ''
-  })
+  ALL_KEYS.forEach((key) => { row[key] = '' })
   return row
 }
 
@@ -173,7 +152,7 @@ function normalizeCellValue(value) {
 }
 
 function isBlankRow(item) {
-  return !normalizeCellValue(item.email)
+  return ALL_KEYS.every((key) => !normalizeCellValue(item[key]))
 }
 
 function trackChangedRow(hot, visualRow) {
@@ -186,13 +165,8 @@ function trackChangedRow(hot, visualRow) {
     src._cid = crypto.randomUUID()
   }
 
-  const snapshot = {
-    id: src.id ?? null,
-    _cid: src._cid
-  }
-  ALL_KEYS.forEach((key) => {
-    snapshot[key] = normalizeCellValue(src[key])
-  })
+  const snapshot = { id: src.id ?? null, _cid: src._cid }
+  ALL_KEYS.forEach((key) => { snapshot[key] = normalizeCellValue(src[key]) })
 
   const key = snapshot.id != null && snapshot.id !== '' ? `id:${snapshot.id}` : `cid:${snapshot._cid}`
   const next = allChanges.value.filter((item) => {
@@ -205,24 +179,11 @@ function trackChangedRow(hot, visualRow) {
 
 function buildColumns() {
   const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
-  return ALL_COLUMNS.map((col) => {
-    const width = resolveColumnWidth(col.width, col.key, storedWidths)
-    if (YN_KEYS.has(col.key)) {
-      return {
-        data: col.key,
-        type: 'dropdown',
-        strict: true,
-        allowInvalid: false,
-        source: YN_OPTIONS,
-        width
-      }
-    }
-    return {
-      data: col.key,
-      type: 'text',
-      width
-    }
-  })
+  return ALL_COLUMNS.map((col) => ({
+    data: col.key,
+    type: 'text',
+    width: resolveColumnWidth(col.width, col.key, storedWidths)
+  }))
 }
 
 function destroyHot() {
@@ -236,19 +197,15 @@ function destroyHot() {
 function syncTableHeight() {
   const el = hotContainer.value
   if (!el) return 480
-
   const wasHidden = el.classList.contains('is-hidden')
   if (wasHidden) el.classList.remove('is-hidden')
   el.style.height = ''
-
   void el.offsetHeight
   let height = Math.floor(el.clientHeight || 0)
-
   if (height < 280) {
     const top = el.getBoundingClientRect().top || 120
     height = Math.max(Math.floor(window.innerHeight - top - 24), 280)
   }
-
   height = Math.max(height - 2, 280)
   el.style.height = `${height}px`
   if (wasHidden) el.classList.add('is-hidden')
@@ -262,19 +219,13 @@ function initHot(rows) {
 
   const data = rows.map((r) => {
     const row = emptyRow()
-    ALL_KEYS.forEach((k) => {
-      row[k] = r[k] ?? ''
-    })
+    ALL_KEYS.forEach((k) => { row[k] = r[k] ?? '' })
     row.id = r.id ?? null
     return row
   })
-
-  for (let i = 0; i < 5; i += 1) {
-    data.push(emptyRow())
-  }
+  for (let i = 0; i < 5; i += 1) data.push(emptyRow())
 
   const tableHeight = syncTableHeight()
-  // Prefer saved widths over stretch-to-fill once the user has customized columns.
   const stretchH = hasStoredColumnWidths(COLUMN_WIDTH_STORAGE_ID) ? 'none' : 'all'
 
   const hot = new Handsontable(hotContainer.value, {
@@ -295,10 +246,7 @@ function initHot(rows) {
     filters: true,
     dropdownMenu: ['filter_by_condition', 'filter_by_value', 'filter_action_bar'],
     multiColumnSorting: true,
-    copyPaste: {
-      copyColumnHeaders: true,
-      copyColumnHeadersOnly: true
-    },
+    copyPaste: { copyColumnHeaders: true, copyColumnHeadersOnly: true },
     afterColumnResize() {
       persistColumnWidths(this, COLUMN_WIDTH_STORAGE_ID, ALL_KEYS)
       if (this.getSettings()?.stretchH !== 'none') {
@@ -313,24 +261,16 @@ function initHot(rows) {
         sp1: '---------',
         copy: {
           name: 'Copy',
-          callback() {
-            this.getPlugin('copyPaste')?.copyCellsOnly()
-          }
+          callback() { this.getPlugin('copyPaste')?.copyCellsOnly() }
         },
         copy_with_column_headers: {
           name: 'Copy with headers',
-          callback() {
-            this.getPlugin('copyPaste')?.copyWithColumnHeaders()
-          },
-          disabled() {
-            return !this.getSelectedLast()
-          }
+          callback() { this.getPlugin('copyPaste')?.copyWithColumnHeaders() },
+          disabled() { return !this.getSelectedLast() }
         },
         cut: {
           name: 'Cut',
-          callback() {
-            this.getPlugin('copyPaste')?.cut()
-          }
+          callback() { this.getPlugin('copyPaste')?.cut() }
         },
         sp2: '---------',
         undo: { name: 'Undo' },
@@ -344,41 +284,27 @@ function initHot(rows) {
     headerClassName: 'htLeft',
     afterChange(changes, source) {
       if (!changes || source === 'loadData' || source === 'api') return
-      if (!['edit', 'Autofill.fill', 'CopyPaste.paste', 'UndoRedo.undo', 'UndoRedo.redo'].includes(source)) {
-        return
-      }
+      if (!['edit', 'Autofill.fill', 'CopyPaste.paste', 'UndoRedo.undo', 'UndoRedo.redo'].includes(source)) return
       const touchedRows = new Set()
       changes.forEach(([visualRow]) => touchedRows.add(visualRow))
       touchedRows.forEach((visualRow) => trackChangedRow(this, visualRow))
     },
     beforeRemoveRow(index, amount, physicalRows) {
-      if (deleting.value) {
-        alert('Delete in progress, please wait?')
-        return false
-      }
-
+      if (deleting.value) { alert('Delete in progress, please wait…'); return false }
       const idsToRemove = []
       for (let i = 0; i < amount; i += 1) {
         const rowData = this.getSourceDataAtRow(physicalRows[i])
         const rowId = rowData?.id
-        if (rowId != null && rowId !== '') {
-          idsToRemove.push(rowId)
-        }
+        if (rowId != null && rowId !== '') idsToRemove.push(rowId)
       }
-
-      const confirmed = confirm(
-        'The rows will be deleted permanently and can not be restored. Continue?'
-      )
+      const confirmed = confirm('The rows will be deleted permanently and can not be restored. Continue?')
       if (!confirmed) return false
       if (idsToRemove.length === 0) return true
-
       void runDeleteRows(idsToRemove)
       return false
     },
     afterInit() {
-      requestAnimationFrame(() => {
-        if (!this.isDestroyed) this.refreshDimensions()
-      })
+      requestAnimationFrame(() => { if (!this.isDestroyed) this.refreshDimensions() })
     }
   })
 
@@ -395,10 +321,7 @@ function onResize() {
 
 async function saveData() {
   if (saving.value || deleting.value) return
-  if (allChanges.value.length === 0) {
-    alert('No changes to save.')
-    return
-  }
+  if (allChanges.value.length === 0) { alert('No changes to save.'); return }
 
   const deduped = new Map()
   allChanges.value.forEach((item) => {
@@ -410,22 +333,17 @@ async function saveData() {
     .filter((item) => !isBlankRow(item))
     .map((item) => {
       const payload = { id: item.id ?? null }
-      ALL_KEYS.forEach((k) => {
-        payload[k] = item[k] ?? ''
-      })
+      ALL_KEYS.forEach((k) => { payload[k] = item[k] ?? '' })
       return payload
     })
 
-  if (uniqueData.length === 0) {
-    alert('No valid rows to save.')
-    return
-  }
+  if (uniqueData.length === 0) { alert('No valid rows to save.'); return }
 
   saving.value = true
-  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)?`
+  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)…`
   error.value = ''
   try {
-    const { data } = await axios.post('/api/project-attributes-access/data/', { uniqueData })
+    const { data } = await axios.post('/api/input-for-approval/data/', { uniqueData })
     const created = data.created_count || 0
     const updated = data.updated_count || 0
     const errCount = data.error_count || 0
@@ -435,15 +353,10 @@ async function saveData() {
       alert(`Saved: created ${created}, updated ${updated}.`)
     }
     allChanges.value = []
-    clearAttributesAccessCache()
     await loadData()
   } catch (e) {
     console.error(e)
-    const msg =
-      e?.response?.data?.error ||
-      e?.response?.data?.detail ||
-      e.message ||
-      'Save failed'
+    const msg = e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Save failed'
     error.value = msg
     alert(`Save failed: ${msg}`)
   } finally {
@@ -457,7 +370,7 @@ async function runDeleteRows(idsToRemove) {
   deleting.value = true
   error.value = ''
   try {
-    const { data } = await axios.delete('/api/project-attributes-access/data/delete/', {
+    const { data } = await axios.delete('/api/input-for-approval/data/delete/', {
       data: { removedIds: idsToRemove }
     })
     const deletedCount = data.deleted_count || 0
@@ -471,11 +384,7 @@ async function runDeleteRows(idsToRemove) {
     await loadData()
   } catch (e) {
     console.error(e)
-    const msg =
-      e?.response?.data?.error ||
-      e?.response?.data?.detail ||
-      e.message ||
-      'Delete failed'
+    const msg = e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Delete failed'
     error.value = msg
     alert(`Delete failed: ${msg}`)
   } finally {
@@ -487,13 +396,13 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await axios.get('/api/project-attributes-access/')
-    rowCount.value = data.count || 0
+    const { data } = await axios.get('/api/input-for-approval/')
+    rowCount.value = (data.rows || []).length
     await nextTick()
     initHot(data.rows || [])
   } catch (e) {
     console.error(e)
-    error.value = e?.response?.data?.detail || e.message || 'Failed to load access control'
+    error.value = e?.response?.data?.detail || e.message || 'Failed to load input for approval'
     destroyHot()
   } finally {
     loading.value = false
@@ -512,173 +421,89 @@ function handleGlobalKeydown(event) {
 onMounted(() => {
   loadData()
   window.addEventListener('resize', onResize)
-  document.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('keydown', handleGlobalKeydown)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', onResize)
-  document.removeEventListener('keydown', handleGlobalKeydown)
   destroyHot()
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>
 
 <style scoped>
-.aac-page {
-  background: #f3f4f6;
-  box-sizing: border-box;
+.ai-page {
   display: flex;
-  flex: 1;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
-
-.aac-page-inner {
-  box-sizing: border-box;
+.ai-page-inner {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  margin: 0;
-  max-width: none;
+  height: 100%;
   min-height: 0;
-  padding: 10px 12px 12px;
-  width: 100%;
+  padding: 16px 24px 0;
+  overflow: hidden;
 }
-
-.aac-toolbar {
-  align-items: center;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+.ai-toolbar {
   display: flex;
-  flex-shrink: 0;
-  gap: 8px;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  min-height: 0;
-  padding: 4px 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
 }
-
 .toolbar-left,
 .toolbar-right {
-  align-items: center;
   display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
-  gap: 8px 10px;
 }
-
-.back-link {
-  display: inline-flex;
-  text-decoration: none;
-}
-
+.back-link { text-decoration: none; }
 .page-title {
-  color: #161616;
-  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a2b3c;
   margin: 0;
 }
-
 .meta-pill {
-  background: #f6f7f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  color: #425466;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
-}
-
-.meta-pill--help {
-  background: #eef6fb;
-  border-color: #b8d9eb;
-  color: #0077b8;
-  cursor: pointer;
-  font-family: 'Maersk Text', sans-serif;
-}
-
-.meta-pill--help:hover {
-  background: #dceef8;
-  border-color: #0077b8;
-}
-
-.meta-pill--loading {
-  color: #0077b8;
-}
-
-.meta-pill--error {
-  background: #fdecec;
-  border-color: #f5c2c2;
-  color: #c4000a;
-  max-width: 360px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meta-pill--pending {
-  background: #fff6e8;
-  border-color: #f5d5a6;
-  color: #b35c00;
-}
-
-.help-dialog-body {
-  color: #161616;
-  font-size: 14px;
-  line-height: 1.55;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.help-section {
-  margin-bottom: 20px;
-}
-
-.help-section:last-child {
-  margin-bottom: 0;
-}
-
-.help-section h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 8px;
-}
-
-.help-section p,
-.help-section ul {
-  margin: 0;
-}
-
-.help-section ul {
-  padding-left: 20px;
-}
-
-.table-loading {
+  display: inline-flex;
   align-items: center;
-  color: #6c757d;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e8ecf0;
+  color: #4a5568;
+  border: none;
+  cursor: default;
+}
+.meta-pill--help { cursor: pointer; }
+.meta-pill--help:hover { background: #d0d7e0; }
+.meta-pill--pending { background: #fff3cd; color: #856404; }
+.meta-pill--loading { background: #cce5ff; color: #004085; }
+.meta-pill--error { background: #f8d7da; color: #721c24; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-loading {
   display: flex;
-  flex: 1;
-  flex-direction: column;
+  align-items: center;
   gap: 12px;
-  justify-content: center;
-  min-height: 240px;
+  padding: 40px 0;
+  color: #6b7a8d;
 }
-
 .handsontable-host {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
   width: 100%;
+  overflow: hidden;
 }
-
-.handsontable-host.is-hidden {
-  display: none;
-}
+.handsontable-host.is-hidden { visibility: hidden; }
+.help-dialog-body { display: flex; flex-direction: column; gap: 16px; }
+.help-section h3 { margin: 0 0 8px; font-size: 15px; color: #00243d; }
+.help-section p,
+.help-section ul { margin: 0; font-size: 14px; color: #4a5568; line-height: 1.6; }
+.help-section ul { padding-left: 20px; }
+.help-section li { margin-bottom: 4px; }
 </style>

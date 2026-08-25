@@ -73,7 +73,9 @@ const databaseNavItem = {
     '/working-hours',
     '/migration-intake-submissions',
     '/project-gantt-attributes',
-    '/attributes-access-control'
+    '/attributes-access-control',
+    '/approval-workflow',
+    '/input-for-approval'
   ]
 }
 

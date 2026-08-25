@@ -11,7 +11,20 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import ssl
+import certifi
 from pathlib import Path
+
+# Patch urllib's default SSL context to use certifi's CA bundle.
+# This is needed because python-http-client (used by SendGrid) uses urllib,
+# which otherwise fails against the corporate proxy's GoDaddy-signed certs.
+_orig_create_default_context = ssl.create_default_context
+
+def _patched_create_default_context(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
+    kwargs.setdefault("cafile", certifi.where())
+    return _orig_create_default_context(purpose, **kwargs)
+
+ssl.create_default_context = _patched_create_default_context
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -186,22 +199,22 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Email (SendGrid SMTP)
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "smtp.sendgrid.net")
-EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
-EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "apikey")
-EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.environ.get("DJANGO_EMAIL_USE_TLS", "True").lower() in (
-    "1",
-    "true",
-    "yes",
+# Email — SendGrid HTTP API (avoids SMTP port 25/587 corporate firewall blocks).
+# Routes through corporate proxy at 10.0.11.1:9400 for outbound HTTPS.
+EMAIL_BACKEND = os.environ.get(
+    "DJANGO_EMAIL_BACKEND", "sendgrid_backend.SendgridBackend"
 )
-EMAIL_USE_SSL = os.environ.get("DJANGO_EMAIL_USE_SSL", "False").lower() in (
-    "1",
-    "true",
-    "yes",
+SENDGRID_API_KEY = os.environ.get(
+    "DJANGO_SENDGRID_API_KEY",
+    "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",
 )
+SENDGRID_SANDBOX_MODE_IN_DEBUG = False
+
+# Corporate proxy for outbound HTTPS (SendGrid API goes through this).
+_PROXY = os.environ.get("DJANGO_HTTPS_PROXY", "http://10.0.11.1:9400")
+if _PROXY:
+    os.environ.setdefault("HTTPS_PROXY", _PROXY)
+    os.environ.setdefault("https_proxy", _PROXY)
 
 # Sender must be a verified sender in SendGrid.
 DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "noreply@maersk.com")

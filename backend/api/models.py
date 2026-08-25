@@ -146,12 +146,43 @@ class OpportunityAssessment(models.Model):
         return f"{self.migration_request_id} — {self.task_name or self.l4 or self.id}"
 
 
+class ApprovalInput(models.Model):
+    """Activity Function / Product approval stakeholder email mapping."""
+
+    activity_function = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    product = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    area_head = models.CharField(max_length=255, blank=True, default="", help_text="Area Head email(s).")
+    pmo = models.CharField(max_length=255, blank=True, default="", help_text="PMO email(s).")
+    bpm = models.CharField(max_length=255, blank=True, default="", help_text="BPM email(s).")
+    fbp = models.CharField(max_length=255, blank=True, default="", help_text="FBP email(s).")
+    wpm = models.CharField(max_length=255, blank=True, default="", help_text="WPM email(s).")
+    elt = models.CharField(max_length=255, blank=True, default="", help_text="ELT email(s).")
+    gsc_head = models.CharField(max_length=255, blank=True, default="", help_text="GSC Head email(s).")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "approval_input"
+        ordering = ["activity_function", "product"]
+        indexes = [
+            models.Index(fields=["activity_function", "product"], name="approval_in_act_fun_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.activity_function} / {self.product}"
+
+
 class ProductOwnership(models.Model):
     """Region / Area / Migration Manager ownership mapping."""
 
     region = models.CharField(max_length=16, blank=True, default="", db_index=True)
     area = models.CharField(max_length=32, blank=True, default="", db_index=True)
-    migration_manager = models.CharField(max_length=128, blank=True, default="")
+    migration_manager = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Email address(es) of the migration manager(s). Comma-separate multiple emails.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -248,6 +279,7 @@ class ProjectAttributesAccess(models.Model):
     project_gantt = models.BooleanField(default=False)
     migration_intake = models.BooleanField(default=False)
     approval_workflow = models.BooleanField(default=False)
+    input_for_approval = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
