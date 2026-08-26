@@ -19,6 +19,8 @@ import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 import ProjectGantt from '../views/ProjectGantt.vue'
 import ProjectGanttAttributes from '../views/ProjectGanttAttributes.vue'
 import ApprovalCycle from '../views/ApprovalCycle.vue'
+import BusinessCase from '../views/BusinessCase.vue'
+import ApprovalFinalReview from '../views/ApprovalFinalReview.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -62,6 +64,11 @@ const routes = [
     name: 'ProjectGantt',
     component: ProjectGantt
   },
+  {
+    path: '/migration-dashboard/:id/business-case',
+    name: 'BusinessCase',
+    component: BusinessCase
+  },
   { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
   // Project: current user's submitted projects only (?mine=1)
   { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
@@ -102,7 +109,12 @@ const routes = [
     name: 'AttributesAccessControl',
     component: AttributesAccessControl
   },
-  { path: '/approval-cycle', name: 'ApprovalCycle', component: ApprovalCycle }
+  { path: '/approval-cycle', name: 'ApprovalCycle', component: ApprovalCycle },
+  {
+    path: '/approval-cycle/review/:migrationRequestId/:role',
+    name: 'ApprovalFinalReview',
+    component: ApprovalFinalReview
+  }
 ]
 
 const router = createRouter({

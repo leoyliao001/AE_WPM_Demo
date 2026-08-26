@@ -47,4 +47,27 @@ def roles_for(email: str, function_name: str, products, rows=None) -> set:
     return roles
 
 
-__all__ = ["ROLE_FIELDS", "get_request_email", "load_approval_input_rows", "roles_for"]
+def recipients_for_role(role: str, function_name: str, products, rows=None) -> list[str]:
+    """Return unique configured approver emails for one function/product role."""
+    if role not in ROLE_FIELDS:
+        return []
+    function_key = (function_name or "").strip().lower()
+    product_keys = {str(product).strip().lower() for product in (products or []) if str(product).strip()}
+    rows = load_approval_input_rows() if rows is None else rows
+    recipients = set()
+    for row in rows:
+        if (row.activity_function or "").strip().lower() != function_key:
+            continue
+        if product_keys and (row.product or "").strip().lower() not in product_keys:
+            continue
+        recipients.update(_split_emails(getattr(row, role, "")))
+    return sorted(recipients)
+
+
+__all__ = [
+    "ROLE_FIELDS",
+    "get_request_email",
+    "load_approval_input_rows",
+    "recipients_for_role",
+    "roles_for",
+]
