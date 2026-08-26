@@ -40,6 +40,9 @@ backend/scripts/*_log.txt
 !.env.example
 *.local
 
+# npm registry auth (never commit)
+.npmrc
+
 # IDE
 .idea/
 .vscode/

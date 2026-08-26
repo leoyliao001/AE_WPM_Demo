@@ -18,6 +18,7 @@ import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 import ProjectGantt from '../views/ProjectGantt.vue'
 import ProjectGanttAttributes from '../views/ProjectGanttAttributes.vue'
+import ApprovalCycle from '../views/ApprovalCycle.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -100,7 +101,8 @@ const routes = [
     path: '/attributes-access-control',
     name: 'AttributesAccessControl',
     component: AttributesAccessControl
-  }
+  },
+  { path: '/approval-cycle', name: 'ApprovalCycle', component: ApprovalCycle }
 ]
 
 const router = createRouter({

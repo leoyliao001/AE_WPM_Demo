@@ -338,6 +338,9 @@ const milestoneCardBody = (item) => {
   if (item.id === 'business_case') {
     return 'Download a Word document summary of this project\'s business case.'
   }
+  if (item.id === 'approvals') {
+    return 'Open the GSC opportunity approval inbox and request details.'
+  }
   if (item.state === 'complete') return 'Milestone completed for this project.'
   if (item.state === 'active') return 'Currently up to date — review artifacts and owners.'
   if (item.state === 'at_risk') return 'Needs attention — review blockers and recovery plan.'
@@ -361,6 +364,10 @@ const onMilestoneClick = (item) => {
   }
   if (item.id === 'gantt') {
     router.push(`/migration-dashboard/${route.params.id}/gantt`)
+    return
+  }
+  if (item.id === 'approvals') {
+    router.push('/approval-cycle')
     return
   }
   if (item.id === 'business_case') {
