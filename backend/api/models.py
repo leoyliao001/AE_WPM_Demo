@@ -306,6 +306,7 @@ class ApprovalWorkflow(models.Model):
     pmo_review_date = models.DateTimeField(null=True, blank=True)
     pmo_status = models.CharField(max_length=64, blank=True, default="")
     bpm_budget_status = models.CharField(max_length=64, blank=True, default="")
+    bpm_status = models.CharField(max_length=64, blank=True, default="")
     bpm_comment = models.TextField(blank=True, default="")
     bpm_review_date = models.DateTimeField(null=True, blank=True)
     fbp_review_date = models.DateTimeField(null=True, blank=True)
