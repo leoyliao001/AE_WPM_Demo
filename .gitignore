@@ -54,3 +54,4 @@ Thumbs.db
 
 # Local CA bundle (generated from corporate cert, do not commit)
 combined-ca.pem
+backend/db.sqlite3
