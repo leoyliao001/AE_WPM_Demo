@@ -10,26 +10,41 @@ approver email per role).
 
 from __future__ import annotations
 
+import logging
+import threading
+
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import ApprovalWorkflow, MigrationIntakeSubmission
-from api.permissions.approval_access import get_request_email, load_approval_input_rows, roles_for
+from api.permissions.approval_access import (
+    get_request_email,
+    load_approval_input_rows,
+    recipients_for_role,
+    roles_for,
+)
+from api.services.approval_notifications import (
+    send_next_stage_notification,
+    send_return_notification,
+)
+
+logger = logging.getLogger(__name__)
 
 SEQUENTIAL_ROLES = ["area_head", "pmo", "bpm"]
 PARALLEL_ROLES = ["elt", "gsc_head"]
-ALL_ROLES = SEQUENTIAL_ROLES + ["fbp"] + PARALLEL_ROLES
+ALL_ROLES = SEQUENTIAL_ROLES + ["fbp", "wpm"] + PARALLEL_ROLES
 VALID_ACTIONS = {"approved", "rejected", "returned", "delegated", "reassigned"}
 
 ROLE_FIELD_MAP = {
-    "area_head": {"status": "area_head_status", "comment": "area_head_comments", "date": "area_head_final_date"},
-    "pmo": {"status": "pmo_status", "comment": "pmo_review_comment", "date": "pmo_review_date"},
-    "bpm": {"status": "bpm_status", "comment": "bpm_comment", "date": "bpm_review_date"},
-    "fbp": {"status": "fbp_status", "comment": "fbp_comment", "date": "fbp_review_date"},
-    "elt": {"status": "elt_status", "comment": "elt_comment", "date": "elt_date"},
-    "gsc_head": {"status": "gsc_head_status", "comment": "gsc_head_comment", "date": "gsc_head_date"},
+    "area_head": {"status": "area_head_status", "comment": "area_head_comments", "date": "area_head_final_date", "approver": "area_head_approved_by"},
+    "pmo": {"status": "pmo_status", "comment": "pmo_review_comment", "date": "pmo_review_date", "approver": "pmo_approved_by"},
+    "bpm": {"status": "bpm_status", "comment": "bpm_comment", "date": "bpm_review_date", "approver": "bpm_approved_by"},
+    "fbp": {"status": "fbp_status", "comment": "fbp_comment", "date": "fbp_review_date", "approver": "fbp_approved_by"},
+    "wpm": {"status": "wpm_review_status", "comment": "wpm_review_comment", "date": "wpm_review_date", "approver": "wpm_approved_by"},
+    "elt": {"status": "elt_status", "comment": "elt_comment", "date": "elt_date", "approver": "elt_approved_by"},
+    "gsc_head": {"status": "gsc_head_status", "comment": "gsc_head_comment", "date": "gsc_head_date", "approver": "gsc_head_approved_by"},
 }
 
 
@@ -41,8 +56,11 @@ class _EmptyWorkflow:
 
 
 def _progress(workflow) -> dict:
-    beyond_budget = (getattr(workflow, "bpm_budget_status", "") or "") == "beyond"
-    seq_roles = SEQUENTIAL_ROLES + (["fbp"] if beyond_budget else [])
+    budget_status = (getattr(workflow, "bpm_budget_status", "") or "").strip().lower()
+    if budget_status not in {"within", "beyond"}:
+        budget_status = "pending"
+    beyond_budget = budget_status == "beyond"
+    seq_roles = SEQUENTIAL_ROLES + (["fbp"] if beyond_budget else []) + ["wpm"]
     seq_len = len(seq_roles)
 
     step = seq_len + 1
@@ -58,6 +76,7 @@ def _progress(workflow) -> dict:
     return {
         "step": step,
         "seqLen": seq_len,
+        "budgetStatus": budget_status,
         "beyondBudget": beyond_budget,
         "seqRoles": seq_roles,
         "parallel": parallel,
@@ -75,14 +94,61 @@ def _is_actionable(progress: dict, my_roles: set) -> bool:
     role = _current_role(progress)
     if role:
         return role in my_roles
-    return any(r in my_roles and progress["parallel"][r] == "pending" for r in PARALLEL_ROLES)
+    return any(
+        role in my_roles and progress["parallel"][role] in {"pending", "returned"}
+        for role in PARALLEL_ROLES
+    )
+
+
+def _previous_role(progress: dict, role: str) -> str | None:
+    if role in PARALLEL_ROLES:
+        return "wpm"
+    seq_roles = progress["seqRoles"]
+    try:
+        index = seq_roles.index(role)
+    except ValueError:
+        return None
+    return seq_roles[index - 1] if index > 0 else None
+
+
+def _notify_return_owner(submission, role: str, comment: str, approval_rows) -> None:
+    def send():
+        try:
+            send_return_notification(submission, role, comment, approval_rows)
+        except Exception:
+            logger.exception("Failed to notify returned %s approver(s) for %s", role, submission.migration_request_id)
+
+    threading.Thread(target=send, daemon=True).start()
+
+
+def _notify_next_approvers(submission, progress: dict, approval_rows, completed_role: str) -> None:
+    next_role = _current_role(progress)
+    if next_role:
+        next_roles = [next_role]
+    elif completed_role == "wpm":
+        next_roles = [role for role in PARALLEL_ROLES if progress["parallel"][role] == "pending"]
+    else:
+        next_roles = []
+
+    for role in next_roles:
+        def send(role_to_notify=role):
+            try:
+                send_next_stage_notification(submission, role_to_notify, approval_rows)
+            except Exception:
+                logger.exception(
+                    "Failed to notify %s approver(s) for %s",
+                    role_to_notify,
+                    submission.migration_request_id,
+                )
+
+        threading.Thread(target=send, daemon=True).start()
 
 
 def _join_list(values) -> list:
     return [str(v).strip() for v in values if str(v or "").strip()] if isinstance(values, list) else []
 
 
-def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: dict, my_roles: set) -> dict:
+def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: dict, my_roles: set, approval_rows) -> dict:
     return {
         "migration_request_id": submission.migration_request_id,
         "project_name": submission.project_name,
@@ -101,19 +167,30 @@ def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: di
         "jl4": submission.jl4,
         "job_level_total": submission.job_level_total,
         "requested_date": submission.requested_date,
+        "businessCaseSubmittedAt": (
+            getattr(workflow, "business_case_submitted_date", None)
+            or submission.business_case_submission_date
+        ),
         "status": submission.status,
         "step": progress["step"],
         "totalSteps": progress["seqLen"] + len(PARALLEL_ROLES),
+        "budgetStatus": progress["budgetStatus"],
         "beyondBudget": progress["beyondBudget"],
         "currentRole": _current_role(progress),
         "parallel": {"elt": progress["parallel"]["elt"] or "pending", "gscHead": progress["parallel"]["gsc_head"] or "pending"},
         "completed": progress["completed"],
         "myRoles": sorted(my_roles),
         "actionable": _is_actionable(progress, my_roles),
+        "responsibleApprovers": {
+            role: recipients_for_role(role, submission.function_name, submission.products, approval_rows)
+            for role in ALL_ROLES
+        },
         "decisions": {
             role: {
                 "status": getattr(workflow, ROLE_FIELD_MAP[role]["status"], "") or "",
                 "comment": getattr(workflow, ROLE_FIELD_MAP[role]["comment"], "") or "",
+                "date": getattr(workflow, ROLE_FIELD_MAP[role]["date"], None),
+                "approvedBy": getattr(workflow, ROLE_FIELD_MAP[role]["approver"], "") or "",
             }
             for role in ALL_ROLES
         },
@@ -137,7 +214,7 @@ def list_approval_queue(request):
         workflow = workflows.get(submission.migration_request_id) or _EmptyWorkflow()
         progress = _progress(workflow)
         my_roles = roles_for(email, submission.function_name, submission.products, approval_rows)
-        rows.append(_serialize_row(submission, workflow, progress, my_roles))
+        rows.append(_serialize_row(submission, workflow, progress, my_roles, approval_rows))
 
     return Response({"email": email, "count": len(rows), "rows": rows})
 
@@ -179,7 +256,7 @@ def submit_approval_decision(request):
     if current_role:
         if role != current_role:
             return Response({"error": f"'{role}' is not the current stage for this request."}, status=status.HTTP_409_CONFLICT)
-    elif role not in PARALLEL_ROLES or progress["parallel"][role] != "pending":
+    elif role not in PARALLEL_ROLES or progress["parallel"][role] not in {"pending", "returned"}:
         return Response({"error": f"'{role}' has already decided or is not active for this request."}, status=status.HTTP_409_CONFLICT)
 
     if role not in my_roles:
@@ -188,19 +265,36 @@ def submit_approval_decision(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    previous_role = _previous_role(progress, role) if action == "returned" else None
+    if action == "returned" and not previous_role:
+        return Response(
+            {"error": "Area Head is the first approval stage and cannot return the request to an earlier owner."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
     fields = ROLE_FIELD_MAP[role]
     setattr(workflow, fields["status"], action)
     setattr(workflow, fields["comment"], comment)
     setattr(workflow, fields["date"], timezone.now())
+    setattr(workflow, fields["approver"], email)
     if role == "bpm" and action == "approved":
         workflow.bpm_budget_status = budget_status
+    if action == "returned":
+        previous_fields = ROLE_FIELD_MAP[previous_role]
+        setattr(workflow, previous_fields["status"], "")
+        setattr(workflow, previous_fields["date"], None)
+        setattr(workflow, previous_fields["approver"], "")
     workflow.save()
 
     updated_progress = _progress(workflow)
+    if action == "approved":
+        _notify_next_approvers(submission, updated_progress, approval_rows, role)
+    elif action == "returned":
+        _notify_return_owner(submission, previous_role, comment, approval_rows)
     return Response(
         {
             "status": "success",
             "migration_request_id": migration_request_id,
-            "row": _serialize_row(submission, workflow, updated_progress, my_roles),
+            "row": _serialize_row(submission, workflow, updated_progress, my_roles, approval_rows),
         }
     )

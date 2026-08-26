@@ -48,9 +48,10 @@ function copyMdsIconsPlugin() {
   }
 }
 
-export default defineConfig(({ command }) => ({
-  // Absolute base when served via Apache HTTPS proxy; relative for production build
-  base: command === 'build' ? './' : '/',
+export default defineConfig(() => ({
+  // Apache serves the SPA from the site root. Root-relative assets also work
+  // when a client refreshes a nested Vue route such as /migration-dashboard/.
+  base: '/',
   cacheDir: resolve(__dirname, '.vite-cache'),
   resolve: {
     alias: {

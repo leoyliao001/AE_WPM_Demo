@@ -121,6 +121,7 @@ Production environment values are:
 | `DJANGO_DB_ENGINE` | `mssql` |
 | `DJANGO_DB_NAME`, `DJANGO_DB_HOST`, `DJANGO_DB_DRIVER` | Production SQL Server connection values |
 | `DJANGO_SENDGRID_API_KEY` | SendGrid secret stored in `.env`, service environment, or an approved secret store |
+| `DJANGO_CA_BUNDLE` | Absolute path to the corporate TLS-inspection CA bundle used for SendGrid HTTPS |
 | `DJANGO_DEFAULT_FROM_EMAIL`, `DJANGO_MIGRATION_INTAKE_NOTIFY_TO` | Approved sender and recipients |
 | `DJANGO_HTTPS_PROXY` | Corporate proxy only when required for outbound SendGrid HTTPS |
 

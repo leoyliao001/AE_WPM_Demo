@@ -140,8 +140,8 @@
                     <span class="ac-row-sub">{{ row.scope }}</span>
                   </td>
                   <td>
-                    <span class="ac-tag" :class="row.beyondBudget ? 'ac-tag-warning' : 'ac-tag-success'">
-                      {{ row.beyondBudget ? 'Beyond budget' : 'Within budget' }}
+                    <span class="ac-tag" :class="budgetTagClass(row)">
+                      {{ budgetLabel(row) }}
                     </span>
                   </td>
                   <td>
@@ -194,8 +194,8 @@
           </div>
           <div class="ac-detail-tags">
             <span class="ac-tag ac-tag-info">{{ detail.type }}</span>
-            <span class="ac-tag" :class="detail.beyondBudget ? 'ac-tag-warning' : 'ac-tag-success'">
-              {{ detail.beyondBudget ? 'Beyond budget' : 'Within budget' }}
+            <span class="ac-tag" :class="budgetTagClass(detail)">
+              {{ budgetLabel(detail) }}
             </span>
             <span class="ac-tag ac-tag-neutral">{{ detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
           </div>
@@ -355,17 +355,16 @@
                   <button class="ac-btn ac-btn-primary ac-btn-block" type="button" @click="decideBpm()">
                     Approve
                   </button>
-                </template>
-
-                <!-- PMO Review: approve only -->
-                <template v-else-if="stageNameFor(detail) === 'PMO Review'">
-                  <button class="ac-btn ac-btn-primary ac-btn-block" type="button" @click="decide('approved')">
-                    Approve
+                  <button class="ac-btn ac-btn-ghost ac-btn-block" type="button" @click="decide('returned')">
+                    Return for more information
+                  </button>
+                  <button class="ac-btn ac-btn-danger ac-btn-block" type="button" @click="decide('rejected')">
+                    Reject
                   </button>
                 </template>
 
-                <!-- Area Head / FBP Approve: full decision panel -->
-                <template v-else>
+                <!-- PMO Review -->
+                <template v-else-if="stageNameFor(detail) === 'PMO Review'">
                   <button class="ac-btn ac-btn-primary ac-btn-block" type="button" @click="decide('approved')">
                     Approve
                   </button>
@@ -375,10 +374,19 @@
                   <button class="ac-btn ac-btn-danger ac-btn-block" type="button" @click="decide('rejected')">
                     Reject
                   </button>
-                  <div class="ac-decision-split">
-                    <button class="ac-btn ac-btn-ghost" type="button" @click="decide('delegated')">Delegate</button>
-                    <button class="ac-btn ac-btn-ghost" type="button" @click="decide('reassigned')">Reassign</button>
-                  </div>
+                </template>
+
+                <!-- Area Head / FBP Approve / WPM Review: full decision panel -->
+                <template v-else>
+                  <button class="ac-btn ac-btn-primary ac-btn-block" type="button" @click="decide('approved')">
+                    Approve
+                  </button>
+                  <button v-if="stageNameFor(detail) !== 'Area Head'" class="ac-btn ac-btn-ghost ac-btn-block" type="button" @click="decide('returned')">
+                    Return for more information
+                  </button>
+                  <button class="ac-btn ac-btn-danger ac-btn-block" type="button" @click="decide('rejected')">
+                    Reject
+                  </button>
                 </template>
               </template>
 
@@ -405,7 +413,7 @@
                     placeholder="Add a comment (required when rejecting or returning)"
                     :aria-label="`${role} decision comment`"
                   ></textarea>
-                  <button class="ac-btn ac-btn-primary ac-btn-block" type="button" @click="decideParallel(role, 'approved')">
+                  <button class="ac-btn ac-btn-primary ac-btn-block" type="button" @click="openFinalReview(role)">
                     Approve
                   </button>
                   <button class="ac-btn ac-btn-ghost ac-btn-block" type="button" @click="decideParallel(role, 'returned')">
@@ -414,10 +422,6 @@
                   <button class="ac-btn ac-btn-danger ac-btn-block" type="button" @click="decideParallel(role, 'rejected')">
                     Reject
                   </button>
-                  <div class="ac-decision-split">
-                    <button class="ac-btn ac-btn-ghost" type="button" @click="decideParallel(role, 'delegated')">Delegate</button>
-                    <button class="ac-btn ac-btn-ghost" type="button" @click="decideParallel(role, 'reassigned')">Reassign</button>
-                  </div>
                 </template>
                 <p v-else-if="detail.parallel[role] === 'pending'" class="ac-card-sub">
                   You are not listed as this approver for this function/product.
@@ -455,9 +459,11 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { regionAreaMapping } from '../data/regionAreaMapping.js'
 
+const router = useRouter()
 const view = ref('inbox')
 const loading = ref(false)
 const loadError = ref('')
@@ -481,11 +487,11 @@ const tabs = computed(() => [
 ])
 
 const typeOptions = ['All types', '1:1 Migration', 'Co-location', 'New business']
-const budgetOptions = ['Any budget status', 'Within budget', 'Beyond budget']
+const budgetOptions = ['Any budget status', 'Pending', 'Within budget', 'Beyond budget']
 
 // Approval flow is the same shape for every migration type: three sequential
-// roles, an optional FBP Approve gate for beyond-budget requests, then ELT and
-// GSC Head who approve in parallel (independently, but only once BPM/FBP is done).
+// roles, an optional FBP Approve gate for beyond-budget requests, then WPM
+// Review, followed by ELT and GSC Head approvals in parallel.
 const SEQUENTIAL_STEPS = ['Area Head', 'PMO Review', 'BPM Review']
 const PARALLEL_STEPS = ['ELT', 'GSC Head-1']
 
@@ -496,9 +502,9 @@ const PREREQUISITES = {
 }
 
 const stepsFor = (beyondBudget) =>
-  beyondBudget ? [...SEQUENTIAL_STEPS, 'FBP Approve', ...PARALLEL_STEPS] : [...SEQUENTIAL_STEPS, ...PARALLEL_STEPS]
+  beyondBudget ? [...SEQUENTIAL_STEPS, 'FBP Approve', 'WPM Review', ...PARALLEL_STEPS] : [...SEQUENTIAL_STEPS, 'WPM Review', ...PARALLEL_STEPS]
 
-const sequentialLength = (beyondBudget) => (beyondBudget ? 4 : 3)
+const sequentialLength = (beyondBudget) => (beyondBudget ? 5 : 4)
 
 const totalStepsFor = (row) => stepsFor(row.beyondBudget).length
 
@@ -541,31 +547,40 @@ const nextApproverFor = (row) => {
 const activityFor = (row) => {
   const chain = chainFor(row)
   return chain.map((s, i) => {
+    const role = approvalRoleForStep(s.name)
+    const decision = row.decisions?.[role] || {}
+    const responsible = (row.responsibleApprovers?.[role] || []).join(', ') || 'Not configured in Input for Approval'
     if (s.state === 'done') {
-      const done = COMPLETED_APPROVALS[i] ?? COMPLETED_APPROVALS[COMPLETED_APPROVALS.length - 1]
-      return { title: `${s.name} approved`, by: done.by, at: done.at, note: done.note, state: 'done' }
+      return {
+        title: `${s.name} ${decision.status || 'approved'}`,
+        by: decision.approvedBy || responsible,
+        at: formatDateTime(decision.date),
+        note: decision.comment || `Responsible: ${responsible}`,
+        state: 'done'
+      }
     }
     if (s.state === 'current') {
       return {
         title: `Waiting for ${s.name}`,
-        by: 'assigned to you',
+        by: responsible,
         at: '',
-        note: `SLA 2 business days · ${row.waiting} elapsed`,
+        note: `${row.waitingDetail} · Responsible: ${responsible}`,
         state: 'current'
       }
     }
-    return { title: s.name, at: '', note: s.meta || 'Not started', state: 'todo' }
+    return { title: s.name, at: '', note: `${s.meta || 'Not started'} · Responsible: ${responsible}`, state: 'todo' }
   })
 }
 
-const COMPLETED_APPROVALS = [
-  { by: 'Lars Andersen', at: '04 Aug 2026, 14:12', note: 'Aligned with the FY27 area plan. Proceed.' },
-  { by: 'Mette Rasmussen', at: '04 Aug 2026, 16:30', note: 'Scope and milestones validated against the portfolio.' },
-  { by: 'Sofia Almeida', at: '05 Aug 2026, 08:55', note: 'Process maps and quality gates are in place.' },
-  { by: 'Henrik Dahl', at: '05 Aug 2026, 09:20', note: 'Transition cost confirmed against the area budget.' },
-  { by: 'Arjun Menon', at: '05 Aug 2026, 09:35', note: 'Workforce plan and ramp-up curve approved.' },
-  { by: 'Clara Jensen', at: '05 Aug 2026, 09:40', note: 'Endorsed by the executive leadership team.' }
-]
+const approvalRoleForStep = (step) => ({
+  'Area Head': 'area_head',
+  'PMO Review': 'pmo',
+  'BPM Review': 'bpm',
+  'FBP Approve': 'fbp',
+  'WPM Review': 'wpm',
+  ELT: 'elt',
+  'GSC Head-1': 'gsc_head'
+}[step] || '')
 
 function money(value) {
   return `USD ${value.toLocaleString('en-US')}`
@@ -592,13 +607,100 @@ const formatDate = (value) => {
   return parsed.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const daysSince = (value) => {
+const formatDateTime = (value) => {
   const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return 1
-  return Math.max(0, Math.round((Date.now() - parsed.getTime()) / 86400000))
+  if (!value || Number.isNaN(parsed.getTime())) return ''
+  return parsed.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 const first = (value) => (Array.isArray(value) ? value[0] : value) || ''
+
+const isBusinessDay = (date) => date.getDay() !== 0 && date.getDay() !== 6
+
+const businessDaysElapsed = (from, to = new Date()) => {
+  const start = new Date(from)
+  if (Number.isNaN(start.getTime()) || to <= start) return 0
+  const cursor = new Date(start)
+  cursor.setHours(0, 0, 0, 0)
+  const end = new Date(to)
+  end.setHours(0, 0, 0, 0)
+  let days = 0
+  while (cursor < end) {
+    cursor.setDate(cursor.getDate() + 1)
+    if (isBusinessDay(cursor)) days += 1
+  }
+  return days
+}
+
+const addBusinessDays = (from, count) => {
+  const date = new Date(from)
+  if (Number.isNaN(date.getTime())) return null
+  let remaining = count
+  while (remaining > 0) {
+    date.setDate(date.getDate() + 1)
+    if (isBusinessDay(date)) remaining -= 1
+  }
+  return date
+}
+
+const formatDueDate = (value) => value.toLocaleDateString('en-GB', {
+  day: '2-digit', month: 'short', year: 'numeric'
+})
+
+const activeApprovalRoles = (row) => {
+  if (row.currentRole) return [row.currentRole]
+  return ['elt', 'gsc_head'].filter((role) => row.parallel?.[role === 'gsc_head' ? 'gscHead' : role] === 'pending')
+}
+
+const stageStartFor = (row, role) => {
+  if (role === 'area_head') return row.businessCaseSubmittedAt
+  if (role === 'pmo') return row.decisions.area_head?.date
+  if (role === 'bpm') return row.decisions.pmo?.date
+  if (role === 'fbp') return row.decisions.bpm?.date
+  if (role === 'wpm') return row.decisions[row.beyondBudget ? 'fbp' : 'bpm']?.date
+  return row.decisions.wpm?.date
+}
+
+const approvalTimeline = (row) => {
+  if (!row.businessCaseSubmittedAt) {
+    return { waiting: 'Awaiting Business Case', detail: 'Approval timeline starts once the Business Case is submitted.', breached: false }
+  }
+
+  const roles = activeApprovalRoles(row)
+  const timelines = roles.map((role) => {
+    const start = stageStartFor(row, role)
+    const allowedDays = role === 'pmo' ? 1 : 2
+    if (!start) return null
+    const elapsed = businessDaysElapsed(start)
+    const dueDate = addBusinessDays(start, allowedDays)
+    return { elapsed, allowedDays, dueDate, breached: elapsed > allowedDays }
+  }).filter(Boolean)
+
+  if (!timelines.length) {
+    return { waiting: 'Timeline pending', detail: 'Waiting for the prior approval stage to be recorded.', breached: false }
+  }
+
+  const elapsed = Math.max(...timelines.map((item) => item.elapsed))
+  const allowedDays = Math.max(...timelines.map((item) => item.allowedDays))
+  const dueDate = timelines.map((item) => item.dueDate).sort((left, right) => left - right)[0]
+  return {
+    waiting: `${elapsed} of ${allowedDays} business days`,
+    detail: `SLA ${allowedDays} business day${allowedDays === 1 ? '' : 's'} · due ${formatDueDate(dueDate)} · ${elapsed} elapsed`,
+    breached: timelines.some((item) => item.breached)
+  }
+}
+
+const budgetLabel = (row) => ({
+  pending: 'Pending',
+  within: 'Within budget',
+  beyond: 'Beyond budget'
+}[row.budgetStatus] || 'Pending')
+
+const budgetTagClass = (row) => ({
+  pending: 'ac-tag-neutral',
+  within: 'ac-tag-success',
+  beyond: 'ac-tag-warning'
+}[row.budgetStatus] || 'ac-tag-neutral')
 
 // GSC_ROLE_KEY -> template parallel key, used to check access for the ELT/GSC Head cards.
 const myRoleFor = (row, role) => (row?.myRoles || []).includes(role === 'gscHead' ? 'gsc_head' : 'elt')
@@ -609,10 +711,8 @@ const toRow = (r) => {
   const fte = Number.parseFloat(r.fte_number) || 0
   const annualSaving = Math.round(fte * 44000) || 1
   const transitionCost = Math.round(fte * 12000)
-  const waitingDays = daysSince(r.requested_date)
   const type = normaliseType(r.migration_type_value || r.migration_type)
-
-  return {
+  const row = {
     id: r.migration_request_id,
     title: r.project_name || r.migration_request_id,
     type,
@@ -621,15 +721,21 @@ const toRow = (r) => {
     region: r.region || '—',
     fte,
     scope: r.proposed_scope || r.function_name || '—',
+    budgetStatus: ['within', 'beyond'].includes(r.budgetStatus) ? r.budgetStatus : 'pending',
     beyondBudget: !!r.beyondBudget,
+    currentRole: r.currentRole || '',
+    decisions: r.decisions || {},
+    responsibleApprovers: r.responsibleApprovers || {},
+    businessCaseSubmittedAt: r.businessCaseSubmittedAt || null,
     step: r.step,
     totalSteps: r.totalSteps,
     parallel: { elt: r.parallel?.elt || 'pending', gscHead: r.parallel?.gscHead || 'pending' },
     completed: !!r.completed,
     myRoles: r.myRoles || [],
     actionable: !!r.actionable,
-    waiting: `${waitingDays} day${waitingDays === 1 ? '' : 's'}`,
-    slaBreached: waitingDays > 2,
+    waiting: '',
+    waitingDetail: '',
+    slaBreached: false,
     submitted: formatDate(r.requested_date),
     annualSaving,
     transitionCost,
@@ -661,6 +767,11 @@ const toRow = (r) => {
     rationale: `${r.proposed_scope || 'This request'} moves to GSC under a ${type.toLowerCase()} model. Process maps, SOPs and quality gates are signed off by the sending entity; ramp-up is phased to protect customer service levels.`,
     status: r.status || ''
   }
+  const timeline = approvalTimeline(row)
+  row.waiting = timeline.waiting
+  row.waitingDetail = timeline.detail
+  row.slaBreached = timeline.breached
+  return row
 }
 
 const rows = ref([])
@@ -691,8 +802,9 @@ const filteredRows = computed(() => {
     if (q && ![row.id, row.title, row.requester].some((v) => String(v).toLowerCase().includes(q))) return false
     if (typeFilter.value !== 'All types' && row.type !== typeFilter.value) return false
     if (areaFilter.value !== 'All areas' && row.area !== areaFilter.value) return false
-    if (budgetFilter.value === 'Within budget' && row.beyondBudget) return false
-    if (budgetFilter.value === 'Beyond budget' && !row.beyondBudget) return false
+    if (budgetFilter.value === 'Pending' && row.budgetStatus !== 'pending') return false
+    if (budgetFilter.value === 'Within budget' && row.budgetStatus !== 'within') return false
+    if (budgetFilter.value === 'Beyond budget' && row.budgetStatus !== 'beyond') return false
     return true
   })
 })
@@ -731,9 +843,14 @@ function openDetails(row) {
   detail.value = row
   comment.value = ''
   decisionMessage.value = ''
-  budgetChoice.value = row.beyondBudget ? 'beyond' : 'within'
+  budgetChoice.value = row.budgetStatus === 'beyond' ? 'beyond' : 'within'
   parallelComment.value = { elt: '', gscHead: '' }
   view.value = 'details'
+}
+
+function openFinalReview(role) {
+  const backendRole = role === 'gscHead' ? 'gsc_head' : role
+  router.push(`/approval-cycle/review/${detail.value.id}/${backendRole}`)
 }
 
 function approveSelected() {
@@ -744,7 +861,7 @@ function approveSelected() {
 function exportRows() {
   const header = ['Request ID', 'Opportunity', 'Type', 'Requester', 'Area', 'FTE', 'Budget', 'Stage', 'Waiting']
   const lines = filteredRows.value.map((r) =>
-    [r.id, r.title, r.type, r.requester, r.area, r.fte, r.beyondBudget ? 'Beyond budget' : 'Within budget', stageNameFor(r), r.waiting]
+    [r.id, r.title, r.type, r.requester, r.area, r.fte, budgetLabel(r), stageNameFor(r), r.waiting]
       .map((v) => `"${String(v).replace(/"/g, '""')}"`)
       .join(',')
   )
@@ -783,7 +900,8 @@ const STAGE_ROLE_KEY = {
   'Area Head': 'area_head',
   'PMO Review': 'pmo',
   'BPM Review': 'bpm',
-  'FBP Approve': 'fbp'
+  'FBP Approve': 'fbp',
+  'WPM Review': 'wpm'
 }
 
 async function decide(action) {

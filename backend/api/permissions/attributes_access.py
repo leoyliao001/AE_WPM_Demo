@@ -87,6 +87,7 @@ def build_access_snapshot(email: str) -> dict:
         "project_gantt": is_super or bool(row.project_gantt),
         "migration_intake": is_super or bool(row.migration_intake),
         "approval_workflow": is_super or bool(row.approval_workflow),
+        "input_for_approval": is_super or bool(row.input_for_approval),
         "access_control": is_super or bool(row.access_control),
     }
     return {

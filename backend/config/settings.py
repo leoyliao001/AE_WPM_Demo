@@ -16,19 +16,34 @@ import certifi
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Patch urllib's default SSL context to use certifi's CA bundle.
-# This is needed because python-http-client (used by SendGrid) uses urllib,
-# which otherwise fails against the corporate proxy's GoDaddy-signed certs.
-_orig_create_default_context = ssl.create_default_context
-
-def _patched_create_default_context(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
-    kwargs.setdefault("cafile", certifi.where())
-    return _orig_create_default_context(purpose, **kwargs)
-
-ssl.create_default_context = _patched_create_default_context
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / ".env")
+
+# python-http-client (used by SendGrid) uses urllib. Its HTTPS connection passes
+# through corporate TLS inspection, so the inspector's CA must be trusted in
+# addition to public roots. Deploy the bundle outside source control and set
+# DJANGO_CA_BUNDLE to its absolute path; the existing backend bundle is the
+# server fallback, followed by certifi for local development.
+_configured_ca_bundle = os.environ.get("DJANGO_CA_BUNDLE", "").strip()
+_default_corporate_ca_bundle = BASE_DIR / "corporate_ca_bundle.pem"
+if _configured_ca_bundle:
+    _ca_bundle = Path(_configured_ca_bundle)
+elif _default_corporate_ca_bundle.exists():
+    _ca_bundle = _default_corporate_ca_bundle
+else:
+    _ca_bundle = Path(certifi.where())
+
+_orig_create_default_context = ssl.create_default_context
+
+def _patched_create_default_context(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
+    kwargs.setdefault("cafile", str(_ca_bundle))
+    return _orig_create_default_context(purpose, **kwargs)
+
+ssl.create_default_context = _patched_create_default_context
+# urllib caches this private default-context hook at ssl import time. Update it
+# too so python-http-client/SendGrid receives the corporate CA bundle.
+ssl._create_default_https_context = _patched_create_default_context
 
 
 # Quick-start development settings - unsuitable for production
