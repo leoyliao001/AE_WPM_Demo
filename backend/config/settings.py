@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 import ssl
 import certifi
+from dotenv import load_dotenv
 from pathlib import Path
 
 # Patch urllib's default SSL context to use certifi's CA bundle.
@@ -27,6 +28,7 @@ def _patched_create_default_context(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
 ssl.create_default_context = _patched_create_default_context
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -205,8 +207,7 @@ EMAIL_BACKEND = os.environ.get(
     "DJANGO_EMAIL_BACKEND", "sendgrid_backend.SendgridBackend"
 )
 SENDGRID_API_KEY = os.environ.get(
-    "DJANGO_SENDGRID_API_KEY",
-    "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",
+    "DJANGO_SENDGRID_API_KEY", ""
 )
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 
