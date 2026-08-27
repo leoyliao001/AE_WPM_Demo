@@ -24,6 +24,7 @@ ALL_FIELDS = [
     ("project_gantt", "Project Gantt (Y/N)"),
     ("migration_intake", "Migration Intake (Y/N)"),
     ("approval_workflow", "Approval Workflow (Y/N)"),
+    ("input_for_approval", "Input for Approval (Y/N)"),
     ("access_control", "Access Control (Y/N)"),
 ]
 
@@ -37,6 +38,7 @@ BOOL_FIELDS = {
     "project_gantt",
     "migration_intake",
     "approval_workflow",
+    "input_for_approval",
     "access_control",
 }
 
@@ -60,6 +62,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "project_gantt": "Y",
             "migration_intake": "Y",
             "approval_workflow": "Y",
+            "input_for_approval": "Y",
             "access_control": "Y",
         }
     return {
@@ -74,6 +77,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "project_gantt": _yn(item.project_gantt),
         "migration_intake": _yn(item.migration_intake),
         "approval_workflow": _yn(item.approval_workflow),
+        "input_for_approval": _yn(item.input_for_approval),
         "access_control": _yn(item.access_control),
     }
 
@@ -97,6 +101,7 @@ def my_attributes_access(request):
                     "project_gantt": False,
                     "migration_intake": False,
                     "approval_workflow": False,
+                    "input_for_approval": False,
                     "access_control": False,
                 },
             }
