@@ -78,6 +78,11 @@
               Service Catalogue, Working Hours, Project Gantt, and Approval Workflow). Otherwise enable individual tables with Y/N. Edit rows, then click
               <strong>Save</strong>.
             </p>
+            <p>
+              <strong>Important:</strong> when <strong>Super Admin = Y</strong>, all table access columns are forced to
+              <strong>Y</strong> on save. If you need any column to remain <strong>N</strong> (for example
+              <strong>Input for Approval</strong>), set <strong>Super Admin</strong> to <strong>N</strong> first.
+            </p>
           </section>
           <section class="help-section">
             <h3>Edit and save</h3>
