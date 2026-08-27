@@ -87,7 +87,13 @@ def submit_business_case(request, project_id: int):
 
     submitted_at = timezone.now()
     submission.business_case_submission_date = submitted_at
-    submission.save(update_fields=["business_case_submission_date", "updated_at"])
+    update_fields = ["business_case_submission_date", "updated_at"]
+    # Move the dashboard milestone stepper forward now that the business
+    # case is in; never downgrade a status that has already progressed further.
+    if submission.status == "new":
+        submission.status = "in_review"
+        update_fields.append("status")
+    submission.save(update_fields=update_fields)
     workflow, _created = ApprovalWorkflow.objects.get_or_create(
         migration_request_id=submission.migration_request_id
     )
@@ -101,4 +107,4 @@ def submit_business_case(request, project_id: int):
             logger.exception("Failed to notify Area Head for %s", submission.migration_request_id)
 
     threading.Thread(target=notify_area_head, daemon=True).start()
-    return Response({"status": "success", "submitted_at": submitted_at})
+    return Response({"status": "success", "submitted_at": submitted_at, "project_status": submission.status})

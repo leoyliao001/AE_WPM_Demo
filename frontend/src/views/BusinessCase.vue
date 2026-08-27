@@ -38,12 +38,22 @@
           <h2>3. Upload final business case</h2>
           <p v-if="isSubmitted">Submitted {{ submittedAt }}. The approval timeline has started.</p>
           <p v-else>Upload the reviewed and signed-off version to start the approval timeline.</p>
-          <label v-if="!isSubmitted" class="bc-dropzone" :class="{ 'bc-dropzone--busy': submitting }">
+          <div
+            v-if="!isSubmitted"
+            class="bc-dropzone"
+            :class="{ 'bc-dropzone--busy': submitting, 'bc-dropzone--dragging': isDragging }"
+            @dragenter.prevent="onDragEnter"
+            @dragover.prevent="onDragEnter"
+            @dragleave.prevent="onDragLeave"
+            @drop.prevent="onDrop"
+            @click="openFileDialog"
+          >
             <mc-icon icon="mi-upload" size="24" />
             <span>{{ selectedFile ? selectedFile.name : 'Drag file here or choose file' }}</span>
-            <input type="file" accept=".doc,.docx,.pdf" :disabled="submitting" @change="onFileChange" />
+            <input ref="fileInputRef" type="file" accept=".doc,.docx,.pdf" :disabled="submitting" @change="onFileChange" @click.stop />
             <mc-button appearance="neutral" variant="outlined" fit="small" label="Choose file" icon="mi-folder-open" tabindex="-1" />
-          </label>
+          </div>
+          <p v-if="fileTypeError" class="bc-error">{{ fileTypeError }}</p>
           <mc-button v-if="selectedFile && !isSubmitted" appearance="primary" fit="small" label="Submit final Business Case" :loading="submitting" @click="submitFinal" />
           <p v-if="submitError" class="bc-error">{{ submitError }}</p>
         </div>
@@ -73,6 +83,11 @@ const selectedFile = ref(null)
 const submitting = ref(false)
 const submitError = ref('')
 const submittedAt = ref('')
+const isDragging = ref(false)
+const fileTypeError = ref('')
+const fileInputRef = ref(null)
+
+const ALLOWED_EXTENSIONS = ['.doc', '.docx', '.pdf']
 
 const isSubmitted = computed(() => Boolean(submittedAt.value))
 const draftName = computed(() => `Business_Case_${project.value?.migrationRequestId || 'project'}.docx`)
@@ -91,9 +106,40 @@ function downloadDraft() {
   void generateDraft()
 }
 
-function onFileChange(event) {
-  selectedFile.value = event.target.files?.[0] || null
+function acceptFile(file) {
+  if (!file) return
+  const name = file.name.toLowerCase()
+  if (!ALLOWED_EXTENSIONS.some((ext) => name.endsWith(ext))) {
+    fileTypeError.value = 'Only .doc, .docx or .pdf files are accepted.'
+    return
+  }
+  fileTypeError.value = ''
   submitError.value = ''
+  selectedFile.value = file
+}
+
+function onFileChange(event) {
+  acceptFile(event.target.files?.[0] || null)
+}
+
+function openFileDialog() {
+  if (submitting.value) return
+  fileInputRef.value?.click()
+}
+
+function onDragEnter() {
+  if (submitting.value) return
+  isDragging.value = true
+}
+
+function onDragLeave() {
+  isDragging.value = false
+}
+
+function onDrop(event) {
+  isDragging.value = false
+  if (submitting.value) return
+  acceptFile(event.dataTransfer?.files?.[0] || null)
 }
 
 async function submitFinal() {
@@ -139,6 +185,7 @@ onMounted(async () => {
 .bc-step h2 { font-family: 'Maersk Text', sans-serif; font-size: 18px; margin: 0; }
 .bc-step p { color: #555; margin: 0; }
 .bc-dropzone { align-items: center; border: 1px dashed #b7b7b7; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 134px; padding: 12px; text-align: center; width: min(100%, 620px); }
+.bc-dropzone--dragging { background: #edf4fd; border-color: #286cb4; }
 .bc-dropzone input { height: 1px; opacity: 0; position: absolute; width: 1px; }
 .bc-dropzone--busy { opacity: .65; pointer-events: none; }
 .bc-error { color: #b00020 !important; }
