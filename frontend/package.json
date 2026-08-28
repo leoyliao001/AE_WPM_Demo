@@ -18,7 +18,8 @@
     "handsontable": "^16.2.0",
     "marked": "^18.0.7",
     "vue": "^3.3.8",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.0",
