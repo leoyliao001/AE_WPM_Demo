@@ -1,149 +1,162 @@
 <template>
-  <div class="line-chart">
-    <div class="line-chart__topline">
-      <div class="line-chart__metrics">
-        <span><strong>Latest</strong> {{ valueFormatter(latestValue) }}</span>
-        <span><strong>Peak</strong> {{ valueFormatter(peakValue) }}</span>
-        <span><strong>Avg</strong> {{ valueFormatter(averageValue) }}</span>
-      </div>
-      <div v-if="hasData && normalizedSeries.length > 1" class="line-chart__legend">
-        <span v-for="seriesItem in normalizedSeries" :key="`legend-${seriesItem.key}`">
-          <span class="line-chart__legend-dot" :style="{ backgroundColor: seriesItem.color }" />
-          {{ seriesItem.label }}
-        </span>
+  <div class="line-chart" @mouseleave="onChartLeave">
+    <div
+      v-if="hasData && (title || series.length > 1)"
+      class="line-chart__header"
+    >
+      <h4 v-if="title" class="line-chart__title">{{ title }}</h4>
+      <div v-if="series.length > 1" class="line-chart__legend" role="group" aria-label="Toggle chart series">
+        <button
+          v-for="item in series"
+          :key="item.key"
+          type="button"
+          class="line-chart__legend-item"
+          :class="{ 'line-chart__legend-item--hidden': isSeriesHidden(item.key) }"
+          :aria-pressed="!isSeriesHidden(item.key)"
+          :title="`${isSeriesHidden(item.key) ? 'Show' : 'Hide'} ${item.label}`"
+          @click="toggleSeries(item.key)"
+        >
+          <span
+            class="line-chart__legend-dot"
+            :style="{ backgroundColor: isSeriesHidden(item.key) ? '#cbd5e1' : item.color }"
+          />
+          {{ item.label }}
+        </button>
       </div>
     </div>
 
-    <svg
-      v-if="hasData"
-      class="line-chart__svg"
-      :viewBox="`0 0 ${width} ${height}`"
-      role="img"
-      aria-label="Line chart"
-    >
-      <defs>
-        <linearGradient id="line-chart-area" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#0b8dbf" stop-opacity="0.22" />
-          <stop offset="100%" stop-color="#0b8dbf" stop-opacity="0.02" />
-        </linearGradient>
-        <linearGradient id="line-chart-line" x1="0" x2="1">
-          <stop offset="0%" stop-color="#0b8dbf" />
-          <stop offset="100%" stop-color="#0077b8" />
-        </linearGradient>
-        <filter id="line-chart-soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#0b8dbf" flood-opacity="0.13" />
-        </filter>
-      </defs>
-
-      <rect
-        :x="padLeft"
-        :y="padTop"
-        :width="width - padLeft - padRight"
-        :height="height - padTop - padBottom"
-        class="line-chart__plot-bg"
-        rx="16"
-      />
-
-      <g v-for="(tick, index) in yTicks" :key="`tick-${index}`">
+    <div v-if="hasData" ref="chartWrapRef" class="line-chart__canvas">
+      <svg
+        ref="svgRef"
+        class="line-chart__svg"
+        :viewBox="`0 0 ${layoutWidth} ${height}`"
+        role="img"
+        aria-label="Line chart"
+        @mousemove="onChartMove"
+        @touchmove.prevent="onChartTouch"
+        @touchend="onChartLeave"
+      >
+      <g v-if="leftScale" v-for="(tick, index) in leftScale.ticks" :key="`grid-${index}`">
         <line
           :x1="padLeft"
-          :x2="width - padRight"
-          :y1="yPos(tick.value)"
-          :y2="yPos(tick.value)"
+          :x2="layoutWidth - padRight"
+          :y1="yPosLeft(tick)"
+          :y2="yPosLeft(tick)"
           class="line-chart__grid-line"
         />
         <text
           :x="padLeft - 10"
-          :y="yPos(tick.value) + 3"
-          class="line-chart__axis-label"
+          :y="yPosLeft(tick) + 4"
+          class="line-chart__axis-label line-chart__axis-label--y"
           text-anchor="end"
         >
-          {{ valueFormatter(tick.value) }}
+          {{ formatAxisValue(tick, 'left') }}
         </text>
       </g>
 
-      <line
-        :x1="padLeft"
-        :x2="width - padRight"
-        :y1="height - padBottom"
-        :y2="height - padBottom"
-        class="line-chart__baseline"
-      />
+      <g v-if="dualAxis && rightScale && hasVisibleRightSeries">
+        <text
+          v-for="(tick, index) in rightScale.ticks"
+          :key="`right-${index}`"
+          :x="layoutWidth - padRight + 10"
+          :y="yPosRight(tick) + 4"
+          class="line-chart__axis-label line-chart__axis-label--y line-chart__axis-label--y-right"
+          text-anchor="start"
+        >
+          {{ formatAxisValue(tick, 'right') }}
+        </text>
+      </g>
 
-      <text
-        v-for="(label, index) in labels"
-        :key="`label-${label}-${index}`"
-        v-show="showXAxisLabel(index)"
-        :x="xPos(index)"
-        :y="height - 6"
-        class="line-chart__axis-label line-chart__axis-label--x"
-        text-anchor="middle"
-      >
-        {{ label }}
-      </text>
-
-      <path v-if="primaryAreaPath" :d="primaryAreaPath" class="line-chart__area" />
-
-      <g v-for="seriesItem in normalizedSeries" :key="seriesItem.key">
+      <g v-for="seriesItem in visibleNormalizedSeries" :key="seriesItem.key">
         <path
           :d="seriesItem.path"
           fill="none"
           :stroke="seriesItem.color"
           class="line-chart__line"
-          filter="url(#line-chart-soft-shadow)"
-        />
-
-        <circle
-          v-for="(point, index) in seriesItem.coords"
-          :key="`${seriesItem.key}-${index}`"
-          :cx="point.x"
-          :cy="point.y"
-          :r="index === latestIndex ? 4.9 : 2.5"
-          fill="#fff"
-          :stroke="seriesItem.color"
-          :stroke-width="index === latestIndex ? 2.3 : 1.5"
         />
       </g>
 
-      <g v-if="latestPoint">
+      <g v-if="hoveredIndex >= 0">
         <line
-          :x1="latestPoint.x"
-          :x2="latestPoint.x"
-          :y1="latestPoint.y"
+          :x1="activeX"
+          :x2="activeX"
+          :y1="padTop"
           :y2="height - padBottom"
-          class="line-chart__latest-guide"
+          class="line-chart__cursor-line"
         />
 
-        <circle
-          :cx="latestPoint.x"
-          :cy="latestPoint.y"
-          r="8"
-          class="line-chart__latest-ring"
-        />
+        <g v-for="seriesItem in visibleNormalizedSeries" :key="`focus-${seriesItem.key}`">
+          <circle
+            v-if="seriesItem.coords[activeIndex]"
+            :cx="seriesItem.coords[activeIndex].x"
+            :cy="seriesItem.coords[activeIndex].y"
+            r="4"
+            class="line-chart__focus-dot"
+            :style="{ stroke: seriesItem.color }"
+          />
+        </g>
 
-        <rect
-          :x="calloutX"
-          :y="calloutY"
-          width="88"
-          height="30"
-          rx="9"
-          class="line-chart__callout-box"
-        />
-        <text :x="calloutX + 8" :y="calloutY + 12.5" class="line-chart__callout-label">
-          {{ latestLabel }}
-        </text>
-        <text :x="calloutX + 8" :y="calloutY + 23.5" class="line-chart__callout-value">
-          {{ valueFormatter(latestValue) }}
+        <g v-if="showTooltip" :transform="`translate(${tooltipX}, ${tooltipY})`">
+          <rect
+            class="line-chart__tooltip-box"
+            :x="-tooltipWidth / 2"
+            y="0"
+            :width="tooltipWidth"
+            :height="tooltipHeight"
+            rx="6"
+          />
+          <polygon
+            class="line-chart__tooltip-caret"
+            :points="`${-tooltipCaretWidth / 2},${tooltipHeight} ${tooltipCaretWidth / 2},${tooltipHeight} 0,${tooltipHeight + tooltipCaretHeight}`"
+          />
+          <text :x="0" :y="13" class="line-chart__tooltip-label" text-anchor="middle">
+            {{ activeLabel }}
+          </text>
+          <text
+            v-for="(row, index) in tooltipRows"
+            :key="row.key"
+            :x="0"
+            :y="24 + index * 12"
+            class="line-chart__tooltip-value"
+            :class="{ 'line-chart__tooltip-value--secondary': index > 0 }"
+            text-anchor="middle"
+          >
+            {{ row.text }}
+          </text>
+        </g>
+      </g>
+
+      <g v-for="(label, index) in labels" :key="`label-${label}-${index}`">
+        <text
+          v-show="showXAxisLabel(index)"
+          :x="xPos(index)"
+          :y="height - 6"
+          class="line-chart__axis-label line-chart__axis-label--x"
+          :class="{ 'line-chart__axis-label--x-active': hoveredIndex >= 0 && index === activeIndex }"
+          text-anchor="middle"
+        >
+          {{ formatXLabel(label) }}
         </text>
       </g>
+
+      <rect
+        :x="padLeft"
+        :y="padTop"
+        :width="layoutWidth - padLeft - padRight"
+        :height="height - padTop - padBottom"
+        class="line-chart__hit-area"
+        @mousemove="onChartMove"
+        @mouseleave="onChartLeave"
+      />
     </svg>
+    </div>
 
     <p v-else class="line-chart__empty">{{ emptyText }}</p>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const props = defineProps({
   labels: { type: Array, default: () => [] },
@@ -152,45 +165,175 @@ const props = defineProps({
     type: Function,
     default: (value) => String(Math.round(Number(value) || 0))
   },
-  emptyText: { type: String, default: 'No chart data available.' }
+  emptyText: { type: String, default: 'No chart data available.' },
+  dualAxis: { type: Boolean, default: false },
+  title: { type: String, default: '' }
 })
 
-const width = 720
-const height = 176
-const padLeft = 52
-const padRight = 18
-const padTop = 18
-const padBottom = 32
+const layoutWidth = ref(720)
+const height = 168
+const padTop = 8
+const padBottom = 26
+const tooltipWidth = 112
+const tooltipCaretWidth = 10
+const tooltipCaretHeight = 5
 
-const allValues = computed(() =>
-  props.series.flatMap((seriesItem) => seriesItem.values ?? []).map((value) => Number(value) || 0)
+const padLeft = computed(() => (props.dualAxis ? 28 : 36))
+const padRight = computed(() => (props.dualAxis ? 24 : 12))
+
+const chartWrapRef = ref(null)
+const svgRef = ref(null)
+const hoveredIndex = ref(-1)
+const hiddenKeys = ref([])
+
+const hiddenKeySet = computed(() => new Set(hiddenKeys.value))
+
+const isSeriesHidden = (key) => hiddenKeySet.value.has(key)
+
+const visibleSeries = computed(() =>
+  props.series.filter((item) => !hiddenKeySet.value.has(item.key))
 )
 
-const hasData = computed(() => allValues.value.some((value) => value > 0))
-const maxValue = computed(() => Math.max(...allValues.value, 1))
+const hasVisibleRightSeries = computed(() =>
+  visibleSeries.value.some((item) => item.yAxis === 'right')
+)
 
-const yPos = (value) => {
+const toggleSeries = (key) => {
+  const next = new Set(hiddenKeySet.value)
+  if (next.has(key)) {
+    next.delete(key)
+  } else if (visibleSeries.value.length <= 1) {
+    return
+  } else {
+    next.add(key)
+  }
+  hiddenKeys.value = [...next]
+}
+
+const hasData = computed(() => props.labels.length > 0 && props.series.length > 0)
+
+let resizeObserver = null
+
+const syncLayoutWidth = () => {
+  const node = chartWrapRef.value
+  if (!node) return
+  const nextWidth = Math.round(node.getBoundingClientRect().width)
+  if (nextWidth > 0 && nextWidth !== layoutWidth.value) {
+    layoutWidth.value = nextWidth
+  }
+}
+
+const bindResizeObserver = () => {
+  if (typeof ResizeObserver === 'undefined' || !chartWrapRef.value || resizeObserver) return
+
+  resizeObserver = new ResizeObserver(() => {
+    syncLayoutWidth()
+  })
+  resizeObserver.observe(chartWrapRef.value)
+  syncLayoutWidth()
+}
+
+onMounted(async () => {
+  await nextTick()
+  bindResizeObserver()
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
+
+watch(
+  () => props.series.map((item) => item.key).join('|'),
+  () => {
+    hiddenKeys.value = []
+  }
+)
+
+watch(
+  () => hasData.value,
+  async (ready) => {
+    if (!ready) return
+    await nextTick()
+    bindResizeObserver()
+    syncLayoutWidth()
+  },
+  { immediate: true }
+)
+
+const defaultSeriesColors = ['#161616', '#b8d96e', '#0077b8']
+
+const buildScale = (values) => {
+  const nums = values.map((value) => Number(value) || 0)
+  const max = Math.max(...nums, 1)
+  const rawStep = max / 4
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep || 1))
+  const step = Math.max(Math.ceil(rawStep / magnitude) * magnitude, 1)
+  const top = step * 4
+  return { top, ticks: [0, step, step * 2, step * 3, top] }
+}
+
+const leftSeriesValues = computed(() =>
+  visibleSeries.value
+    .filter((item) => !props.dualAxis || item.yAxis !== 'right')
+    .flatMap((item) => item.values ?? [])
+)
+
+const rightSeriesValues = computed(() =>
+  visibleSeries.value.filter((item) => item.yAxis === 'right').flatMap((item) => item.values ?? [])
+)
+
+const leftScale = computed(() => {
+  if (!leftSeriesValues.value.length) return null
+  return buildScale(leftSeriesValues.value)
+})
+
+const rightScale = computed(() => {
+  if (!props.dualAxis || !rightSeriesValues.value.length) return null
+  return buildScale(rightSeriesValues.value)
+})
+
+const yPosForScale = (value, scale) => {
   const usableHeight = height - padTop - padBottom
-  return padTop + (1 - (Number(value) || 0) / maxValue.value) * usableHeight
+  const top = scale?.top || 1
+  return padTop + (1 - (Number(value) || 0) / top) * usableHeight
+}
+
+const yPosLeft = (value) => yPosForScale(value, leftScale.value)
+
+const yPosRight = (value) => yPosForScale(value, rightScale.value)
+
+const yPosForSeries = (value, seriesItem) => {
+  if (props.dualAxis && seriesItem.yAxis === 'right') {
+    return yPosRight(value)
+  }
+  return yPosLeft(value)
+}
+
+const formatAxisValue = (tick, axis) => {
+  const seriesForAxis = visibleSeries.value.find(
+    (item) => (axis === 'right' ? item.yAxis === 'right' : item.yAxis !== 'right')
+  )
+  const formatter = seriesForAxis?.valueFormatter || props.valueFormatter
+  return formatter(tick)
 }
 
 const xPos = (index) => {
-  const usableWidth = width - padLeft - padRight
+  const usableWidth = layoutWidth.value - padLeft.value - padRight.value
   const denominator = Math.max(props.labels.length - 1, 1)
-  return padLeft + (usableWidth * index) / denominator
+  return padLeft.value + (usableWidth * index) / denominator
 }
-
-const yTicks = computed(() =>
-  Array.from({ length: 4 }, (_, index) => {
-    const ratio = index / 3
-    return { value: Math.round(maxValue.value * (1 - ratio)) }
-  })
-)
 
 const showXAxisLabel = (index) => {
   const total = props.labels.length
   if (total <= 8) return true
   return index % 2 === 0 || index === total - 1
+}
+
+const formatXLabel = (label) => {
+  const text = String(label || '')
+  const match = text.match(/^([A-Za-z]{3})/)
+  return match ? match[1] : text
 }
 
 const smoothPath = (coords) => {
@@ -212,180 +355,278 @@ const smoothPath = (coords) => {
   return path
 }
 
-const normalizedSeries = computed(() =>
-  props.series.map((seriesItem) => {
-    const coords = (seriesItem.values ?? []).map((value, index) => ({
-      x: xPos(index),
-      y: yPos(value)
+const normalizedSeries = computed(() => {
+  const chartWidth = layoutWidth.value
+  const left = padLeft.value
+  const right = padRight.value
+
+  return props.series
+    .filter((item) => !hiddenKeySet.value.has(item.key))
+    .map((seriesItem, index) => {
+    const coords = (seriesItem.values ?? []).map((value, pointIndex) => ({
+      x: left + ((chartWidth - left - right) * pointIndex) / Math.max(props.labels.length - 1, 1),
+      y: yPosForSeries(value, seriesItem)
     }))
+
     return {
       ...seriesItem,
+      color: seriesItem.color || defaultSeriesColors[index % defaultSeriesColors.length],
       coords,
       path: smoothPath(coords)
     }
   })
+})
+
+const visibleNormalizedSeries = computed(() =>
+  normalizedSeries.value.filter((item) => !hiddenKeySet.value.has(item.key))
 )
 
-const primarySeries = computed(() => normalizedSeries.value[0] ?? null)
-const latestIndex = computed(() => Math.max(props.labels.length - 1, 0))
-const latestLabel = computed(() => props.labels[latestIndex.value] ?? 'Latest')
+const activeIndex = computed(() => hoveredIndex.value)
+const activeX = computed(() => {
+  const chartWidth = layoutWidth.value
+  const usableWidth = chartWidth - padLeft.value - padRight.value
+  const denominator = Math.max(props.labels.length - 1, 1)
+  return padLeft.value + (usableWidth * activeIndex.value) / denominator
+})
+const activeLabel = computed(() => props.labels[activeIndex.value] ?? '')
 
-const primaryAreaPath = computed(() => {
-  const coords = primarySeries.value?.coords ?? []
-  if (!coords.length) return ''
-  const linePath = smoothPath(coords)
-  const first = coords[0]
-  const last = coords[coords.length - 1]
-  return `${linePath} L ${last.x} ${height - padBottom} L ${first.x} ${height - padBottom} Z`
+const tooltipRows = computed(() => {
+  if (activeIndex.value < 0) return []
+  return visibleNormalizedSeries.value.map((seriesItem) => {
+    const value = Number(seriesItem.values?.[activeIndex.value]) || 0
+    const formatter = seriesItem.valueFormatter || props.valueFormatter
+    return {
+      key: seriesItem.key,
+      text: `${seriesItem.label}: ${formatter(value)}`
+    }
+  })
 })
 
-const latestPoint = computed(() => {
-  const coords = primarySeries.value?.coords ?? []
-  return coords[coords.length - 1] ?? null
+const tooltipHeight = computed(() =>
+  normalizedSeries.value.length > 1 ? 28 + normalizedSeries.value.length * 12 : 34
+)
+
+const safeCoord = (value, fallback = 0) => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
+const primaryFocusY = computed(() => {
+  const primary = visibleNormalizedSeries.value[0]?.coords?.[activeIndex.value]
+  return safeCoord(primary?.y, padTop + 12)
 })
 
-const latestValue = computed(() => {
-  const values = primarySeries.value?.values ?? []
-  return Number(values[values.length - 1]) || 0
+const tooltipX = computed(() => {
+  const minX = padLeft.value + tooltipWidth / 2 + 4
+  const maxX = layoutWidth.value - padRight.value - tooltipWidth / 2 - 4
+  return safeCoord(Math.min(Math.max(activeX.value, minX), maxX), minX)
 })
 
-const peakValue = computed(() => Math.max(...(primarySeries.value?.values ?? [0]), 0))
+const tooltipY = computed(() =>
+  safeCoord(Math.max(padTop, primaryFocusY.value - tooltipHeight.value - 10), padTop)
+)
 
-const averageValue = computed(() => {
-  const values = (primarySeries.value?.values ?? []).map((value) => Number(value) || 0)
-  if (!values.length) return 0
-  return values.reduce((sum, value) => sum + value, 0) / values.length
-})
+const showTooltip = computed(() =>
+  Number.isFinite(tooltipX.value) && Number.isFinite(tooltipY.value)
+)
 
-const calloutOnLeft = computed(() => (latestPoint.value?.x ?? 0) > width - 130)
+const resolveIndexFromClientX = (clientX) => {
+  const svg = svgRef.value
+  if (!svg || !props.labels.length) return -1
 
-const calloutX = computed(() => {
-  if (!latestPoint.value) return width - 102
-  return calloutOnLeft.value ? latestPoint.value.x - 92 : latestPoint.value.x + 8
-})
+  const rect = svg.getBoundingClientRect()
+  const relativeX = ((clientX - rect.left) / rect.width) * layoutWidth.value
 
-const calloutY = computed(() => {
-  if (!latestPoint.value) return padTop
-  return Math.max(padTop + 2, latestPoint.value.y - 34)
-})
+  let nearest = 0
+  let nearestDistance = Infinity
+  for (let index = 0; index < props.labels.length; index += 1) {
+    const distance = Math.abs(xPos(index) - relativeX)
+    if (distance < nearestDistance) {
+      nearestDistance = distance
+      nearest = index
+    }
+  }
+  return nearest
+}
+
+const onChartMove = (event) => {
+  hoveredIndex.value = resolveIndexFromClientX(event.clientX)
+}
+
+const onChartTouch = (event) => {
+  const touch = event.touches?.[0]
+  if (!touch) return
+  hoveredIndex.value = resolveIndexFromClientX(touch.clientX)
+}
+
+const onChartLeave = () => {
+  hoveredIndex.value = -1
+}
+
+watch(
+  () => props.labels.length,
+  () => {
+    hoveredIndex.value = -1
+  }
+)
 </script>
 
 <style scoped>
 .line-chart {
-  min-height: 176px;
-}
-
-.line-chart__topline {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 14px;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.line-chart__metrics {
-  color: #536271;
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 11px;
-  gap: 12px;
-}
-
-.line-chart__metrics strong {
-  color: #203040;
-  font-weight: 700;
-}
-
-.line-chart__svg {
-  height: auto;
+  display: grid;
+  gap: 4px;
+  min-height: 0;
   width: 100%;
 }
 
-.line-chart__plot-bg {
-  fill: #fcfdff;
-  stroke: rgba(12, 35, 64, 0.06);
+.line-chart__canvas {
+  width: 100%;
 }
 
-.line-chart__grid-line {
-  stroke: rgba(126, 151, 169, 0.2);
-  stroke-width: 0.85;
+.line-chart__svg {
+  display: block;
+  height: 168px;
+  overflow: visible;
+  width: 100%;
 }
 
-.line-chart__baseline {
-  stroke: #d5e0ea;
-  stroke-width: 1.1;
+.line-chart__header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 24px;
 }
 
-.line-chart__axis-label {
-  fill: #6e7c88;
-  font-size: 9px;
-}
-
-.line-chart__axis-label--x {
-  fill: #4a5968;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.line-chart__area {
-  fill: url(#line-chart-area);
-}
-
-.line-chart__line {
-  stroke: url(#line-chart-line);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.35;
-}
-
-.line-chart__latest-guide {
-  stroke: #a0bccf;
-  stroke-dasharray: 3 4;
-}
-
-.line-chart__latest-ring {
-  fill: #fff;
-  stroke: rgba(11, 141, 191, 0.26);
-  stroke-width: 5;
-}
-
-.line-chart__callout-box {
-  fill: #0f4f79;
-  opacity: 0.95;
-}
-
-.line-chart__callout-label {
-  fill: rgba(255, 255, 255, 0.84);
-  font-size: 8px;
-  font-weight: 600;
-}
-
-.line-chart__callout-value {
-  fill: #fff;
-  font-size: 10px;
+.line-chart__title {
+  color: #161616;
+  font-size: 14px;
   font-weight: 700;
+  margin: 0;
 }
 
 .line-chart__legend {
-  color: #6c7a87;
   display: flex;
   flex-wrap: wrap;
-  font-size: 11px;
-  gap: 14px;
+  gap: 8px 12px;
+  justify-content: flex-end;
+  margin-left: auto;
+  max-width: 72%;
 }
 
-.line-chart__legend span {
+.line-chart__legend-item {
   align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #6c757d;
+  cursor: pointer;
   display: inline-flex;
-  gap: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  gap: 5px;
+  padding: 3px 8px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.line-chart__legend-item:hover {
+  background: rgba(22, 22, 22, 0.04);
+  border-color: rgba(22, 22, 22, 0.08);
+}
+
+.line-chart__legend-item--hidden {
+  color: #94a3b8;
+  opacity: 0.72;
+  text-decoration: line-through;
+}
+
+.line-chart__legend-item[title] {
+  cursor: pointer;
 }
 
 .line-chart__legend-dot {
   border-radius: 999px;
-  display: inline-block;
-  height: 9px;
-  width: 9px;
+  flex-shrink: 0;
+  height: 7px;
+  width: 7px;
+}
+
+.line-chart__grid-line {
+  stroke: rgba(148, 163, 184, 0.32);
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+}
+
+.line-chart__axis-label {
+  fill: #94a3b8;
+  font-size: 10px;
+}
+
+.line-chart__axis-label--y {
+  font-variant-numeric: tabular-nums;
+}
+
+.line-chart__axis-label--y-right {
+  fill: #b8d96e;
+}
+
+.line-chart__axis-label--x {
+  fill: #94a3b8;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.line-chart__axis-label--x-active {
+  fill: #161616;
+  font-weight: 700;
+}
+
+.line-chart__line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.line-chart__cursor-line {
+  stroke: rgba(148, 163, 184, 0.75);
+  stroke-dasharray: 4 4;
+  stroke-width: 1;
+}
+
+.line-chart__focus-dot {
+  fill: #fff;
+  stroke-width: 2;
+}
+
+.line-chart__tooltip-box {
+  fill: #161616;
+}
+
+.line-chart__tooltip-caret {
+  fill: #161616;
+}
+
+.line-chart__tooltip-label {
+  fill: rgba(255, 255, 255, 0.62);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.line-chart__tooltip-value {
+  fill: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.line-chart__tooltip-value--secondary {
+  fill: rgba(255, 255, 255, 0.9);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.line-chart__hit-area {
+  cursor: crosshair;
+  fill: transparent;
 }
 
 .line-chart__empty {

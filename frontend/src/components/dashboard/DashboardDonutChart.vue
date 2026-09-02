@@ -1,55 +1,79 @@
 <template>
-  <div class="donut-chart">
+  <div
+    class="donut-chart"
+    :class="{ 'donut-chart--compact': compact, 'donut-chart--inline': inline }"
+  >
+    <div v-if="inline && title" class="donut-chart__header">
+      <h4 class="donut-chart__title">{{ title }}</h4>
+    </div>
+
     <div v-if="segments.length" class="donut-chart__layout">
       <svg
         class="donut-chart__svg"
-        :viewBox="`0 0 ${size} ${size}`"
+        :viewBox="`0 0 ${chartSize} ${chartSize}`"
         role="img"
         aria-label="Donut chart"
       >
-        <defs>
-          <filter id="donut-shadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2.4" flood-opacity="0.1" />
-          </filter>
-        </defs>
+        <circle
+          :cx="chartCenter"
+          :cy="chartCenter"
+          :r="chartRadius"
+          class="donut-chart__track"
+          :stroke-width="strokeWidth"
+        />
 
-        <circle :cx="center" :cy="center" :r="radius + 14" class="donut-chart__halo" />
-        <circle :cx="center" :cy="center" :r="radius" class="donut-chart__track" />
-
-        <g :transform="`rotate(-90 ${center} ${center})`" filter="url(#donut-shadow)">
+        <g :transform="`rotate(-90 ${chartCenter} ${chartCenter})`">
           <circle
             v-for="segment in segments"
             :key="segment.key"
-            :cx="center"
-            :cy="center"
-            :r="radius"
+            :cx="chartCenter"
+            :cy="chartCenter"
+            :r="chartRadius"
             class="donut-chart__segment"
-            :class="{ 'donut-chart__segment--active': activeKey === segment.key }"
             :stroke="segment.color"
+            :stroke-width="strokeWidth"
             :stroke-dasharray="segment.dasharray"
             :stroke-dashoffset="segment.offset"
-            :opacity="activeKey && activeKey !== segment.key ? 0.26 : 1"
-            @click="$emit('select', segment.key)"
+            :opacity="segmentOpacity(segment)"
+            :class="{
+              'donut-chart__segment--active': activeKey === segment.key,
+              'donut-chart__segment--muted': segment.muted
+            }"
+            @click="onSegmentSelect(segment)"
           />
         </g>
 
-        <circle :cx="center" :cy="center" :r="radius - 18" class="donut-chart__core" />
-        <text :x="center" :y="center - 7" class="donut-chart__center-label" text-anchor="middle">
+        <circle :cx="chartCenter" :cy="chartCenter" :r="coreRadius" class="donut-chart__core" />
+        <text
+          :x="chartCenter"
+          :y="chartCenter - (inline ? 5 : 7)"
+          class="donut-chart__center-label"
+          text-anchor="middle"
+        >
           {{ centerLabel }}
         </text>
-        <text :x="center" :y="center + 18" class="donut-chart__center-value" text-anchor="middle">
+        <text
+          :x="chartCenter"
+          :y="chartCenter + (inline ? 14 : 18)"
+          class="donut-chart__center-value"
+          text-anchor="middle"
+        >
           {{ valueFormatter(total) }}
         </text>
       </svg>
 
-      <div class="donut-chart__legend">
+      <div class="donut-chart__legend" :class="{ 'donut-chart__legend--inline': inline }">
         <button
           v-for="segment in segments"
           :key="`legend-${segment.key}`"
           type="button"
           class="donut-chart__legend-item"
-          :class="{ 'donut-chart__legend-item--active': activeKey === segment.key }"
-          @click="$emit('select', segment.key)"
+          :class="{
+            'donut-chart__legend-item--active': activeKey === segment.key,
+            'donut-chart__legend-item--muted': segment.muted
+          }"
+          :disabled="segment.muted"
+          @click="onSegmentSelect(segment)"
         >
           <span
             class="donut-chart__swatch"
@@ -58,7 +82,7 @@
           />
           <span class="donut-chart__legend-copy">
             <strong>{{ segment.label }}</strong>
-            <span>{{ valueFormatter(segment.value) }} · {{ segment.share }}%</span>
+            <span v-if="!inline">{{ valueFormatter(segment.value) }} · {{ segment.share }}%</span>
           </span>
         </button>
       </div>
@@ -79,15 +103,51 @@ const props = defineProps({
     type: Function,
     default: (value) => String(Math.round(Number(value) || 0))
   },
-  emptyText: { type: String, default: 'No chart data available.' }
+  emptyText: { type: String, default: 'No chart data available.' },
+  compact: { type: Boolean, default: false },
+  inline: { type: Boolean, default: false },
+  title: { type: String, default: '' }
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select'])
 
-const size = 220
-const center = size / 2
-const radius = 74
-const circumference = 2 * Math.PI * radius
+const onSegmentSelect = (segment) => {
+  if (segment?.muted) return
+  emit('select', segment.key)
+}
+
+const segmentOpacity = (segment) => {
+  if (segment.muted) return 1
+  if (props.activeKey && props.activeKey !== segment.key) return 0.28
+  return 1
+}
+
+const chartSize = computed(() => {
+  if (props.inline) return 140
+  if (props.compact) return 180
+  return 220
+})
+
+const chartCenter = computed(() => chartSize.value / 2)
+
+const chartRadius = computed(() => {
+  if (props.inline) return 50
+  if (props.compact) return 58
+  return 74
+})
+
+const coreRadius = computed(() => {
+  if (props.inline) return chartRadius.value - 18
+  return chartRadius.value - 18
+})
+
+const strokeWidth = computed(() => {
+  if (props.inline) return 16
+  if (props.compact) return 20
+  return 22
+})
+
+const circumference = computed(() => 2 * Math.PI * chartRadius.value)
 
 const palette = ['#0B8DBF', '#6DAA28', '#F3B562', '#E85454', '#7B61FF', '#13B0A5']
 
@@ -98,11 +158,11 @@ const segments = computed(() => {
 
   return source.map((item, index) => {
     const value = Number(item.value) || 0
-    const arc = totalValue ? (value / totalValue) * circumference : 0
+    const arc = totalValue ? (value / totalValue) * circumference.value : 0
     const segment = {
       ...item,
       color: item.color || palette[index % palette.length],
-      dasharray: `${arc} ${circumference - arc}`,
+      dasharray: `${arc} ${circumference.value - arc}`,
       offset: -consumed,
       share: totalValue ? ((value / totalValue) * 100).toFixed(0) : '0'
     }
@@ -134,45 +194,48 @@ const total = computed(() =>
   width: 100%;
 }
 
-.donut-chart__halo {
-  fill: none;
-  stroke: rgba(11, 141, 191, 0.08);
-  stroke-width: 2;
-}
-
 .donut-chart__track {
   fill: none;
-  stroke: #eef3f7;
-  stroke-width: 22;
+  stroke: #eef2f6;
 }
 
 .donut-chart__segment {
   cursor: pointer;
   fill: none;
   stroke-linecap: round;
-  stroke-width: 22;
-  transition: opacity 0.18s ease, stroke-width 0.18s ease;
+  transition: opacity 0.18s ease;
 }
 
 .donut-chart__segment--active {
-  stroke-width: 24;
+  opacity: 1 !important;
+}
+
+.donut-chart__segment--muted {
+  cursor: default;
+}
+
+.donut-chart__legend-item--muted {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.donut-chart__legend-item--muted:disabled {
+  pointer-events: none;
 }
 
 .donut-chart__core {
   fill: #fff;
-  stroke: rgba(12, 35, 64, 0.05);
 }
 
 .donut-chart__center-label {
-  fill: #6b7883;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  fill: #94a3b8;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 .donut-chart__center-value {
-  fill: #13293b;
-  font-size: 24px;
+  fill: #161616;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -191,25 +254,23 @@ const total = computed(() =>
   gap: 10px;
   padding: 10px 12px;
   text-align: left;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease;
 }
 
 .donut-chart__legend-item:hover {
-  box-shadow: 0 6px 14px rgba(12, 35, 64, 0.06);
-  transform: translateY(-1px);
+  border-color: rgba(0, 119, 184, 0.2);
 }
 
 .donut-chart__legend-item--active {
-  background: rgba(11, 141, 191, 0.05);
-  border-color: rgba(11, 141, 191, 0.24);
+  background: rgba(0, 119, 184, 0.04);
+  border-color: rgba(0, 119, 184, 0.24);
 }
 
 .donut-chart__swatch {
   border-radius: 999px;
-  display: inline-flex;
   flex-shrink: 0;
-  height: 12px;
-  width: 12px;
+  height: 10px;
+  width: 10px;
 }
 
 .donut-chart__legend-copy {
@@ -220,13 +281,17 @@ const total = computed(() =>
 }
 
 .donut-chart__legend-copy strong {
-  color: #162a3b;
-  font-size: 13px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .donut-chart__legend-copy span {
-  color: #6c7a87;
-  font-size: 12px;
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .donut-chart__empty {
@@ -234,6 +299,108 @@ const total = computed(() =>
   font-size: 13px;
   margin: 0;
   padding: 24px 0;
+  text-align: center;
+}
+
+.donut-chart--compact {
+  min-height: 0;
+}
+
+.donut-chart--compact .donut-chart__layout {
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+.donut-chart--compact .donut-chart__svg {
+  margin: 0 auto;
+  max-width: 180px;
+}
+
+.donut-chart--inline {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+  width: 100%;
+}
+
+.donut-chart--inline .donut-chart__header {
+  align-items: center;
+  display: flex;
+  min-height: 24px;
+}
+
+.donut-chart--inline .donut-chart__title {
+  color: #161616;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.donut-chart--inline .donut-chart__layout {
+  gap: 8px;
+  grid-template-columns: 1fr;
+  justify-items: start;
+}
+
+.donut-chart--inline .donut-chart__svg {
+  display: block;
+  height: 140px;
+  margin: 0;
+  max-width: 140px;
+  width: 140px;
+}
+
+.donut-chart--inline .donut-chart__center-label {
+  font-size: 9px;
+}
+
+.donut-chart--inline .donut-chart__center-value {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.donut-chart--inline .donut-chart__legend {
+  gap: 4px;
+  justify-items: start;
+  width: 100%;
+}
+
+.donut-chart--inline .donut-chart__legend--inline {
+  display: grid;
+  gap: 4px;
+}
+
+.donut-chart--inline .donut-chart__legend-item {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.donut-chart--inline .donut-chart__legend-item:hover {
+  background: transparent;
+}
+
+.donut-chart--inline .donut-chart__legend-item--active .donut-chart__legend-copy strong {
+  color: #161616;
+  font-weight: 700;
+}
+
+.donut-chart--inline .donut-chart__legend-copy {
+  flex-direction: row;
+  gap: 0;
+}
+
+.donut-chart--inline .donut-chart__legend-copy strong {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.donut-chart--inline .donut-chart__swatch {
+  height: 8px;
+  width: 8px;
 }
 
 @media (max-width: 640px) {
