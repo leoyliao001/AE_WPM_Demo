@@ -112,6 +112,48 @@ python manage.py loaddata scripts\api_data_dump.json
 
 ### 2. Frontend — install dependencies
 
+Because the frontend uses private packages from GitHub Packages (Maersk scope),
+you must authenticate npm before running `npm install`.
+
+#### 2a. GitHub Packages login for `@maersk-global`
+
+What you need:
+
+- A GitHub account that can access Maersk packages.
+- A GitHub Personal Access Token (PAT) with at least `read:packages`.
+- If your org requires it, include `repo` scope as well.
+
+Recommended one-time setup in PowerShell:
+
+```powershell
+# If your network needs a corporate proxy, set these first.
+npm config set proxy http://10.0.11.1:9400
+npm config set https-proxy http://10.0.11.1:9400
+
+# Route Maersk package scopes to GitHub Packages.
+npm config set @maersk-global:registry https://npm.pkg.github.com
+npm config set @Maersk-Global:registry https://npm.pkg.github.com
+
+# Login (interactive)
+npm login --registry=https://npm.pkg.github.com --scope=@maersk-global --auth-type=legacy
+```
+
+During `npm login`, enter:
+
+- Username: your GitHub username
+- Password: your GitHub PAT
+- Email: your GitHub email
+
+Quick verification:
+
+```powershell
+npm ping
+npm whoami --registry=https://npm.pkg.github.com
+```
+
+If `npm install` fails with `401 Unauthorized`, run `npm login` again.
+If it fails with `ETIMEDOUT`, check proxy settings and retry.
+
 In the same or a new CMD window:
 
 ```cmd

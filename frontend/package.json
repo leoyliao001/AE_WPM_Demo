@@ -26,5 +26,11 @@
     "rollup": "^4.62.2",
     "vite": "^5.0.0",
     "vite-plugin-singlefile": "^2.3.3"
+  },
+  "allowScripts": {
+    "vue-demi@0.14.10": true,
+    "core-js@3.48.0": true,
+    "core-js-pure@3.48.0": true,
+    "esbuild@0.21.5": true
   }
 }

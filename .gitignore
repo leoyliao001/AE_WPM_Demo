@@ -40,6 +40,9 @@ backend/scripts/*_log.txt
 !.env.example
 *.local
 
+# Local Django settings (machine-specific DB host/creds) - do not commit
+backend/config/settings.py
+
 # npm registry auth (never commit)
 .npmrc
 
