@@ -544,9 +544,6 @@
                           <div class="exec-summary-banner__text">
                             {{ Math.round(((Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) / Number(bpmSummary.target || 1)) * 100) }}% of the {{ bpmYear }} offshoring target has been achieved — {{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }} of {{ formatWholeNumber(bpmSummary.target) }} FTEs
                           </div>
-                          <div class="exec-summary-banner__bar">
-                            <div class="exec-summary-banner__bar-fill" :style="{ width: `${execAchievedPct}%` }" />
-                          </div>
                         </div>
                         <div v-else>
                           <div class="exec-summary-banner__text">Offshoring target not set for selected year.</div>
@@ -2324,15 +2321,75 @@ onMounted(async () => {
 .fcol {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  background: linear-gradient(180deg, #ffffff, #f7fbfe);
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
   border: 1px solid rgba(0,63,110,0.06);
   border-radius: 12px;
-  padding: 14px 12px;
-  text-align: center;
-  min-height: 72px;
-  box-shadow: 0 6px 18px rgba(2,48,84,0.04);
+  padding: 18px 18px;
+  text-align: left;
+  min-height: 80px;
+  box-shadow: 0 8px 22px rgba(2,48,84,0.04);
+  position: relative;
+}
+
+.fcol::after {
+  /* top-right small dot */
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(0,63,110,0.12);
+}
+
+.fcell {
+  color: #425466;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fcell::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0077b8;
+  opacity: 0.95;
+}
+
+.fcol:nth-child(1) .fcell::before { background: #24ae6e; }
+.fcol:nth-child(2) .fcell::before { background: #e85454; }
+.fcol:nth-child(3) .fcell::before { background: #0077b8; }
+
+.fvalue {
+  font-size: 28px;
+  font-weight: 900;
+  margin-top: 8px;
+  color: #0f2a3b;
+}
+
+.further-note {
+  margin-top: 14px;
+  color: #6b7784;
+  font-size: 12px;
+  line-height: 1.4;
+  background: #ffffff;
+  border: 1px dashed rgba(0,63,110,0.04);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.fcol:hover {
+  transform: translateY(-4px);
+  transition: transform 0.18s ease;
+  box-shadow: 0 14px 34px rgba(2,48,84,0.06);
 }
 .fcell {
   color: #425466;
@@ -2451,14 +2508,16 @@ onMounted(async () => {
 }
 
 .exec-summary-banner {
-  /* subtle info banner with compact progress bar */
+  /* simplified banner without heavy bar */
   background: #f8fbfe;
-  border: 1px solid rgba(0,119,184,0.08);
+  border: 1px solid rgba(0,119,184,0.06);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   margin-top: 8px;
-  display: grid;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .exec-summary-banner__text {
@@ -2468,17 +2527,12 @@ onMounted(async () => {
   text-align: left;
 }
 
-.exec-summary-banner__bar {
-  background: #eef6fb;
-  height: 10px;
+.exec-summary-banner__decor {
+  width: 160px;
+  height: 6px;
   border-radius: 999px;
-  overflow: hidden;
-}
-
-.exec-summary-banner__bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #0077b8, #42b0d5);
-  transition: width 420ms cubic-bezier(.2,.7,.2,1);
+  background: linear-gradient(90deg, rgba(0,119,184,0.12), rgba(66,176,213,0.12));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .executive-note-column {
