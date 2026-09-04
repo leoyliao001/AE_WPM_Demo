@@ -2476,6 +2476,9 @@ onMounted(async () => {
   display: grid;
   gap: 14px;
   padding: 18px;
+  /* ensure card content aligns to top when neighbouring grid column is taller */
+  align-content: start;
+  min-height: 0;
 }
 
 .dash-card__head {
