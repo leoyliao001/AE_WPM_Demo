@@ -538,18 +538,6 @@
                   </tbody>
                 </table>
 
-                <div class="exec-summary-banner">
-                  <template>
-                    <div v-if="bpmSummary.target">
-                          <div class="exec-summary-banner__text">
-                            {{ Math.round(((Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) / Number(bpmSummary.target || 1)) * 100) }}% of the {{ bpmYear }} offshoring target has been achieved — {{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }} of {{ formatWholeNumber(bpmSummary.target) }} FTEs
-                          </div>
-                        </div>
-                        <div v-else>
-                          <div class="exec-summary-banner__text">Offshoring target not set for selected year.</div>
-                        </div>
-                  </template>
-                </div>
 
                 <div class="further-potential">
                   <h4>Further potential</h4>
@@ -2456,16 +2444,6 @@ onMounted(async () => {
   color: #003f6e;
 }
 
-/* reduce gap under big banner and keep it sleek */
-.exec-summary-banner {
-  background: linear-gradient(90deg, rgba(0,119,184,1), rgba(0,88,133,1));
-  color: #fff;
-  border-radius: 10px;
-  padding: 10px 14px;
-  box-shadow: 0 6px 18px rgba(2,48,84,0.08);
-  margin-top: 12px;
-  font-weight: 700;
-}
 
 
 /* Exec commentary */
@@ -2507,33 +2485,6 @@ onMounted(async () => {
   font-weight: 800;
 }
 
-.exec-summary-banner {
-  /* simplified banner without heavy bar */
-  background: #f8fbfe;
-  border: 1px solid rgba(0,119,184,0.06);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.exec-summary-banner__text {
-  color: #0b3b56;
-  font-weight: 700;
-  font-size: 14px;
-  text-align: left;
-}
-
-.exec-summary-banner__decor {
-  width: 160px;
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(0,119,184,0.12), rgba(66,176,213,0.12));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-}
 
 .executive-note-column {
   display: grid;
