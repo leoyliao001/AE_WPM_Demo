@@ -218,13 +218,44 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="row in requestorRows.slice(0, 10)" :key="row.key">
-                      <td>{{ row.label }}</td>
-                      <td>{{ formatWholeNumber(row.projects) }}</td>
-                      <td>{{ formatWholeNumber(row.migratable) }}</td>
-                      <td>{{ formatWholeNumber(row.actuals) }}</td>
-                      <td>{{ formatWholeNumber(row.gap) }}</td>
-                    </tr>
+                    <template v-for="row in requestorRows.slice(0, 20)" :key="row.key">
+                      <tr class="manager-row">
+                        <td>
+                          <button class="expand-btn" @click.stop="toggleManager(row.key)">{{ isManagerExpanded(row.key) ? '−' : '+' }}</button>
+                          {{ row.label }}
+                        </td>
+                        <td>{{ formatWholeNumber(row.projects) }}</td>
+                        <td>{{ formatWholeNumber(row.migratable) }}</td>
+                        <td>{{ formatWholeNumber(row.actuals) }}</td>
+                        <td>{{ formatWholeNumber(row.gap) }}</td>
+                      </tr>
+
+                      <template v-if="isManagerExpanded(row.key)">
+                        <template v-for="typeRow in managerDetails[row.key]" :key="row.key + '::' + typeRow.type">
+                          <tr class="nested-row level-1">
+                            <td>
+                              <button class="expand-btn small" @click.stop="toggleType(row.key, typeRow.type)">{{ isTypeExpanded(row.key, typeRow.type) ? '−' : '+' }}</button>
+                              {{ typeRow.type }}
+                            </td>
+                            <td>{{ formatWholeNumber(typeRow.projects) }}</td>
+                            <td>{{ formatWholeNumber(typeRow.migratable) }}</td>
+                            <td>{{ formatWholeNumber(typeRow.actuals) }}</td>
+                            <td>{{ formatWholeNumber(typeRow.gap) }}</td>
+                          </tr>
+
+                          <template v-if="isTypeExpanded(row.key, typeRow.type)">
+                            <tr v-for="statusRow in typeRow.statuses" :key="row.key + '::' + typeRow.type + '::' + statusRow.status" class="nested-row level-2">
+                              <td>{{ statusRow.status }}</td>
+                              <td>{{ statusRow.count }}</td>
+                              <td>{{ formatWholeNumber(statusRow.migratable) }}</td>
+                              <td>{{ formatWholeNumber(statusRow.actuals) }}</td>
+                              <td>{{ formatWholeNumber(statusRow.gap) }}</td>
+                            </tr>
+                          </template>
+                        </template>
+                      </template>
+
+                    </template>
                   </tbody>
                 </table>
               </div>
@@ -1293,6 +1324,61 @@ const requestorRows = computed(() => {
     }))
     .sort((a, b) => b.migratable - a.migratable)
     .slice(0, 20)
+})
+
+// Drilldown state & aggregated details by manager -> migrationType -> status
+const expandedManagers = ref([])
+const expandedTypeKeys = ref([])
+
+const toggleManager = (key) => {
+  const i = expandedManagers.value.indexOf(key)
+  if (i >= 0) expandedManagers.value.splice(i, 1)
+  else expandedManagers.value.push(key)
+}
+const isManagerExpanded = (key) => expandedManagers.value.includes(key)
+
+const _typeKey = (managerKey, type) => `${managerKey}||${type}`
+const toggleType = (managerKey, type) => {
+  const k = _typeKey(managerKey, type)
+  const i = expandedTypeKeys.value.indexOf(k)
+  if (i >= 0) expandedTypeKeys.value.splice(i, 1)
+  else expandedTypeKeys.value.push(k)
+}
+const isTypeExpanded = (managerKey, type) => expandedTypeKeys.value.includes(_typeKey(managerKey, type))
+
+const managerDetails = computed(() => {
+  const map = {}
+  for (const project of executiveFilteredProjects.value) {
+    const manager = project.owner || project.requestor || 'Unknown'
+    const type = String(project.migrationType || 'Unknown')
+    const status = String(project.status || '(blank)')
+    if (!map[manager]) map[manager] = {}
+    if (!map[manager][type]) {
+      map[manager][type] = { type, projects: 0, migratable: 0, actuals: 0, statuses: {} }
+    }
+    const m = projectMetrics(project)
+    map[manager][type].projects += 1
+    map[manager][type].migratable += m.migratable
+    map[manager][type].actuals += m.actuals
+
+    if (!map[manager][type].statuses[status]) map[manager][type].statuses[status] = { status, count: 0, migratable: 0, actuals: 0 }
+    map[manager][type].statuses[status].count += 1
+    map[manager][type].statuses[status].migratable += m.migratable
+    map[manager][type].statuses[status].actuals += m.actuals
+  }
+
+  const result = {}
+  for (const [mgr, types] of Object.entries(map)) {
+    result[mgr] = Object.values(types)
+      .map((t) => ({
+        ...t,
+        gap: Math.max(0, t.migratable - t.actuals),
+        statuses: Object.values(t.statuses).map((s) => ({ ...s, gap: Math.max(0, s.migratable - s.actuals) }))
+          .sort((a, b) => b.count - a.count)
+      }))
+      .sort((a, b) => b.migratable - a.migratable)
+  }
+  return result
 })
 
 const bowlerProjectOptions = computed(() => {
@@ -2527,6 +2613,40 @@ onMounted(async () => {
   font-size: 13px;
   min-width: 28px;
   text-align: right;
+}
+
+/* Nested rows for drilldown */
+.manager-row td {
+  padding: 8px 12px;
+}
+
+.nested-row td {
+  padding: 6px 12px;
+}
+
+.nested-row.level-1 td:first-child {
+  padding-left: 28px;
+}
+
+.nested-row.level-2 td:first-child {
+  padding-left: 48px;
+  font-size: 13px;
+  color: #1f2d3a;
+}
+
+.expand-btn {
+  width: 28px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+}
+
+.expand-btn.small {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
 }
 
 .region-compare__row {
