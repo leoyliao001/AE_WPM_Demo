@@ -37,8 +37,8 @@ $nssm = "E:\Apps\services\wpm\nssm\nssm.exe"
 & $nssm set AE_WPM AppEnvironmentExtra `
     "DJANGO_DB_ENGINE=mssql" `
     "DJANGO_DEBUG=True" `
-    "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,SCRBAEXDEFRM217,SCRBAEXDEFRM217.crb.apmoller.net,wpmworkflow.crb.apmoller.net,crb.apmoller.net,10.176.115.28,*" `
-    "DJANGO_CORS_ORIGINS=http://localhost:3001,http://127.0.0.1:3001,http://localhost,http://127.0.0.1,http://10.176.115.28,http://SCRBAEXDEFRM217,https://localhost,https://127.0.0.1,https://10.176.115.28,https://SCRBAEXDEFRM217,https://SCRBAEXDEFRM217.crb.apmoller.net,https://wpmworkflow.crb.apmoller.net,https://crb.apmoller.net"
+    "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,SCRBAEXDEFRM217,SCRBAEXDEFRM217.crb.apmoller.net,wpmpulse.crb.apmoller.net,wpmworkflow.crb.apmoller.net,crb.apmoller.net,10.176.115.28,*" `
+    "DJANGO_CORS_ORIGINS=http://localhost:3001,http://127.0.0.1:3001,http://localhost,http://127.0.0.1,http://10.176.115.28,http://SCRBAEXDEFRM217,https://localhost,https://127.0.0.1,https://10.176.115.28,https://SCRBAEXDEFRM217,https://SCRBAEXDEFRM217.crb.apmoller.net,https://wpmpulse.crb.apmoller.net,https://wpmworkflow.crb.apmoller.net,https://crb.apmoller.net"
 if ($LASTEXITCODE -ne 0) { throw "nssm set AppEnvironmentExtra failed" }
 
 # --- 3. restart service ---

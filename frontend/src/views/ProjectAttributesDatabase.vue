@@ -184,6 +184,28 @@ const allTables = [
     actionLabel: 'Open Project Gantt'
   },
   {
+    id: 'bpm-rofo',
+    tableKey: 'bpm_rofo',
+    title: 'BPM ROFO',
+    description:
+      'Year-based ROFO planning table with onboarding month and value tracking.',
+    icon: 'mi-chart-line',
+    accent: '#005FB8',
+    route: '/bpm-rofo',
+    actionLabel: 'Open BPM ROFO'
+  },
+  {
+    id: 'bpm-actual',
+    tableKey: 'bpm_actual',
+    title: 'BPM Actual',
+    description:
+      'Year-based actual performance table with onboarding month and value tracking.',
+    icon: 'mi-chart-bar',
+    accent: '#1D4ED8',
+    route: '/bpm-actual',
+    actionLabel: 'Open BPM Actual'
+  },
+  {
     id: 'access-control',
     tableKey: 'access_control',
     title: 'Access Control',

@@ -8,6 +8,8 @@
           <col class="col-status" />
           <col class="col-region" />
           <col class="col-migration-type" />
+          <col class="col-products" />
+          <col class="col-areas" />
           <col class="col-fte" />
           <col class="col-requestor" />
           <col class="col-requested" />
@@ -59,6 +61,12 @@
             <td class="projects-table__text" :title="row.migrationType">
               {{ row.migrationType }}
             </td>
+            <td class="projects-table__text" :title="row.productsLabel">
+              {{ row.productsLabel }}
+            </td>
+            <td class="projects-table__text" :title="row.areasLabel">
+              {{ row.areasLabel }}
+            </td>
             <td class="projects-table__num">{{ row.fteNumber }}</td>
             <td class="projects-table__text" :title="row.requestor">{{ row.requestor }}</td>
             <td class="projects-table__date" :title="row.requestedDate">
@@ -109,6 +117,8 @@ const columns = [
   { id: 'status', label: 'Status', sortKey: 'statusLabel', type: 'string' },
   { id: 'region', label: 'Region', sortKey: 'region', type: 'string' },
   { id: 'migrationType', label: 'Migration type', sortKey: 'migrationType', type: 'string' },
+  { id: 'products', label: 'Product', sortKey: 'productsLabel', type: 'string' },
+  { id: 'areas', label: 'Areas', sortKey: 'areasLabel', type: 'string' },
   { id: 'fteNumber', label: 'FTE', sortKey: 'fteNumber', type: 'number' },
   { id: 'requestor', label: 'Requestor', sortKey: 'requestor', type: 'string' },
   { id: 'requestedDate', label: 'Requested', sortKey: 'requestedDate', type: 'string' },
@@ -132,7 +142,7 @@ const paginationLabels = {
 
 const getSortValue = (row, column) => {
   if (column.sortKey === 'progress') {
-    return Number.parseInt(String(row.progressLabel ?? ''), 10) || 0
+    return Number(row.progress) || Number.parseInt(String(row.progressLabel ?? ''), 10) || 0
   }
   if (column.type === 'number') {
     return Number.parseInt(String(row[column.sortKey] ?? ''), 10) || 0
@@ -220,45 +230,53 @@ const onPageSizeChange = (event) => {
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.4;
-  min-width: 1080px;
+  min-width: 1280px;
   table-layout: fixed;
   width: 100%;
 }
 
 .col-request-id {
-  width: 176px;
+  width: 160px;
 }
 
 .col-project-name {
-  width: 220px;
+  width: 180px;
 }
 
 .col-status {
-  width: 108px;
+  width: 100px;
 }
 
 .col-region {
-  width: 72px;
+  width: 64px;
 }
 
 .col-migration-type {
-  width: 156px;
+  width: 132px;
+}
+
+.col-products {
+  width: 120px;
+}
+
+.col-areas {
+  width: 120px;
 }
 
 .col-fte {
-  width: 56px;
+  width: 52px;
 }
 
 .col-requestor {
-  width: 96px;
+  width: 88px;
 }
 
 .col-requested {
-  width: 168px;
+  width: 148px;
 }
 
 .col-progress {
-  width: 72px;
+  width: 68px;
 }
 
 .projects-table__grid thead th,

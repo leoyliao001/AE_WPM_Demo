@@ -40,18 +40,68 @@
       />
     </mc-notification>
 
-    <div v-else class="dashboard-layout">
-      <section class="hero-panel">
-        <div class="hero-panel__top">
-          <div>
-            <p class="hero-eyebrow">Portfolio command center</p>
-            <h2 class="hero-title">Migration portfolio overview</h2>
-            <p class="hero-desc">
-              Track volume, risk, and momentum across
-              {{ hasActiveFilters ? 'the filtered selection' : 'all submitted requests' }}.
-            </p>
+    <div v-else class="dashboard-canvas">
+      <div class="dashboard-layout">
+        <header class="dash-toolbar">
+          <div class="dash-toolbar__filters">
+            <mc-input
+              label="Search"
+              hiddenlabel
+              fit="small"
+              placeholder="Search name, ID, requestor"
+              :value="searchQuery"
+              width="full-width"
+              icon="mi-magnifying-glass"
+              @input="onSearchInput"
+            />
+            <mc-select
+              label="Region"
+              hiddenlabel
+              fit="small"
+              placeholder="All regions"
+              :value="filterRegion"
+              width="full-width"
+              @optionselected="onFilterRegion"
+            >
+              <mc-option value="">All regions</mc-option>
+              <mc-option v-for="region in regionOptions" :key="region" :value="region">
+                {{ region }}
+              </mc-option>
+            </mc-select>
+            <mc-select
+              label="Status"
+              hiddenlabel
+              fit="small"
+              placeholder="All statuses"
+              :value="filterStatus"
+              width="full-width"
+              @optionselected="onFilterStatus"
+            >
+              <mc-option value="">All statuses</mc-option>
+              <mc-option
+                v-for="option in statusFilterOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </mc-option>
+            </mc-select>
+            <mc-select
+              label="Migration type"
+              hiddenlabel
+              fit="small"
+              placeholder="All types"
+              :value="filterMigrationType"
+              width="full-width"
+              @optionselected="onFilterMigrationType"
+            >
+              <mc-option value="">All types</mc-option>
+              <mc-option v-for="type in migrationTypeOptions" :key="type" :value="type">
+                {{ type }}
+              </mc-option>
+            </mc-select>
           </div>
-          <div class="hero-actions">
+          <div class="dash-toolbar__actions">
             <mc-tag
               v-if="hasActiveFilters"
               appearance="info"
@@ -59,443 +109,288 @@
               :label="`${filteredProjects.length} of ${projects.length} projects`"
             />
             <mc-button
+              v-if="hasActiveFilters"
+              appearance="neutral"
+              variant="plain"
+              fit="small"
+              label="Clear"
+              icon="mi-times"
+              @click="clearFilters"
+            />
+            <mc-button
               appearance="neutral"
               variant="outlined"
               fit="small"
-              :label="exporting ? 'Preparing…' : 'Download Excel'"
+              :label="exporting ? 'Preparing…' : 'Export'"
               icon="mi-arrow-down"
               :disabled="exporting || loading || !filteredProjects.length"
               @click="downloadDashboardData"
             />
-            <mc-button
-              appearance="primary"
-              variant="outlined"
-              fit="small"
-              label="New intake"
-              icon="mi-plus"
-              @click="router.push('/migration-intake')"
-            />
           </div>
-        </div>
+        </header>
 
-        <div class="kpi-grid">
-          <article
-            v-for="stat in summaryStats"
-            :key="stat.key"
-            class="kpi-card"
-            :class="{
-              'kpi-card--accent': stat.accent === 'accent',
-              'kpi-card--success': stat.accent === 'success',
-              'kpi-card--danger': stat.accent === 'danger'
-            }"
-          >
-            <span class="kpi-card__label">{{ stat.label }}</span>
-            <strong class="kpi-card__value">{{ stat.value }}</strong>
-          </article>
-        </div>
-
-        <div class="breakdown-row">
-          <div class="breakdown-row__select">
-            <mc-select
-              label="Group by"
-              hiddenlabel
-              fit="small"
-              placeholder="Group by"
-              :value="summaryBreakdown"
-              width="full-width"
-              @optionselected="onSummaryBreakdownChange"
-            >
-              <mc-option value="status">By status</mc-option>
-              <mc-option value="region">By region</mc-option>
-              <mc-option value="product">By product</mc-option>
-            </mc-select>
-          </div>
-          <div v-if="activeBreakdownChips.length" class="chip-list">
-            <mc-tag
-              v-for="chip in activeBreakdownChips"
-              :key="chip.key"
-              :appearance="chip.appearance"
-              fit="small"
-              :label="chip.label"
-            />
-          </div>
-          <p v-else class="summary-empty">No breakdown data for the current selection.</p>
-        </div>
-      </section>
-
-      <div class="analysis-layout">
-        <aside class="sidebar-stack">
-          <section class="filters-panel">
-            <div class="panel-head">
-              <h2 class="section-title">Filters</h2>
-              <p class="section-desc">Refine the portfolio view with live filtering.</p>
-            </div>
-            <div class="filters-toolbar">
-              <mc-input
-                label="Search"
-                hiddenlabel
-                fit="small"
-                placeholder="Search name, ID, requestor"
-                :value="searchQuery"
-                width="full-width"
-                icon="mi-magnifying-glass"
-                @input="onSearchInput"
-              />
-              <mc-select
-                label="Region"
-                hiddenlabel
-                fit="small"
-                placeholder="All regions"
-                :value="filterRegion"
-                width="full-width"
-                @optionselected="onFilterRegion"
-              >
-                <mc-option value="">All regions</mc-option>
-                <mc-option v-for="region in regionOptions" :key="region" :value="region">
-                  {{ region }}
-                </mc-option>
-              </mc-select>
-              <mc-select
-                label="Status"
-                hiddenlabel
-                fit="small"
-                placeholder="All statuses"
-                :value="filterStatus"
-                width="full-width"
-                @optionselected="onFilterStatus"
-              >
-                <mc-option value="">All statuses</mc-option>
-                <mc-option
-                  v-for="option in statusFilterOptions"
-                  :key="option.value"
-                  :value="option.value"
+        <section class="overview-panel">
+          <div class="overview-panel__metrics">
+            <article class="overview-panel__hero">
+              <span class="overview-panel__label">Total projects</span>
+              <p class="overview-panel__metric-desc">{{ heroMetricDescription }}</p>
+              <div class="overview-panel__hero-row">
+                <strong class="overview-panel__hero-value">
+                  {{ formatWholeNumber(displayedSummary.totalProjects) }}
+                </strong>
+                <span class="metric-chip metric-chip--unit">projects</span>
+                <span
+                  v-if="intakeTrendBadge"
+                  class="overview-panel__badge"
+                  :class="`overview-panel__badge--${intakeTrendBadge.direction}`"
+                  :title="intakeTrendBadgeDescription"
                 >
-                  {{ option.label }}
-                </mc-option>
-              </mc-select>
-              <mc-select
-                label="Migration type"
-                hiddenlabel
-                fit="small"
-                placeholder="All types"
-                :value="filterMigrationType"
-                width="full-width"
-                @optionselected="onFilterMigrationType"
+                  {{ intakeTrendBadge.label }}
+                </span>
+              </div>
+              <div class="metric-chip-row">
+                <span class="metric-chip metric-chip--fte">
+                  <em>{{ formatWholeNumber(displayedSummary.totalFte) }}</em>
+                  FTE
+                </span>
+                <span v-if="hasActiveFilters" class="metric-chip metric-chip--muted">Filtered view</span>
+                <span v-else class="metric-chip metric-chip--muted">Full portfolio</span>
+              </div>
+            </article>
+
+            <div class="overview-panel__stats">
+              <article
+                v-for="stat in metricCards"
+                :key="stat.key"
+                class="overview-panel__stat"
               >
-                <mc-option value="">All types</mc-option>
-                <mc-option v-for="type in migrationTypeOptions" :key="type" :value="type">
-                  {{ type }}
-                </mc-option>
-              </mc-select>
-              <mc-button
-                v-if="hasActiveFilters"
-                appearance="neutral"
-                variant="outlined"
-                fit="small"
-                label="Clear filters"
-                icon="mi-times"
-                @click="clearFilters"
+                <span class="overview-panel__label">{{ stat.label }}</span>
+                <p class="overview-panel__metric-desc">{{ stat.description }}</p>
+                <div class="overview-panel__stat-row">
+                  <strong class="overview-panel__stat-value">{{ stat.value }}</strong>
+                  <span v-if="stat.unit" class="metric-chip metric-chip--unit">{{ stat.unit }}</span>
+                </div>
+                <div v-if="stat.chips?.length" class="metric-chip-row">
+                  <span
+                    v-for="chip in stat.chips"
+                    :key="chip.label"
+                    class="metric-chip"
+                    :class="chip.tone ? `metric-chip--${chip.tone}` : ''"
+                  >
+                    <em v-if="chip.value != null">{{ chip.value }}</em>
+                    {{ chip.label }}
+                  </span>
+                </div>
+                <span v-else class="overview-panel__stat-hint">{{ stat.shortHint || stat.hint }}</span>
+              </article>
+            </div>
+          </div>
+
+          <div v-if="statusEntries.length" class="overview-panel__composition">
+            <div class="overview-panel__composition-head">
+              <p class="overview-panel__composition-desc">{{ statusCompositionDescription }}</p>
+              <span class="metric-chip metric-chip--muted">
+                <em>{{ formatWholeNumber(displayedSummary.totalProjects) }}</em>
+                projects
+              </span>
+            </div>
+            <div class="composition-bar__track" role="img" aria-label="Status composition">
+              <button
+                v-for="item in statusCompositionItems"
+                :key="item.status"
+                type="button"
+                class="composition-bar__segment"
+                :class="{ 'composition-bar__segment--active': filterStatus === item.status }"
+                :style="{
+                  flexGrow: item.count,
+                  backgroundColor: statusChartColors[item.status] || '#94a3b8'
+                }"
+                :title="`${item.label} · ${formatWholeNumber(item.count)} (${item.pct}%)`"
+                @click="onStatusChartSelect(item.status)"
               />
             </div>
-          </section>
+            <div class="composition-bar__labels composition-bar__labels--inline">
+              <button
+                v-for="item in statusCompositionItems"
+                :key="`label-${item.status}`"
+                type="button"
+                class="composition-bar__label"
+                :class="{ 'composition-bar__label--active': filterStatus === item.status }"
+                @click="onStatusChartSelect(item.status)"
+              >
+                <span
+                  class="composition-bar__dot"
+                  :style="{ backgroundColor: statusChartColors[item.status] || '#94a3b8' }"
+                />
+                <span class="composition-bar__name">{{ item.label }}</span>
+                <strong>{{ item.pct }}%</strong>
+              </button>
+            </div>
+          </div>
+        </section>
 
-          <section class="insights-panel">
-            <div class="panel-head">
-              <h2 class="section-title">Actionable insights</h2>
-              <p class="section-desc">Fast talking points for portfolio reviews.</p>
+        <section class="dashboard-main">
+          <aside class="dash-card dash-card--insights">
+            <div class="insights-panel__head">
+              <div class="insights-panel__title-row">
+                <span class="insights-panel__accent" aria-hidden="true" />
+                <h3>Actionable insights</h3>
+              </div>
+              <p>Fast talking points for portfolio reviews.</p>
             </div>
 
             <div class="insight-list">
-              <div v-for="insight in portfolioInsights" :key="insight.label" class="insight-item">
-                <span class="insight-item__label">{{ insight.label }}</span>
+              <article
+                v-for="insight in portfolioInsights"
+                :key="insight.label"
+                class="insight-item"
+                :class="insight.tone ? `insight-item--${insight.tone}` : ''"
+              >
+                <div class="insight-item__top">
+                  <span class="insight-item__label">{{ insight.label }}</span>
+                  <span v-if="insight.badge" class="insight-item__badge">{{ insight.badge }}</span>
+                </div>
                 <strong class="insight-item__value">{{ insight.value }}</strong>
-                <p class="insight-item__detail">{{ insight.detail }}</p>
-              </div>
+                <p v-if="insight.description" class="insight-item__desc">{{ insight.description }}</p>
+                <div v-if="insight.chips?.length" class="metric-chip-row">
+                  <span
+                    v-for="chip in insight.chips"
+                    :key="`${insight.label}-${chip.label}`"
+                    class="metric-chip"
+                    :class="chip.tone ? `metric-chip--${chip.tone}` : ''"
+                  >
+                    <em v-if="chip.value != null">{{ chip.value }}</em>
+                    {{ chip.label }}
+                  </span>
+                </div>
+              </article>
             </div>
 
             <div class="leaderboard">
               <div class="leaderboard__head">
                 <h4>Top products in demand</h4>
-                <span>{{ topProductItems.length }} shown</span>
+                <span class="metric-chip metric-chip--muted">
+                  <em>{{ topProductItems.length }}</em>
+                  shown
+                </span>
               </div>
               <div v-if="topProductItems.length" class="leaderboard__list">
                 <div
-                  v-for="item in topProductItems"
+                  v-for="(item, index) in topProductItems"
                   :key="item.product"
                   class="leaderboard__item"
                 >
-                  <div>
+                  <span class="leaderboard__rank" aria-hidden="true">{{ index + 1 }}</span>
+                  <div class="leaderboard__copy">
                     <strong>{{ item.product }}</strong>
-                    <span>{{ formatWholeNumber(item.count) }} project(s)</span>
+                    <div class="metric-chip-row">
+                      <span class="metric-chip">
+                        <em>{{ formatWholeNumber(item.count) }}</em>
+                        projects
+                      </span>
+                      <span class="metric-chip metric-chip--fte">
+                        <em>{{ formatWholeNumber(item.fte) }}</em>
+                        FTE
+                      </span>
+                    </div>
                   </div>
-                  <span>{{ formatWholeNumber(item.fte) }} FTE</span>
                 </div>
               </div>
               <p v-else class="summary-empty">No product mix data for the current selection.</p>
             </div>
-          </section>
-        </aside>
+          </aside>
 
-        <section class="analytics-panel">
-          <div class="panel-head">
-            <h2 class="section-title">Analytics</h2>
-            <p class="section-desc">Click chart items to cross-filter the full dashboard.</p>
+          <div class="dashboard-main__charts">
+        <article class="dash-card dash-card--breakdown">
+          <div class="dash-card__head dash-card__head--tabs">
+            <h3>Portfolio breakdown</h3>
+            <div class="segmented-tabs" role="tablist">
+              <button
+                v-for="tab in breakdownTabs"
+                :key="tab.id"
+                type="button"
+                role="tab"
+                class="segmented-tabs__btn"
+                :class="{ 'segmented-tabs__btn--active': breakdownTab === tab.id }"
+                :aria-selected="breakdownTab === tab.id"
+                @click="breakdownTab = tab.id"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+          </div>
+          <DashboardBarChart
+            v-if="activeBreakdownBarItems.length"
+            :items="activeBreakdownBarItems"
+            :active-key="activeBreakdownFilterKey"
+            :value-formatter="formatWholeNumber"
+            @select="onBreakdownSelect"
+          />
+          <p v-else class="summary-empty">No data for this dimension.</p>
+        </article>
+
+        <article class="dash-card dash-card--analytics">
+          <DashboardLineChart
+            dual-axis
+            title="Portfolio trend"
+            :labels="trendLabels"
+            :series="trendSeries"
+            :value-formatter="formatWholeNumber"
+          />
+          <p class="trend-caption">{{ trendHeadline }}</p>
+          <div class="trend-guide">
+            <p class="trend-guide__intro">
+              Click a legend item above to show or hide that line. At least one line stays visible.
+            </p>
+            <div class="trend-guide__list">
+              <div
+                v-for="guide in trendSeriesGuides"
+                :key="guide.key"
+                class="trend-guide__item"
+              >
+                <span
+                  class="trend-guide__dot"
+                  :style="{ backgroundColor: guide.color }"
+                  aria-hidden="true"
+                />
+                <div>
+                  <strong>{{ guide.label }}</strong>
+                  <span>{{ guide.description }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+          </div>
+        </section>
+
+        <section class="dash-card dash-card--table">
+          <div class="dash-card__head dash-card__head--table">
+            <h3>Project registry</h3>
+            <span class="dash-card__meta">{{ filteredProjects.length }} matching</span>
           </div>
 
-          <article class="chart-card chart-card--trend">
-            <div class="chart-card__head">
-              <div>
-                <h3>Intake trend</h3>
-                <p>Rolling 12 months of submitted demand.</p>
-              </div>
-              <div class="chart-toggle">
-                <button
-                  type="button"
-                  class="chart-toggle__button"
-                  :class="{ 'chart-toggle__button--active': trendMetric === 'count' }"
-                  @click="trendMetric = 'count'"
-                >
-                  Projects
-                </button>
-                <button
-                  type="button"
-                  class="chart-toggle__button"
-                  :class="{ 'chart-toggle__button--active': trendMetric === 'fte' }"
-                  @click="trendMetric = 'fte'"
-                >
-                  FTE
-                </button>
-              </div>
-            </div>
-            <DashboardLineChart
-              :labels="trendLabels"
-              :series="trendSeries"
-              :value-formatter="formatWholeNumber"
+          <div v-if="loading" class="loading-state">Loading projects…</div>
+          <div v-else-if="!filteredProjects.length" class="empty-filter-state">
+            <mc-icon icon="mi-file-search" size="32" />
+            <p>No projects match your filters. Try adjusting search or filter criteria.</p>
+            <mc-button
+              appearance="primary"
+              variant="plain"
+              fit="small"
+              label="Clear filters"
+              @click="clearFilters"
             />
-            <p class="trend-summary">{{ trendHeadline }}</p>
-            <div class="trend-table-wrap">
-              <table class="trend-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Metric</th>
-                    <th v-for="month in intakeTrend" :key="`trend-head-${month.key}`" scope="col">
-                      {{ month.label }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in trendTableRows" :key="row.key">
-                    <th scope="row">{{ row.label }}</th>
-                    <td v-for="(value, idx) in row.values" :key="`${row.key}-${idx}`">
-                      {{ formatWholeNumber(value) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p class="trend-period-note">{{ trendPeriodSummary }}</p>
-          </article>
-
-          <div class="analytics-split">
-            <article class="chart-card">
-              <div class="chart-card__head">
-                <div>
-                  <h3>Status distribution</h3>
-                  <p>Where projects sit in the delivery lifecycle.</p>
-                </div>
-              </div>
-              <DashboardDonutChart
-                :items="statusChartItems"
-                :active-key="filterStatus"
-                center-label="Projects"
-                :value-formatter="formatWholeNumber"
-                @select="onStatusChartSelect"
-              />
-            </article>
-
-            <article class="chart-card">
-              <div class="chart-card__head">
-                <div>
-                  <h3>Regional workload</h3>
-                  <p>Top regions by project volume or FTE load.</p>
-                </div>
-                <div class="chart-toggle">
-                  <button
-                    type="button"
-                    class="chart-toggle__button"
-                    :class="{ 'chart-toggle__button--active': regionChartMetric === 'count' }"
-                    @click="regionChartMetric = 'count'"
-                  >
-                    Projects
-                  </button>
-                  <button
-                    type="button"
-                    class="chart-toggle__button"
-                    :class="{ 'chart-toggle__button--active': regionChartMetric === 'fte' }"
-                    @click="regionChartMetric = 'fte'"
-                  >
-                    FTE
-                  </button>
-                </div>
-              </div>
-              <DashboardBarChart
-                :items="regionChartItems"
-                :active-key="filterRegion"
-                :value-formatter="regionChartValueFormatter"
-                @select="onRegionChartSelect"
-              />
-            </article>
+          </div>
+          <div v-else class="table-shell">
+            <MigrationProjectsTable
+              :rows="tableRows"
+              :initial-page-size="6"
+              @row-click="openProject"
+            />
           </div>
         </section>
       </div>
-
-      <section class="overview-panel">
-        <div class="section-head-row">
-          <div>
-            <h2 class="section-title">Submitted migration projects overview</h2>
-            <p class="section-desc">
-              Tabular summary — {{ filteredProjects.length }} project(s) match your criteria.
-            </p>
-          </div>
-        </div>
-
-        <div v-if="loading" class="loading-state">Loading projects…</div>
-        <div v-else-if="!filteredProjects.length" class="empty-filter-state">
-          <mc-icon icon="mi-file-search" size="32" />
-          <p>No projects match your filters. Try adjusting search or filter criteria.</p>
-          <mc-button
-            appearance="primary"
-            variant="plain"
-            fit="small"
-            label="Clear filters"
-            @click="clearFilters"
-          />
-        </div>
-        <div v-else class="table-shell">
-          <MigrationProjectsTable
-            :rows="tableRows"
-            :initial-page-size="6"
-            @row-click="openProject"
-          />
-        </div>
-      </section>
-
-      <section class="preview-panel">
-        <div class="section-head-row">
-          <div>
-            <h2 class="section-title">Project preview</h2>
-            <p class="section-desc">
-              Showing {{ previewProjects.length }} highlighted cards from your current selection.
-            </p>
-          </div>
-        </div>
-
-        <div v-if="loading" class="loading-state">Loading projects…</div>
-        <div v-else-if="!previewProjects.length" class="empty-filter-state empty-filter-state--compact">
-          <p>No project cards to display.</p>
-        </div>
-        <div v-else class="project-cards">
-          <mc-card
-            v-for="project in previewProjects"
-            :key="project.id"
-            class="project-card"
-            :class="`project-card--${project.status}`"
-            variant="bordered"
-            fit="medium"
-            clickable
-            @click="openProject(project.id)"
-          >
-            <div class="project-card__shell">
-              <div class="project-card__header">
-                <div class="project-card-icon">
-                  <mc-icon icon="mi-file-arrows-square" size="22" />
-                </div>
-                <div class="project-card__title-block">
-                  <h3 class="project-card__title">{{ project.projectName }}</h3>
-                  <p class="project-card__id">{{ project.migrationRequestId }}</p>
-                </div>
-                <mc-tag
-                  class="project-card__status"
-                  :appearance="statusAppearance(project.status)"
-                  fit="small"
-                  :label="formatStatusLabel(project.status)"
-                />
-              </div>
-
-              <div class="project-card__chips">
-                <span class="project-card__chip">
-                  <mc-icon icon="mi-globe" size="14" />
-                  {{ project.region }}
-                </span>
-                <span class="project-card__chip">
-                  <mc-icon icon="mi-users" size="14" />
-                  {{ project.fteNumber || '—' }} FTE
-                </span>
-                <span v-if="project.areasCount" class="project-card__chip">
-                  {{ project.areasCount }} area{{ project.areasCount === 1 ? '' : 's' }}
-                </span>
-                <span v-if="project.function" class="project-card__chip project-card__chip--muted">
-                  {{ project.function }}
-                </span>
-              </div>
-
-              <p v-if="project.productsPreview" class="project-card__products">
-                {{ project.productsPreview }}
-              </p>
-
-              <div class="project-card__stage">
-                <div class="project-card__stage-head">
-                  <span class="project-card__stage-label">Current stage</span>
-                  <strong class="project-card__stage-name">{{ activeStageLabel(project.status) }}</strong>
-                </div>
-                <div
-                  class="project-card__dots"
-                  :aria-label="`${countCompletedMilestones(project.status)} of ${migrationMilestoneTotal} stages complete`"
-                >
-                  <span
-                    v-for="milestone in buildMigrationMilestones(project.status)"
-                    :key="milestone.id"
-                    class="project-card__dot"
-                    :class="`project-card__dot--${milestone.state}`"
-                    :title="milestone.shortLabel"
-                  />
-                </div>
-                <span class="project-card__stage-count">
-                  {{ countCompletedMilestones(project.status) }}/{{ migrationMilestoneTotal }} stages
-                </span>
-              </div>
-
-              <div class="project-card__progress">
-                <div class="project-card__progress-head">
-                  <span>Overall progress</span>
-                  <strong>{{ overallProgress(project.status) }}%</strong>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill" :style="{ width: `${overallProgress(project.status)}%` }" />
-                </div>
-              </div>
-
-              <div class="project-card__footer">
-                <div class="project-card__meta">
-                  <span>{{ project.migrationType }}</span>
-                  <span class="project-card__meta-sep">·</span>
-                  <span>{{ project.requestor }}</span>
-                  <span class="project-card__meta-sep">·</span>
-                  <span>{{ project.requestedDate }}</span>
-                </div>
-                <mc-button
-                  appearance="neutral"
-                  variant="plain"
-                  fit="small"
-                  label="View details"
-                  trailingicon="mi-arrow-right"
-                  tabindex="-1"
-                />
-              </div>
-            </div>
-          </mc-card>
-        </div>
-      </section>
     </div>
   </PageShell>
 </template>
@@ -507,17 +402,15 @@ import axios from 'axios'
 import { utils, writeFile } from 'xlsx'
 import PageShell from '../components/PageShell.vue'
 import MigrationProjectsTable from '../components/MigrationProjectsTable.vue'
-import DashboardBarChart from '../components/dashboard/DashboardBarChart.vue'
-import DashboardDonutChart from '../components/dashboard/DashboardDonutChart.vue'
 import DashboardLineChart from '../components/dashboard/DashboardLineChart.vue'
+import DashboardBarChart from '../components/dashboard/DashboardBarChart.vue'
 import { regions } from '../data/regionAreaMapping.js'
 import {
   buildMigrationMilestones,
   countCompletedMilestones,
   formatStatusLabel,
   migrationMilestoneTotal,
-  overallProgress,
-  statusAppearance
+  overallProgress
 } from '../utils/migrationDashboardProgress.js'
 import { getCurrentUserEmail } from '../auth/azureAuth.js'
 import '@maersk-global/mds-components-core/mc-card'
@@ -558,9 +451,8 @@ const loading = ref(true)
 const loadError = ref('')
 const exportError = ref('')
 const projects = ref([])
-const regionChartMetric = ref('count')
-const trendMetric = ref('count')
 const exporting = ref(false)
+const breakdownTab = ref('region')
 const summary = ref({
   totalProjects: 0,
   totalFte: 0,
@@ -573,7 +465,7 @@ const searchQuery = ref('')
 const filterRegion = ref('')
 const filterStatus = ref('')
 const filterMigrationType = ref('')
-const summaryBreakdown = ref('status')
+const filterFunction = ref('')
 
 const statusChartColors = {
   new: '#42b0d5',
@@ -613,7 +505,8 @@ const hasActiveFilters = computed(
     Boolean(searchQuery.value.trim()) ||
     Boolean(filterRegion.value) ||
     Boolean(filterStatus.value) ||
-    Boolean(filterMigrationType.value)
+    Boolean(filterMigrationType.value) ||
+    Boolean(filterFunction.value)
 )
 
 const filteredProjects = computed(() => {
@@ -623,6 +516,9 @@ const filteredProjects = computed(() => {
     if (filterRegion.value && project.region !== filterRegion.value) return false
     if (filterStatus.value && project.status !== filterStatus.value) return false
     if (filterMigrationType.value && project.migrationType !== filterMigrationType.value) {
+      return false
+    }
+    if (filterFunction.value && project.function !== filterFunction.value) {
       return false
     }
     if (!query) return true
@@ -683,8 +579,6 @@ const bucketEntry = (value) => {
   return { count: Number(value) || 0, fte: 0 }
 }
 
-const formatBreakdownLabel = (name, count, fte) => `${name} · ${count} · ${fte} FTE`
-
 const sortCountEntries = (entries, key) =>
   [...entries].sort((a, b) => b.count - a.count || a[key].localeCompare(b[key]))
 
@@ -715,9 +609,18 @@ const tableRows = computed(() =>
     statusLabel: formatStatusLabel(project.status),
     region: project.region,
     migrationType: project.migrationType,
+    productsLabel:
+      project.productsPreview ||
+      (Array.isArray(project.products) && project.products.length
+        ? project.products.join(', ')
+        : '—'),
+    areasLabel:
+      project.areasPreview ||
+      (project.areasCount ? `${formatWholeNumber(project.areasCount)} areas` : '—'),
     fteNumber: project.fteNumber,
     requestor: project.requestor,
     requestedDate: project.requestedDate,
+    progress: overallProgress(project.status),
     progressLabel: `${overallProgress(project.status)}%`
   }))
 )
@@ -731,6 +634,15 @@ const statusEntries = computed(() =>
     'status'
   )
 )
+
+const statusCompositionItems = computed(() => {
+  const total = displayedSummary.value.totalProjects || 0
+  return statusEntries.value.map((entry) => ({
+    ...entry,
+    label: formatStatusLabel(entry.status),
+    pct: total ? Math.round((entry.count / total) * 100) : 0
+  }))
+})
 
 const regionEntries = computed(() =>
   sortCountEntries(
@@ -774,6 +686,28 @@ const migrationTypeEntries = computed(() => {
   )
 })
 
+const functionEntries = computed(() => {
+  const byFunction = {}
+  for (const project of filteredProjects.value) {
+    const fte = Number.parseInt(project.fteNumber, 10)
+    const safeFte = Number.isNaN(fte) ? 0 : fte
+    const name = String(project.function ?? '').trim()
+    if (!name) continue
+    if (!byFunction[name]) byFunction[name] = { count: 0, fte: 0 }
+    byFunction[name].count += 1
+    byFunction[name].fte += safeFte
+  }
+
+  return sortCountEntries(
+    Object.entries(byFunction).map(([functionName, value]) => ({
+      functionName,
+      count: value.count,
+      fte: value.fte
+    })),
+    'functionName'
+  )
+})
+
 const completedCount = computed(() => getBucketCount(displayedSummary.value.byStatus, 'completed'))
 const atRiskCount = computed(() => getBucketCount(displayedSummary.value.byStatus, 'at_risk'))
 const averageFtePerProject = computed(() =>
@@ -782,66 +716,205 @@ const averageFtePerProject = computed(() =>
     : 0
 )
 
-const summaryStats = computed(() => [
-  {
-    key: 'projects',
-    label: 'Total projects',
-    value: formatWholeNumber(displayedSummary.value.totalProjects),
-    accent: ''
-  },
+const inFlightStatuses = ['in_review', 'planning', 'in_progress', 'at_risk']
+const activeDeliveryStatuses = ['in_review', 'planning', 'in_progress']
+
+const inFlightCount = computed(() =>
+  statusEntries.value
+    .filter((item) => inFlightStatuses.includes(item.status))
+    .reduce((sum, item) => sum + item.count, 0)
+)
+
+const inFlightFte = computed(() =>
+  statusEntries.value
+    .filter((item) => inFlightStatuses.includes(item.status))
+    .reduce((sum, item) => sum + item.fte, 0)
+)
+
+const heroMetricDescription =
+  'Count of migration intake requests in the current filter selection.'
+
+const intakeTrendBadgeDescription =
+  'Month-over-month change in new intake volume (project count submitted in the latest month vs. the prior month).'
+
+const statusCompositionDescription =
+  'Portfolio split by lifecycle status. Click a segment or label to filter the dashboard.'
+
+const metricCards = computed(() => [
   {
     key: 'fte',
     label: 'Total FTE',
+    description: 'Sum of full-time equivalent (FTE) headcount across all selected projects.',
     value: formatWholeNumber(displayedSummary.value.totalFte),
-    accent: 'accent'
+    unit: 'FTE',
+    chips: [
+      {
+        value: formatDecimalNumber(averageFtePerProject.value),
+        label: 'avg / project',
+        tone: 'muted'
+      }
+    ],
+    shortHint: `${formatDecimalNumber(averageFtePerProject.value)} avg / project`,
+    hint: `${formatDecimalNumber(averageFtePerProject.value)} avg / project`,
+    accent: '#0077B8'
+  },
+  {
+    key: 'in-flight',
+    label: 'In flight',
+    description:
+      'Projects actively moving through review, planning, in progress, or flagged at risk.',
+    value: formatWholeNumber(inFlightCount.value),
+    unit: 'projects',
+    chips: [
+      {
+        value: formatWholeNumber(inFlightFte.value),
+        label: 'FTE',
+        tone: 'fte'
+      }
+    ],
+    shortHint: `${formatWholeNumber(inFlightFte.value)} FTE`,
+    hint: `${formatWholeNumber(inFlightFte.value)} FTE · review through delivery`,
+    accent: '#42B0D5'
   },
   {
     key: 'completed',
     label: 'Completed',
+    description: 'Projects that have reached completed status in the current selection.',
     value: formatWholeNumber(completedCount.value),
-    accent: 'success'
+    unit: 'projects',
+    chips: [
+      {
+        value: `${displayedSummary.value.totalProjects ? Math.round((completedCount.value / displayedSummary.value.totalProjects) * 100) : 0}%`,
+        label: 'of portfolio',
+        tone: 'success'
+      }
+    ],
+    shortHint: `${displayedSummary.value.totalProjects ? Math.round((completedCount.value / displayedSummary.value.totalProjects) * 100) : 0}% of portfolio`,
+    hint: `${displayedSummary.value.totalProjects ? Math.round((completedCount.value / displayedSummary.value.totalProjects) * 100) : 0}% of portfolio`,
+    accent: '#6DAA28'
   },
   {
     key: 'at-risk',
     label: 'At risk',
+    description: 'Projects with an at-risk status that may need escalation or recovery actions.',
     value: formatWholeNumber(atRiskCount.value),
-    accent: atRiskCount.value ? 'danger' : ''
-  },
-  {
-    key: 'avg-fte',
-    label: 'Avg. FTE / project',
-    value: formatDecimalNumber(averageFtePerProject.value),
-    accent: ''
-  },
-  {
-    key: 'regions',
-    label: 'Regions in scope',
-    value: formatWholeNumber(regionEntries.value.length),
-    accent: ''
+    unit: 'projects',
+    chips: [
+      {
+        label: atRiskCount.value ? 'Needs attention' : 'None flagged',
+        tone: atRiskCount.value ? 'danger' : 'muted'
+      }
+    ],
+    shortHint: atRiskCount.value ? 'Needs attention' : 'None flagged',
+    hint: atRiskCount.value ? 'Needs attention' : 'No active risk flags',
+    accent: atRiskCount.value ? '#E85454' : '#94A3B8'
   }
 ])
 
-const statusChartItems = computed(() =>
-  statusEntries.value.map((item) => ({
-    key: item.status,
-    label: formatStatusLabel(item.status),
-    value: item.count,
-    color: statusChartColors[item.status] || '#94a3b8'
+const regionPalette = ['#0077b8', '#13b0a5', '#6daa28', '#f3b562', '#7b61ff', '#e85454']
+const productPalette = ['#0b8dbf', '#6daa28', '#f3b562', '#7b61ff', '#13b0a5', '#e85454']
+const functionPalette = ['#003f6e', '#f3880e', '#42b0d5', '#6daa28', '#7b61ff', '#e85454']
+
+const shortenLabel = (label, max = 10) => {
+  const text = String(label || '').trim()
+  if (text.length <= max) return text
+  return `${text.slice(0, max - 1)}…`
+}
+
+const buildBarItems = (entries, labelFor, colorFor, keyFor, limit = 6) => {
+  if (!entries.length) return []
+
+  const top = entries.slice(0, limit)
+  const rest = entries.slice(limit)
+  const items = top.map((entry, index) => ({
+    key: keyFor(entry),
+    label: labelFor(entry),
+    shortLabel: shortenLabel(labelFor(entry)),
+    value: entry.count,
+    color: colorFor(entry, index),
+    muted: false
   }))
+
+  if (rest.length) {
+    items.push({
+      key: 'others',
+      label: `+${rest.length} more`,
+      shortLabel: 'Others',
+      value: rest.reduce((sum, entry) => sum + entry.count, 0),
+      color: '#cbd5e1',
+      muted: true
+    })
+  }
+
+  return items
+}
+
+const regionBarItems = computed(() =>
+  buildBarItems(
+    regionEntries.value,
+    (entry) => entry.region,
+    (_entry, index) => regionPalette[index % regionPalette.length],
+    (entry) => entry.region
+  )
 )
 
-const regionChartItems = computed(() =>
-  regionEntries.value.slice(0, 6).map((item) => ({
-    key: item.region,
-    label: item.region,
-    shortLabel: item.region,
-    value: regionChartMetric.value === 'fte' ? item.fte : item.count,
-    color: item.region === filterRegion.value ? '#003f6e' : '#0077b8'
-  }))
+const migrationTypeBarItems = computed(() =>
+  buildBarItems(
+    migrationTypeEntries.value,
+    (entry) => entry.migrationType,
+    (_entry, index) => productPalette[index % productPalette.length],
+    (entry) => entry.migrationType
+  )
 )
 
-const regionChartValueFormatter = (value) =>
-  regionChartMetric.value === 'fte' ? `${formatWholeNumber(value)} FTE` : formatWholeNumber(value)
+const productBarItems = computed(() =>
+  buildBarItems(
+    productEntries.value,
+    (entry) => entry.product,
+    (_entry, index) => productPalette[index % productPalette.length],
+    (entry) => entry.product
+  )
+)
+
+const functionBarItems = computed(() =>
+  buildBarItems(
+    functionEntries.value,
+    (entry) => entry.functionName,
+    (_entry, index) => functionPalette[index % functionPalette.length],
+    (entry) => entry.functionName
+  )
+)
+
+const activeBreakdownBarItems = computed(() => {
+  switch (breakdownTab.value) {
+    case 'migrationType':
+      return migrationTypeBarItems.value
+    case 'product':
+      return productBarItems.value
+    case 'function':
+      return functionBarItems.value
+    default:
+      return regionBarItems.value
+  }
+})
+
+const breakdownTabs = [
+  { id: 'region', label: 'Region' },
+  { id: 'migrationType', label: 'Migration type' },
+  { id: 'product', label: 'Product' },
+  { id: 'function', label: 'Function' }
+]
+
+const activeBreakdownFilterKey = computed(() => {
+  switch (breakdownTab.value) {
+    case 'migrationType':
+      return filterMigrationType.value
+    case 'function':
+      return filterFunction.value
+    default:
+      return breakdownTab.value === 'region' ? filterRegion.value : ''
+  }
+})
 
 const chartMonthFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -898,7 +971,10 @@ const recentMonths = computed(() => {
 
 const intakeTrend = computed(() => {
   const buckets = Object.fromEntries(
-    recentMonths.value.map((month) => [month.key, { count: 0, fte: 0 }])
+    recentMonths.value.map((month) => [
+      month.key,
+      { count: 0, fte: 0, inFlight: 0, completed: 0, atRisk: 0 }
+    ])
   )
 
   for (const project of filteredProjects.value) {
@@ -907,119 +983,223 @@ const intakeTrend = computed(() => {
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
     if (!buckets[key]) continue
     const fte = Number.parseInt(project.fteNumber, 10)
+    const safeFte = Number.isNaN(fte) ? 0 : fte
+
     buckets[key].count += 1
-    buckets[key].fte += Number.isNaN(fte) ? 0 : fte
+    buckets[key].fte += safeFte
+    if (activeDeliveryStatuses.includes(project.status)) buckets[key].inFlight += 1
+    if (project.status === 'completed') buckets[key].completed += 1
+    if (project.status === 'at_risk') buckets[key].atRisk += 1
   }
 
   return recentMonths.value.map((month) => ({
     ...month,
     count: buckets[month.key]?.count ?? 0,
-    fte: buckets[month.key]?.fte ?? 0
+    fte: buckets[month.key]?.fte ?? 0,
+    inFlight: buckets[month.key]?.inFlight ?? 0,
+    completed: buckets[month.key]?.completed ?? 0,
+    atRisk: buckets[month.key]?.atRisk ?? 0
   }))
+})
+
+const intakeTrendBadge = computed(() => {
+  const values = intakeTrend.value.map((month) => month.count)
+  const latest = values[values.length - 1] ?? 0
+  const previous = values[values.length - 2] ?? 0
+  if (latest === previous) return { direction: 'flat', label: 'Flat MoM' }
+  const direction = latest > previous ? 'up' : 'down'
+  const pct = previous > 0 ? Math.abs(((latest - previous) / previous) * 100) : null
+  const label =
+    pct === null
+      ? `${latest > previous ? '+' : '-'}${formatWholeNumber(Math.abs(latest - previous))}`
+      : `${latest > previous ? '+' : '-'}${pct.toFixed(1)}%`
+  return { direction, label }
 })
 
 const trendSeries = computed(() => [
   {
-    key: trendMetric.value,
-    label: trendMetric.value === 'fte' ? 'Submitted FTE' : 'Submitted projects',
-    color: '#0077b8',
-    values: intakeTrend.value.map((month) => month[trendMetric.value])
-  }
-])
-
-const trendLabels = computed(() => intakeTrend.value.map((month) => month.label))
-
-const trendHeadline = computed(() => {
-  const values = intakeTrend.value.map((month) => month[trendMetric.value])
-  const latest = values[values.length - 1] ?? 0
-  const previous = values[values.length - 2] ?? 0
-  const noun = trendMetric.value === 'fte' ? 'FTE' : 'projects'
-
-  if (latest === previous) {
-    return `Latest month is flat at ${formatWholeNumber(latest)} ${noun}.`
-  }
-
-  const direction = latest > previous ? 'up' : 'down'
-  const delta = Math.abs(latest - previous)
-  return `Latest month is ${direction} by ${formatWholeNumber(delta)} ${noun} versus the previous month.`
-})
-
-const trendTableRows = computed(() => [
-  {
-    key: 'projects',
-    label: 'Projects',
+    key: 'count',
+    label: 'New intake',
+    color: '#161616',
+    yAxis: 'left',
     values: intakeTrend.value.map((month) => month.count)
+  },
+  {
+    key: 'inFlight',
+    label: 'In flight',
+    color: '#0077b8',
+    yAxis: 'left',
+    values: intakeTrend.value.map((month) => month.inFlight)
+  },
+  {
+    key: 'completed',
+    label: 'Completed',
+    color: '#6daa28',
+    yAxis: 'left',
+    values: intakeTrend.value.map((month) => month.completed)
+  },
+  {
+    key: 'atRisk',
+    label: 'At risk',
+    color: '#e85454',
+    yAxis: 'left',
+    values: intakeTrend.value.map((month) => month.atRisk)
   },
   {
     key: 'fte',
     label: 'FTE',
+    color: '#b8d96e',
+    yAxis: 'right',
     values: intakeTrend.value.map((month) => month.fte)
   }
 ])
 
-const trendPeriodSummary = computed(() => {
-  const values = intakeTrend.value.map((month) => month[trendMetric.value])
-  const first = values[0] ?? 0
-  const last = values[values.length - 1] ?? 0
-  const pct = first > 0 ? ((last - first) / first) * 100 : null
-  const noun = trendMetric.value === 'fte' ? 'FTE' : 'projects'
-  const startLabel = intakeTrend.value[0]?.label ?? 'Start'
-  const endLabel = intakeTrend.value[intakeTrend.value.length - 1]?.label ?? 'Now'
-  const changeLabel = pct === null ? 'n/a from zero baseline' : `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%`
-  return `${noun}: ${formatWholeNumber(first)} (${startLabel}) → ${formatWholeNumber(last)} (${endLabel}), ${changeLabel} over the period.`
+const trendSeriesGuides = [
+  {
+    key: 'count',
+    label: 'New intake',
+    color: '#161616',
+    description: 'Projects submitted in each month (intake volume).'
+  },
+  {
+    key: 'inFlight',
+    label: 'In flight',
+    color: '#0077b8',
+    description: 'That month’s intake still in review, planning, or in progress.'
+  },
+  {
+    key: 'completed',
+    label: 'Completed',
+    color: '#6daa28',
+    description: 'That month’s intake that has already reached completed.'
+  },
+  {
+    key: 'atRisk',
+    label: 'At risk',
+    color: '#e85454',
+    description: 'That month’s intake currently flagged at risk.'
+  },
+  {
+    key: 'fte',
+    label: 'FTE',
+    color: '#b8d96e',
+    description: 'Total FTE attached to that month’s new intake (right axis).'
+  }
+]
+
+const trendLabels = computed(() => intakeTrend.value.map((month) => month.label))
+
+const trendHeadline = computed(() => {
+  const latest = intakeTrend.value[intakeTrend.value.length - 1]
+  const previous = intakeTrend.value[intakeTrend.value.length - 2]
+  if (!latest) return 'No trend data in the current selection.'
+
+  const latestIntake = latest.count ?? 0
+  const prevIntake = previous?.count ?? latestIntake
+  const intakeDelta = latestIntake - prevIntake
+
+  const intakePart =
+    intakeDelta === 0
+      ? 'intake flat'
+      : `intake ${intakeDelta > 0 ? 'up' : 'down'} ${formatWholeNumber(Math.abs(intakeDelta))}`
+
+  return `Latest month vs prior: ${intakePart}. ${formatWholeNumber(latest.inFlight)} in flight, ${formatWholeNumber(latest.completed)} completed, ${formatWholeNumber(latest.atRisk)} at risk, ${formatWholeNumber(latest.fte)} FTE.`
 })
 
 const topRegion = computed(() => regionEntries.value[0] ?? null)
+
 const topMigrationType = computed(() => migrationTypeEntries.value[0] ?? null)
-const inFlightCount = computed(() =>
-  statusEntries.value
-    .filter((item) => ['in_review', 'planning', 'in_progress', 'at_risk'].includes(item.status))
-    .reduce((sum, item) => sum + item.count, 0)
-)
+
 const averageAreaCount = computed(() =>
   filteredProjects.value.length
-    ? filteredProjects.value.reduce((sum, project) => sum + (project.areasCount || 0), 0) /
-      filteredProjects.value.length
+    ? filteredProjects.value.reduce(
+        (sum, project) => sum + (Number(project.areasCount) || 0),
+        0
+      ) / filteredProjects.value.length
     : 0
 )
+
 const averageCountryCount = computed(() =>
   filteredProjects.value.length
-    ? filteredProjects.value.reduce((sum, project) => sum + (project.countriesCount || 0), 0) /
-      filteredProjects.value.length
+    ? filteredProjects.value.reduce(
+        (sum, project) => sum + (Number(project.countriesCount) || 0),
+        0
+      ) / filteredProjects.value.length
     : 0
 )
 
 const portfolioInsights = computed(() => [
   {
     label: 'Primary focus region',
+    badge: 'Region',
+    tone: 'region',
     value: topRegion.value?.region || '—',
-    detail: topRegion.value
-      ? `${formatWholeNumber(topRegion.value.count)} project(s) · ${formatWholeNumber(topRegion.value.fte)} FTE`
-      : 'No regional distribution yet.'
+    description: 'Region with the highest project volume in the current selection.',
+    chips: topRegion.value
+      ? [
+          {
+            value: formatWholeNumber(topRegion.value.count),
+            label: 'projects'
+          },
+          {
+            value: formatWholeNumber(topRegion.value.fte),
+            label: 'FTE',
+            tone: 'fte'
+          }
+        ]
+      : [{ label: 'No regional distribution yet.', tone: 'muted' }]
   },
   {
     label: 'Leading migration type',
+    badge: 'Type',
+    tone: 'type',
     value: topMigrationType.value?.migrationType || '—',
-    detail: topMigrationType.value
-      ? `${formatWholeNumber(topMigrationType.value.count)} project(s) in the current selection`
-      : 'No migration type mix available.'
+    description: 'Most common migration type among filtered projects.',
+    chips: topMigrationType.value
+      ? [
+          {
+            value: formatWholeNumber(topMigrationType.value.count),
+            label: 'projects'
+          }
+        ]
+      : [{ label: 'No migration type mix available.', tone: 'muted' }]
   },
   {
     label: 'Delivery posture',
+    badge: 'Status',
+    tone: 'delivery',
     value: `${formatWholeNumber(inFlightCount.value)} in flight`,
-    detail: `${formatWholeNumber(atRiskCount.value)} at risk · ${formatWholeNumber(
-      completedCount.value
-    )} completed`
+    description: 'Active delivery load versus completed and risk outcomes.',
+    chips: [
+      {
+        value: formatWholeNumber(atRiskCount.value),
+        label: 'at risk',
+        tone: atRiskCount.value ? 'danger' : 'muted'
+      },
+      {
+        value: formatWholeNumber(completedCount.value),
+        label: 'completed',
+        tone: 'success'
+      }
+    ]
   },
   {
     label: 'Average scope footprint',
+    badge: 'Scope',
+    tone: 'scope',
     value: `${formatDecimalNumber(averageAreaCount.value)} areas`,
-    detail: `${formatDecimalNumber(averageCountryCount.value)} countries per project on average`
+    description: 'Typical geographic footprint per project.',
+    chips: [
+      {
+        value: formatDecimalNumber(averageCountryCount.value),
+        label: 'countries avg',
+        tone: 'muted'
+      }
+    ]
   }
 ])
 
-const topProductItems = computed(() => productEntries.value.slice(0, 4))
-const previewProjects = computed(() => filteredProjects.value.slice(0, 4))
+const topProductItems = computed(() => productEntries.value.slice(0, 3))
 
 const timelineSpanByStatus = {
   new: 1,
@@ -1067,32 +1247,6 @@ const projectTimelineRows = computed(() => {
     .slice(0, 10)
 })
 
-const activeBreakdownChips = computed(() => {
-  if (summaryBreakdown.value === 'region') {
-    return regionEntries.value.map((item) => ({
-      key: item.region,
-      label: formatBreakdownLabel(item.region, item.count, item.fte),
-      appearance: 'neutral'
-    }))
-  }
-  if (summaryBreakdown.value === 'product') {
-    return productEntries.value.map((item) => ({
-      key: item.product,
-      label: formatBreakdownLabel(item.product, item.count, item.fte),
-      appearance: 'info'
-    }))
-  }
-  return statusEntries.value.map((item) => ({
-    key: item.status,
-    label: formatBreakdownLabel(formatStatusLabel(item.status), item.count, item.fte),
-    appearance: statusAppearance(item.status)
-  }))
-})
-
-const onSummaryBreakdownChange = (event) => {
-  summaryBreakdown.value = event.detail?.value ?? 'status'
-}
-
 const onSearchInput = (event) => {
   searchQuery.value = event.target?.value ?? ''
 }
@@ -1114,14 +1268,38 @@ const clearFilters = () => {
   filterRegion.value = ''
   filterStatus.value = ''
   filterMigrationType.value = ''
+  filterFunction.value = ''
 }
 
 const onStatusChartSelect = (status) => {
+  if (!status || status === '_others') return
   filterStatus.value = filterStatus.value === status ? '' : status
 }
 
 const onRegionChartSelect = (region) => {
   filterRegion.value = filterRegion.value === region ? '' : region
+}
+
+const onMigrationTypeChartSelect = (type) => {
+  filterMigrationType.value = filterMigrationType.value === type ? '' : type
+}
+
+const onFunctionChartSelect = (name) => {
+  filterFunction.value = filterFunction.value === name ? '' : name
+}
+
+const onBreakdownSelect = (key) => {
+  if (!key || key === 'others') return
+  if (breakdownTab.value === 'product') return
+  if (breakdownTab.value === 'migrationType') {
+    onMigrationTypeChartSelect(key)
+    return
+  }
+  if (breakdownTab.value === 'function') {
+    onFunctionChartSelect(key)
+    return
+  }
+  onRegionChartSelect(key)
 }
 
 const openProject = (id) => {
@@ -1163,15 +1341,17 @@ const downloadDashboardData = () => {
       { metric: 'Region', value: filterRegion.value || 'All' },
       { metric: 'Status', value: filterStatus.value ? formatStatusLabel(filterStatus.value) : 'All' },
       { metric: 'Migration type', value: filterMigrationType.value || 'All' },
+      { metric: 'Function', value: filterFunction.value || 'All' },
       { metric: 'Total projects', value: displayedSummary.value.totalProjects },
       { metric: 'Total FTE', value: displayedSummary.value.totalFte },
+      { metric: 'In flight', value: inFlightCount.value },
+      { metric: 'In flight FTE', value: inFlightFte.value },
       { metric: 'Completed', value: completedCount.value },
       { metric: 'At risk', value: atRiskCount.value },
       { metric: 'Avg. FTE / project', value: formatDecimalNumber(averageFtePerProject.value) },
       { metric: 'Regions in scope', value: regionEntries.value.length },
-      { metric: 'Primary region', value: topRegion.value?.region || '—' },
-      { metric: 'Leading migration type', value: topMigrationType.value?.migrationType || '—' },
-      { metric: 'In flight', value: inFlightCount.value }
+      { metric: 'Primary region', value: topRegion.value?.region || 'N/A' },
+      { metric: 'Leading migration type', value: topMigrationType.value?.migrationType || 'N/A' }
     ]
 
     const detailRows = createDetailRows()
@@ -1196,6 +1376,12 @@ const downloadDashboardData = () => {
       ...productEntries.value.map((item) => ({
         category: 'Product',
         item: item.product,
+        projects: item.count,
+        fte: item.fte
+      })),
+      ...functionEntries.value.map((item) => ({
+        category: 'Function',
+        item: item.functionName,
         projects: item.count,
         fte: item.fte
       }))
@@ -1249,7 +1435,7 @@ const activeStageLabel = (status) => {
   const milestones = buildMigrationMilestones(status)
   if (status === 'completed') return 'All milestones complete'
   const current = milestones.find((item) => item.state === 'active' || item.state === 'at_risk')
-  return current?.label ?? milestones[0]?.label ?? '—'
+  return current?.label ?? milestones[0]?.label ?? 'Unknown'
 }
 
 const loadProjects = async () => {
@@ -1293,418 +1479,730 @@ watch(isMyProjectsView, () => {
 </script>
 
 <style scoped>
+.dashboard-canvas {
+  --dash-accent: #42b0d5;
+  --dash-primary: #0077b8;
+  --dash-deep: #003f6e;
+  --dash-success: #6daa28;
+  --dash-border: rgba(22, 22, 22, 0.08);
+  --dash-shadow: 0 2px 3px rgba(15, 23, 42, 0.05), 0 10px 22px rgba(0, 63, 110, 0.08);
+  --metric-accent: var(--dash-accent);
+}
+
 .dashboard-layout {
   display: grid;
-  gap: 20px;
+  gap: 24px;
 }
 
-.hero-panel,
-.analytics-panel,
-.filters-panel,
-.insights-panel,
-.overview-panel,
-.timeline-panel,
-.preview-panel {
-  background: #fff;
-  border: 1px solid rgba(12, 35, 64, 0.1);
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(12, 35, 64, 0.06);
-  padding: 18px;
+.dashboard-main {
+  align-items: start;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
 }
 
-.hero-panel {
-  background: linear-gradient(180deg, #fdfefe 0%, #f6fbff 100%);
+.dashboard-main__charts {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
 }
 
-.hero-panel__top {
-  align-items: flex-start;
+.dash-card--insights {
+  gap: 16px;
+  padding-bottom: 20px;
+  position: relative;
+}
+
+.dash-card--insights::before {
+  background: linear-gradient(90deg, #42b0d5 0%, #0077b8 55%, #003f6e 100%);
+  border-radius: 16px 16px 0 0;
+  content: '';
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.insights-panel__head {
+  display: grid;
+  gap: 4px;
+}
+
+.insights-panel__title-row {
+  align-items: center;
   display: flex;
-  gap: 14px;
-  justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 8px;
 }
 
-.hero-eyebrow {
-  color: #0077b8;
-  font-size: 11px;
+.insights-panel__accent {
+  background: #0077b8;
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 14px;
+  width: 4px;
+}
+
+.insights-panel__head h3 {
+  color: #161616;
+  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  margin: 0 0 4px;
-  text-transform: uppercase;
+  margin: 0;
 }
 
-.hero-title {
-  color: #0f2940;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.2;
-  margin: 0 0 6px;
-}
-
-.hero-desc {
-  color: #5d6b76;
+.insights-panel__head p {
+  color: #6c757d;
   font-size: 13px;
   line-height: 1.45;
   margin: 0;
 }
 
-.hero-actions {
-  align-items: flex-end;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.kpi-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  margin-bottom: 12px;
-}
-
-.kpi-card {
-  background: #fff;
-  border: 1px solid rgba(0, 119, 184, 0.12);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-
-.kpi-card--accent {
-  background: rgba(0, 119, 184, 0.06);
-}
-
-.kpi-card--success {
-  background: rgba(109, 170, 40, 0.08);
-  border-color: rgba(109, 170, 40, 0.2);
-}
-
-.kpi-card--danger {
-  background: rgba(232, 84, 84, 0.08);
-  border-color: rgba(232, 84, 84, 0.2);
-}
-
-.kpi-card__label {
-  color: #6a7680;
-  display: block;
-  font-size: 11px;
-  margin-bottom: 4px;
-}
-
-.kpi-card__value {
-  color: #0f2940;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.breakdown-row {
-  align-items: flex-start;
-  border-top: 1px solid rgba(12, 35, 64, 0.08);
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 200px 1fr;
-  padding-top: 12px;
-}
-
-.breakdown-row__select {
-  min-width: 0;
-}
-
-.chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.summary-empty {
-  color: #6c757d;
-  font-size: 12px;
-  margin: 8px 0 0;
-}
-
-.analysis-layout {
-  align-items: start;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(300px, 0.42fr) minmax(0, 1.58fr);
-}
-
-.panel-head {
-  margin-bottom: 12px;
-}
-
-.section-title {
-  color: #10263d;
-  font-size: 18px;
-  font-weight: 650;
-  margin: 0 0 4px;
-}
-
-.section-desc {
-  color: #66737f;
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.analytics-panel {
-  display: grid;
-  gap: 12px;
-}
-
-.chart-card {
-  background: #fbfdff;
-  border: 1px solid rgba(12, 35, 64, 0.08);
-  border-radius: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-}
-
-.chart-card__head {
-  align-items: flex-start;
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-}
-
-.chart-card__head h3 {
-  color: #182b3c;
-  font-size: 15px;
-  font-weight: 650;
-  margin: 0 0 4px;
-}
-
-.chart-card__head p {
-  color: #6b7782;
-  font-size: 12px;
-  line-height: 1.45;
-  margin: 0;
-}
-
-.chart-card--trend {
-  padding-bottom: 12px;
-}
-
-.analytics-split {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-}
-
-.chart-toggle {
-  background: #edf2f7;
-  border-radius: 999px;
-  display: inline-flex;
-  padding: 3px;
-}
-
-.chart-toggle__button {
-  background: transparent;
-  border: 0;
-  border-radius: 999px;
-  color: #4f5d69;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 11px;
-}
-
-.chart-toggle__button--active {
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  color: #0077b8;
-}
-
-.trend-summary {
-  color: #576571;
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-.trend-table-wrap {
-  margin-top: 2px;
-  overflow: auto;
-}
-
-.trend-table {
-  border-collapse: collapse;
-  font-size: 11px;
-  min-width: 700px;
-  width: 100%;
-}
-
-.trend-table th,
-.trend-table td {
-  border-bottom: 1px solid rgba(12, 35, 64, 0.08);
-  font-variant-numeric: tabular-nums;
-  padding: 8px 10px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.trend-table thead th {
-  background: #f1f7fc;
-  color: #2c4156;
-  font-weight: 700;
-}
-
-.trend-table th:first-child,
-.trend-table td:first-child {
-  left: 0;
-  position: sticky;
-  text-align: left;
-  z-index: 1;
-}
-
-.trend-table tbody th {
-  background: #fff;
-  color: #31465a;
-  font-weight: 600;
-}
-
-.trend-period-note {
-  color: #5f6e7b;
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 6px 0 0;
-}
-
-.sidebar-stack {
-  display: grid;
-  gap: 14px;
-  position: sticky;
-  top: 12px;
-}
-
-.filters-toolbar {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 1fr;
-}
-
 .insight-list {
   display: grid;
-  gap: 9px;
-  margin-bottom: 12px;
+  gap: 10px;
 }
 
 .insight-item {
-  background: #fff;
-  border: 1px solid rgba(12, 35, 64, 0.08);
-  border-radius: 11px;
-  padding: 10px 12px;
+  background: linear-gradient(180deg, #fff 0%, #fafbfd 100%);
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-left: 3px solid #94a3b8;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 12px 12px 12px 14px;
+}
+
+.insight-item--region {
+  border-left-color: #0077b8;
+}
+
+.insight-item--type {
+  border-left-color: #42b0d5;
+}
+
+.insight-item--delivery {
+  border-left-color: #f3880e;
+}
+
+.insight-item--scope {
+  border-left-color: #6daa28;
+}
+
+.insight-item__top {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
 }
 
 .insight-item__label {
-  color: #6d7983;
-  display: block;
+  color: #6c757d;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  margin-bottom: 5px;
   text-transform: uppercase;
 }
 
-.insight-item__value {
-  color: #132a40;
-  display: block;
-  font-size: 15px;
-  font-weight: 700;
+.insight-item__badge {
+  background: rgba(0, 119, 184, 0.08);
+  border-radius: 999px;
+  color: #0077b8;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
 }
 
-.insight-item__detail {
-  color: #6d7983;
+.insight-item--type .insight-item__badge {
+  background: rgba(66, 176, 213, 0.12);
+  color: #0b7ea4;
+}
+
+.insight-item--delivery .insight-item__badge {
+  background: rgba(243, 136, 14, 0.12);
+  color: #c56d0a;
+}
+
+.insight-item--scope .insight-item__badge {
+  background: rgba(109, 170, 40, 0.12);
+  color: #4d7a1c;
+}
+
+.insight-item__value {
+  color: #161616;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.insight-item__desc {
+  color: #94a3b8;
   font-size: 11px;
-  line-height: 1.45;
-  margin: 4px 0 0;
+  line-height: 1.4;
+  margin: 0;
 }
 
 .leaderboard {
-  border-top: 1px solid rgba(12, 35, 64, 0.08);
+  border-top: 1px solid rgba(22, 22, 22, 0.08);
   display: grid;
-  gap: 8px;
-  padding-top: 10px;
+  gap: 10px;
+  padding-top: 14px;
 }
 
 .leaderboard__head {
-  align-items: baseline;
+  align-items: center;
   display: flex;
   justify-content: space-between;
 }
 
 .leaderboard__head h4 {
-  color: #152a3d;
+  color: #161616;
   font-size: 13px;
+  font-weight: 700;
   margin: 0;
-}
-
-.leaderboard__head span {
-  color: #6d7983;
-  font-size: 11px;
 }
 
 .leaderboard__list {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .leaderboard__item {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 10px 12px;
+}
+
+.leaderboard__rank {
+  align-items: center;
+  background: linear-gradient(180deg, #e8f4fa 0%, #d7ecf6 100%);
+  border-radius: 8px;
+  color: #0077b8;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.leaderboard__item:nth-child(1) .leaderboard__rank {
+  background: linear-gradient(180deg, #fff4e5 0%, #ffe7c7 100%);
+  color: #c56d0a;
+}
+
+.leaderboard__item:nth-child(2) .leaderboard__rank {
+  background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+  color: #475569;
+}
+
+.leaderboard__item:nth-child(3) .leaderboard__rank {
+  background: linear-gradient(180deg, #f3ebe3 0%, #e8d9cb 100%);
+  color: #8a5a2b;
+}
+
+.leaderboard__copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.leaderboard__copy strong {
+  color: #161616;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metric-chip-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.metric-chip {
+  align-items: center;
+  background: rgba(22, 22, 22, 0.04);
+  border-radius: 999px;
+  color: #64748b;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 500;
+  gap: 4px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.metric-chip em {
+  color: #161616;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.metric-chip--unit {
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 600;
+  padding-left: 0;
+}
+
+.metric-chip--fte {
+  background: rgba(184, 217, 110, 0.22);
+  color: #5f7a28;
+}
+
+.metric-chip--fte em {
+  color: #3f5a12;
+}
+
+.metric-chip--success {
+  background: rgba(109, 170, 40, 0.14);
+  color: #4d7a1c;
+}
+
+.metric-chip--success em {
+  color: #3d6a12;
+}
+
+.metric-chip--danger {
+  background: rgba(232, 84, 84, 0.12);
+  color: #b42318;
+}
+
+.metric-chip--danger em {
+  color: #9f1d14;
+}
+
+.metric-chip--muted {
+  background: rgba(148, 163, 184, 0.14);
+  color: #64748b;
+}
+
+.metric-chip--muted em {
+  color: #475569;
+}
+
+.dash-toolbar {
   align-items: center;
   background: #fff;
-  border: 1px solid rgba(12, 35, 64, 0.08);
-  border-radius: 10px;
+  border: 1px solid var(--dash-border);
+  border-radius: 14px;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 14px 16px;
 }
 
-.leaderboard__item div {
+.dash-toolbar__filters {
+  align-items: center;
   display: grid;
-  gap: 2px;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(120px, 0.8fr));
+  min-width: min(100%, 760px);
 }
 
-.leaderboard__item strong {
-  color: #1a2e40;
-  font-size: 12px;
-}
-
-.leaderboard__item span {
-  color: #687782;
-  font-size: 11px;
+.dash-toolbar__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .overview-panel {
-  border-color: rgba(0, 119, 184, 0.16);
+  background: #fff;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  box-shadow: var(--dash-shadow);
+  display: grid;
+  gap: 20px;
+  padding: 22px 24px;
 }
 
-.section-head-row {
+.overview-panel__metrics {
+  align-items: stretch;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+}
+
+.overview-panel__hero {
+  border-right: 1px solid rgba(22, 22, 22, 0.06);
+  display: grid;
+  gap: 8px;
+  padding-right: 20px;
+}
+
+.overview-panel__label {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.overview-panel__metric-desc {
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.overview-panel__hero-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.overview-panel__hero-value {
+  color: var(--dash-deep);
+  font-size: clamp(36px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.overview-panel__badge {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+}
+
+.overview-panel__badge--up {
+  background: color-mix(in srgb, var(--dash-success) 16%, white);
+  color: #3d6a12;
+}
+
+.overview-panel__badge--down {
+  background: color-mix(in srgb, #e85454 12%, white);
+  color: #b42318;
+}
+
+.overview-panel__badge--flat {
+  background: rgba(22, 22, 22, 0.06);
+  color: #6c757d;
+}
+
+.overview-panel__hero-hint {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.overview-panel__stats {
+  display: grid;
+  gap: 12px 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.overview-panel__stat {
+  display: grid;
+  gap: 4px;
+}
+
+.overview-panel__stat-row {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.overview-panel__stat-value {
+  color: #161616;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.overview-panel__stat-hint {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.overview-panel__composition {
+  border-top: 1px solid rgba(22, 22, 22, 0.06);
+  display: grid;
+  gap: 10px;
+  padding-top: 18px;
+}
+
+.overview-panel__composition-head {
   align-items: flex-start;
   display: flex;
   gap: 12px;
   justify-content: space-between;
-  margin-bottom: 14px;
+}
+
+.overview-panel__composition-desc {
+  color: #94a3b8;
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.composition-bar__track {
+  background: #eef2f6;
+  border-radius: 999px;
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+}
+
+.composition-bar__segment {
+  border: 0;
+  cursor: pointer;
+  min-width: 3px;
+  padding: 0;
+  transition: filter 0.18s ease;
+}
+
+.composition-bar__segment:hover {
+  filter: brightness(1.06);
+}
+
+.composition-bar__segment--active {
+  box-shadow: inset 0 0 0 2px rgba(0, 63, 110, 0.3);
+}
+
+.composition-bar__labels--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.composition-bar__label {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 5px;
+  padding: 0;
+}
+
+.composition-bar__label:hover,
+.composition-bar__label--active {
+  color: #161616;
+}
+
+.composition-bar__label strong {
+  color: #161616;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.composition-bar__dot {
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 7px;
+  width: 7px;
+}
+
+.composition-bar__name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-card {
+  background: #fff;
+  border: 1px solid var(--dash-border);
+  border-radius: 16px;
+  box-shadow: var(--dash-shadow);
+  display: grid;
+  gap: 16px;
+  padding: 20px 24px;
+}
+
+.dash-card--breakdown {
+  padding-bottom: 22px;
+}
+
+.dash-card--analytics {
+  gap: 8px;
+  padding: 20px 24px 18px;
+}
+
+.dash-card--trend {
+  gap: 10px;
+  min-height: 0;
+  padding-bottom: 18px;
+}
+
+.dash-card--table {
+  padding-bottom: 16px;
+}
+
+.dash-card__head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.dash-card__head--tabs {
+  flex-wrap: wrap;
+}
+
+.dash-card__head--table {
+  margin-bottom: 2px;
+}
+
+.dash-card__head h3 {
+  color: #161616;
+  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.dash-card__meta {
+  background: #f4f6f8;
+  border-radius: 999px;
+  color: #6c757d;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.segmented-tabs {
+  background: #f1f5f9;
+  border-radius: 999px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+}
+
+.segmented-tabs__btn {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  white-space: nowrap;
+}
+
+.segmented-tabs__btn--active {
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  color: #0077b8;
+}
+
+.trend-caption {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.trend-guide {
+  background: #f8fafc;
+  border: 1px solid rgba(22, 22, 22, 0.06);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.trend-guide__intro {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.trend-guide__list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.trend-guide__item {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+}
+
+.trend-guide__dot {
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 8px;
+  margin-top: 4px;
+  width: 8px;
+}
+
+.trend-guide__item strong {
+  color: #161616;
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.trend-guide__item span {
+  color: #6c757d;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.summary-empty {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  margin: 0;
+  padding: 16px 0;
+  text-align: center;
 }
 
 .table-shell {
-  width: 100%;
+  background: #fafbfd;
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .loading-state {
-  color: #6c757d;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
   font-size: 13px;
   padding: 20px 0;
+  text-align: center;
 }
 
 .empty-filter-state {
   align-items: center;
-  color: #6c757d;
+  background: #fafbfd;
+  border: 1.5px dashed rgba(22, 22, 22, 0.14);
+  border-radius: 12px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 28px 14px;
+  padding: 32px 14px;
   text-align: center;
 }
 
@@ -1715,327 +2213,41 @@ watch(isMyProjectsView, () => {
   max-width: 420px;
 }
 
-.empty-filter-state--compact {
-  padding: 18px 14px;
-}
-
-.project-cards {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.project-card {
-  height: 100%;
-}
-
-.project-card::part(container) {
-  border-radius: 14px;
-  box-shadow: 0 3px 10px rgba(12, 35, 64, 0.06);
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
-}
-
-.project-card::part(container)::before {
-  background: #0077b8;
-  content: '';
-  height: 3px;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 100%;
-}
-
-.project-card--completed::part(container)::before {
-  background: #6daa28;
-}
-
-.project-card--at_risk::part(container)::before {
-  background: #e85454;
-}
-
-.project-card:hover::part(container) {
-  box-shadow: 0 12px 28px rgba(12, 35, 64, 0.11);
-  transform: translateY(-2px);
-}
-
-.project-card__shell {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 100%;
-}
-
-.project-card__header {
-  align-items: flex-start;
-  display: flex;
-  gap: 11px;
-}
-
-.project-card-icon {
-  align-items: center;
-  background: rgba(0, 119, 184, 0.1);
-  border-radius: 12px;
-  color: #0077b8;
-  display: flex;
-  flex-shrink: 0;
-  height: 40px;
-  justify-content: center;
-  width: 40px;
-}
-
-.project-card--completed .project-card-icon {
-  background: rgba(109, 170, 40, 0.12);
-  color: #6daa28;
-}
-
-.project-card--at_risk .project-card-icon {
-  background: rgba(232, 84, 84, 0.12);
-  color: #e85454;
-}
-
-.project-card__title-block {
-  flex: 1;
-  min-width: 0;
-}
-
-.project-card__title {
-  color: #162a3b;
-  font-size: 15px;
-  font-weight: 650;
-  line-height: 1.35;
-  margin: 0 0 3px;
-}
-
-.project-card__id {
-  color: #6b7883;
-  font-size: 11px;
-  margin: 0;
-  word-break: break-all;
-}
-
-.project-card__status {
-  flex-shrink: 0;
-}
-
-.project-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.project-card__chip {
-  align-items: center;
-  background: #f4f7fa;
-  border-radius: 999px;
-  color: #4e5e6d;
-  display: inline-flex;
-  font-size: 11px;
-  gap: 5px;
-  line-height: 1;
-  padding: 5px 9px;
-}
-
-.project-card__chip--muted {
-  background: rgba(0, 119, 184, 0.08);
-  color: #0077b8;
-}
-
-.project-card__products {
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  color: #667680;
-  display: -webkit-box;
-  font-size: 11px;
-  line-height: 1.45;
-  margin: 0;
-  overflow: hidden;
-}
-
-.project-card__stage {
-  background: #f8fafc;
-  border: 1px solid rgba(12, 35, 64, 0.08);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 9px 11px;
-}
-
-.project-card__stage-head {
-  align-items: baseline;
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-}
-
-.project-card__stage-label {
-  color: #6d7983;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.project-card__stage-name {
-  color: #172e42;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.project-card__dots {
-  display: flex;
-  gap: 6px;
-}
-
-.project-card__dot {
-  background: #fff;
-  border: 1.5px solid #d0d7de;
-  border-radius: 999px;
-  height: 8px;
-  width: 8px;
-}
-
-.project-card__dot--complete {
-  background: #6daa28;
-  border-color: #6daa28;
-}
-
-.project-card__dot--active {
-  background: #0077b8;
-  border-color: #0077b8;
-  box-shadow: 0 0 0 2px rgba(0, 119, 184, 0.18);
-}
-
-.project-card__dot--at_risk {
-  background: #e85454;
-  border-color: #e85454;
-  box-shadow: 0 0 0 2px rgba(232, 84, 84, 0.16);
-}
-
-.project-card__stage-count {
-  color: #6c757d;
-  font-size: 10px;
-}
-
-.project-card__progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.project-card__progress-head {
-  align-items: center;
-  color: #667580;
-  display: flex;
-  font-size: 11px;
-  justify-content: space-between;
-}
-
-.project-card__progress-head strong {
-  color: #0077b8;
-  font-size: 12px;
-}
-
-.project-card--completed .project-card__progress-head strong {
-  color: #6daa28;
-}
-
-.project-card--at_risk .project-card__progress-head strong {
-  color: #e85454;
-}
-
-.progress-track {
-  background: rgba(12, 35, 64, 0.12);
-  border-radius: 999px;
-  height: 4px;
-  overflow: hidden;
-  width: 100%;
-}
-
-.progress-fill {
-  background: linear-gradient(90deg, #0077b8, #42b0d5);
-  border-radius: 999px;
-  height: 100%;
-}
-
-.project-card--completed .progress-fill {
-  background: linear-gradient(90deg, #6daa28, #8cc63f);
-}
-
-.project-card--at_risk .progress-fill {
-  background: linear-gradient(90deg, #e85454, #f3880e);
-}
-
-.project-card__footer {
-  align-items: center;
-  border-top: 1px solid rgba(12, 35, 64, 0.08);
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 10px;
-}
-
-.project-card__meta {
-  color: #6a7883;
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 11px;
-  gap: 4px;
-  line-height: 1.35;
-  min-width: 0;
-}
-
-.project-card__meta-sep {
-  opacity: 0.55;
-}
-
 @media (max-width: 1280px) {
-  .kpi-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .analysis-layout {
+  .dashboard-main {
     grid-template-columns: 1fr;
   }
 
-  .sidebar-stack {
-    position: static;
+  .overview-panel__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-panel__hero {
+    border-bottom: 1px solid rgba(22, 22, 22, 0.06);
+    border-right: 0;
+    padding-bottom: 16px;
+    padding-right: 0;
   }
 }
 
 @media (max-width: 960px) {
-  .hero-panel__top {
-    flex-direction: column;
+  .dash-toolbar__filters {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
   }
 
-  .hero-actions {
+  .dash-toolbar__actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .overview-panel__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-card__head--tabs {
     align-items: flex-start;
-  }
-
-  .breakdown-row {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-split,
-  .project-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .hero-title {
-    font-size: 21px;
-  }
-
-  .section-head-row {
     flex-direction: column;
   }
 }

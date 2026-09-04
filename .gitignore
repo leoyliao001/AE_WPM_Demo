@@ -6,9 +6,6 @@ __pycache__/
 .venv/
 venv/
 
-# Local Django settings
-backend/config/settings.py
-
 # Node / frontend — dependencies & build artifacts (do NOT commit)
 node_modules/
 frontend/node_modules/
@@ -43,7 +40,7 @@ backend/scripts/*_log.txt
 !.env.example
 *.local
 
-# Local Django settings (contains machine-specific configuration)
+# Local Django settings (machine-specific DB host/creds) - do not commit
 backend/config/settings.py
 
 # npm registry auth (never commit)
@@ -64,5 +61,3 @@ Thumbs.db
 # Local CA bundle (generated from corporate cert, do not commit)
 combined-ca.pem
 backend/db.sqlite3
-backend/config/settings.py
-backend/config/settings.py

@@ -18,6 +18,8 @@ TABLE_KEYS = (
     "migration_intake",
     "approval_workflow",
     "input_for_approval",
+    "bpm_rofo",
+    "bpm_actual",
     "access_control",
 )
 
@@ -68,6 +70,18 @@ def get_request_email(request) -> str:
 
 def build_access_snapshot(email: str) -> dict:
     email = normalize_email(email)
+
+    def local_dev_super_admin_snapshot() -> dict:
+        return {
+            "email": email,
+            "is_super_admin": True,
+            "authenticated": bool(email),
+            "tables": {key: True for key in TABLE_KEYS},
+        }
+
+    if email.endswith("@localhost"):
+        return local_dev_super_admin_snapshot()
+
     row = ProjectAttributesAccess.objects.filter(email__iexact=email).first() if email else None
     if not row:
         return {
@@ -88,6 +102,8 @@ def build_access_snapshot(email: str) -> dict:
         "migration_intake": is_super or bool(row.migration_intake),
         "approval_workflow": is_super or bool(row.approval_workflow),
         "input_for_approval": is_super or bool(row.input_for_approval),
+        "bpm_rofo": is_super or bool(row.bpm_rofo),
+        "bpm_actual": is_super or bool(row.bpm_actual),
         "access_control": is_super or bool(row.access_control),
     }
     return {
@@ -124,6 +140,31 @@ def require_attributes_access(table_key: str):
             if not can_access_table(email, table_key):
                 return deny_response(
                     f"Access denied for {email} on table '{table_key}'."
+                )
+            request.attributes_email = email
+            return view_func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def require_any_attributes_access(*table_keys: str):
+    """Decorator: require access to at least one of the given attributes tables."""
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            email = get_request_email(request)
+            if not email:
+                return deny_response(
+                    "Sign in required. Missing SSO email.",
+                    status.HTTP_401_UNAUTHORIZED,
+                )
+            if not any(can_access_table(email, table_key) for table_key in table_keys):
+                allowed = ", ".join(table_keys) if table_keys else "requested tables"
+                return deny_response(
+                    f"Access denied for {email}. Required access to one of: {allowed}."
                 )
             request.attributes_email = email
             return view_func(request, *args, **kwargs)

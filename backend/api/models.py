@@ -266,6 +266,84 @@ class WorkingHours(models.Model):
         return f"{self.area or '-'} / {self.gsc or '-'} / {self.gsc_working_hours}"
 
 
+class BpmRofo(models.Model):
+    """BPM ROFO planning table by onboarding month and year."""
+
+    project_name = models.CharField(max_length=255, blank=True, default="")
+    product = models.CharField(max_length=255, blank=True, default="")
+    region = models.CharField(max_length=64, blank=True, default="")
+    area = models.CharField(max_length=128, blank=True, default="")
+    onboarding_month = models.CharField(max_length=32, blank=True, default="")
+    year = models.PositiveSmallIntegerField(default=0)
+    bpm_owner = models.CharField(max_length=255, blank=True, default="")
+    positions_to_be_offshored_in_gsc = models.CharField(max_length=64, blank=True, default="")
+    rofo_value = models.CharField(max_length=64, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "bpm_rofo"
+        ordering = ["-year", "project_name", "id"]
+        indexes = [
+            models.Index(fields=["year", "onboarding_month"]),
+            models.Index(fields=["project_name"]),
+        ]
+
+    def __str__(self):
+        return f"{self.project_name or 'BPM ROFO'} ({self.year or self.onboarding_month})"
+
+
+class BpmActual(models.Model):
+    """BPM Actuals table by onboarding month and year."""
+
+    project_name = models.CharField(max_length=255, blank=True, default="")
+    product = models.CharField(max_length=255, blank=True, default="")
+    region = models.CharField(max_length=64, blank=True, default="")
+    area = models.CharField(max_length=128, blank=True, default="")
+    onboarding_month = models.CharField(max_length=32, blank=True, default="")
+    year = models.PositiveSmallIntegerField(default=0)
+    bpm_owner = models.CharField(max_length=255, blank=True, default="")
+    positions_to_be_offshored_in_gsc = models.CharField(max_length=64, blank=True, default="")
+    part_not_part_of_rofo = models.CharField(max_length=16, blank=True, default="")
+    actual_value = models.CharField(max_length=64, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "bpm_actual"
+        ordering = ["-year", "project_name", "id"]
+        indexes = [
+            models.Index(fields=["year", "onboarding_month"]),
+            models.Index(fields=["project_name"]),
+        ]
+
+    def __str__(self):
+        return f"{self.project_name or 'BPM Actual'} ({self.year or self.onboarding_month})"
+
+
+class ExecutiveSummaryNote(models.Model):
+    """Editable notes displayed in the Executive Summary side panels."""
+
+    section = models.CharField(max_length=32, blank=True, default="")
+    year = models.PositiveSmallIntegerField(default=0)
+    title = models.CharField(max_length=64, blank=True, default="")
+    body = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "executive_summary_note"
+        ordering = ["year", "section", "id"]
+        indexes = [
+            models.Index(fields=["year", "section"], name="exec_summary_year_section_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.section or 'summary'} ({self.year})"
+
+
 class ProjectAttributesAccess(models.Model):
     """SSO email-based access control for Project Attributes Database tables."""
 
@@ -280,6 +358,8 @@ class ProjectAttributesAccess(models.Model):
     migration_intake = models.BooleanField(default=False)
     approval_workflow = models.BooleanField(default=False)
     input_for_approval = models.BooleanField(default=False)
+    bpm_rofo = models.BooleanField(default=False)
+    bpm_actual = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

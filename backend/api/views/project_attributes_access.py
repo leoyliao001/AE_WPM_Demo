@@ -25,6 +25,8 @@ ALL_FIELDS = [
     ("migration_intake", "Migration Intake (Y/N)"),
     ("approval_workflow", "Approval Workflow (Y/N)"),
     ("input_for_approval", "Input for Approval (Y/N)"),
+    ("bpm_rofo", "BPM ROFO (Y/N)"),
+    ("bpm_actual", "BPM Actual (Y/N)"),
     ("access_control", "Access Control (Y/N)"),
 ]
 
@@ -39,6 +41,8 @@ BOOL_FIELDS = {
     "migration_intake",
     "approval_workflow",
     "input_for_approval",
+    "bpm_rofo",
+    "bpm_actual",
     "access_control",
 }
 
@@ -63,6 +67,8 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "migration_intake": "Y",
             "approval_workflow": "Y",
             "input_for_approval": "Y",
+            "bpm_rofo": "Y",
+            "bpm_actual": "Y",
             "access_control": "Y",
         }
     return {
@@ -78,6 +84,8 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "migration_intake": _yn(item.migration_intake),
         "approval_workflow": _yn(item.approval_workflow),
         "input_for_approval": _yn(item.input_for_approval),
+        "bpm_rofo": _yn(item.bpm_rofo),
+        "bpm_actual": _yn(item.bpm_actual),
         "access_control": _yn(item.access_control),
     }
 
@@ -102,6 +110,8 @@ def my_attributes_access(request):
                     "migration_intake": False,
                     "approval_workflow": False,
                     "input_for_approval": False,
+                    "bpm_rofo": False,
+                    "bpm_actual": False,
                     "access_control": False,
                 },
             }

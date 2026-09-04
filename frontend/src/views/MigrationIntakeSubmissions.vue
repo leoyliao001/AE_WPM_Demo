@@ -26,6 +26,11 @@
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
+          <template v-if="appliedBpmYear || appliedSection">
+            <span class="meta-pill" title="Applied filters">Filters applied:</span>
+            <span v-if="appliedBpmYear" class="meta-pill">Year: {{ appliedBpmYear }}</span>
+            <span v-if="appliedSection" class="meta-pill">Section: {{ appliedSection }}</span>
+          </template>
           <span v-if="pendingCount" class="meta-pill meta-pill--pending">
             {{ pendingCount }} pending
           </span>
@@ -173,6 +178,11 @@ const allChanges = ref([])
 const saveProgressMessage = ref('')
 const helpDialogOpen = ref(false)
 
+// Query-driven filter helpers
+import { useRoute } from 'vue-router'
+const route = useRoute()
+const appliedBpmYear = ref(null)
+const appliedSection = ref(null)
 const pendingCount = computed(() => allChanges.value.length)
 
 function emptyRow() {
@@ -398,6 +408,14 @@ function initHot(rows) {
 
   hotInstance.value = hot
   hotReady.value = true
+  // If query params exist, attempt to apply them once hot is ready
+  setTimeout(() => {
+    try {
+      applyQueryFilters()
+    } catch (e) {
+      // ignore
+    }
+  }, 250)
 }
 
 function onResize() {
@@ -512,7 +530,9 @@ async function loadData() {
     loading.value = false
     await nextTick()
     onResize()
-  }
+      // Re-apply query filters after data reload
+      try { applyQueryFilters() } catch (e) { /* ignore */ }
+    }
 }
 
 function handleGlobalKeydown(event) {
@@ -522,7 +542,60 @@ function handleGlobalKeydown(event) {
   saveData()
 }
 
+function applyQueryFilters() {
+  if (!hotInstance.value || !hotReady.value) return
+  const plugin = hotInstance.value.getPlugin('filters')
+  if (!plugin) return
+
+  // bpmYear filter: find any column that looks like onboarding / start / year
+  const bpmYear = appliedBpmYear.value
+  if (bpmYear) {
+    const candidateKeys = ['onboarding_month', 'onboardingMonth', 'onboarding', 'start_month', 'startMonth', 'year', 'bpm_year']
+    let colIndex = -1
+    for (let i = 0; i < ALL_COLUMNS.length; i += 1) {
+      const k = ALL_COLUMNS[i].key
+      const label = ALL_COLUMNS[i].label || ''
+      if (candidateKeys.includes(k) || /onboard|start|year/i.test(k) || /onboard|start|year/i.test(label)) {
+        colIndex = i
+        break
+      }
+    }
+    if (colIndex >= 0) {
+      try {
+        plugin.removeConditions(colIndex)
+      } catch (e) {
+        // ignore
+      }
+      plugin.addCondition(colIndex, 'contains', [bpmYear])
+    }
+  }
+
+  // section filter: map to status where possible
+  const section = (appliedSection.value || '').toLowerCase()
+  if (section) {
+    const map = { highlights: 'completed', focus: 'at_risk', levers: 'in_progress' }
+    const statusValue = map[section]
+    const statusCol = ALL_COLUMNS.findIndex((c) => c.key === 'status')
+    if (statusCol >= 0 && statusValue) {
+      try { plugin.removeConditions(statusCol) } catch (e) {}
+      plugin.addCondition(statusCol, 'eq', [statusValue])
+    }
+  }
+
+  // apply filter if any conditions set
+  try { plugin.filter() } catch (e) {}
+}
+
 onMounted(() => {
+  // Read query params and set applied flags
+  const q = route.query || {}
+  if (q.bpmYear) {
+    appliedBpmYear.value = String(q.bpmYear)
+  }
+  if (q.section) {
+    appliedSection.value = String(q.section)
+  }
+
   loadData()
   window.addEventListener('resize', onResize)
   document.addEventListener('keydown', handleGlobalKeydown)

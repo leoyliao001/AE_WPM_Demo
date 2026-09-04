@@ -1,7 +1,7 @@
 <template>
-  <div class="aac-page">
-    <div class="aac-page-inner">
-      <header class="aac-toolbar">
+  <div class="bpm-page">
+    <div class="bpm-page-inner">
+      <header class="bpm-toolbar">
         <div class="toolbar-left">
           <router-link class="back-link" to="/project-attributes">
             <mc-button
@@ -12,27 +12,28 @@
               icon="mi-arrow-left"
             />
           </router-link>
-          <mc-tag appearance="info" fit="small" label="Access Control" />
-          <h1 class="page-title">Access Control</h1>
+          <mc-tag appearance="info" fit="small" label="BPM Actual" />
+          <h1 class="page-title">BPM Actual</h1>
           <span class="meta-pill">{{ rowCount }} rows</span>
-          <button
-            type="button"
-            class="meta-pill meta-pill--help"
-            @click="helpDialogOpen = true"
-          >
-            How to use
-          </button>
-          <span v-if="loading" class="meta-pill meta-pill--loading">Loading?</span>
+          <label class="year-picker">
+            <span>Year</span>
+            <select :value="selectedYear" @change="onYearChange">
+              <option v-for="year in yearOptions" :key="year" :value="year">{{ year }}</option>
+            </select>
+          </label>
+          <span v-if="loading" class="meta-pill meta-pill--loading">Loading…</span>
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
-          <span v-if="pendingCount" class="meta-pill meta-pill--pending">
-            {{ pendingCount }} pending
-          </span>
+          <span v-if="pendingCount" class="meta-pill meta-pill--pending">{{ pendingCount }} pending</span>
+          <label class="upload-box">
+            <input ref="uploadInput" type="file" accept=".xlsx,.xls,.csv" @change="handleUpload" />
+            <span>Upload Excel</span>
+          </label>
           <mc-button
             appearance="primary"
             fit="small"
-            :label="saving ? 'Saving?' : 'Save'"
+            :label="saving ? 'Saving…' : 'Save'"
             icon="mi-floppy-disk"
             :disabled="loading || saving || deleting || pendingCount === 0"
             :title="saving ? saveProgressMessage : 'Ctrl + S'"
@@ -52,49 +53,15 @@
 
       <div v-if="loading && !hotReady" class="table-loading">
         <mc-loading-indicator size="large" />
-        <span>Loading access control?</span>
+        <span>Loading BPM Actual…</span>
       </div>
 
       <div
-        id="aac-handsontable"
+        id="bpm-actual-handsontable"
         ref="hotContainer"
         class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
       />
-
-      <mc-dialog
-        :open="helpDialogOpen"
-        heading="Access Control ? User Guide"
-        dimension="medium"
-        showclosebutton
-        @closing="helpDialogOpen = false"
-      >
-        <div class="help-dialog-body">
-          <section class="help-section">
-            <h3>What this table is for</h3>
-            <p>
-              Manage who can open Project Attributes tables using SSO <strong>email</strong>.
-              Set <strong>Super Admin (Y)</strong> to grant access to every table (including
-              Service Catalogue, Working Hours, Project Gantt, and Approval Workflow). Otherwise enable individual tables with Y/N. Edit rows, then click
-              <strong>Save</strong>.
-            </p>
-            <p>
-              <strong>Important:</strong> when <strong>Super Admin = Y</strong>, all table access columns are forced to
-              <strong>Y</strong> on save. If you need any column to remain <strong>N</strong> (for example
-              <strong>Input for Approval</strong>), set <strong>Super Admin</strong> to <strong>N</strong> first.
-            </p>
-          </section>
-          <section class="help-section">
-            <h3>Edit and save</h3>
-            <ul>
-              <li>Edit any cell directly. Pending changes are tracked until you Save.</li>
-              <li>Use the context menu to insert or remove rows.</li>
-              <li>Press <strong>Ctrl + S</strong> (Cmd + S on Mac) to save.</li>
-              <li>Use column filters via the ? menu on each header.</li>
-            </ul>
-          </section>
-        </div>
-      </mc-dialog>
     </div>
   </div>
 </template>
@@ -103,56 +70,35 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import axios from 'axios'
 import Handsontable from 'handsontable'
+import * as XLSX from 'xlsx'
 import 'handsontable/styles/handsontable.min.css'
 import 'handsontable/styles/ht-theme-horizon.min.css'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-loading-indicator'
-import '@maersk-global/mds-components-core/mc-dialog'
 import {
   hasStoredColumnWidths,
   loadColumnWidths,
   persistColumnWidths,
   resolveColumnWidth
 } from '../utils/handsontableColumnWidths.js'
-import { clearAttributesAccessCache } from '../utils/attributesAccess.js'
-
-const YN_OPTIONS = ['Y', 'N']
-const YN_KEYS = new Set([
-  'is_super_admin',
-  'fpo_mapping',
-  'product_ownership',
-  'gsc_site_mapping',
-  'service_catalogue',
-  'working_hours',
-  'project_gantt',
-  'migration_intake',
-  'approval_workflow',
-  'input_for_approval',
-  'bpm_rofo',
-  'bpm_actual',
-  'access_control'
-])
 
 const ALL_COLUMNS = [
-  { key: 'email', label: 'Email', width: 260 },
-  { key: 'is_super_admin', label: 'Super Admin (Y/N)', width: 140 },
-  { key: 'fpo_mapping', label: 'FPO Mapping (Y/N)', width: 150 },
-  { key: 'product_ownership', label: 'Product Ownership (Y/N)', width: 180 },
-  { key: 'gsc_site_mapping', label: 'GSC Site Mapping (Y/N)', width: 170 },
-  { key: 'service_catalogue', label: 'Service Catalogue (Y/N)', width: 170 },
-  { key: 'working_hours', label: 'Working Hours (Y/N)', width: 160 },
-  { key: 'project_gantt', label: 'Project Gantt (Y/N)', width: 150 },
-  { key: 'migration_intake', label: 'Migration Intake (Y/N)', width: 160 },
-  { key: 'approval_workflow', label: 'Approval Workflow (Y/N)', width: 180 },
-  { key: 'input_for_approval', label: 'Input for Approval (Y/N)', width: 200 },
-  { key: 'bpm_rofo', label: 'BPM ROFO (Y/N)', width: 140 },
-  { key: 'bpm_actual', label: 'BPM Actual (Y/N)', width: 150 },
-  { key: 'access_control', label: 'Access Control (Y/N)', width: 160 }
+  { key: 'project_name', label: 'Project Name', width: 220 },
+  { key: 'product', label: 'Product', width: 180 },
+  { key: 'region', label: 'Region', width: 120 },
+  { key: 'area', label: 'Area', width: 160 },
+  { key: 'onboarding_month', label: 'Onboarding Month', width: 180 },
+  { key: 'year', label: 'Year', width: 100 },
+  { key: 'bpm_owner', label: 'BPM Owner', width: 180 },
+  { key: 'positions_to_be_offshored_in_gsc', label: 'Positions to be Offshored in GSC', width: 180 },
+  { key: 'part_not_part_of_rofo', label: 'Part/Not part of ROFO', width: 180 },
+  { key: 'actual_value', label: 'Actual Value', width: 150 },
+  { key: 'notes', label: 'Notes', width: 260 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
-const COLUMN_WIDTH_STORAGE_ID = 'project-attributes-access'
+const COLUMN_WIDTH_STORAGE_ID = 'bpm-actual'
 
 const hotContainer = ref(null)
 const hotInstance = shallowRef(null)
@@ -164,30 +110,38 @@ const error = ref('')
 const rowCount = ref(0)
 const allChanges = ref([])
 const saveProgressMessage = ref('')
-const helpDialogOpen = ref(false)
+const uploadInput = ref(null)
+const currentYear = new Date().getFullYear()
+const selectedYear = ref(currentYear)
 
+const yearOptions = computed(() => {
+  const years = []
+  for (let i = -2; i <= 2; i += 1) {
+    years.push(currentYear + i)
+  }
+  return years
+})
 const pendingCount = computed(() => allChanges.value.length)
-
-function emptyRow() {
-  const row = { id: null, _cid: crypto.randomUUID() }
-  ALL_KEYS.forEach((key) => {
-    row[key] = YN_KEYS.has(key) ? 'N' : ''
-  })
-  return row
-}
 
 function normalizeCellValue(value) {
   if (value === null || value === undefined) return ''
   return String(value).replace(/\r\n/g, '\n').trim()
 }
 
+function emptyRow() {
+  const row = { id: null, _cid: crypto.randomUUID() }
+  ALL_KEYS.forEach((key) => {
+    row[key] = key === 'year' ? selectedYear.value : ''
+  })
+  return row
+}
+
 function isBlankRow(item) {
-  return !normalizeCellValue(item.email)
+  return ALL_KEYS.every((key) => !normalizeCellValue(item[key]))
 }
 
 function trackChangedRow(hot, visualRow) {
-  const physicalRow =
-    typeof hot.toPhysicalRow === 'function' ? hot.toPhysicalRow(visualRow) : visualRow
+  const physicalRow = typeof hot.toPhysicalRow === 'function' ? hot.toPhysicalRow(visualRow) : visualRow
   const src = hot.getSourceDataAtRow(physicalRow)
   if (!src) return
 
@@ -195,10 +149,7 @@ function trackChangedRow(hot, visualRow) {
     src._cid = crypto.randomUUID()
   }
 
-  const snapshot = {
-    id: src.id ?? null,
-    _cid: src._cid
-  }
+  const snapshot = { id: src.id ?? null, _cid: src._cid }
   ALL_KEYS.forEach((key) => {
     snapshot[key] = normalizeCellValue(src[key])
   })
@@ -214,24 +165,11 @@ function trackChangedRow(hot, visualRow) {
 
 function buildColumns() {
   const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
-  return ALL_COLUMNS.map((col) => {
-    const width = resolveColumnWidth(col.width, col.key, storedWidths)
-    if (YN_KEYS.has(col.key)) {
-      return {
-        data: col.key,
-        type: 'dropdown',
-        strict: true,
-        allowInvalid: false,
-        source: YN_OPTIONS,
-        width
-      }
-    }
-    return {
-      data: col.key,
-      type: 'text',
-      width
-    }
-  })
+  return ALL_COLUMNS.map((col) => ({
+    data: col.key,
+    type: 'text',
+    width: resolveColumnWidth(col.width, col.key, storedWidths)
+  }))
 }
 
 function destroyHot() {
@@ -249,15 +187,13 @@ function syncTableHeight() {
   const wasHidden = el.classList.contains('is-hidden')
   if (wasHidden) el.classList.remove('is-hidden')
   el.style.height = ''
-
   void el.offsetHeight
-  let height = Math.floor(el.clientHeight || 0)
 
+  let height = Math.floor(el.clientHeight || 0)
   if (height < 280) {
     const top = el.getBoundingClientRect().top || 120
     height = Math.max(Math.floor(window.innerHeight - top - 24), 280)
   }
-
   height = Math.max(height - 2, 280)
   el.style.height = `${height}px`
   if (wasHidden) el.classList.add('is-hidden')
@@ -269,13 +205,13 @@ function initHot(rows) {
   destroyHot()
   allChanges.value = []
 
-  const data = rows.map((r) => {
-    const row = emptyRow()
-    ALL_KEYS.forEach((k) => {
-      row[k] = r[k] ?? ''
+  const data = rows.map((row) => {
+    const out = emptyRow()
+    ALL_KEYS.forEach((key) => {
+      out[key] = row[key] ?? (key === 'year' ? selectedYear.value : '')
     })
-    row.id = r.id ?? null
-    return row
+    out.id = row.id ?? null
+    return out
   })
 
   for (let i = 0; i < 5; i += 1) {
@@ -283,7 +219,6 @@ function initHot(rows) {
   }
 
   const tableHeight = syncTableHeight()
-  // Prefer saved widths over stretch-to-fill once the user has customized columns.
   const stretchH = hasStoredColumnWidths(COLUMN_WIDTH_STORAGE_ID) ? 'none' : 'all'
 
   const hot = new Handsontable(hotContainer.value, {
@@ -320,27 +255,8 @@ function initHot(rows) {
         row_below: { name: 'Insert row below' },
         remove_row: { name: 'Remove row' },
         sp1: '---------',
-        copy: {
-          name: 'Copy',
-          callback() {
-            this.getPlugin('copyPaste')?.copyCellsOnly()
-          }
-        },
-        copy_with_column_headers: {
-          name: 'Copy with headers',
-          callback() {
-            this.getPlugin('copyPaste')?.copyWithColumnHeaders()
-          },
-          disabled() {
-            return !this.getSelectedLast()
-          }
-        },
-        cut: {
-          name: 'Cut',
-          callback() {
-            this.getPlugin('copyPaste')?.cut()
-          }
-        },
+        copy: { name: 'Copy', callback() { this.getPlugin('copyPaste')?.copyCellsOnly() } },
+        cut: { name: 'Cut', callback() { this.getPlugin('copyPaste')?.cut() } },
         sp2: '---------',
         undo: { name: 'Undo' },
         redo: { name: 'Redo' }
@@ -353,16 +269,14 @@ function initHot(rows) {
     headerClassName: 'htLeft',
     afterChange(changes, source) {
       if (!changes || source === 'loadData' || source === 'api') return
-      if (!['edit', 'Autofill.fill', 'CopyPaste.paste', 'UndoRedo.undo', 'UndoRedo.redo'].includes(source)) {
-        return
-      }
+      if (!['edit', 'Autofill.fill', 'CopyPaste.paste', 'UndoRedo.undo', 'UndoRedo.redo'].includes(source)) return
       const touchedRows = new Set()
       changes.forEach(([visualRow]) => touchedRows.add(visualRow))
       touchedRows.forEach((visualRow) => trackChangedRow(this, visualRow))
     },
     beforeRemoveRow(index, amount, physicalRows) {
       if (deleting.value) {
-        alert('Delete in progress, please wait?')
+        alert('Delete in progress, please wait…')
         return false
       }
 
@@ -375,11 +289,9 @@ function initHot(rows) {
         }
       }
 
-      const confirmed = confirm(
-        'The rows will be deleted permanently and can not be restored. Continue?'
-      )
-      if (!confirmed) return false
       if (idsToRemove.length === 0) return true
+      const confirmed = confirm('The rows will be deleted permanently. Continue?')
+      if (!confirmed) return false
 
       void runDeleteRows(idsToRemove)
       return false
@@ -431,10 +343,11 @@ async function saveData() {
   }
 
   saving.value = true
-  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)?`
+  saveProgressMessage.value = `Saving ${uniqueData.length} row(s)…`
   error.value = ''
+
   try {
-    const { data } = await axios.post('/api/project-attributes-access/data/', { uniqueData })
+    const { data } = await axios.post('/api/bpm-actual/data/', { uniqueData })
     const created = data.created_count || 0
     const updated = data.updated_count || 0
     const errCount = data.error_count || 0
@@ -444,15 +357,9 @@ async function saveData() {
       alert(`Saved: created ${created}, updated ${updated}.`)
     }
     allChanges.value = []
-    clearAttributesAccessCache()
     await loadData()
   } catch (e) {
-    console.error(e)
-    const msg =
-      e?.response?.data?.error ||
-      e?.response?.data?.detail ||
-      e.message ||
-      'Save failed'
+    const msg = e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Save failed'
     error.value = msg
     alert(`Save failed: ${msg}`)
   } finally {
@@ -466,9 +373,7 @@ async function runDeleteRows(idsToRemove) {
   deleting.value = true
   error.value = ''
   try {
-    const { data } = await axios.delete('/api/project-attributes-access/data/delete/', {
-      data: { removedIds: idsToRemove }
-    })
+    const { data } = await axios.delete('/api/bpm-actual/data/delete/', { data: { removedIds: idsToRemove } })
     const deletedCount = data.deleted_count || 0
     const errCount = data.error_count || 0
     if (errCount > 0) {
@@ -479,12 +384,7 @@ async function runDeleteRows(idsToRemove) {
     allChanges.value = []
     await loadData()
   } catch (e) {
-    console.error(e)
-    const msg =
-      e?.response?.data?.error ||
-      e?.response?.data?.detail ||
-      e.message ||
-      'Delete failed'
+    const msg = e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Delete failed'
     error.value = msg
     alert(`Delete failed: ${msg}`)
   } finally {
@@ -496,18 +396,76 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await axios.get('/api/project-attributes-access/')
+    const { data } = await axios.get('/api/bpm-actual/', { params: { year: selectedYear.value } })
     rowCount.value = data.count || 0
     await nextTick()
     initHot(data.rows || [])
   } catch (e) {
-    console.error(e)
-    error.value = e?.response?.data?.detail || e.message || 'Failed to load access control'
+    error.value = e?.response?.data?.detail || e.message || 'Failed to load BPM Actual'
     destroyHot()
   } finally {
     loading.value = false
     await nextTick()
     onResize()
+  }
+}
+
+function onYearChange(event) {
+  selectedYear.value = Number(event.target.value || currentYear)
+  void loadData()
+}
+
+async function handleUpload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false })
+    const uniqueData = rows
+      .map((row) => {
+        const normalized = {}
+        Object.entries(row).forEach(([key, value]) => {
+          const normKey = String(key).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')
+          normalized[normKey] = value
+        })
+        const positions = normalized.positions_to_be_offshored_in_gsc || normalized.positions_to_be_offshored || normalized.positions || normalized.actual_value || normalized.actual || normalized.value || ''
+        const partFlag = normalized.part_not_part_of_rofo || normalized.part_not_part || normalized.part || normalized.rofo_flag || normalized.rofo_status || ''
+        return {
+          project_name: normalized.project_name || normalized.project || '',
+          product: normalized.product || normalized.product_name || '',
+          region: normalized.region || '',
+          area: normalized.area || '',
+          onboarding_month: normalized.onboarding_month || normalized.onboarding || '',
+          year: normalized.year || selectedYear.value,
+          bpm_owner: normalized.bpm_owner || normalized.owner || '',
+          positions_to_be_offshored_in_gsc: positions,
+          part_not_part_of_rofo: String(partFlag).trim().toLowerCase() === 'no' ? 'No' : (String(partFlag).trim().toLowerCase() === 'yes' ? 'Yes' : partFlag),
+          actual_value: positions,
+          notes: normalized.notes || normalized.comment || ''
+        }
+      })
+      .filter((item) => item.project_name || item.product || item.onboarding_month || item.actual_value)
+
+    if (!uniqueData.length) {
+      alert('No valid rows found in the uploaded Excel file.')
+      return
+    }
+
+    const { data } = await axios.post('/api/bpm-actual/data/', { uniqueData })
+    if (data.error_count > 0) {
+      alert(`Upload completed with ${data.error_count} errors.`)
+    } else {
+      alert(`Uploaded ${data.success_count} row(s).`)
+    }
+    uploadInput.value = ''
+    await loadData()
+  } catch (e) {
+    const msg = e?.response?.data?.error || e?.response?.data?.detail || e.message || 'Upload failed'
+    error.value = msg
+    alert(`Upload failed: ${msg}`)
   }
 }
 
@@ -532,7 +490,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.aac-page {
+.bpm-page {
   background: #f3f4f6;
   box-sizing: border-box;
   display: flex;
@@ -542,152 +500,86 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
 }
-
-.aac-page-inner {
+.bpm-page-inner {
   box-sizing: border-box;
   display: flex;
   flex: 1;
   flex-direction: column;
-  margin: 0;
-  max-width: none;
-  min-height: 0;
   padding: 10px 12px 12px;
   width: 100%;
 }
-
-.aac-toolbar {
+.bpm-toolbar {
   align-items: center;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   display: flex;
-  flex-shrink: 0;
-  gap: 8px;
   justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
-  min-height: 0;
-  padding: 4px 10px;
+  padding: 6px 10px;
 }
-
-.toolbar-left,
-.toolbar-right {
+.toolbar-left, .toolbar-right {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 10px;
+  gap: 8px;
 }
-
-.back-link {
-  display: inline-flex;
-  text-decoration: none;
-}
-
 .page-title {
-  color: #161616;
-  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-size: 1.3rem;
   margin: 0;
 }
-
 .meta-pill {
-  background: #f6f7f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  color: #425466;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
+  background: #f3f4f6;
+  border-radius: 999px;
+  color: #111827;
+  font-size: 0.75rem;
+  padding: 4px 10px;
 }
-
-.meta-pill--help {
-  background: #eef6fb;
-  border-color: #b8d9eb;
-  color: #0077b8;
+.meta-pill--error { background: #fee2e2; color: #991b1b; }
+.meta-pill--loading { background: #e0f2fe; color: #075985; }
+.meta-pill--pending { background: #fef3c7; color: #92400e; }
+.year-picker {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.year-picker select {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.upload-box {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  color: #1d4ed8;
   cursor: pointer;
-  font-family: 'Maersk Text', sans-serif;
+  display: inline-flex;
+  font-size: 0.8rem;
+  padding: 7px 12px;
 }
-
-.meta-pill--help:hover {
-  background: #dceef8;
-  border-color: #0077b8;
+.upload-box input {
+  display: none;
 }
-
-.meta-pill--loading {
-  color: #0077b8;
-}
-
-.meta-pill--error {
-  background: #fdecec;
-  border-color: #f5c2c2;
-  color: #c4000a;
-  max-width: 360px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meta-pill--pending {
-  background: #fff6e8;
-  border-color: #f5d5a6;
-  color: #b35c00;
-}
-
-.help-dialog-body {
-  color: #161616;
-  font-size: 14px;
-  line-height: 1.55;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
-.help-section {
-  margin-bottom: 20px;
-}
-
-.help-section:last-child {
-  margin-bottom: 0;
-}
-
-.help-section h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 8px;
-}
-
-.help-section p,
-.help-section ul {
-  margin: 0;
-}
-
-.help-section ul {
-  padding-left: 20px;
-}
-
 .table-loading {
   align-items: center;
-  color: #6c757d;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 12px;
-  justify-content: center;
-  min-height: 240px;
-}
-
-.handsontable-host {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 24px;
 }
-
-.handsontable-host.is-hidden {
-  display: none;
+.handsontable-host {
+  flex: 1;
+  min-height: 320px;
+}
+:deep(.handsontable) {
+  width: 100% !important;
 }
 </style>
