@@ -182,15 +182,23 @@
                 <h3>Project Status Overview by Tollgate</h3>
                 <span class="dash-card__meta">Current project flow</span>
               </div>
-              <div class="stage-stack">
-                <div v-for="item in projectHealthStageItems" :key="item.key" class="stage-stack__row">
-                  <span class="stage-stack__label">{{ item.label }}</span>
-                  <div class="stage-stack__track">
-                    <span class="stage-stack__fill" :style="{ width: `${item.pct}%`, background: item.color }" />
-                  </div>
-                  <strong class="stage-stack__value">{{ item.count }}</strong>
-                </div>
-              </div>
+              <div class="tg-stack">
+                            <div v-for="item in tgBarItems" :key="item.label" class="tg-stack__row">
+                              <span class="tg-stack__label">{{ item.label }}</span>
+                              <div class="tg-stack__track">
+                                <template v-for="seg in item.segments">
+                                  <span
+                                    class="tg-stack__segment"
+                                    :style="{ width: `${seg.pct}%`, background: seg.color }"
+                                    :title="`${seg.label}: ${seg.count}`"
+                                    >
+                                    <span v-if="seg.count" class="tg-stack__segment-label">{{ seg.count }}</span>
+                                  </span>
+                                </template>
+                              </div>
+                              <strong class="tg-stack__value">{{ item.total }}</strong>
+                            </div>
+                          </div>
             </article>
 
             <article class="dash-card">
@@ -1183,6 +1191,61 @@ const projectHealthStageItems = computed(() => {
     .sort((a, b) => b.count - a.count)
 })
 
+// Render TG stacked bars using backend summary.tg_summary when available
+const tgBarItems = computed(() => {
+  const list = tgSummary.value || []
+  if (!list.length) return []
+
+  // colors mapping
+  const COLORS = {
+    'Delayed': '#f37021',
+    'Delayed < 30 Days': '#f3b562',
+    'On Time': '#6daa28',
+    'Update Pending': '#003f6e'
+  }
+
+  // compute max total across TGs to scale bar lengths
+  let maxTotal = 0
+  const normalized = list.map((tg) => {
+    const delayed = Number((tg['Delayed'] && tg['Delayed'].count) || 0)
+    const delayed30 = Number((tg['Delayed < 30 Days'] && tg['Delayed < 30 Days'].count) || 0)
+    const ontime = Number((tg['On Time'] && tg['On Time'].count) || 0)
+    const pending = Number((tg['Update Pending'] && tg['Update Pending'].count) || 0)
+    const total = delayed + delayed30 + ontime + pending
+    if (total > maxTotal) maxTotal = total
+    return {
+      label: tg.label,
+      buckets: { delayed, delayed30, ontime, pending },
+      total
+    }
+  })
+
+  if (maxTotal === 0) maxTotal = 1
+
+  return normalized.map((tg) => {
+    const total = tg.total
+    const segments = [
+      { key: 'Delayed', label: 'Delayed', count: tg.buckets.delayed, color: COLORS['Delayed'] },
+      { key: 'Delayed < 30 Days', label: 'Delayed < 30 Days', count: tg.buckets.delayed30, color: COLORS['Delayed < 30 Days'] },
+      { key: 'On Time', label: 'On Time', count: tg.buckets.ontime, color: COLORS['On Time'] },
+      { key: 'Update Pending', label: 'Update Pending', count: tg.buckets.pending, color: COLORS['Update Pending'] }
+    ].map((seg) => ({
+      ...seg,
+      pct: total ? Math.round((seg.count / total) * 100) : 0
+    }))
+
+    // optionally scale overall bar length relative to maxTotal (use pct of max)
+    const totalPct = Math.round((tg.total / maxTotal) * 100)
+
+    return {
+      label: tg.label,
+      total: tg.total,
+      totalPct,
+      segments
+    }
+  })
+})
+
 const regionRows = computed(() => {
   const bucket = {}
   for (const project of executiveFilteredProjects.value) {
@@ -1671,12 +1734,16 @@ const loadBpmExecutiveSummary = async () => {
   }
 }
 
+const tgSummary = ref([])
+
 const loadProjects = async () => {
   loading.value = true
   loadError.value = ''
   try {
     const { data } = await axios.get('/api/migration-dashboard/projects/')
     projects.value = data.rows ?? []
+    // backend now returns tg_summary inside summary
+    tgSummary.value = (data.summary && data.summary.tg_summary) || []
   } catch (error) {
     loadError.value =
       error?.response?.data?.error ?? 'Unable to load migration projects. Please try again.'
@@ -2406,6 +2473,60 @@ onMounted(async () => {
 .region-compare {
   display: grid;
   gap: 12px;
+}
+
+/* TG stacked bars (uses backend summary.tg_summary) */
+.tg-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.tg-stack__row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(96px, 130px) minmax(0, 1fr) auto;
+  padding: 0;
+  text-align: left;
+}
+
+.tg-stack__label {
+  color: #425466;
+  font-size: 13px;
+}
+
+.tg-stack__track {
+  background: #eef3f8;
+  border-radius: 8px;
+  height: 28px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.tg-stack__segment {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tg-stack__segment-label {
+  padding: 0 6px;
+}
+
+.tg-stack__value {
+  color: #161616;
+  font-size: 13px;
+  min-width: 28px;
+  text-align: right;
 }
 
 .region-compare__row {
