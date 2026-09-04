@@ -1446,6 +1446,9 @@ const bowlerProjectOptions = computed(() => {
   return [...values].sort()
 })
 
+// backward-compatible alias: template previously used bowlerProductOptions
+const bowlerProductOptions = bowlerProjectOptions
+
 const bowlerRegionOptions = computed(() => {
   const values = new Set()
   for (const project of projects.value) {
