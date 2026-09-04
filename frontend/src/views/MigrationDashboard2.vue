@@ -60,103 +60,61 @@
 
         <template v-if="activePage === 'project-health'">
           <section class="project-health-filters">
-            <div class="project-health-filter">
-              <label>Migration Type</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('migrationType')">
-                  <span>{{ currentMultiSelectionLabel(projectHealthFilters.migrationType, projectHealthMigrationTypeOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'migrationType' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'migrationType'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.migrationType" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('migrationType')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(projectHealthMigrationTypeOptions, multiFilterSearch.migrationType)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="projectHealthFilters.migrationType.includes(option)" @change="toggleMultiValue('migrationType', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="project-health-filter">
-              <label>MM Name</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('owner')">
-                  <span>{{ currentMultiSelectionLabel(projectHealthFilters.owner, projectHealthOwnerOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'owner' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'owner'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.owner" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('owner')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(projectHealthOwnerOptions, multiFilterSearch.owner)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="projectHealthFilters.owner.includes(option)" @change="toggleMultiValue('owner', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <small class="placeholder-hint">Linked via owner / requestor mapping</small>
-            </div>
-            <div class="project-health-filter">
-              <label>Region</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('region')">
-                  <span>{{ currentMultiSelectionLabel(projectHealthFilters.region, projectHealthRegionOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'region' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'region'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.region" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('region')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(projectHealthRegionOptions, multiFilterSearch.region)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="projectHealthFilters.region.includes(option)" @change="toggleMultiValue('region', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="project-health-filter">
-              <label>Product</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('product')">
-                  <span>{{ currentMultiSelectionLabel(projectHealthFilters.product, projectHealthProductOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'product' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'product'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.product" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('product')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(projectHealthProductOptions, multiFilterSearch.product)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="projectHealthFilters.product.includes(option)" @change="toggleMultiValue('product', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="project-health-filter">
-              <label>GSC Site</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('gscSite')">
-                  <span>{{ currentMultiSelectionLabel(projectHealthFilters.gscSite, projectHealthGscSiteOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'gscSite' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'gscSite'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.gscSite" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('gscSite')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(projectHealthGscSiteOptions, multiFilterSearch.gscSite)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="projectHealthFilters.gscSite.includes(option)" @change="toggleMultiValue('gscSite', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <small class="placeholder-hint">Unique values from current project records</small>
-            </div>
+            <mc-multi-select
+              ref="migrationTypeMultiEl"
+              :key="'migration-ms-' + projectHealthMigrationTypeKey"
+              listsearch
+              label="Migration Type"
+              :value.prop="projectHealthFilters.migrationType"
+              @input="(e) => setMultiFilterFromEvent(projectHealthFilters.migrationType, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(projectHealthFilters.migrationType, e)">
+              <mc-option v-for="option in projectHealthMigrationTypeOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="ownerMultiEl"
+              :key="'owner-ms-' + projectHealthOwnerKey"
+              listsearch
+              label="MM Name"
+              :value.prop="projectHealthFilters.owner"
+              @input="(e) => setMultiFilterFromEvent(projectHealthFilters.owner, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(projectHealthFilters.owner, e)">
+              <mc-option v-for="option in projectHealthOwnerOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="regionMultiEl"
+              :key="'region-ms-' + projectHealthRegionKey"
+              listsearch
+              label="Region"
+              :value.prop="projectHealthFilters.region"
+              @input="(e) => setMultiFilterFromEvent(projectHealthFilters.region, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(projectHealthFilters.region, e)">
+              <mc-option v-for="option in projectHealthRegionOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="productMultiEl"
+              :key="'product-ms-' + projectHealthProductKey"
+              listsearch
+              label="Product"
+              :value.prop="projectHealthFilters.product"
+              @input="(e) => setMultiFilterFromEvent(projectHealthFilters.product, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(projectHealthFilters.product, e)">
+              <mc-option v-for="option in projectHealthProductOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="gscSiteMultiEl"
+              :key="'gscsite-ms-' + projectHealthGscSiteKey"
+              listsearch
+              label="GSC Site"
+              :value.prop="projectHealthFilters.gscSite"
+              @input="(e) => setMultiFilterFromEvent(projectHealthFilters.gscSite, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(projectHealthFilters.gscSite, e)">
+              <mc-option v-for="option in projectHealthGscSiteOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
             <div class="project-health-filter">
               <label>Budget Status</label>
               <div class="multi-select multi-select--placeholder">
@@ -167,6 +125,7 @@
               </div>
               <small class="placeholder-hint">Placeholder — data not yet exposed</small>
             </div>
+
             <div class="project-health-filter">
               <label>Business Case</label>
               <div class="multi-select multi-select--placeholder">
@@ -177,6 +136,7 @@
               </div>
               <small class="placeholder-hint">Placeholder — data not yet exposed</small>
             </div>
+
             <div class="project-health-filter">
               <label>TG Status</label>
               <div class="multi-select multi-select--placeholder">
@@ -564,6 +524,7 @@ import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-input'
+import '@maersk-global/mds-components-core/mc-multi-select'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
 
@@ -730,6 +691,73 @@ const multiFilterSearch = ref({
   bowlerAreas: '',
   bowlerCountries: ''
 })
+
+// Refs to underlying mc-multi-select elements (Web Components) so we can read their .value when needed
+const migrationTypeMultiEl = ref(null)
+const ownerMultiEl = ref(null)
+const regionMultiEl = ref(null)
+const productMultiEl = ref(null)
+const gscSiteMultiEl = ref(null)
+
+// Keys to force mc-multi-select remount when option sets change
+const projectHealthMigrationTypeKey = computed(() => projectHealthMigrationTypeOptions.value.length)
+const projectHealthOwnerKey = computed(() => projectHealthOwnerOptions.value.length)
+const projectHealthRegionKey = computed(() => projectHealthRegionOptions.value.length)
+const projectHealthProductKey = computed(() => projectHealthProductOptions.value.length)
+const projectHealthGscSiteKey = computed(() => projectHealthGscSiteOptions.value.length)
+
+// Helper to normalize various incoming shapes into string arrays
+const normalizeToStringList = (value) => {
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item.trim()
+      if (item && typeof item === 'object') return String(item.value ?? item.label ?? '').trim()
+      return ''
+    })
+    .filter(Boolean)
+}
+
+// Read event from mc-multi-select and write to target ref array
+const setMultiFilterFromEvent = (targetRef, event) => {
+  const el = event?.currentTarget ?? event?.target
+  const detail = event?.detail
+  if (Array.isArray(detail) && detail.length > 0 && detail.every((item) => item && typeof item === 'object')) {
+    targetRef.splice(0, targetRef.length, ...normalizeToStringList(detail.map((it) => it.value ?? it.label ?? '')))
+    return
+  }
+  if (el?.value != null) {
+    targetRef.splice(0, targetRef.length, ...normalizeToStringList(el.value))
+    return
+  }
+  const rawValue = detail?.value ?? detail ?? []
+  targetRef.splice(0, targetRef.length, ...normalizeToStringList(rawValue))
+}
+
+// Ensure Vue ref arrays reflect the mc-multi-select DOM state before applying filters
+const syncAllMultiFiltersFromDom = () => {
+  if (migrationTypeMultiEl.value?.value != null) {
+    projectHealthFilters.value.migrationType = normalizeToStringList(migrationTypeMultiEl.value.value)
+  }
+  if (ownerMultiEl.value?.value != null) {
+    projectHealthFilters.value.owner = normalizeToStringList(ownerMultiEl.value.value)
+  }
+  if (regionMultiEl.value?.value != null) {
+    projectHealthFilters.value.region = normalizeToStringList(regionMultiEl.value.value)
+  }
+  if (productMultiEl.value?.value != null) {
+    projectHealthFilters.value.product = normalizeToStringList(productMultiEl.value.value)
+  }
+  if (gscSiteMultiEl.value?.value != null) {
+    projectHealthFilters.value.gscSite = normalizeToStringList(gscSiteMultiEl.value.value)
+  }
+}
 
 const filteredMultiOptions = (options, query) => {
   const q = String(query || '').trim().toLowerCase()
