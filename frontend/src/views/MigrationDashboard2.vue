@@ -1121,9 +1121,6 @@ const kpis = computed(() => {
   }
 })
 
-const bpmExecutiveKpis = computed(() => [
-])
-
 // Percentage of offshoring target achieved (0..100)
 const execAchievedPct = computed(() => {
   const target = Number(bpmSummary.value.target || 0)
@@ -1132,16 +1129,8 @@ const execAchievedPct = computed(() => {
   return Math.round(Math.min(100, Math.max(0, (achieved / target) * 100)))
 })
 
-// Keep bpmExecutiveKpis placeholder if previously used
+// Executive KPIs for the BPM panel
 const bpmExecutiveKpis = computed(() => [
-  {
-    key: 'bpm-target',
-    label: 'Target',
-    value: formatWholeNumber(bpmSummary.value.target),
-    hint: 'ROFO positions in GSC',
-    formula: 'Sum of Positions to be Offshored in GSC from BPM ROFO for the selected year.'
-  }
-])
   {
     key: 'bpm-target',
     label: 'Target',
