@@ -2894,4 +2894,124 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 }
+
+/* Ported visual tokens from MigrationDashboard.vue to harmonize look */
+.overview-panel__label {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.overview-panel__hero-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.overview-panel__hero-value {
+  color: var(--dash-deep);
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.overview-panel__badge {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+}
+
+.overview-panel__badge--up {
+  background: color-mix(in srgb, var(--dash-success) 16%, white);
+  color: #3d6a12;
+}
+
+.overview-panel__badge--down {
+  background: color-mix(in srgb, #e85454 12%, white);
+  color: #b42318;
+}
+
+.overview-panel__badge--flat {
+  background: rgba(22, 22, 22, 0.06);
+  color: #6c757d;
+}
+
+.overview-panel__hero-hint {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.composition-bar__track {
+  background: #eef2f6;
+  border-radius: 999px;
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+}
+
+.composition-bar__segment {
+  border: 0;
+  cursor: pointer;
+  min-width: 3px;
+  padding: 0;
+  transition: filter 0.18s ease;
+}
+
+.composition-bar__segment:hover {
+  filter: brightness(1.06);
+}
+
+.composition-bar__segment--active {
+  box-shadow: inset 0 0 0 2px rgba(0, 63, 110, 0.3);
+}
+
+.composition-bar__labels--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.composition-bar__label {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 5px;
+  padding: 0;
+}
+
+.composition-bar__label:hover,
+.composition-bar__label--active {
+  color: #161616;
+}
+
+.composition-bar__label strong {
+  color: #161616;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.composition-bar__dot {
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 7px;
+  width: 7px;
+}
+
+.composition-bar__name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
