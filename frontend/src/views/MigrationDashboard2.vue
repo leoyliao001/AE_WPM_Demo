@@ -304,82 +304,49 @@
 
         <template v-else-if="activePage === 'bowler-product'">
           <section class="bowler-product-filters">
-            <div class="bowler-product-filter">
-              <label>Product</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('bowlerProducts')">
-                  <span>{{ currentMultiSelectionLabel(bowlerProductFilters.products, bowlerProductOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'bowlerProducts' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'bowlerProducts'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.bowlerProducts" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('bowlerProducts')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(bowlerProductOptions, multiFilterSearch.bowlerProducts)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="bowlerProductFilters.products.includes(option)" @change="toggleMultiValue('bowlerProducts', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="bowler-product-filter">
-              <label>Region</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('bowlerRegions')">
-                  <span>{{ currentMultiSelectionLabel(bowlerProductFilters.regions, bowlerRegionOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'bowlerRegions' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'bowlerRegions'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.bowlerRegions" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('bowlerRegions')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(bowlerRegionOptions, multiFilterSearch.bowlerRegions)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="bowlerProductFilters.regions.includes(option)" @change="toggleMultiValue('bowlerRegions', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="bowler-product-filter">
-              <label>Area</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('bowlerAreas')">
-                  <span>{{ currentMultiSelectionLabel(bowlerProductFilters.areas, bowlerAreaOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'bowlerAreas' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'bowlerAreas'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.bowlerAreas" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('bowlerAreas')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(bowlerAreaOptions, multiFilterSearch.bowlerAreas)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="bowlerProductFilters.areas.includes(option)" @change="toggleMultiValue('bowlerAreas', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="bowler-product-filter">
-              <label>Country</label>
-              <div class="multi-select">
-                <button type="button" class="multi-select__trigger" @click="toggleMultiFilter('bowlerCountries')">
-                  <span>{{ currentMultiSelectionLabel(bowlerProductFilters.countries, bowlerCountryOptions) }}</span>
-                  <span class="multi-select__chevron">{{ activeMultiFilter === 'bowlerCountries' ? '⌃' : '⌄' }}</span>
-                </button>
-                <div v-if="activeMultiFilter === 'bowlerCountries'" class="multi-select__panel">
-                  <input v-model="multiFilterSearch.bowlerCountries" class="multi-select__search" placeholder="Search..." />
-                  <button type="button" class="multi-select__select-all" @click="toggleSelectAll('bowlerCountries')">Select all</button>
-                  <div class="multi-select__list">
-                    <label v-for="option in filteredMultiOptions(bowlerCountryOptions, multiFilterSearch.bowlerCountries)" :key="option" class="multi-select__option">
-                      <input type="checkbox" :checked="bowlerProductFilters.countries.includes(option)" @change="toggleMultiValue('bowlerCountries', option)" />
-                      <span>{{ option }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <mc-multi-select
+              ref="bowlerProductMultiEl"
+              :key="'bowler-ms-' + bowlerProductKey"
+              listsearch
+              label="Product"
+              :value.prop="bowlerProductFilters.products"
+              @input="(e) => setMultiFilterFromEvent(bowlerProductFilters.products, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(bowlerProductFilters.products, e)">
+              <mc-option v-for="option in bowlerProductOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="bowlerRegionMultiEl"
+              :key="'bowler-region-ms-' + bowlerRegionKey"
+              listsearch
+              label="Region"
+              :value.prop="bowlerProductFilters.regions"
+              @input="(e) => setMultiFilterFromEvent(bowlerProductFilters.regions, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(bowlerProductFilters.regions, e)">
+              <mc-option v-for="option in bowlerRegionOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="bowlerAreaMultiEl"
+              :key="'bowler-area-ms-' + bowlerAreaKey"
+              listsearch
+              label="Area"
+              :value.prop="bowlerProductFilters.areas"
+              @input="(e) => setMultiFilterFromEvent(bowlerProductFilters.areas, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(bowlerProductFilters.areas, e)">
+              <mc-option v-for="option in bowlerAreaOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
+
+            <mc-multi-select
+              ref="bowlerCountryMultiEl"
+              :key="'bowler-country-ms-' + bowlerCountryKey"
+              listsearch
+              label="Country"
+              :value.prop="bowlerProductFilters.countries"
+              @input="(e) => setMultiFilterFromEvent(bowlerProductFilters.countries, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(bowlerProductFilters.countries, e)">
+              <mc-option v-for="option in bowlerCountryOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
           </section>
 
           <section class="kpi-row kpi-row--compact">
@@ -794,6 +761,10 @@ const ownerMultiEl = ref(null)
 const regionMultiEl = ref(null)
 const productMultiEl = ref(null)
 const gscSiteMultiEl = ref(null)
+const bowlerProductMultiEl = ref(null)
+const bowlerRegionMultiEl = ref(null)
+const bowlerAreaMultiEl = ref(null)
+const bowlerCountryMultiEl = ref(null)
 
 // Keys to force mc-multi-select remount when option sets change
 const projectHealthMigrationTypeKey = computed(() => projectHealthMigrationTypeOptions.value.length)
@@ -801,6 +772,11 @@ const projectHealthOwnerKey = computed(() => projectHealthOwnerOptions.value.len
 const projectHealthRegionKey = computed(() => projectHealthRegionOptions.value.length)
 const projectHealthProductKey = computed(() => projectHealthProductOptions.value.length)
 const projectHealthGscSiteKey = computed(() => projectHealthGscSiteOptions.value.length)
+
+const bowlerProductKey = computed(() => bowlerProductOptions.value.length)
+const bowlerRegionKey = computed(() => bowlerRegionOptions.value.length)
+const bowlerAreaKey = computed(() => bowlerAreaOptions.value.length)
+const bowlerCountryKey = computed(() => bowlerCountryOptions.value.length)
 
 // Helper to normalize various incoming shapes into string arrays
 const normalizeToStringList = (value) => {
@@ -852,6 +828,18 @@ const syncAllMultiFiltersFromDom = () => {
   }
   if (gscSiteMultiEl.value?.value != null) {
     projectHealthFilters.value.gscSite = normalizeToStringList(gscSiteMultiEl.value.value)
+  }
+  if (bowlerProductMultiEl.value?.value != null) {
+    bowlerProductFilters.value.products = normalizeToStringList(bowlerProductMultiEl.value.value)
+  }
+  if (bowlerRegionMultiEl.value?.value != null) {
+    bowlerProductFilters.value.regions = normalizeToStringList(bowlerRegionMultiEl.value.value)
+  }
+  if (bowlerAreaMultiEl.value?.value != null) {
+    bowlerProductFilters.value.areas = normalizeToStringList(bowlerAreaMultiEl.value.value)
+  }
+  if (bowlerCountryMultiEl.value?.value != null) {
+    bowlerProductFilters.value.countries = normalizeToStringList(bowlerCountryMultiEl.value.value)
   }
 }
 
