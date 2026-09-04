@@ -150,29 +150,68 @@
 
           <section class="kpi-row">
             <article class="kpi-card">
-              <span class="kpi-card__label">Total Project</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Total Project</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Overview</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(kpis.totalProjects) }}</strong>
               <span class="kpi-card__hint">From intake submission list</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(kpis.totalProjects) }} projects</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(kpis.migratableFte) }} FTE</span>
+              </div>
             </article>
+
             <article class="kpi-card">
-              <span class="kpi-card__label">Migratable FTE</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Migratable FTE</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Intake</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(kpis.migratableFte) }}</strong>
               <span class="kpi-card__hint">From intake FTE</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ kpis.totalProjects }} projects</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(Math.round(kpis.migratableFte / (kpis.totalProjects || 1))) }} avg / project</span>
+              </div>
             </article>
+
             <article class="kpi-card">
-              <span class="kpi-card__label">Actuals</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Actuals</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Proxy</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(kpis.actuals) }}</strong>
               <span class="kpi-card__hint">Current status proxy</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(kpis.pipeline) }} in flight</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(kpis.actuals) }} FTE</span>
+              </div>
             </article>
+
             <article class="kpi-card">
-              <span class="kpi-card__label">FTE GAP</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">FTE GAP</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Gap</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(kpis.fteGap) }}</strong>
               <span class="kpi-card__hint">Migratable − Actuals</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(kpis.fteGap) }} open</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(kpis.pipeline) }} pipeline</span>
+              </div>
             </article>
+
             <article class="kpi-card">
-              <span class="kpi-card__label">Completion %</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Completion %</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Status</span>
+              </div>
               <strong class="kpi-card__value">{{ `${kpis.completionPct}%` }}</strong>
               <span class="kpi-card__hint">Status weighted approximation</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(kpis.actuals) }} actuals</span>
+                <span class="kpi-pill kpi-pill--accent">{{ `${kpis.completionPct}%` }}</span>
+              </div>
             </article>
           </section>
 
@@ -2470,6 +2509,38 @@ onMounted(async () => {
 .kpi-card__hint {
   color: #7a8794;
   font-size: 12px;
+}
+
+.kpi-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kpi-card__pills {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.kpi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.kpi-pill--muted {
+  background: rgba(22, 22, 22, 0.04);
+  color: #425466;
+}
+
+.kpi-pill--accent {
+  background: #e8f6ea;
+  color: #1f6f2f;
 }
 
 .dash-card {
