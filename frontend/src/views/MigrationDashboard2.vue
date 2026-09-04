@@ -441,7 +441,7 @@
         <!-- Executive Summary -->
         <template v-if="activePage === 'executive'">
           <section class="kpi-row kpi-row--bpm bpm-kpi-row">
-            <article v-for="kpi in bpmExecutiveKpis" :key="kpi.key" class="kpi-card bpm-kpi-card" :class="`bpm-kpi-card--${kpi.key}`">
+            <article v-for="kpi in executiveKpis" :key="kpi.key" class="kpi-card bpm-kpi-card" :class="`bpm-kpi-card--${kpi.key}`">
               <div class="bpm-kpi-card__topline">
                 <span class="kpi-card__label">{{ kpi.label }}</span>
                 <span class="bpm-kpi-card__dot" aria-hidden="true" />
@@ -1118,7 +1118,7 @@ const execAchievedPct = computed(() => {
 })
 
 // Executive KPIs for the BPM panel
-const bpmExecutiveKpis = computed(() => [
+const executiveKpis = computed(() => [
   {
     key: 'bpm-target',
     label: 'Target',
