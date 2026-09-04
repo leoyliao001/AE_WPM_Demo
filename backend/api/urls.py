@@ -19,4 +19,7 @@ urlpatterns = [
     path("approval-cycle/", include("api.routes.approval_cycle")),
     path("project-attributes-access/", include("api.routes.project_attributes_access")),
     path("project-gantt-attributes/", include("api.routes.project_gantt_attributes")),
+    path("bpm-rofo/", include("api.routes.bpm_rofo")),
+    path("bpm-actual/", include("api.routes.bpm_actual")),
+    path("executive-summary-notes/", include("api.routes.executive_summary_notes")),
 ]

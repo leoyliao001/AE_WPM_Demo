@@ -16,10 +16,10 @@ service environment variables, and logs outside Git.
 | Python virtual environment | Dedicated production venv | `E:\wpm_env` |
 | Database | SQL Server via `mssql-django` and ODBC | `SCRBAEXDEFRM218`, database `WPM Project` |
 
-Current server names include `wpmworkflow.crb.apmoller.net`,
-`SCRBAEXDEFRM217.crb.apmoller.net`, and `10.176.115.28`. Use the production
-DNS name in user-facing links; do not make port 8000 reachable from the
-network.
+Current server names include `wpmpulse.crb.apmoller.net` (primary, TLS
+certificate CN), `wpmworkflow.crb.apmoller.net`, `SCRBAEXDEFRM217.crb.apmoller.net`,
+and `10.176.115.28`. Use the production DNS name in user-facing links; do not
+make port 8000 reachable from the network.
 
 ```mermaid
 flowchart LR
@@ -209,9 +209,9 @@ separate client on the production network:
 Get-Service AE_Front_All, AE_WPM
 curl.exe -fsS http://127.0.0.1:8000/api/health/
 curl.exe -fsSI http://127.0.0.1/
-Resolve-DnsName wpmworkflow.crb.apmoller.net
-curl.exe --noproxy '*' -fsS https://wpmworkflow.crb.apmoller.net/api/health/
-curl.exe --noproxy '*' -fsSI https://wpmworkflow.crb.apmoller.net/
+Resolve-DnsName wpmpulse.crb.apmoller.net
+curl.exe --noproxy '*' -fsS https://wpmpulse.crb.apmoller.net/api/health/
+curl.exe --noproxy '*' -fsSI https://wpmpulse.crb.apmoller.net/
 ```
 
 If the server is not configured to resolve the production DNS name yet, verify

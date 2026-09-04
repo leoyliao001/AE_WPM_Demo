@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Welcome from '../views/Welcome.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
+import MigrationDashboard2 from '../views/MigrationDashboard2.vue'
 import MigrationProjectDetail from '../views/MigrationProjectDetail.vue'
 import LDDashboard from '../views/LDDashboard.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
@@ -18,6 +19,8 @@ import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 import ProjectGantt from '../views/ProjectGantt.vue'
 import ProjectGanttAttributes from '../views/ProjectGanttAttributes.vue'
+import BpmRofo from '../views/BpmRofo.vue'
+import BpmActual from '../views/BpmActual.vue'
 import ApprovalCycle from '../views/ApprovalCycle.vue'
 import BusinessCase from '../views/BusinessCase.vue'
 import ApprovalFinalReview from '../views/ApprovalFinalReview.vue'
@@ -36,6 +39,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/approval-workflow': 'approval_workflow',
   '/input-for-approval': 'input_for_approval',
   '/project-gantt-attributes': 'project_gantt',
+  '/bpm-rofo': 'bpm_rofo',
+  '/bpm-actual': 'bpm_actual',
   '/attributes-access-control': 'access_control'
 }
 
@@ -49,6 +54,11 @@ const routes = [
   { path: '/final-ci-review', redirect: '/' },
   { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
   { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard },
+  {
+    path: '/migration-dashboard2',
+    name: 'MigrationDashboard2',
+    component: MigrationDashboard2
+  },
   {
     path: '/migration-dashboard/:id',
     name: 'MigrationProjectDetail',
@@ -105,6 +115,16 @@ const routes = [
     component: ProjectGanttAttributes
   },
   {
+    path: '/bpm-rofo',
+    name: 'BpmRofo',
+    component: BpmRofo
+  },
+  {
+    path: '/bpm-actual',
+    name: 'BpmActual',
+    component: BpmActual
+  },
+  {
     path: '/attributes-access-control',
     name: 'AttributesAccessControl',
     component: AttributesAccessControl
@@ -123,10 +143,11 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  // Project Attributes hub is Super Admin only (nav entry + direct URL).
+  // Project Attributes hub is available to anyone with any table access.
   if (to.path === '/project-attributes') {
     const access = await fetchMyAttributesAccess({ force: true })
-    if (!access?.is_super_admin) {
+    const hasDatabaseAccess = !!access?.is_super_admin || Object.values(access?.tables || {}).some(Boolean)
+    if (!hasDatabaseAccess) {
       return { path: '/' }
     }
     return true
@@ -137,7 +158,9 @@ router.beforeEach(async (to) => {
   // Always re-fetch so Access Control edits apply without a full app reload.
   const access = await fetchMyAttributesAccess({ force: true })
   if (!canAccessAttributesTable(access, tableKey)) {
-    return access?.is_super_admin ? { path: '/project-attributes' } : { path: '/' }
+    return access?.is_super_admin || Object.values(access?.tables || {}).some(Boolean)
+      ? { path: '/project-attributes' }
+      : { path: '/' }
   }
   return true
 })

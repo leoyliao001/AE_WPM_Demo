@@ -23,7 +23,7 @@ ROLE_LABELS = {
 
 
 def _approval_url(submission: MigrationIntakeSubmission, role: str) -> str:
-    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "https://10.176.115.28").rstrip("/")
+    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "https://wpmpulse.crb.apmoller.net").rstrip("/")
     if role in {"elt", "gsc_head"}:
         return f"{base_url}/approval-cycle/review/{submission.migration_request_id}/{role}"
     return f"{base_url}/approval-cycle?request={submission.migration_request_id}"

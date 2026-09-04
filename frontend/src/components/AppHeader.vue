@@ -48,7 +48,7 @@ import { azureAuthState } from '../auth/azureAuth.js'
 import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 
 const route = useRoute()
-const isSuperAdmin = ref(false)
+const hasDatabaseAccess = ref(false)
 
 const baseNavItems = [
   { label: 'Welcome', to: '/', icon: 'mi-house' },
@@ -73,6 +73,8 @@ const databaseNavItem = {
     '/working-hours',
     '/migration-intake-submissions',
     '/project-gantt-attributes',
+    '/bpm-rofo',
+    '/bpm-actual',
     '/attributes-access-control',
     '/approval-workflow',
     '/input-for-approval'
@@ -80,13 +82,14 @@ const databaseNavItem = {
 }
 
 const navItems = computed(() => {
-  if (!isSuperAdmin.value) return baseNavItems
+  if (!hasDatabaseAccess.value) return baseNavItems
   return [...baseNavItems, databaseNavItem]
 })
 
 const refreshSuperAdmin = async () => {
   const access = await fetchMyAttributesAccess({ force: true })
-  isSuperAdmin.value = !!access?.is_super_admin
+  const tables = access?.tables || {}
+  hasDatabaseAccess.value = !!access?.is_super_admin || Object.values(tables).some(Boolean)
 }
 
 const isActive = (item) => {
