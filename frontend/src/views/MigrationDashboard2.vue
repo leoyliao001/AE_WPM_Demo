@@ -541,11 +541,16 @@
                 <div class="exec-summary-banner">
                   <template>
                     <div v-if="bpmSummary.target">
-                      {{ Math.round(((Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) / Number(bpmSummary.target || 1)) * 100) }}% of the {{ bpmYear }} offshoring target has been achieved ({{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }} of {{ formatWholeNumber(bpmSummary.target) }} FTEs)
-                    </div>
-                    <div v-else>
-                      Offshoring target not set for selected year.
-                    </div>
+                          <div class="exec-summary-banner__text">
+                            {{ Math.round(((Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) / Number(bpmSummary.target || 1)) * 100) }}% of the {{ bpmYear }} offshoring target has been achieved — {{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }} of {{ formatWholeNumber(bpmSummary.target) }} FTEs
+                          </div>
+                          <div class="exec-summary-banner__bar">
+                            <div class="exec-summary-banner__bar-fill" :style="{ width: `${execAchievedPct}%` }" />
+                          </div>
+                        </div>
+                        <div v-else>
+                          <div class="exec-summary-banner__text">Offshoring target not set for selected year.</div>
+                        </div>
                   </template>
                 </div>
 
@@ -1132,6 +1137,26 @@ const kpis = computed(() => {
 })
 
 const bpmExecutiveKpis = computed(() => [
+])
+
+// Percentage of offshoring target achieved (0..100)
+const execAchievedPct = computed(() => {
+  const target = Number(bpmSummary.value.target || 0)
+  if (!target) return 0
+  const achieved = Number(bpmSummary.value.withinBudget || 0) + Number(bpmSummary.value.beyondBudget || 0)
+  return Math.round(Math.min(100, Math.max(0, (achieved / target) * 100)))
+})
+
+// Keep bpmExecutiveKpis placeholder if previously used
+const bpmExecutiveKpis = computed(() => [
+  {
+    key: 'bpm-target',
+    label: 'Target',
+    value: formatWholeNumber(bpmSummary.value.target),
+    hint: 'ROFO positions in GSC',
+    formula: 'Sum of Positions to be Offshored in GSC from BPM ROFO for the selected year.'
+  }
+])
   {
     key: 'bpm-target',
     label: 'Target',
@@ -2426,14 +2451,34 @@ onMounted(async () => {
 }
 
 .exec-summary-banner {
-  background: linear-gradient(180deg, #0077b8, #005885);
-  color: #fff;
-  border-radius: 12px;
-  padding: 14px 18px;
-  box-shadow: 0 6px 14px rgba(0,63,110,0.12);
+  /* subtle info banner with compact progress bar */
+  background: #f8fbfe;
+  border: 1px solid rgba(0,119,184,0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
   margin-top: 8px;
-  text-align: center;
+  display: grid;
+  gap: 8px;
+}
+
+.exec-summary-banner__text {
+  color: #0b3b56;
   font-weight: 700;
+  font-size: 14px;
+  text-align: left;
+}
+
+.exec-summary-banner__bar {
+  background: #eef6fb;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.exec-summary-banner__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0077b8, #42b0d5);
+  transition: width 420ms cubic-bezier(.2,.7,.2,1);
 }
 
 .executive-note-column {
