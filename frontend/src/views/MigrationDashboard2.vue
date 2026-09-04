@@ -898,11 +898,18 @@ const hasActiveFilters = computed(
 
 const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  const selectedMigrationTypes = projectHealthFilters.value.migrationType.filter(Boolean)
-  const selectedOwners = projectHealthFilters.value.owner.filter(Boolean)
-  const selectedRegions = projectHealthFilters.value.region.filter(Boolean)
-  const selectedProducts = projectHealthFilters.value.product.filter(Boolean)
-  const selectedSites = projectHealthFilters.value.gscSite.filter(Boolean)
+  const normalizeMultiSelectionForFiltering = (raw) => {
+    const list = Array.isArray(raw) ? raw.map((v) => String(v).trim()).filter(Boolean) : []
+    // If user selected explicit 'All', treat as no filter
+    if (list.some((v) => v.toLowerCase() === 'all')) return []
+    return list
+  }
+
+  const selectedMigrationTypes = normalizeMultiSelectionForFiltering(projectHealthFilters.value.migrationType)
+  const selectedOwners = normalizeMultiSelectionForFiltering(projectHealthFilters.value.owner)
+  const selectedRegions = normalizeMultiSelectionForFiltering(projectHealthFilters.value.region)
+  const selectedProducts = normalizeMultiSelectionForFiltering(projectHealthFilters.value.product)
+  const selectedSites = normalizeMultiSelectionForFiltering(projectHealthFilters.value.gscSite)
 
   return projects.value.filter((project) => {
     if (filterRegion.value && project.region !== filterRegion.value) return false
