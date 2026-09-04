@@ -552,7 +552,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
@@ -791,7 +791,8 @@ const toggleSelectAll = (key) => {
 
 const projectHealthMigrationTypeOptions = computed(() => {
   const values = new Set(projects.value.map((p) => p.migrationType).filter(Boolean))
-  return [...values].sort()
+  const opts = [...values].sort()
+  return ['All', ...opts]
 })
 
 const uniqStrings = (items) => {
@@ -809,7 +810,8 @@ const projectHealthOwnerOptions = computed(() => {
     ...bpmRofoRows.value.map((row) => row.bpm_owner),
     ...bpmActualRows.value.map((row) => row.bpm_owner)
   ]
-  return uniqStrings(values)
+  const opts = uniqStrings(values)
+  return ['All', ...opts]
 })
 
 const projectHealthRegionOptions = computed(() => {
@@ -818,7 +820,8 @@ const projectHealthRegionOptions = computed(() => {
     ...bpmRofoRows.value.map((row) => row.region),
     ...bpmActualRows.value.map((row) => row.region)
   ]
-  return uniqStrings(values)
+  const opts = uniqStrings(values)
+  return ['All', ...opts]
 })
 
 const projectHealthProductOptions = computed(() => {
@@ -830,41 +833,15 @@ const projectHealthProductOptions = computed(() => {
   }
   values.push(...bpmRofoRows.value.map((row) => row.product))
   values.push(...bpmActualRows.value.map((row) => row.product))
-  return uniqStrings(values)
+  const opts = uniqStrings(values)
+  return ['All', ...opts]
 })
 
 const projectHealthGscSiteOptions = computed(() => {
   const values = projects.value.map((p) => p.gscSite || p.site).filter(Boolean)
-  return uniqStrings(values)
+  const opts = uniqStrings(values)
+  return ['All', ...opts]
 })
-
-// Default project-health multi-filters to "All" when options populate (so top filter shows all selected)
-watch(
-  [
-    projectHealthMigrationTypeOptions,
-    projectHealthOwnerOptions,
-    projectHealthRegionOptions,
-    projectHealthProductOptions,
-    projectHealthGscSiteOptions
-  ],
-  ([migrationTypes, owners, regions, products, sites]) => {
-    const allEmpty =
-      !projectHealthFilters.value.migrationType.length &&
-      !projectHealthFilters.value.owner.length &&
-      !projectHealthFilters.value.region.length &&
-      !projectHealthFilters.value.product.length &&
-      !projectHealthFilters.value.gscSite.length
-
-    if (allEmpty) {
-      projectHealthFilters.value.migrationType = Array.isArray(migrationTypes) ? [...migrationTypes] : []
-      projectHealthFilters.value.owner = Array.isArray(owners) ? [...owners] : []
-      projectHealthFilters.value.region = Array.isArray(regions) ? [...regions] : []
-      projectHealthFilters.value.product = Array.isArray(products) ? [...products] : []
-      projectHealthFilters.value.gscSite = Array.isArray(sites) ? [...sites] : []
-    }
-  },
-  { immediate: true }
-)
 
 const migrationTypeOptions = computed(() => {
   const types = new Set(projects.value.map((p) => p.migrationType).filter(Boolean))
