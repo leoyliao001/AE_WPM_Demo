@@ -384,24 +384,52 @@
 
           <section class="kpi-row kpi-row--compact">
             <article class="kpi-card">
-              <span class="kpi-card__label">Products in scope</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Products in scope</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Product</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(productRows.length) }}</strong>
               <span class="kpi-card__hint">Distinct product tags</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(productRows.length) }} products</span>
+                <span class="kpi-pill kpi-pill--accent">Tags</span>
+              </div>
             </article>
             <article class="kpi-card">
-              <span class="kpi-card__label">Migratable FTE</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Migratable FTE</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Product</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(productBowlerSummary.migratable) }}</strong>
               <span class="kpi-card__hint">Across filtered product tags</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(productRows.length) }} tags</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(Math.round(productBowlerSummary.migratable / (productRows.length || 1))) }} avg / tag</span>
+              </div>
             </article>
             <article class="kpi-card">
-              <span class="kpi-card__label">Actuals</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Actuals</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Product</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(productBowlerSummary.actuals) }}</strong>
               <span class="kpi-card__hint">Completed FTE proxy</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">{{ formatWholeNumber(productBowlerSummary.actuals) }} actuals</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(productBowlerSummary.actuals) }}</span>
+              </div>
             </article>
             <article class="kpi-card">
-              <span class="kpi-card__label">Gap to target</span>
+              <div class="kpi-card__head">
+                <span class="kpi-card__label">Gap to target</span>
+                <span class="overview-panel__badge overview-panel__badge--flat">Product</span>
+              </div>
               <strong class="kpi-card__value">{{ formatWholeNumber(productBowlerSummary.gap) }}</strong>
               <span class="kpi-card__hint">Open gap by product mix</span>
+              <div class="kpi-card__pills">
+                <span class="kpi-pill kpi-pill--muted">Open gap</span>
+                <span class="kpi-pill kpi-pill--accent">{{ formatWholeNumber(productBowlerSummary.gap) }}</span>
+              </div>
             </article>
           </section>
 
@@ -2539,8 +2567,9 @@ onMounted(async () => {
 }
 
 .kpi-pill--accent {
-  background: #e8f6ea;
-  color: #1f6f2f;
+  /* Use MDS shallow blue when not representing achievement */
+  background: color-mix(in srgb, var(--dash-primary) 12%, white);
+  color: var(--dash-primary);
 }
 
 .dash-card {
