@@ -53,12 +53,7 @@ const routes = [
   { path: '/welcome2', redirect: '/' },
   { path: '/final-ci-review', redirect: '/' },
   { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
-  { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard },
-  {
-    path: '/migration-dashboard2',
-    name: 'MigrationDashboard2',
-    component: MigrationDashboard2
-  },
+  { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard2 },
   {
     path: '/migration-dashboard/:id',
     name: 'MigrationProjectDetail',
