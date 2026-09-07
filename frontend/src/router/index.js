@@ -24,6 +24,7 @@ import BpmActual from '../views/BpmActual.vue'
 import ApprovalCycle from '../views/ApprovalCycle.vue'
 import BusinessCase from '../views/BusinessCase.vue'
 import ApprovalFinalReview from '../views/ApprovalFinalReview.vue'
+import TollGates from '../views/TollGates.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -79,6 +80,7 @@ const routes = [
   { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
   { path: '/project-dashboard/:section', redirect: '/project-dashboard' },
   { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
+  { path: '/toll-gates', name: 'TollGates', component: TollGates },
   {
     path: '/project-attributes',
     name: 'ProjectAttributesDatabase',

@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import re
 from functools import wraps
 
@@ -7,6 +8,8 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from api.models import ProjectAttributesAccess
+
+logger = logging.getLogger(__name__)
 
 TABLE_KEYS = (
     "fpo_mapping",
@@ -82,7 +85,22 @@ def build_access_snapshot(email: str) -> dict:
     if email.endswith("@localhost"):
         return local_dev_super_admin_snapshot()
 
-    row = ProjectAttributesAccess.objects.filter(email__iexact=email).first() if email else None
+    try:
+        row = (
+            ProjectAttributesAccess.objects.filter(email__iexact=email).first()
+            if email
+            else None
+        )
+    except Exception:  # noqa: BLE001
+        # A DB hiccup here shouldn't 500 the whole page — log it and degrade to no access.
+        logger.exception("Failed to look up ProjectAttributesAccess for %s", email)
+        return {
+            "email": email,
+            "is_super_admin": False,
+            "authenticated": bool(email),
+            "tables": {key: False for key in TABLE_KEYS},
+            "error": "Access lookup temporarily unavailable.",
+        }
     if not row:
         return {
             "email": email,

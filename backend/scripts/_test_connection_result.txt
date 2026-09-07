@@ -1,0 +1,4 @@
+Connecting to SCRBAEXDEFRM218 / WPM Project ...
+OK server=SCRBAEXDEFRM218 db=WPM Project user=CRB\SCRBAEXDEFRM217$
+tables_count=28
+tables_sample=['approval_input', 'approval_workflow', 'auth_group', 'auth_group_permissions', 'auth_permission', 'auth_user', 'auth_user_groups', 'auth_user_user_permissions', 'bpm_actual', 'bpm_rofo', 'CountryMapping', 'dbo.approval_input', 'django_admin_log', 'django_content_type', 'django_migrations', 'django_session', 'executive_summary_note', 'fpo_mapping', 'FunctionProductMapping', 'gsc_site_mapping', 'LocationStra', 'migration_intake_submission', 'opportunity_assessment', 'product_ownership', 'project_attributes_access', 'project_gantt_plan', 'service_catalogue', 'working_hours']

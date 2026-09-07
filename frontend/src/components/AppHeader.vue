@@ -2,8 +2,6 @@
   <header class="app-header">
     <mc-top-bar
       class="app-top-bar"
-      product="WPM Pulse"
-      productshort="WPM"
       logosize="auto"
     >
       <router-link slot="link" class="home-link" to="/" aria-label="WPM Pulse home" />

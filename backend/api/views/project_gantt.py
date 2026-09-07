@@ -240,33 +240,49 @@ def _refresh_actual(
     saved_actual: dict | None,
     completed_at,
     created_at,
+    standard: dict | None = None,
 ) -> dict | None:
     """
     Actual is driven by completion date when present:
     start = plan.startWeek (or completion week), end = completion week.
-    Falls back to saved actual range.
+    Falls back to Standard when no Plan has been set yet, then to saved actual range.
     """
     completed_week = _week_index_for_date(created_at, completed_at)
-    if completed_week is not None and plan:
-        start = min(int(plan["startWeek"]), completed_week)
+    basis = plan or standard
+    if completed_week is not None and basis:
+        start = min(int(basis["startWeek"]), completed_week)
         return _range_dict(start, completed_week)
     return saved_actual
 
 
-def build_template_tasks() -> list[dict]:
-    """Return Standard baseline + empty Plan/Actual by default."""
+def build_template_tasks(
+    created_at=None, business_case_submitted_at=None
+) -> list[dict]:
+    """Return Standard baseline + empty Plan/Actual by default.
+
+    The Business Case task's Actual is auto-filled from the intake's
+    business_case_submission_date, since that submission already happened
+    outside the Gantt page.
+    """
     tasks = []
     for task in TEMPLATE_TASKS:
         standard = _range_dict(task["startWeek"], task["endWeek"])
+        completed_at = None
+        actual = None
+        actual_status = None
+        if task["id"] == "business-case" and business_case_submitted_at:
+            completed_at = business_case_submitted_at.isoformat()
+            actual = _refresh_actual(None, None, business_case_submitted_at, created_at, standard)
+            actual_status = _actual_status(standard, actual)
         tasks.append(
             {
                 "id": task["id"],
                 "name": task["name"],
                 "standard": standard,
                 "plan": None,
-                "actual": None,
-                "completedAt": None,
-                "actualStatus": None,
+                "actual": actual,
+                "completedAt": completed_at,
+                "actualStatus": actual_status,
                 "comments": [],
             }
         )
@@ -274,7 +290,7 @@ def build_template_tasks() -> list[dict]:
 
 
 def merge_gantt_tasks_with_template(
-    saved_tasks=None, created_at=None
+    saved_tasks=None, created_at=None, business_case_submitted_at=None
 ) -> tuple[list[dict], list[dict]]:
     """
     Build display tasks from saved plan when present; otherwise use template.
@@ -285,7 +301,9 @@ def merge_gantt_tasks_with_template(
       saved Standard and names.
     Returns (merged_tasks, baseline_tasks).
     """
-    baseline = build_template_tasks()
+    baseline = build_template_tasks(
+        created_at=created_at, business_case_submitted_at=business_case_submitted_at
+    )
     baseline_by_id = {task["id"]: task for task in baseline}
 
     if not isinstance(saved_tasks, list):
@@ -329,7 +347,13 @@ def merge_gantt_tasks_with_template(
         completed_at = saved.get("completedAt") or saved.get("completed_at") or None
         if completed_at == "":
             completed_at = None
-        actual = _refresh_actual(plan, actual_raw, completed_at, created_at)
+        # Business Case is submitted from its own page, not the Gantt page —
+        # fall back to that submission date until someone sets it manually here.
+        completed_at_for_calc = completed_at
+        if not completed_at and task_id == "business-case" and business_case_submitted_at:
+            completed_at = business_case_submitted_at.isoformat()
+            completed_at_for_calc = business_case_submitted_at
+        actual = _refresh_actual(plan, actual_raw, completed_at_for_calc, created_at, standard)
         comments = _normalize_comments(saved.get("comments"))
 
         merged.append(
@@ -340,7 +364,7 @@ def merge_gantt_tasks_with_template(
                 "plan": plan,
                 "actual": actual,
                 "completedAt": completed_at,
-                "actualStatus": _actual_status(plan, actual),
+                "actualStatus": _actual_status(plan or standard, actual),
                 "comments": comments,
             }
         )
@@ -541,7 +565,9 @@ def _serialize_plan(
     saved_meta = (plan.meta if plan else {}) or {}
     saved_tasks = plan.tasks if plan else None
     tasks, template_tasks = merge_gantt_tasks_with_template(
-        saved_tasks, created_at=project.created_at
+        saved_tasks,
+        created_at=project.created_at,
+        business_case_submitted_at=project.business_case_submission_date,
     )
     weeks = build_gantt_weeks(project.created_at)
     start_week = weeks[0]["calendarWeekNumber"] if weeks else DEFAULT_CALENDAR_START_WEEK

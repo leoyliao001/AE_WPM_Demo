@@ -1,60 +1,105 @@
 <template>
   <div class="welcome-page">
     <div class="welcome-scroll">
-      <div class="page-content">
+      <div class="welcome-layout">
+        <aside class="principles-panel" aria-label="Work Placement Principles">
+          <div class="principles-panel__head">
+            <span class="principles-panel__badge">
+              <mc-icon icon="mi-light-bulb" size="22" />
+            </span>
+            <div class="principles-panel__head-text">
+              <span class="principles-panel__eyebrow">Principles</span>
+              <h2 class="principles-panel__count">5 Work Placement Principles</h2>
+            </div>
+          </div>
+
+          <ol class="principles-list">
+            <li
+              v-for="principle in principles"
+              :key="principle.number"
+              class="principle-card"
+              :style="{ '--card-accent': principle.accent }"
+            >
+              <span class="principle-card__number">{{ principle.number }}</span>
+              <div class="principle-card__body">
+                <span class="principle-card__eyebrow">Principle {{ principle.number }}</span>
+                <h3 class="principle-card__title">{{ principle.title }}</h3>
+                <p class="principle-card__desc">{{ principle.description }}</p>
+              </div>
+            </li>
+          </ol>
+        </aside>
+
+        <div class="page-content">
         <header class="welcome-header">
-          <h1 class="welcome-title">Welcome</h1>
+          <h1 class="welcome-title">WPM Pulse</h1>
           <p class="welcome-subtitle">
-            Choose a tool below to manage migrations, reporting, and learning — all powered by a shared project database.
+            Welcome — your home for GSC migration governance, from intake and
+            opportunity assessment through approvals, Gantt scheduling, and toll-gate
+            tracking, all powered by a shared project database.
           </p>
         </header>
 
-        <section class="card-grid" aria-label="Migration tools">
-          <mc-card
-            v-for="(item, index) in menuItems"
-            :key="item.id"
-            class="tool-card"
-            :class="{ 'tool-card--empty': item.empty }"
-            :style="{ '--card-accent': item.accent, '--card-delay': `${index * 70}ms` }"
-            variant="bordered"
-            fit="medium"
-            contentalignment="middle"
-            :clickable="!item.empty"
-            :tabindex="item.empty ? -1 : 0"
-            :heading="item.empty ? undefined : item.title"
-            @click="onCardClick(item)"
-            @keydown.enter.prevent="onCardClick(item)"
-            @keydown.space.prevent="onCardClick(item)"
-          >
-            <template v-if="!item.empty">
-              <div slot="image" class="card-icon-wrap">
-                <span class="card-icon-badge">
-                  <mc-icon :icon="item.icon" size="24" />
-                </span>
+        <section
+          v-for="group in menuGroups"
+          :key="group.id"
+          class="tool-group"
+          :aria-label="group.title"
+        >
+          <h2 class="tool-group__title">
+            <mc-icon :icon="group.icon" size="18" />
+            {{ group.title }}
+          </h2>
+
+          <div class="card-grid">
+            <mc-card
+              v-for="(item, index) in group.items"
+              :key="item.id"
+              class="tool-card"
+              :class="{ 'tool-card--empty': item.empty }"
+              :style="{ '--card-accent': item.accent, '--card-delay': `${index * 70}ms` }"
+              variant="bordered"
+              fit="medium"
+              contentalignment="middle"
+              :clickable="!item.empty"
+              :tabindex="item.empty ? -1 : 0"
+              :heading="item.empty ? undefined : item.title"
+              @click="onCardClick(item)"
+              @keydown.enter.prevent="onCardClick(item)"
+              @keydown.space.prevent="onCardClick(item)"
+            >
+              <template v-if="!item.empty">
+                <div slot="image" class="card-icon-wrap">
+                  <span class="card-icon-badge">
+                    <mc-icon :icon="item.icon" size="20" />
+                  </span>
+                </div>
+                <p class="card-description">{{ item.description }}</p>
+                <mc-button
+                  slot="actions"
+                  appearance="neutral"
+                  variant="plain"
+                  fit="small"
+                  label="Open"
+                  trailingicon="mi-arrow-right"
+                  tabindex="-1"
+                />
+              </template>
+              <div v-else class="empty-slot">
+                <mc-tag appearance="neutral" fit="small" label="Coming soon" />
+                <p class="empty-slot-text">More tools will be added here</p>
               </div>
-              <p class="card-description">{{ item.description }}</p>
-              <mc-button
-                slot="actions"
-                appearance="neutral"
-                variant="plain"
-                fit="small"
-                label="Open"
-                trailingicon="mi-arrow-right"
-                tabindex="-1"
-              />
-            </template>
-            <div v-else class="empty-slot">
-              <mc-tag appearance="neutral" fit="small" label="Coming soon" />
-              <p class="empty-slot-text">More tools will be added here</p>
-            </div>
-          </mc-card>
+            </mc-card>
+          </div>
         </section>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-icon'
@@ -63,6 +108,39 @@ import '@maersk-global/mds-components-core/mc-tag'
 
 const router = useRouter()
 
+const principles = [
+  {
+    number: 1,
+    title: 'Standardization',
+    description: 'Enable standardization, avoid business disruption & consistently improve customer outcomes.',
+    accent: '#0077B8'
+  },
+  {
+    number: 2,
+    title: 'Scaling',
+    description: 'Scale the process and minimize GSC/Area handovers to ensure clear process ownership.',
+    accent: '#6DAA28'
+  },
+  {
+    number: 3,
+    title: 'Health Metrics',
+    description: 'Perform better on enterprise health metrics and control environment.',
+    accent: '#42B0D5'
+  },
+  {
+    number: 4,
+    title: 'Stakeholder',
+    description: 'Reduce need for in-person external stakeholder interactions.',
+    accent: '#F3880E'
+  },
+  {
+    number: 5,
+    title: 'Cost Reduction',
+    description: 'Reduce cost to serve leading to positive P&L impact.',
+    accent: '#003F6E'
+  }
+]
+
 const menuItems = [
   {
     id: 'migration-request',
@@ -70,7 +148,8 @@ const menuItems = [
     description: 'Submit migration intake details to the Project Attributes Database.',
     icon: 'mi-file-arrows-square',
     accent: '#0077B8',
-    route: '/migration-intake'
+    route: '/migration-intake',
+    section: 'primary'
   },
   {
     id: 'migration-chatbot',
@@ -78,7 +157,8 @@ const menuItems = [
     description: 'Get instant answers and guided migration support.',
     icon: 'mi-chatbot',
     accent: '#6DAA28',
-    route: '/migration-chatbot'
+    route: '/migration-chatbot',
+    section: 'primary'
   },
   {
     id: 'migration-dashboard',
@@ -86,7 +166,8 @@ const menuItems = [
     description: 'Product summary and detailed migration tracking overview.',
     icon: 'mi-chart-bars-vertical',
     accent: '#42B0D5',
-    route: '/migration-dashboard'
+    route: '/migration-dashboard',
+    section: 'primary'
   },
   {
     id: 'ld-dashboard',
@@ -94,7 +175,8 @@ const menuItems = [
     description: 'Learning, scoping tasks, and training timeline by project.',
     icon: 'mi-monitor',
     accent: '#F3880E',
-    route: '/ld-dashboard'
+    route: '/ld-dashboard',
+    section: 'learning'
   },
   {
     id: 'project-dashboard',
@@ -102,13 +184,34 @@ const menuItems = [
     description: 'Projects under your account — open a project to track migration progress.',
     icon: 'mi-file-check',
     accent: '#003F6E',
-    route: '/project-dashboard'
+    route: '/project-dashboard',
+    section: 'learning'
   },
   {
-    id: 'coming-soon',
-    empty: true
+    id: 'toll-gates',
+    title: 'Toll Gates',
+    description: 'Migration lifecycle grouped into Initiating, Planning, Executing, Monitor & Control, and Closing.',
+    icon: 'mi-flag',
+    accent: '#7B61FF',
+    route: '/toll-gates',
+    section: 'learning'
   }
 ]
+
+const menuGroups = computed(() => [
+  {
+    id: 'primary',
+    title: 'Primary Tools',
+    icon: 'mi-star',
+    items: menuItems.filter((item) => item.section === 'primary')
+  },
+  {
+    id: 'learning',
+    title: 'Learning & Management',
+    icon: 'mi-book-open',
+    items: menuItems.filter((item) => item.section === 'learning')
+  }
+])
 
 const onCardClick = (item) => {
   if (item.empty || !item.route) return
@@ -146,12 +249,169 @@ const onCardClick = (item) => {
   z-index: 1;
 }
 
-.page-content {
+.welcome-layout {
+  align-items: stretch;
+  display: flex;
+  gap: 24px;
   margin: 0 auto;
-  max-width: none;
   padding: 40px 24px;
+  transform: translateY(-24px);
+  width: 100%;
+}
+
+.principles-panel {
+  animation: fade-up 0.55s ease both;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(251, 252, 253, 0.94) 100%);
+  border: 1px solid rgba(22, 22, 22, 0.07);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 2px 3px rgba(15, 23, 42, 0.05),
+    0 10px 22px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex: 0 0 296px;
+  flex-direction: column;
+  padding: 22px;
+}
+
+.principles-panel__head {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.principles-panel__badge {
+  align-items: center;
+  background: color-mix(in srgb, #0077b8 12%, white);
+  border: 1px solid color-mix(in srgb, #0077b8 16%, transparent);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  color: #0077b8;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.principles-panel__head-text {
+  min-width: 0;
+}
+
+.principles-panel__eyebrow {
+  color: #0077b8;
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.principles-panel__count {
+  color: #161616;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 2px 0 0;
+}
+
+.principles-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.principle-card {
+  --card-accent: #0077b8;
+  align-items: flex-start;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(251, 252, 253, 0.94) 100%);
+  border: 1px solid rgba(22, 22, 22, 0.06);
+  border-radius: 12px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 2px 3px rgba(15, 23, 42, 0.04),
+    0 6px 14px rgba(15, 23, 42, 0.05);
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+  padding: 14px 14px 14px 16px;
   position: relative;
-  transform: translateY(-56px);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.principle-card::before {
+  background: var(--card-accent);
+  content: '';
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 3px;
+}
+
+.principle-card:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 4px 8px rgba(15, 23, 42, 0.06),
+    0 12px 22px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.principle-card__number {
+  align-items: center;
+  background: color-mix(in srgb, var(--card-accent) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--card-accent) 20%, transparent);
+  border-radius: 999px;
+  color: var(--card-accent);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.principle-card__body {
+  min-width: 0;
+}
+
+.principle-card__eyebrow {
+  color: var(--card-accent);
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.principle-card__title {
+  color: #161616;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 3px 0 4px;
+}
+
+.principle-card__desc {
+  color: #6c757d;
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.page-content {
+  flex: 1 1 auto;
+  margin: 0;
+  max-width: none;
+  min-width: 0;
+  padding: 0;
+  position: relative;
   width: 100%;
   z-index: 1;
 }
@@ -181,19 +441,37 @@ const onCardClick = (item) => {
 }
 
 .card-grid {
-  column-gap: 28px;
+  column-gap: 20px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   perspective: 1200px;
-  row-gap: 28px;
+  row-gap: 20px;
   width: 100%;
+}
+
+.tool-group {
+  margin-bottom: 32px;
+}
+
+.tool-group:last-child {
+  margin-bottom: 0;
+}
+
+.tool-group__title {
+  align-items: center;
+  color: #161616;
+  display: flex;
+  font-size: 15px;
+  font-weight: 700;
+  gap: 8px;
+  margin: 0 0 16px;
 }
 
 .tool-card {
   --card-accent: #0077b8;
   animation: fade-up 0.55s ease both;
   animation-delay: var(--card-delay, 0ms);
-  min-height: 256px;
+  min-height: 190px;
   width: 100%;
 }
 
@@ -307,18 +585,18 @@ const onCardClick = (item) => {
   align-items: center;
   background: color-mix(in srgb, var(--card-accent, #0077b8) 12%, white);
   border: 1px solid color-mix(in srgb, var(--card-accent, #0077b8) 16%, transparent);
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.75),
     0 2px 6px color-mix(in srgb, var(--card-accent, #0077b8) 18%, transparent);
   color: var(--card-accent, #0077b8);
   display: inline-flex;
-  height: 48px;
+  height: 40px;
   justify-content: center;
   transition:
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.28s ease;
-  width: 48px;
+  width: 40px;
 }
 
 .tool-card:not(.tool-card--empty):hover .card-icon-badge {
@@ -370,6 +648,15 @@ const onCardClick = (item) => {
 }
 
 @media (max-width: 1100px) {
+  .welcome-layout {
+    flex-direction: column;
+  }
+
+  .principles-panel {
+    flex-basis: auto;
+    width: 100%;
+  }
+
   .card-grid {
     column-gap: 28px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -377,7 +664,7 @@ const onCardClick = (item) => {
 }
 
 @media (max-width: 760px) {
-  .page-content {
+  .welcome-layout {
     padding: 32px 16px;
   }
 
