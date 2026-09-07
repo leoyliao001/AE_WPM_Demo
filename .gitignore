@@ -26,6 +26,10 @@ coverage/
 # Run output from the MSSQL ops scripts - regenerated on every run, machine-specific.
 # (mssql_migrate_log.txt predates this rule and stays tracked.)
 backend/scripts/*_log.txt
+backend/scripts/sqlite_api_data_dump.json
+backend/scripts/sqlite_to_mssql_sync.lock
+backend/scripts/load_sqlite_fixture_to_mssql.py
+backend/scripts/run_sqlite_to_mssql_sync_as_system.cmd
 
 # backend/db.sqlite3 IS versioned on purpose - the demo data ships with the repo.
 # Everything else sqlite-shaped is not: stray copies, journals, WAL/SHM files.
