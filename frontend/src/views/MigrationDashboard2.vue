@@ -455,55 +455,54 @@
           <section class="split-grid--executive">
             <article class="dash-card exec-metrics">
               <div class="dash-card__head">
-                <h3>{{ bpmYear }} offshoring — Target vs Gap</h3>
-                <span class="dash-card__meta">BPM ROFO / BPM Actual summary</span>
+                <div>
+                  <span class="exec-panel__eyebrow">Offshoring outlook · {{ bpmYear }}</span>
+                  <h3>{{ bpmYear }} offshoring — Target vs Gap</h3>
+                </div>
+                <span class="exec-panel__source">BPM ROFO / BPM Actual</span>
               </div>
 
-              <div>
-                <table class="exec-table">
-                  <tbody>
-                    <tr>
-                      <td class="label">Target</td>
-                      <td class="value">{{ formatWholeNumber(bpmSummary.target) }}</td>
-                      <td class="commentary">Commentary</td>
-                      <td class="commentary-value">2026 offshoring target</td>
-                    </tr>
-                    <tr>
-                      <td class="label">Less: Actual</td>
-                      <td class="value">{{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }}</td>
-                      <td class="commentary">Successfully onboarded to date</td>
-                      <td class="commentary-value"></td>
-                    </tr>
-                    <tr>
-                      <td class="label">&nbsp;</td>
-                      <td></td>
-                      <td class="label">Within</td>
-                      <td class="value">{{ formatWholeNumber(bpmSummary.withinBudget) }}</td>
-                    </tr>
-                    <tr>
-                      <td class="label">&nbsp;</td>
-                      <td></td>
-                      <td class="label">Beyond</td>
-                      <td class="value">{{ formatWholeNumber(bpmSummary.beyondBudget) }}</td>
-                    </tr>
-                    <tr>
-                      <td class="label">Less: Pipeline</td>
-                      <td class="value">
-                        <!-- showing a dummy value with explanation -->
-                        <span class="dummy-number">{{ formatWholeNumber(DUMMY_PIPELINE) }}</span>
-                        <div class="dummy-note">(dummy placeholder — real pipeline source not connected)</div>
-                      </td>
-                      <td class="commentary">Approved, pending onboarding</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td class="label">GAP</td>
-                      <td class="value">{{ formatWholeNumber(Math.max(0, Number(bpmSummary.target || 0) - (Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0) + Number(kpis.pipeline || 0)))) }}</td>
-                      <td class="commentary">Remaining to reach target</td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div class="exec-panel__body">
+                <div class="exec-panel__headline">
+                  <div>
+                    <span class="exec-panel__label">Progress to target</span>
+                    <div class="exec-panel__progress-value">{{ execAchievedPct }}<span>%</span></div>
+                    <span class="exec-panel__progress-caption">{{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }} onboarded of {{ formatWholeNumber(bpmSummary.target) }}</span>
+                  </div>
+                  <div class="exec-panel__gap">
+                    <span>Remaining gap</span>
+                    <strong>{{ formatWholeNumber(Math.max(0, Number(bpmSummary.target || 0) - (Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0) + Number(kpis.pipeline || 0)))) }}</strong>
+                    <small>after pipeline</small>
+                  </div>
+                </div>
+
+                <div class="exec-progress" role="img" :aria-label="`${execAchievedPct}% of target onboarded, ${formatWholeNumber(kpis.pipeline)} in pipeline`">
+                  <span class="exec-progress__actual" :style="{ width: `${Math.min(100, execAchievedPct)}%` }"></span>
+                  <span class="exec-progress__pipeline" :style="{ width: `${Math.min(100 - execAchievedPct, Math.round((Number(kpis.pipeline || 0) / (Number(bpmSummary.target || 1))) * 100))}%` }"></span>
+                </div>
+                <div class="exec-progress__legend">
+                  <span><i class="exec-dot exec-dot--actual"></i>Actual <strong>{{ formatWholeNumber(Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0)) }}</strong></span>
+                  <span><i class="exec-dot exec-dot--pipeline"></i>Pipeline <strong>{{ formatWholeNumber(kpis.pipeline) }}</strong><em>dummy</em></span>
+                  <span><i class="exec-dot exec-dot--gap"></i>Gap <strong>{{ formatWholeNumber(Math.max(0, Number(bpmSummary.target || 0) - (Number(bpmSummary.withinBudget || 0) + Number(bpmSummary.beyondBudget || 0) + Number(kpis.pipeline || 0)))) }}</strong></span>
+                </div>
+
+                <div class="exec-breakdown">
+                  <div class="exec-breakdown__item">
+                    <span class="exec-breakdown__label">Target</span>
+                    <strong>{{ formatWholeNumber(bpmSummary.target) }}</strong>
+                    <span class="exec-breakdown__hint">2026 offshoring target</span>
+                  </div>
+                  <div class="exec-breakdown__item exec-breakdown__item--within">
+                    <span class="exec-breakdown__label">Within budget</span>
+                    <strong>{{ formatWholeNumber(bpmSummary.withinBudget) }}</strong>
+                    <span class="exec-breakdown__hint">Successfully onboarded</span>
+                  </div>
+                  <div class="exec-breakdown__item exec-breakdown__item--beyond">
+                    <span class="exec-breakdown__label">Beyond budget</span>
+                    <strong>{{ formatWholeNumber(bpmSummary.beyondBudget) }}</strong>
+                    <span class="exec-breakdown__hint">Outside original ROFO</span>
+                  </div>
+                </div>
 
 
                 <div class="further-potential">
@@ -2444,6 +2443,179 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.exec-panel__eyebrow {
+  color: #0077b8;
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.exec-panel__source {
+  align-self: start;
+  background: #f1f6f8;
+  border: 1px solid #dbe8ed;
+  border-radius: 999px;
+  color: #526b79;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.exec-panel__body {
+  background: linear-gradient(135deg, #f4fafb 0%, #ffffff 48%, #f7fbfc 100%);
+  border: 1px solid #e1edf0;
+  border-radius: 14px;
+  padding: 22px;
+}
+
+.exec-panel__headline {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.exec-panel__label,
+.exec-panel__gap span,
+.exec-panel__gap small {
+  color: #627985;
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.exec-panel__progress-value {
+  color: #003f6e;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+  margin-top: 8px;
+}
+
+.exec-panel__progress-value span {
+  color: #0077b8;
+  font-size: 24px;
+  letter-spacing: 0;
+  margin-left: 3px;
+}
+
+.exec-panel__progress-caption {
+  color: #526b79;
+  display: block;
+  font-size: 13px;
+  margin-top: 7px;
+}
+
+.exec-panel__gap {
+  border-left: 1px solid #d9e8ec;
+  min-width: 150px;
+  padding-left: 22px;
+}
+
+.exec-panel__gap strong {
+  color: #e85454;
+  display: block;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 8px 0 5px;
+}
+
+.exec-panel__gap small {
+  color: #7a8794;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.exec-progress {
+  background: #e5edf0;
+  border-radius: 999px;
+  display: flex;
+  height: 14px;
+  margin: 24px 0 10px;
+  overflow: hidden;
+}
+
+.exec-progress__actual {
+  background: linear-gradient(90deg, #0077b8, #20a980);
+  border-radius: 999px 0 0 999px;
+  min-width: 0;
+  transition: width 0.35s ease;
+}
+
+.exec-progress__pipeline {
+  background: repeating-linear-gradient(135deg, #8eb8c8 0, #8eb8c8 5px, #b5d1da 5px, #b5d1da 10px);
+  min-width: 0;
+  transition: width 0.35s ease;
+}
+
+.exec-progress__legend {
+  color: #526b79;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 16px;
+}
+
+.exec-progress__legend span {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.exec-progress__legend strong { color: #173f57; }
+.exec-progress__legend em {
+  background: #e8f0f3;
+  border-radius: 999px;
+  color: #6a818c;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 3px 5px;
+  text-transform: uppercase;
+}
+
+.exec-dot {
+  border-radius: 50%;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+.exec-dot--actual { background: #20a980; }
+.exec-dot--pipeline { background: #8eb8c8; }
+.exec-dot--gap { background: #e5edf0; border: 1px solid #c3d2d8; }
+
+.exec-breakdown {
+  border-top: 1px solid #e1edf0;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+
+.exec-breakdown__item {
+  border-left: 3px solid #0077b8;
+  display: grid;
+  gap: 3px;
+  padding-left: 11px;
+}
+.exec-breakdown__item--within { border-color: #20a980; }
+.exec-breakdown__item--beyond { border-color: #e85454; }
+.exec-breakdown__label { color: #526b79; font-size: 12px; font-weight: 700; }
+.exec-breakdown__item strong { color: #173f57; font-size: 24px; line-height: 1; }
+.exec-breakdown__hint { color: #82949d; font-size: 11px; }
+
 .exec-table {
   width: 100%;
   border-collapse: collapse;
@@ -3023,6 +3195,26 @@ onMounted(async () => {
   .dash-toolbar {
     grid-template-columns: 1fr;
   }
+
+  .exec-panel__headline {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .exec-panel__gap {
+    border-left: 0;
+    border-top: 1px solid #d9e8ec;
+    padding-left: 0;
+    padding-top: 14px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .exec-panel__body { padding: 16px; }
+  .exec-panel__source { display: none; }
+  .exec-breakdown { grid-template-columns: 1fr; }
+  .exec-progress__legend { gap: 9px 14px; }
 }
 
 /* Ported visual tokens from MigrationDashboard.vue to harmonize look */
