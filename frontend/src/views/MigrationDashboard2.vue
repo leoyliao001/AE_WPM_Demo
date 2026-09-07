@@ -574,7 +574,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
@@ -741,6 +741,7 @@ const projectHealthFilters = ref({
   product: [],
   gscSite: []
 })
+const projectHealthFiltersInitialized = ref(false)
 const activeMultiFilter = ref('')
 const multiFilterSearch = ref({
   migrationType: '',
@@ -902,8 +903,7 @@ const toggleSelectAll = (key) => {
 
 const projectHealthMigrationTypeOptions = computed(() => {
   const values = new Set(projects.value.map((p) => p.migrationType).filter(Boolean))
-  const opts = [...values].sort()
-  return ['All', ...opts]
+  return [...values].sort()
 })
 
 const uniqStrings = (items) => {
@@ -921,8 +921,7 @@ const projectHealthOwnerOptions = computed(() => {
     ...bpmRofoRows.value.map((row) => row.bpm_owner),
     ...bpmActualRows.value.map((row) => row.bpm_owner)
   ]
-  const opts = uniqStrings(values)
-  return ['All', ...opts]
+  return uniqStrings(values)
 })
 
 const projectHealthRegionOptions = computed(() => {
@@ -931,8 +930,7 @@ const projectHealthRegionOptions = computed(() => {
     ...bpmRofoRows.value.map((row) => row.region),
     ...bpmActualRows.value.map((row) => row.region)
   ]
-  const opts = uniqStrings(values)
-  return ['All', ...opts]
+  return uniqStrings(values)
 })
 
 const projectHealthProductOptions = computed(() => {
@@ -944,15 +942,23 @@ const projectHealthProductOptions = computed(() => {
   }
   values.push(...bpmRofoRows.value.map((row) => row.product))
   values.push(...bpmActualRows.value.map((row) => row.product))
-  const opts = uniqStrings(values)
-  return ['All', ...opts]
+  return uniqStrings(values)
 })
 
 const projectHealthGscSiteOptions = computed(() => {
   const values = projects.value.map((p) => p.gscSite || p.site).filter(Boolean)
-  const opts = uniqStrings(values)
-  return ['All', ...opts]
+  return uniqStrings(values)
 })
+
+const selectAllProjectHealthFilters = async () => {
+  projectHealthFilters.value.migrationType = [...projectHealthMigrationTypeOptions.value]
+  projectHealthFilters.value.owner = [...projectHealthOwnerOptions.value]
+  projectHealthFilters.value.region = [...projectHealthRegionOptions.value]
+  projectHealthFilters.value.product = [...projectHealthProductOptions.value]
+  projectHealthFilters.value.gscSite = [...projectHealthGscSiteOptions.value]
+  await nextTick()
+  projectHealthFiltersInitialized.value = true
+}
 
 const migrationTypeOptions = computed(() => {
   const types = new Set(projects.value.map((p) => p.migrationType).filter(Boolean))
@@ -981,18 +987,22 @@ const hasActiveFilters = computed(
 
 const filteredProjects = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  const normalizeMultiSelectionForFiltering = (raw) => {
+  const normalizeMultiSelectionForFiltering = (raw, options) => {
     const list = Array.isArray(raw) ? raw.map((v) => String(v).trim()).filter(Boolean) : []
-    // If user selected explicit 'All', treat as no filter
-    if (list.some((v) => v.toLowerCase() === 'all')) return []
+    const optionList = Array.isArray(options) ? options.map((v) => String(v).trim()).filter(Boolean) : []
+    if (!projectHealthFiltersInitialized.value) return null
+    if (!optionList.length) return null
+    if (optionList.length && list.length === optionList.length && optionList.every((option) => list.includes(option))) {
+      return null
+    }
     return list
   }
 
-  const selectedMigrationTypes = normalizeMultiSelectionForFiltering(projectHealthFilters.value.migrationType)
-  const selectedOwners = normalizeMultiSelectionForFiltering(projectHealthFilters.value.owner)
-  const selectedRegions = normalizeMultiSelectionForFiltering(projectHealthFilters.value.region)
-  const selectedProducts = normalizeMultiSelectionForFiltering(projectHealthFilters.value.product)
-  const selectedSites = normalizeMultiSelectionForFiltering(projectHealthFilters.value.gscSite)
+  const selectedMigrationTypes = normalizeMultiSelectionForFiltering(projectHealthFilters.value.migrationType, projectHealthMigrationTypeOptions.value)
+  const selectedOwners = normalizeMultiSelectionForFiltering(projectHealthFilters.value.owner, projectHealthOwnerOptions.value)
+  const selectedRegions = normalizeMultiSelectionForFiltering(projectHealthFilters.value.region, projectHealthRegionOptions.value)
+  const selectedProducts = normalizeMultiSelectionForFiltering(projectHealthFilters.value.product, projectHealthProductOptions.value)
+  const selectedSites = normalizeMultiSelectionForFiltering(projectHealthFilters.value.gscSite, projectHealthGscSiteOptions.value)
 
   return projects.value.filter((project) => {
     if (filterRegion.value && project.region !== filterRegion.value) return false
@@ -1002,18 +1012,18 @@ const filteredProjects = computed(() => {
       const products = (project.products ?? []).map((p) => String(p).trim())
       if (!products.includes(filterProduct.value)) return false
     }
-    if (selectedMigrationTypes.length && !selectedMigrationTypes.includes(project.migrationType)) return false
-    if (selectedOwners.length) {
+    if (selectedMigrationTypes && !selectedMigrationTypes.includes(project.migrationType)) return false
+    if (selectedOwners) {
       const owner = project.owner || project.requestor || ''
       if (!selectedOwners.includes(owner)) return false
     }
-    if (selectedRegions.length && !selectedRegions.includes(project.region)) return false
-    if (selectedProducts.length) {
+    if (selectedRegions && !selectedRegions.includes(project.region)) return false
+    if (selectedProducts) {
       const products = (project.products ?? []).map((p) => String(p).trim())
       const matches = products.some((item) => selectedProducts.includes(item))
       if (!matches) return false
     }
-    if (selectedSites.length) {
+    if (selectedSites) {
       const site = project.gscSite || project.site || ''
       if (!selectedSites.includes(site)) return false
     }
@@ -1896,8 +1906,8 @@ const loadProjects = async () => {
 
 onMounted(async () => {
   access.value = await fetchMyAttributesAccess({ force: true })
-  loadProjects()
-  void loadBpmExecutiveSummary()
+  await Promise.all([loadProjects(), loadBpmExecutiveSummary()])
+  await selectAllProjectHealthFilters()
   void loadExecutiveSummaryNotes()
 })
 </script>

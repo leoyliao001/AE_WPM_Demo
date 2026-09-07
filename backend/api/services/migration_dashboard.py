@@ -21,6 +21,15 @@ def _serialize_approval_file(submission):
     }
 
 
+def _primary_site(submission):
+    sites = (submission.default_location_strategies or []) + (submission.custom_location_strategies or [])
+    for site in sites:
+        value = str(site).strip()
+        if value:
+            return value
+    return ""
+
+
 def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
     owner = ""
     try:
@@ -32,6 +41,7 @@ def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
         )
     except Exception:
         owner = ""
+    site = _primary_site(submission)
 
     return {
         "id": submission.id,
@@ -48,6 +58,8 @@ def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
         "fteNumber": submission.fte_number,
         "areasCount": len(submission.areas or []),
         "countriesCount": len(submission.countries or []),
+        "gscSite": site,
+        "site": site,
         "productsPreview": _join_preview(submission.products),
         "products": submission.products or [],
         "areasPreview": _join_preview(submission.areas),

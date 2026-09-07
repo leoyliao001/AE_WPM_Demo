@@ -1,17 +1,40 @@
+import argparse
 import os
+import sys
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import django
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.db import transaction
+from django.utils import timezone
 from api.models import MigrationIntakeSubmission, OpportunityAssessment
 
-EXCEL_PATH = r"C:\fcous\AE WPM Demo\Migration Tracking (1).xlsx"
+EXCEL_PATH = BACKEND_DIR.parent / "Migration Tracking (1).xlsx"
 SHEET_NAME = "Project Tracker"
+
+
+def normalize_header(value):
+    return " ".join(str(value or "").split()).strip().lower()
+
+
+def row_value(row, *names):
+    for name in names:
+        if name in row:
+            return row.get(name)
+    normalized_names = {normalize_header(name) for name in names}
+    for key, value in row.items():
+        if normalize_header(key) in normalized_names:
+            return value
+    return None
 
 
 def clean_text(value):
@@ -36,10 +59,22 @@ def as_iso_date(value):
         return ""
 
 
+def as_aware_datetime(value):
+    if value is None or pd.isna(value):
+        return None
+    try:
+        dt = pd.to_datetime(value).to_pydatetime()
+    except Exception:
+        return None
+    if timezone.is_naive(dt):
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
+
+
 def status_from_row(row):
-    actual_stage = clean_text(row.get("Actual Stage", "")).lower()
-    overall = clean_text(row.get("OverAll Progress", "")).lower()
-    planned_stage = clean_text(row.get("Planned Stage", "")).lower()
+    actual_stage = clean_text(row_value(row, "Actual Stage")).lower()
+    overall = clean_text(row_value(row, "OverAll Progress")).lower()
+    planned_stage = clean_text(row_value(row, "Planned Stage")).lower()
 
     if actual_stage in {"complete", "go live"} or "complete" in planned_stage or "complete" in actual_stage:
         return "completed"
@@ -53,33 +88,37 @@ def status_from_row(row):
 
 
 @transaction.atomic
-def import_project_tracker():
+def import_project_tracker(clear=False):
+    if clear:
+        MigrationIntakeSubmission.objects.all().delete()
+        OpportunityAssessment.objects.all().delete()
+
     df = pd.read_excel(EXCEL_PATH, sheet_name=SHEET_NAME, header=6)
     imported = 0
     updated = 0
 
     for _, row in df.iterrows():
-        migration_request_id = clean_text(row.get("WPM Unique Identifier"))
+        migration_request_id = clean_text(row_value(row, "WPM Unique Identifier"))
         if not migration_request_id:
             continue
 
-        project_name = clean_text(row.get("Project_Name"))
-        mm_name = clean_text(row.get("MM Name")).replace(" ", " ").strip()
-        migration_type = clean_text(row.get("Migration Type"))
-        region = clean_text(row.get("Region"))
-        area = clean_text(row.get("Area"))
-        country = clean_text(row.get("Country"))
-        gsc_site = clean_text(row.get("GSC Site"))
-        function_name = clean_text(row.get("Function ID + Description")) or clean_text(row.get("Function"))
-        product_name = clean_text(row.get("Product ID + Description"))
-        pmo_remarks = clean_text(row.get("PMO Remarks")) or project_name
-        fte_value = row.get("Migratable\nFTE")
+        project_name = clean_text(row_value(row, "Project_Name"))
+        mm_name = clean_text(row_value(row, "MM Name"))
+        migration_type = clean_text(row_value(row, "Migration Type"))
+        region = clean_text(row_value(row, "Region"))
+        area = clean_text(row_value(row, "Area"))
+        country = clean_text(row_value(row, "Country"))
+        gsc_site = clean_text(row_value(row, "GSC Site"))
+        function_name = clean_text(row_value(row, "Function ID + Description")) or clean_text(row_value(row, "Function"))
+        product_name = clean_text(row_value(row, "Product ID + Description"))
+        pmo_remarks = clean_text(row_value(row, "PMO Remarks")) or project_name
+        fte_value = row_value(row, "Migratable\nFTE", "Migratable FTE")
         fte_number = str(int(float(fte_value))) if pd.notna(fte_value) and str(fte_value).strip() not in {"", "nan"} else "0"
 
-        business_case_date = as_iso_date(row.get("Business Case \nApproved Actual Date "))
+        business_case_date = as_aware_datetime(row_value(row, "Business Case \nApproved Actual Date ", "Business Case Approved Actual Date"))
         requested_date = as_iso_date(
-            row.get("Functional Assessment\nStart Date\nStage 1 \n(6 Weeks)")
-            or row.get("Opportunity Assessment\nStart Date \nStage 2 \n(6 Weeks)")
+            row_value(row, "Functional Assessment\nStart Date\nStage 1 \n(6 Weeks)", "Functional Assessment Start Date Stage 1 (6 Weeks)")
+            or row_value(row, "Opportunity Assessment\nStart Date \nStage 2 \n(6 Weeks)", "Opportunity Assessment Start Date Stage 2 (6 Weeks)")
         )
 
         payload = {
@@ -107,7 +146,7 @@ def import_project_tracker():
             "jl3": "0",
             "jl4": "0",
             "jobLevelTotal": 0,
-            "risks": clean_text(row.get("Remarks/ Delay")) or clean_text(row.get("OverAll Progress")),
+            "risks": clean_text(row_value(row, "Remarks/ Delay")) or clean_text(row_value(row, "OverAll Progress")),
         }
 
         obj, created = MigrationIntakeSubmission.objects.update_or_create(
@@ -147,11 +186,8 @@ def import_project_tracker():
             obj.requestor = mm_name
             obj.save(update_fields=["requestor", "updated_at"])
         if business_case_date:
-            try:
-                obj.business_case_submission_date = pd.to_datetime(business_case_date)
-                obj.save(update_fields=["business_case_submission_date", "updated_at"])
-            except Exception:
-                pass
+            obj.business_case_submission_date = business_case_date
+            obj.save(update_fields=["business_case_submission_date", "updated_at"])
 
         if created:
             imported += 1
@@ -178,7 +214,11 @@ def import_project_tracker():
 
 
 if __name__ == "__main__":
-    imported, updated = import_project_tracker()
+    parser = argparse.ArgumentParser(description="Import Project Tracker rows into migration intake tables.")
+    parser.add_argument("--clear", action="store_true", help="Delete existing intake and opportunity rows before importing.")
+    args = parser.parse_args()
+
+    imported, updated = import_project_tracker(clear=args.clear)
     print(f"Imported={imported} Updated={updated}")
     print(f"MigrationIntakeSubmission count={MigrationIntakeSubmission.objects.count()}")
     print(f"OpportunityAssessment count={OpportunityAssessment.objects.count()}")
