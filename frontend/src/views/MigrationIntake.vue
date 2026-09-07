@@ -740,8 +740,7 @@ const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
 
 const migrationTypes = [
   { value: '1:1-transfer', label: '1:1 Transfer' },
-  { value: 'co-location', label: 'Co Location' },
-  { value: 'new-additional', label: 'New/Additional work, tasks or activities' }
+  { value: 'co-location', label: 'Co-Location' }
 ]
 
 const filteredAreas = computed(() => getAreasForRegion(form.region))

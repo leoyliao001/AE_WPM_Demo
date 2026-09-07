@@ -1,10 +1,7 @@
 import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import http from 'node:http'
 import fs from 'node:fs'
-
-const localAgent = new http.Agent({ keepAlive: true })
 
 // Set VITE_BEHIND_APACHE=1 when using enable-dev-proxy.bat (HTTPS → Vite)
 const behindApache = process.env.VITE_BEHIND_APACHE === '1'
@@ -74,8 +71,8 @@ export default defineConfig(() => ({
   ],
   server: {
     host: '127.0.0.1',
-    port: 3001,
-    // If 3001 is busy, try 3002, 3003, ...
+    port: 3002,
+    // If 3002 is busy, try 3003, 3004, ...
     strictPort: false,
     // Only force WSS/443 HMR when fronted by Apache DEV proxy
     ...(behindApache
@@ -93,7 +90,6 @@ export default defineConfig(() => ({
       '/api': {
         target: apiTarget,
         changeOrigin: true,
-        agent: localAgent,
         bypass(req) {
           const accept = req.headers.accept || ''
           if (accept.includes('text/html')) {

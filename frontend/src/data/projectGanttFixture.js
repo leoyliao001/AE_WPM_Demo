@@ -119,7 +119,7 @@ export const projectGanttTasks = [
   {
     id: 'business-case',
     name: 'Business Case (Memo)',
-    standard: range(1, 5),
+    standard: range(1, 2),
     plan: null,
     actual: null,
     completedAt: null
@@ -127,7 +127,7 @@ export const projectGanttTasks = [
   {
     id: 'fbp-approval',
     name: 'FBP approval',
-    standard: range(1, 5),
+    standard: range(3, 4),
     plan: null,
     actual: null,
     completedAt: null
@@ -135,7 +135,7 @@ export const projectGanttTasks = [
   {
     id: 'functional-head',
     name: 'Functional head approval',
-    standard: range(3, 5),
+    standard: range(3, 3),
     plan: null,
     actual: null,
     completedAt: null
@@ -143,7 +143,7 @@ export const projectGanttTasks = [
   {
     id: 'elt-approval',
     name: 'ELT approg',
-    standard: range(3, 5),
+    standard: range(5, 5),
     plan: null,
     actual: null,
     completedAt: null
@@ -151,7 +151,7 @@ export const projectGanttTasks = [
   {
     id: 'gsc-head',
     name: 'GSC Head -1 approval',
-    standard: range(3, 5),
+    standard: range(5, 5),
     plan: null,
     actual: null,
     completedAt: null
@@ -159,7 +159,7 @@ export const projectGanttTasks = [
   {
     id: 'opportunity-assessment',
     name: 'Opportunity Assessment (Detailed task scoping)',
-    standard: range(1, 5),
+    standard: range(6, 10),
     plan: null,
     actual: null,
     completedAt: null
@@ -167,7 +167,7 @@ export const projectGanttTasks = [
   {
     id: 'pid-approval',
     name: 'PID Approval',
-    standard: range(6, 12),
+    standard: range(6, 7),
     plan: null,
     actual: null,
     completedAt: null
@@ -175,7 +175,7 @@ export const projectGanttTasks = [
   {
     id: 'hiring-request',
     name: 'Hiring Request approval',
-    standard: range(6, 12),
+    standard: range(8, 8),
     plan: null,
     actual: null,
     completedAt: null
@@ -183,7 +183,7 @@ export const projectGanttTasks = [
   {
     id: 'resource-mobilization',
     name: 'Resource mobilization',
-    standard: range(13, 23),
+    standard: range(9, 18),
     plan: null,
     actual: null,
     completedAt: null

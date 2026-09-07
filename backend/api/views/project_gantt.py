@@ -66,20 +66,20 @@ OBSOLETE_META_KEYS = frozenset(
 
 # Fixed Migration Key Steps — Standard ranges match Excel template.
 TEMPLATE_TASKS = [
-    {"id": "business-case", "name": "Business Case (Memo)", "startWeek": 1, "endWeek": 5},
-    {"id": "fbp-approval", "name": "FBP approval", "startWeek": 1, "endWeek": 5},
-    {"id": "functional-head", "name": "Functional head approval", "startWeek": 3, "endWeek": 5},
-    {"id": "elt-approval", "name": "ELT approg", "startWeek": 3, "endWeek": 5},
-    {"id": "gsc-head", "name": "GSC Head -1 approval", "startWeek": 3, "endWeek": 5},
+    {"id": "business-case", "name": "Business Case (Memo)", "startWeek": 1, "endWeek": 2},
+    {"id": "fbp-approval", "name": "FBP approval", "startWeek": 3, "endWeek": 4},
+    {"id": "functional-head", "name": "Functional head approval", "startWeek": 3, "endWeek": 3},
+    {"id": "elt-approval", "name": "ELT approg", "startWeek": 5, "endWeek": 5},
+    {"id": "gsc-head", "name": "GSC Head -1 approval", "startWeek": 5, "endWeek": 5},
     {
         "id": "opportunity-assessment",
         "name": "Opportunity Assessment (Detailed task scoping)",
-        "startWeek": 1,
-        "endWeek": 5,
+        "startWeek": 6,
+        "endWeek": 10,
     },
-    {"id": "pid-approval", "name": "PID Approval", "startWeek": 6, "endWeek": 12},
-    {"id": "hiring-request", "name": "Hiring Request approval", "startWeek": 6, "endWeek": 12},
-    {"id": "resource-mobilization", "name": "Resource mobilization", "startWeek": 13, "endWeek": 23},
+    {"id": "pid-approval", "name": "PID Approval", "startWeek": 6, "endWeek": 7},
+    {"id": "hiring-request", "name": "Hiring Request approval", "startWeek": 8, "endWeek": 8},
+    {"id": "resource-mobilization", "name": "Resource mobilization", "startWeek": 9, "endWeek": 18},
     {
         "id": "neo-training",
         "name": "NEO + GSC L&D business & training stage",

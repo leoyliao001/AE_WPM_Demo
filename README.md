@@ -71,7 +71,7 @@ pip install -r requirements.txt
 |---------|---------------|-------------|
 | Django | `>=5.2,<6` | Web framework |
 | djangorestframework | `>=3.16,<4` | REST API |
-| django-cors-headers | `>=4.0,<5` | CORS support (allows frontend on port 3001) |
+| django-cors-headers | `>=4.0,<5` | CORS support (allows frontend on port 3002) |
 
 ### 1b. Backend — the local database
 
@@ -220,9 +220,9 @@ cd /d "c:\fcous\AE WPM Demo\frontend"
 npm run dev
 ```
 
-Frontend URL: **http://localhost:3001** — open this in your browser.
+Frontend URL: **http://localhost:3002** — open this in your browser.
 
-> Use **port 3001** as the main entry point. The backend serves APIs only; Vite proxies `/api` to `http://127.0.0.1:8001` by default.
+> Use **port 3002** as the development frontend entry point. The backend serves APIs only; Vite proxies `/api` to `http://127.0.0.1:8001` by default.
 > To develop against the **production** backend instead, override the target rather than starting a second server:
 >
 > ```powershell
@@ -262,6 +262,7 @@ deployment server `SCRBAEXDEFRM217`. Never run both on the same one.
 |------|-------|---------|----------|
 | `127.0.0.1:8000` | **production** | Windows service **AE_WPM** (NSSM → Waitress), runs as `LocalSystem` | MSSQL `WPM Project` (`DJANGO_DB_ENGINE=mssql`) |
 | `127.0.0.1:8001` | **development** | your own `manage.py runserver` | SQLite `backend/db.sqlite3` |
+| `127.0.0.1:3002` | **development** | Vite dev server (`npm run dev`) | proxies `/api` → 8001 by default |
 | `0.0.0.0:80` | **production** | Windows service **AE_Front_All** (Apache), serves `frontend/dist` and proxies `/api` → 8000 | — |
 
 ### Why this matters
@@ -281,8 +282,9 @@ Waitress process holding 8000.
 
 - `backend/manage.py` defaults `runserver` to `127.0.0.1:8001` and **exits with
   an error** if the target port is already listening.
-- `frontend/vite.config.js` proxies `/api` to `127.0.0.1:8001` by default, and
-  logs `[vite] /api -> ...` on startup so the target is never a guess.
+- `frontend/vite.config.js` starts the dev frontend on `127.0.0.1:3002`, proxies
+  `/api` to `127.0.0.1:8001` by default, and logs `[vite] /api -> ...` on startup
+  so the target is never a guess.
 
 ### Developing against the production backend
 
@@ -298,7 +300,7 @@ npm run dev
 
 ```powershell
 Get-Service AE_Front_All, AE_WPM
-Get-NetTCPConnection -LocalPort 8000, 8001 -State Listen |
+Get-NetTCPConnection -LocalPort 3002, 8000, 8001 -State Listen |
   ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" } |
   Select-Object ProcessId, CommandLine
 ```
@@ -315,31 +317,31 @@ When running locally with the default dev setup (`npm run dev` + `python manage.
 
 | Service | Base URL | Notes |
 |---------|----------|-------|
-| **Frontend (main entry)** | http://localhost:3001 | Open this in your browser |
+| **Frontend (dev main entry)** | http://localhost:3002 | Open this in your browser for local development |
 | **Backend API (dev)** | http://127.0.0.1:8001 | API only — not the UI; `runserver` + SQLite |
 | **Backend API (production service)** | http://127.0.0.1:8000 | Windows service **AE_WPM**, Waitress + MSSQL — never bind this port yourself |
 
-The global `mc-top-bar` header links to the main pages. All frontend routes below are relative to `http://localhost:3001`.
+The global `mc-top-bar` header links to the main pages. All local frontend routes below are relative to `http://localhost:3002`.
 
 ### Frontend pages
 
 | Page | URL | Description |
 |------|-----|-------------|
-| **Welcome** | http://localhost:3001/ | Landing page with tool cards and entry to the Project Attributes Database |
-| **Future Service Model** | http://localhost:3001/future-service-model | Cost, capability, and country-level analytics for GSC transition planning — includes expandable process and country task tables |
-| **Migration Intake** | http://localhost:3001/migration-intake | Submit a new migration request and capture intake details |
-| **Migration Dashboard** | http://localhost:3001/migration-dashboard | Product-level migration summary and tracking overview |
-| **L&D Dashboard** | http://localhost:3001/ld-dashboard | Learning, scoping tasks, and training timeline by project |
-| **Project Dashboard** | http://localhost:3001/project-dashboard | Individual project opportunity assessment and milestone hub |
-| **Milestone detail** | http://localhost:3001/project-dashboard/:section | Drill-down for a specific milestone (e.g. `gantt`, `approvals`, `business-case`, `cost`, `training`) |
-| **Migration Chatbot** | http://localhost:3001/migration-chatbot | Guided Q&A and migration support chatbot demo |
+| **Welcome** | http://localhost:3002/ | Landing page with tool cards and entry to the Project Attributes Database |
+| **Future Service Model** | http://localhost:3002/future-service-model | Cost, capability, and country-level analytics for GSC transition planning — includes expandable process and country task tables |
+| **Migration Intake** | http://localhost:3002/migration-intake | Submit a new migration request and capture intake details |
+| **Migration Dashboard** | http://localhost:3002/migration-dashboard | Product-level migration summary and tracking overview |
+| **L&D Dashboard** | http://localhost:3002/ld-dashboard | Learning, scoping tasks, and training timeline by project |
+| **Project Dashboard** | http://localhost:3002/project-dashboard | Individual project opportunity assessment and milestone hub |
+| **Milestone detail** | http://localhost:3002/project-dashboard/:section | Drill-down for a specific milestone (e.g. `gantt`, `approvals`, `business-case`, `cost`, `training`) |
+| **Migration Chatbot** | http://localhost:3002/migration-chatbot | Guided Q&A and migration support chatbot demo |
 
 ### Redirects
 
 | From | To |
 |------|-----|
-| http://localhost:3001/welcome | http://localhost:3001/ |
-| http://localhost:3001/welcome2 | http://localhost:3001/future-service-model |
+| http://localhost:3002/welcome | http://localhost:3002/ |
+| http://localhost:3002/welcome2 | http://localhost:3002/future-service-model |
 
 ### Backend API
 
@@ -436,7 +438,7 @@ cd /d "c:\fcous\AE WPM Demo\frontend"
 
 ### 3. 404 or Django page when visiting the backend port
 
-Open the app at **http://localhost:3001**, not the backend port. The backend is API-only.
+Open the local dev app at **http://localhost:3002**, not the backend port. The backend is API-only.
 
 ### 4. `runserver` refuses to start: "already being listened on"
 
@@ -457,7 +459,7 @@ If the owner is the **AE_WPM** service on 8000, do not stop it and do not bind
 8000 — point the frontend at it with `VITE_API_TARGET` instead (see **Port
 policy**).
 
-- Frontend on a different port: `npm run dev -- --port 3002` (also update `CORS_ALLOWED_ORIGINS` in `backend/config/settings.py`)
+- Frontend on a different port: `npm run dev -- --port 3003` (also update `CORS_ALLOWED_ORIGINS` in `backend/config/settings.py`)
 
 ### 5. `npm install` fails (MDS packages not found)
 
@@ -483,4 +485,4 @@ pip install -r requirements.txt
 |-------|-------|
 | Frontend | Vue 3, Vite 5, Vue Router, MDS Components |
 | Backend | Django 5.2, Django REST Framework, SQLite |
-| Dev ports | Frontend `3001`, Backend `8001` (production service owns `8000`) |
+| Dev ports | Frontend `3002`, Backend `8001` (production service owns `8000`) |
