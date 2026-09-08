@@ -741,7 +741,11 @@ function closeUploadDialog() {
 }
 
 const projectId = computed(() => route.params.id)
-const backTo = computed(() => `/migration-dashboard/${projectId.value}`)
+const backTo = computed(() =>
+  route.query.from === 'toll-gates'
+    ? `/toll-gates?project=${route.query.project || projectId.value}`
+    : `/migration-dashboard/${projectId.value}`
+)
 const fteModeLabel = computed(() => {
   if (fteContext.value.mode === 'area') return 'FTE: Area hours'
   if (fteContext.value.mode === 'gsc') return 'FTE: GSC hours'

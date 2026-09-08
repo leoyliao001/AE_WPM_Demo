@@ -38,6 +38,11 @@ class MigrationIntakeSubmission(models.Model):
     job_level_total = models.PositiveSmallIntegerField(default=0)
     risks = models.TextField(blank=True)
     business_case_submission_date = models.DateTimeField(null=True, blank=True)
+    business_case_file = models.FileField(
+        upload_to="business_case/%Y/%m/", null=True, blank=True, max_length=255
+    )
+    business_case_file_name = models.CharField(max_length=255, blank=True)
+    business_case_file_size = models.PositiveIntegerField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

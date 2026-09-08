@@ -1,6 +1,7 @@
 from django.urls import path
 
 from api.views.migration_dashboard import (
+    download_business_case,
     list_projects,
     project_detail,
     submit_business_case,
@@ -21,6 +22,11 @@ urlpatterns = [
         "projects/<int:project_id>/business-case/submit/",
         submit_business_case,
         name="migration-dashboard-business-case-submit",
+    ),
+    path(
+        "projects/<int:project_id>/business-case/file/",
+        download_business_case,
+        name="migration-dashboard-business-case-file",
     ),
     path(
         "projects/<int:project_id>/gantt/",

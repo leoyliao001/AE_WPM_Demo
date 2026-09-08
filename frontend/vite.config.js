@@ -74,6 +74,10 @@ export default defineConfig(() => ({
     port: 3002,
     // If 3002 is busy, try 3003, 3004, ...
     strictPort: false,
+    watch: {
+      usePolling: true,
+      interval: 500
+    },
     // Only force WSS/443 HMR when fronted by Apache DEV proxy
     ...(behindApache
       ? {

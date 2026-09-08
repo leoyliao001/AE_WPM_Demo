@@ -2,8 +2,8 @@
   <PageShell
     title="Business case"
     subtitle="Generate a draft, review it, then upload the signed-off version."
-    :back-to="`/migration-dashboard/${route.params.id}`"
-    back-label="Back to project"
+    :back-to="backTo"
+    :back-label="backLabel"
   >
     <mc-notification v-if="loadError" appearance="error" fit="medium" heading="Unable to load project" :body="loadError" />
     <div v-else-if="loading" class="bc-loading">Loading Business Case…</div>
@@ -38,6 +38,23 @@
           <h2>3. Upload final business case</h2>
           <p v-if="isSubmitted">Submitted {{ submittedAt }}. The approval timeline has started.</p>
           <p v-else>Upload the reviewed and signed-off version to start the approval timeline.</p>
+
+          <a
+            v-if="isSubmitted && submittedFile"
+            class="bc-attachment"
+            :href="submittedFile.url"
+            :download="submittedFile.name"
+          >
+            <span class="bc-attachment__icon"><mc-icon icon="mi-file" size="20" /></span>
+            <span class="bc-attachment__text">
+              <strong>{{ submittedFile.name }}</strong>
+              <span>{{ formatFileSize(submittedFile.size) }} · Final attachment</span>
+            </span>
+            <span class="bc-attachment__action"><mc-icon icon="mi-arrow-to-bottom" size="18" /></span>
+          </a>
+          <p v-else-if="isSubmitted" class="bc-attachment-missing">
+            Submitted before attachments were stored — no file on record.
+          </p>
           <div
             v-if="!isSubmitted"
             class="bc-dropzone"
@@ -83,14 +100,31 @@ const selectedFile = ref(null)
 const submitting = ref(false)
 const submitError = ref('')
 const submittedAt = ref('')
+const submittedFile = ref(null)
 const isDragging = ref(false)
 const fileTypeError = ref('')
 const fileInputRef = ref(null)
 
 const ALLOWED_EXTENSIONS = ['.doc', '.docx', '.pdf']
 
+const cameFromTollGates = computed(() => route.query.from === 'toll-gates')
+const backTo = computed(() =>
+  cameFromTollGates.value
+    ? `/toll-gates?project=${route.query.project || route.params.id}`
+    : `/migration-dashboard/${route.params.id}`
+)
+const backLabel = computed(() => (cameFromTollGates.value ? 'Back to toll gates' : 'Back to project'))
+
 const isSubmitted = computed(() => Boolean(submittedAt.value))
 const draftName = computed(() => `Business_Case_${project.value?.migrationRequestId || 'project'}.docx`)
+
+function formatFileSize(bytes) {
+  const size = Number(bytes)
+  if (!size || Number.isNaN(size)) return 'Unknown size'
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
 
 async function generateDraft() {
   generating.value = true
@@ -147,10 +181,15 @@ async function submitFinal() {
   submitting.value = true
   submitError.value = ''
   try {
-    const { data } = await axios.post(`/api/migration-dashboard/projects/${route.params.id}/business-case/submit/`, {
-      filename: selectedFile.value.name
-    })
+    const form = new FormData()
+    form.append('file', selectedFile.value)
+    form.append('filename', selectedFile.value.name)
+    const { data } = await axios.post(
+      `/api/migration-dashboard/projects/${route.params.id}/business-case/submit/`,
+      form
+    )
     submittedAt.value = new Date(data.submitted_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+    submittedFile.value = data.file || null
   } catch (error) {
     submitError.value = error?.response?.data?.error || 'Unable to submit the Business Case.'
   } finally {
@@ -165,6 +204,7 @@ onMounted(async () => {
     if (data.businessCaseSubmissionDate) {
       submittedAt.value = new Date(data.businessCaseSubmissionDate).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
     }
+    submittedFile.value = data.businessCaseFile || null
   } catch (error) {
     loadError.value = error?.response?.data?.error || 'Please try again.'
   } finally {
@@ -175,6 +215,37 @@ onMounted(async () => {
 
 <style scoped>
 .bc-loading { color: #5d5d5d; padding: 28px 0; }
+.bc-attachment {
+  align-items: center;
+  background: #f4f9fc;
+  border: 1px solid #c6dced;
+  border-radius: 8px;
+  color: #10314f;
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+  max-width: 460px;
+  padding: 12px 14px;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.bc-attachment:hover { background: #e9f3fa; border-color: #0077b8; }
+.bc-attachment__icon {
+  align-items: center;
+  background: #0077b8;
+  border-radius: 8px;
+  color: #fff;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+.bc-attachment__text { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.bc-attachment__text strong { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-attachment__text span { color: #6c757d; font-size: 12px; margin-top: 2px; }
+.bc-attachment__action { color: #0077b8; flex-shrink: 0; }
+.bc-attachment-missing { color: #8a9099; font-size: 12.5px; font-style: italic; }
 .bc-workflow { border: 1px solid #d9d9d9; border-radius: 8px; max-width: 820px; padding: 8px 26px; position: relative; }
 .bc-status { display: flex; justify-content: flex-end; padding: 8px 0 0; }
 .bc-step { display: grid; gap: 18px; grid-template-columns: 36px minmax(0, 1fr); padding: 24px 0; }

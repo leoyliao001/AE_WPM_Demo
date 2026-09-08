@@ -4,7 +4,7 @@
       class="app-top-bar"
       logosize="auto"
     >
-      <router-link slot="link" class="home-link" to="/" aria-label="WPM Pulse home" />
+      <router-link slot="link" class="home-link" to="/" aria-label="Home" />
 
       <nav slot="actions" class="app-nav" aria-label="Main navigation">
         <router-link

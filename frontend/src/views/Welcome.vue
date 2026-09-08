@@ -2,96 +2,118 @@
   <div class="welcome-page">
     <div class="welcome-scroll">
       <div class="welcome-layout">
-        <aside class="principles-panel" aria-label="Work Placement Principles">
-          <div class="principles-panel__head">
-            <span class="principles-panel__badge">
-              <mc-icon icon="mi-light-bulb" size="22" />
-            </span>
-            <div class="principles-panel__head-text">
-              <span class="principles-panel__eyebrow">Principles</span>
-              <h2 class="principles-panel__count">5 Work Placement Principles</h2>
-            </div>
-          </div>
-
-          <ol class="principles-list">
-            <li
-              v-for="principle in principles"
-              :key="principle.number"
-              class="principle-card"
-              :style="{ '--card-accent': principle.accent }"
-            >
-              <span class="principle-card__number">{{ principle.number }}</span>
-              <div class="principle-card__body">
-                <span class="principle-card__eyebrow">Principle {{ principle.number }}</span>
-                <h3 class="principle-card__title">{{ principle.title }}</h3>
-                <p class="principle-card__desc">{{ principle.description }}</p>
+        <aside class="welcome-aside">
+          <section class="principles-panel" aria-label="Work Placement Principles">
+            <div class="principles-panel__head">
+              <span class="principles-panel__badge">
+                <mc-icon icon="mi-light-bulb" size="22" />
+              </span>
+              <div class="principles-panel__head-text">
+                <span class="principles-panel__eyebrow">Principles</span>
+                <h2 class="principles-panel__count">5 Work Placement Principles</h2>
               </div>
-            </li>
-          </ol>
+            </div>
+
+            <ol class="principles-list">
+              <li
+                v-for="principle in principles"
+                :key="principle.number"
+                class="principle-card"
+                :style="{ '--card-accent': principle.accent }"
+              >
+                <span class="principle-card__number">{{ principle.number }}</span>
+                <div class="principle-card__body">
+                  <span class="principle-card__eyebrow">Principle {{ principle.number }}</span>
+                  <h3 class="principle-card__title">{{ principle.title }}</h3>
+                  <p class="principle-card__desc">{{ principle.description }}</p>
+                </div>
+              </li>
+            </ol>
+          </section>
         </aside>
 
         <div class="page-content">
-        <header class="welcome-header">
-          <h1 class="welcome-title">WPM Pulse</h1>
-          <p class="welcome-subtitle">
-            Welcome — your home for GSC migration governance, from intake and
-            opportunity assessment through approvals, Gantt scheduling, and toll-gate
-            tracking, all powered by a shared project database.
-          </p>
-        </header>
+          <section class="brand-lockup" aria-label="WPM Pulse">
+            <PulseLogo :size="52" />
+            <div class="brand-lockup__text">
+              <p class="brand-lockup__wordmark">WPM <span>Pulse</span></p>
+              <p class="brand-lockup__eyebrow">Workplace Migration Platform</p>
+            </div>
+          </section>
 
-        <section
-          v-for="group in menuGroups"
-          :key="group.id"
-          class="tool-group"
-          :aria-label="group.title"
-        >
-          <h2 class="tool-group__title">
-            <mc-icon :icon="group.icon" size="18" />
-            {{ group.title }}
-          </h2>
-
-          <div class="card-grid">
-            <mc-card
-              v-for="(item, index) in group.items"
-              :key="item.id"
-              class="tool-card"
-              :class="{ 'tool-card--empty': item.empty }"
-              :style="{ '--card-accent': item.accent, '--card-delay': `${index * 70}ms` }"
-              variant="bordered"
-              fit="medium"
-              contentalignment="middle"
-              :clickable="!item.empty"
-              :tabindex="item.empty ? -1 : 0"
-              :heading="item.empty ? undefined : item.title"
-              @click="onCardClick(item)"
-              @keydown.enter.prevent="onCardClick(item)"
-              @keydown.space.prevent="onCardClick(item)"
-            >
-              <template v-if="!item.empty">
-                <div slot="image" class="card-icon-wrap">
-                  <span class="card-icon-badge">
-                    <mc-icon :icon="item.icon" size="20" />
-                  </span>
-                </div>
-                <p class="card-description">{{ item.description }}</p>
-                <mc-button
-                  slot="actions"
-                  appearance="neutral"
-                  variant="plain"
-                  fit="small"
-                  label="Open"
-                  trailingicon="mi-arrow-right"
-                  tabindex="-1"
-                />
-              </template>
-              <div v-else class="empty-slot">
-                <mc-tag appearance="neutral" fit="small" label="Coming soon" />
-                <p class="empty-slot-text">More tools will be added here</p>
+          <header class="workspace-head">
+            <div class="workspace-head__text">
+              <h2 class="workspace-head__title">Choose a workspace</h2>
+              <p class="workspace-head__sub">{{ workspaceCards.length + 1 }} entry points into the platform</p>
+            </div>
+            <div class="status-pill">
+              <span class="status-pill__dot" aria-hidden="true" />
+              <div>
+                <p class="status-pill__title">All systems operational</p>
+                <p class="status-pill__meta">Last refresh: {{ lastRefresh }}</p>
               </div>
-            </mc-card>
+            </div>
+          </header>
+
+          <div class="workspace-grid">
+            <article
+              v-for="(card, index) in workspaceCards"
+              :key="card.id"
+              class="ws-card"
+              :style="{ '--accent': card.accent, '--card-delay': `${index * 70}ms` }"
+            >
+              <span class="ws-card__icon">
+                <mc-icon :icon="card.icon" size="24" />
+              </span>
+              <div class="ws-card__body">
+                <p class="ws-card__eyebrow">{{ card.eyebrow }}</p>
+                <h3 class="ws-card__title">{{ card.title }}</h3>
+                <p class="ws-card__desc">{{ card.description }}</p>
+              </div>
+              <div class="ws-card__actions">
+                <button
+                  v-for="action in card.actions"
+                  :key="action.label"
+                  type="button"
+                  class="ws-action"
+                  :class="`ws-action--${action.variant || 'solid'}`"
+                  :disabled="!action.route"
+                  :title="action.route ? undefined : 'Coming soon'"
+                  @click="go(action.route)"
+                >
+                  {{ action.label }}
+                </button>
+              </div>
+            </article>
+
+            <article class="ws-card ws-card--wide" :style="{ '--accent': msp.accent }">
+              <span class="ws-card__icon">
+                <mc-icon :icon="msp.icon" size="24" />
+              </span>
+              <div class="ws-card__body">
+                <p class="ws-card__eyebrow">{{ msp.eyebrow }}</p>
+                <h3 class="ws-card__title">{{ msp.title }}</h3>
+                <p class="ws-card__desc">{{ msp.description }}</p>
+              </div>
+              <div class="ws-card__partners">
+                <p class="ws-card__partners-label">Select partner</p>
+                <div class="ws-card__actions">
+                  <button
+                    v-for="partner in msp.partners"
+                    :key="partner.label"
+                    type="button"
+                    class="ws-action ws-action--solid"
+                    :disabled="!partner.route"
+                    :title="partner.route ? undefined : 'Coming soon'"
+                    @click="go(partner.route)"
+                  >
+                    {{ partner.label }}
+                  </button>
+                </div>
+                <p class="ws-card__partners-hint">Opens that partner's dedicated dashboard</p>
+              </div>
+            </article>
           </div>
-        </section>
         </div>
       </div>
     </div>
@@ -101,12 +123,14 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import '@maersk-global/mds-components-core/mc-card'
 import '@maersk-global/mds-components-core/mc-icon'
-import '@maersk-global/mds-components-core/mc-button'
-import '@maersk-global/mds-components-core/mc-tag'
+import PulseLogo from '../components/PulseLogo.vue'
 
 const router = useRouter()
+
+const lastRefresh = computed(() =>
+  `today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
+)
 
 const principles = [
   {
@@ -141,81 +165,65 @@ const principles = [
   }
 ]
 
-const menuItems = [
+const workspaceCards = [
   {
-    id: 'migration-request',
-    title: 'Raise a Migration Request',
-    description: 'Submit migration intake details to the Project Attributes Database.',
-    icon: 'mi-file-arrows-square',
-    accent: '#0077B8',
-    route: '/migration-intake',
-    section: 'primary'
-  },
-  {
-    id: 'migration-chatbot',
-    title: 'Migration Chatbot',
-    description: 'Get instant answers and guided migration support.',
-    icon: 'mi-chatbot',
-    accent: '#6DAA28',
-    route: '/migration-chatbot',
-    section: 'primary'
-  },
-  {
-    id: 'migration-dashboard',
-    title: 'Migration Dashboard',
-    description: 'Product summary and detailed migration tracking overview.',
+    id: 'executive-view',
+    eyebrow: 'Portfolio dashboards',
+    title: 'Executive View',
+    description: 'Enterprise-level RAG, completion and artefact health across every migration.',
     icon: 'mi-chart-bars-vertical',
     accent: '#42B0D5',
-    route: '/migration-dashboard',
-    section: 'primary'
+    actions: [{ label: 'Open dashboards', route: '/migration-dashboard' }]
   },
   {
-    id: 'ld-dashboard',
-    title: 'L&D Dashboard',
-    description: 'Learning, scoping tasks, and training timeline by project.',
-    icon: 'mi-monitor',
-    accent: '#F3880E',
-    route: '/ld-dashboard',
-    section: 'learning'
-  },
-  {
-    id: 'project-dashboard',
-    title: 'My Projects',
-    description: 'Projects under your account — open a project to track migration progress.',
-    icon: 'mi-file-check',
-    accent: '#003F6E',
-    route: '/project-dashboard',
-    section: 'learning'
-  },
-  {
-    id: 'toll-gates',
-    title: 'Toll Gates',
-    description: 'Migration lifecycle grouped into Initiating, Planning, Executing, Monitor & Control, and Closing.',
+    id: 'wpm-workspace',
+    eyebrow: 'Dashboards, portfolio & programme',
+    title: 'WPM',
+    description:
+      'Workplace migration dashboards and management, plus drill-down into any individual project portfolio or programme.',
     icon: 'mi-flag',
-    accent: '#7B61FF',
-    route: '/toll-gates',
-    section: 'learning'
+    accent: '#0077B8',
+    actions: [{ label: 'Open WPM workspace', route: '/toll-gates' }]
+  },
+  {
+    id: 'migration-hub',
+    eyebrow: 'Track or start a migration',
+    title: 'Migration Hub',
+    description: 'Check the status of your active migrations, or raise a new migration request.',
+    icon: 'mi-arrow-right',
+    accent: '#F3880E',
+    actions: [
+      { label: 'New migration', route: '/migration-intake' },
+      { label: 'My migrations', route: '/project-dashboard', variant: 'outline' }
+    ]
+  },
+  {
+    id: 'pulse-assistant',
+    eyebrow: 'Migration chatbot',
+    title: 'Pulse Assistant',
+    description: 'Ask anything about process, artefacts or your project status — answered instantly.',
+    icon: 'mi-chatbot',
+    accent: '#12857D',
+    actions: [{ label: 'Start chat', route: '/migration-chatbot' }]
   }
 ]
 
-const menuGroups = computed(() => [
-  {
-    id: 'primary',
-    title: 'Primary Tools',
-    icon: 'mi-star',
-    items: menuItems.filter((item) => item.section === 'primary')
-  },
-  {
-    id: 'learning',
-    title: 'Learning & Management',
-    icon: 'mi-book-open',
-    items: menuItems.filter((item) => item.section === 'learning')
-  }
-])
+const msp = {
+  eyebrow: 'Migration success partners',
+  title: 'MSP',
+  description: 'Select your dedicated view.',
+  icon: 'mi-people',
+  accent: '#003F6E',
+  partners: [
+    { label: 'L&D', route: '/ld-dashboard' },
+    { label: 'S&R', route: '' },
+    { label: 'TAA', route: '' }
+  ]
+}
 
-const onCardClick = (item) => {
-  if (item.empty || !item.route) return
-  router.push(item.route)
+const go = (route) => {
+  if (!route) return
+  router.push(route)
 }
 </script>
 
@@ -252,26 +260,84 @@ const onCardClick = (item) => {
 .welcome-layout {
   align-items: stretch;
   display: flex;
-  gap: 24px;
+  gap: 28px;
   margin: 0 auto;
-  padding: 40px 24px;
-  transform: translateY(-24px);
+  max-width: 1560px;
+  padding: 32px 24px 40px;
   width: 100%;
+}
+
+.welcome-aside {
+  display: flex;
+  flex: 0 0 440px;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.brand-lockup {
+  align-items: center;
+  animation: fade-up 0.55s ease both;
+  background: linear-gradient(120deg, #0b2b47 0%, #143c60 60%, #0d2c49 100%);
+  border-radius: 14px;
+  box-shadow: 0 2px 4px rgba(9, 30, 51, 0.16), 0 12px 28px rgba(9, 30, 51, 0.18);
+  display: flex;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding: 18px 24px;
+}
+
+.brand-lockup__text {
+  min-width: 0;
+}
+
+.brand-lockup__wordmark {
+  color: #fff;
+  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.brand-lockup__wordmark span {
+  color: #5cc9ec;
+}
+
+.brand-lockup__eyebrow {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  margin: 5px 0 0;
+  text-transform: uppercase;
 }
 
 .principles-panel {
   animation: fade-up 0.55s ease both;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(251, 252, 253, 0.94) 100%);
-  border: 1px solid rgba(22, 22, 22, 0.07);
+  background-color: #0b2b47;
+  background-image: url('/Collaboration.png');
+  background-position: center;
+  background-size: cover;
   border-radius: 16px;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 2px 3px rgba(15, 23, 42, 0.05),
-    0 10px 22px rgba(15, 23, 42, 0.06);
+    0 2px 4px rgba(9, 30, 51, 0.18),
+    0 18px 40px rgba(9, 30, 51, 0.22);
   display: flex;
-  flex: 0 0 296px;
   flex-direction: column;
-  padding: 22px;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 28px 26px;
+  position: relative;
+}
+
+.principles-panel::before {
+  background: linear-gradient(165deg, rgba(8, 27, 45, 0.86) 0%, rgba(10, 34, 56, 0.8) 45%, rgba(8, 27, 45, 0.9) 100%);
+  content: '';
+  inset: 0;
+  position: absolute;
+  z-index: -1;
 }
 
 .principles-panel__head {
@@ -283,11 +349,10 @@ const onCardClick = (item) => {
 
 .principles-panel__badge {
   align-items: center;
-  background: color-mix(in srgb, #0077b8 12%, white);
-  border: 1px solid color-mix(in srgb, #0077b8 16%, transparent);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  color: #0077b8;
+  color: #7fd6f2;
   display: inline-flex;
   flex-shrink: 0;
   height: 44px;
@@ -300,7 +365,7 @@ const onCardClick = (item) => {
 }
 
 .principles-panel__eyebrow {
-  color: #0077b8;
+  color: #7fd6f2;
   display: block;
   font-size: 11px;
   font-weight: 700;
@@ -309,8 +374,8 @@ const onCardClick = (item) => {
 }
 
 .principles-panel__count {
-  color: #161616;
-  font-size: 15px;
+  color: #fff;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.3;
   margin: 2px 0 0;
@@ -320,7 +385,7 @@ const onCardClick = (item) => {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -329,45 +394,38 @@ const onCardClick = (item) => {
 .principle-card {
   --card-accent: #0077b8;
   align-items: flex-start;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(251, 252, 253, 0.94) 100%);
-  border: 1px solid rgba(22, 22, 22, 0.06);
-  border-radius: 12px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 2px 3px rgba(15, 23, 42, 0.04),
-    0 6px 14px rgba(15, 23, 42, 0.05);
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  box-shadow: none;
   display: flex;
-  gap: 12px;
-  overflow: hidden;
-  padding: 14px 14px 14px 16px;
+  gap: 14px;
+  padding: 12px 12px 12px 16px;
   position: relative;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .principle-card::before {
   background: var(--card-accent);
+  border-radius: 999px;
   content: '';
-  height: 100%;
+  height: calc(100% - 20px);
   left: 0;
   position: absolute;
-  top: 0;
+  top: 10px;
   width: 3px;
 }
 
 .principle-card:hover {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 4px 8px rgba(15, 23, 42, 0.06),
-    0 12px 22px rgba(15, 23, 42, 0.08);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .principle-card__number {
   align-items: center;
-  background: color-mix(in srgb, var(--card-accent) 12%, white);
-  border: 1px solid color-mix(in srgb, var(--card-accent) 20%, transparent);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid color-mix(in srgb, var(--card-accent) 55%, transparent);
   border-radius: 999px;
-  color: var(--card-accent);
+  color: #fff;
   display: flex;
   flex-shrink: 0;
   font-size: 12px;
@@ -382,7 +440,7 @@ const onCardClick = (item) => {
 }
 
 .principle-card__eyebrow {
-  color: var(--card-accent);
+  color: color-mix(in srgb, var(--card-accent) 55%, white);
   display: block;
   font-size: 10px;
   font-weight: 700;
@@ -391,18 +449,20 @@ const onCardClick = (item) => {
 }
 
 .principle-card__title {
-  color: #161616;
-  font-size: 14px;
+  color: #fff;
+  font-size: 14.5px;
   font-weight: 700;
   line-height: 1.3;
   margin: 3px 0 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .principle-card__desc {
-  color: #6c757d;
+  color: rgba(255, 255, 255, 0.76);
   font-size: 12.5px;
   line-height: 1.55;
   margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 .page-content {
@@ -416,210 +476,222 @@ const onCardClick = (item) => {
   z-index: 1;
 }
 
-.welcome-header {
+.workspace-head {
+  align-items: flex-start;
   animation: fade-up 0.55s ease both;
-  margin-bottom: 44px;
-  max-width: 640px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 22px;
 }
 
-.welcome-title {
-  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+.workspace-head__title {
+  color: #161616;
   font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: clamp(36px, 5vw, 52px);
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  margin: 0 0 12px;
-}
-
-.welcome-subtitle {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
-  font-size: 15px;
-  line-height: 1.6;
+  letter-spacing: -0.02em;
   margin: 0;
-  max-width: 520px;
 }
 
-.card-grid {
-  column-gap: 20px;
+.workspace-head__sub {
+  color: #6c757d;
+  font-size: 13.5px;
+  margin: 6px 0 0;
+}
+
+.status-pill {
+  align-items: center;
+  background: #fff;
+  border: 1px solid rgba(22, 22, 22, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+.status-pill__dot {
+  background: #17a34a;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(23, 163, 74, 0.16);
+  flex-shrink: 0;
+  height: 9px;
+  width: 9px;
+}
+
+.status-pill__title {
+  color: #161616;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.status-pill__meta {
+  color: #8a9099;
+  font-size: 11.5px;
+  margin: 2px 0 0;
+}
+
+.workspace-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  perspective: 1200px;
-  row-gap: 20px;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
 }
 
-.tool-group {
-  margin-bottom: 32px;
-}
-
-.tool-group:last-child {
-  margin-bottom: 0;
-}
-
-.tool-group__title {
-  align-items: center;
-  color: #161616;
-  display: flex;
-  font-size: 15px;
-  font-weight: 700;
-  gap: 8px;
-  margin: 0 0 16px;
-}
-
-.tool-card {
-  --card-accent: #0077b8;
+.ws-card {
+  --accent: #0077b8;
   animation: fade-up 0.55s ease both;
   animation-delay: var(--card-delay, 0ms);
-  min-height: 190px;
-  width: 100%;
-}
-
-.tool-card::part(container) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(251, 252, 253, 0.92) 100%);
-  border-color: rgba(22, 22, 22, 0.08);
-  border-radius: 14px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 2px 3px rgba(15, 23, 42, 0.05),
-    0 10px 22px rgba(15, 23, 42, 0.08),
-    0 22px 44px rgba(0, 63, 110, 0.12),
-    0 28px 56px -12px rgba(0, 63, 110, 0.14);
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-  transform-origin: center center;
-  transition:
-    border-color 0.28s ease,
-    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.28s ease,
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.tool-card:not(.tool-card--empty)::part(container)::before {
-  background: var(--card-accent);
-  content: '';
-  height: 3px;
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 100%;
-}
-
-.tool-card:not(.tool-card--empty):hover::part(container) {
   background: #fff;
-  border-color: color-mix(in srgb, var(--card-accent) 36%, transparent);
+  border: 1px solid rgba(22, 22, 22, 0.07);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 4px 8px rgba(15, 23, 42, 0.06),
-    0 14px 28px rgba(15, 23, 42, 0.1),
-    0 28px 56px rgba(0, 63, 110, 0.16),
-    0 40px 72px -16px rgba(0, 63, 110, 0.18),
-    0 0 0 1px color-mix(in srgb, var(--card-accent) 14%, transparent);
-  transform: translateY(-8px) scale(1.02);
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 10px 24px rgba(15, 23, 42, 0.07);
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: auto 1fr;
+  padding: 22px 24px;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
-.tool-card:not(.tool-card--empty):focus-visible {
-  outline: none;
-}
-
-.tool-card:not(.tool-card--empty):focus-visible::part(container) {
-  border-color: color-mix(in srgb, var(--card-accent) 55%, transparent);
+.ws-card:hover {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 4px 8px rgba(15, 23, 42, 0.06),
-    0 14px 28px rgba(15, 23, 42, 0.1),
-    0 0 0 3px color-mix(in srgb, var(--card-accent) 35%, white);
-  transform: translateY(-4px);
+    0 6px 14px rgba(15, 23, 42, 0.08),
+    0 20px 40px rgba(0, 63, 110, 0.14);
+  transform: translateY(-3px);
 }
 
-.tool-card--empty::part(container) {
+.ws-card--wide {
   align-items: center;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1.5px dashed rgba(22, 22, 22, 0.14);
-  border-radius: 14px;
-  box-shadow: none;
-  display: flex;
-  justify-content: center;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.tool-card::part(header-container) {
-  text-align: left;
-}
-
-.tool-card::part(body-container) {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: left;
-}
-
-.tool-card::part(actions-container) {
-  opacity: 0;
-  transform: translateY(4px);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.tool-card:not(.tool-card--empty):hover::part(actions-container) {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.card-description {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 0;
-  text-align: left;
-}
-
-.card-icon-wrap {
-  display: flex;
-  justify-content: flex-start;
-  padding: 4px 0 8px;
-}
-
-.card-icon-badge {
+.ws-card__icon {
   align-items: center;
-  background: color-mix(in srgb, var(--card-accent, #0077b8) 12%, white);
-  border: 1px solid color-mix(in srgb, var(--card-accent, #0077b8) 16%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, white);
   border-radius: 10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    0 2px 6px color-mix(in srgb, var(--card-accent, #0077b8) 18%, transparent);
-  color: var(--card-accent, #0077b8);
+  color: var(--accent);
   display: inline-flex;
-  height: 40px;
+  grid-row: span 2;
+  height: 44px;
   justify-content: center;
-  transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.28s ease;
-  width: 40px;
+  width: 44px;
 }
 
-.tool-card:not(.tool-card--empty):hover .card-icon-badge {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 4px 12px color-mix(in srgb, var(--card-accent, #0077b8) 28%, transparent);
+.ws-card__body {
+  min-width: 0;
 }
 
-.empty-slot {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  justify-content: center;
-  padding: 24px;
-  text-align: center;
-  width: 100%;
-}
-
-.empty-slot-text {
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #9aa0a6);
-  font-size: 13px;
+.ws-card__eyebrow {
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   margin: 0;
+  text-transform: uppercase;
+}
+
+.ws-card__title {
+  color: #161616;
+  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 4px 0 8px;
+}
+
+.ws-card__desc {
+  border-bottom: 1px solid rgba(22, 22, 22, 0.08);
+  color: #6c757d;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+  padding-bottom: 14px;
+}
+
+.ws-card--wide .ws-card__desc {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ws-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  grid-column: 2;
+  padding-top: 14px;
+}
+
+.ws-card--wide .ws-card__actions {
+  grid-column: auto;
+  padding-top: 0;
+}
+
+.ws-card__partners {
+  text-align: right;
+}
+
+.ws-card__partners-label {
+  color: #161616;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.ws-card__partners-hint {
+  color: #9aa0a6;
+  font-size: 11.5px;
+  margin: 10px 0 0;
+}
+
+.ws-action {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 74px;
+  padding: 9px 18px;
+  transition: filter 0.2s ease, background 0.2s ease;
+}
+
+.ws-action:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.ws-action:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 35%, white);
+  outline-offset: 1px;
+}
+
+.ws-action--outline {
+  background: #fff;
+  color: var(--accent);
+}
+
+.ws-action--outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 8%, white);
+  filter: none;
+}
+
+.ws-action:disabled {
+  background: #f2f4f6;
+  border-color: rgba(22, 22, 22, 0.1);
+  color: #9aa0a6;
+  cursor: not-allowed;
 }
 
 @keyframes fade-up {
@@ -635,46 +707,48 @@ const onCardClick = (item) => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .welcome-header,
-  .tool-card {
+  .brand-lockup,
+  .principles-panel,
+  .workspace-head,
+  .ws-card {
     animation: none;
   }
 
-  .tool-card:not(.tool-card--empty):hover::part(container),
-  .tool-card:not(.tool-card--empty):focus-visible::part(container),
-  .tool-card:not(.tool-card--empty):hover .card-icon-badge {
+  .ws-card:hover {
     transform: none;
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1240px) {
   .welcome-layout {
     flex-direction: column;
   }
 
-  .principles-panel {
+  .welcome-aside {
     flex-basis: auto;
     width: 100%;
   }
+}
 
-  .card-grid {
-    column-gap: 28px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 900px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-card--wide {
+    grid-template-columns: auto 1fr;
+  }
+
+  .ws-card__partners {
+    grid-column: 1 / -1;
+    padding-top: 14px;
+    text-align: left;
   }
 }
 
 @media (max-width: 760px) {
   .welcome-layout {
-    padding: 32px 16px;
-  }
-
-  .card-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .tool-card::part(actions-container) {
-    opacity: 1;
-    transform: none;
+    padding: 24px 16px 32px;
   }
 }
 </style>

@@ -9,20 +9,25 @@ import logging
 import threading
 
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
+from django.http import FileResponse, Http404
 from django.utils import timezone
 
 from api.models import ApprovalWorkflow, MigrationIntakeSubmission
 from api.permissions.attributes_access import get_request_email, normalize_email
 from api.services.migration_dashboard import (
     build_dashboard_summary,
+    serialize_business_case_file,
     serialize_project_detail,
     serialize_project_overview,
 )
 from api.services.approval_notifications import send_next_stage_notification
 
 logger = logging.getLogger(__name__)
+
+MAX_BUSINESS_CASE_BYTES = 20 * 1024 * 1024
 
 
 def _wants_mine_only(request) -> bool:
@@ -72,6 +77,7 @@ def project_detail(request, project_id: int):
 
 
 @api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 def submit_business_case(request, project_id: int):
     """Record final Business Case submission and begin the approval timeline."""
     try:
@@ -86,8 +92,31 @@ def submit_business_case(request, project_id: int):
         return Response({"error": "Only the project requestor can submit the final Business Case."}, status=status.HTTP_403_FORBIDDEN)
 
     submitted_at = timezone.now()
+    upload = request.FILES.get("file")
+    if upload is not None:
+        allowed = (".doc", ".docx", ".pdf")
+        if not upload.name.lower().endswith(allowed):
+            return Response(
+                {"error": "Only .doc, .docx or .pdf files are accepted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if upload.size > MAX_BUSINESS_CASE_BYTES:
+            return Response(
+                {"error": "File is larger than the 20 MB limit."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        submission.business_case_file.save(upload.name, upload, save=False)
+        submission.business_case_file_name = upload.name
+        submission.business_case_file_size = upload.size
+
     submission.business_case_submission_date = submitted_at
-    update_fields = ["business_case_submission_date", "updated_at"]
+    update_fields = [
+        "business_case_submission_date",
+        "business_case_file",
+        "business_case_file_name",
+        "business_case_file_size",
+        "updated_at",
+    ]
     # Move the dashboard milestone stepper forward now that the business
     # case is in; never downgrade a status that has already progressed further.
     if submission.status == "new":
@@ -107,4 +136,31 @@ def submit_business_case(request, project_id: int):
             logger.exception("Failed to notify Area Head for %s", submission.migration_request_id)
 
     threading.Thread(target=notify_area_head, daemon=True).start()
-    return Response({"status": "success", "submitted_at": submitted_at, "project_status": submission.status})
+    return Response(
+        {
+            "status": "success",
+            "submitted_at": submitted_at,
+            "project_status": submission.status,
+            "file": serialize_business_case_file(submission),
+        }
+    )
+
+
+@api_view(["GET"])
+def download_business_case(request, project_id: int):
+    """Serve the uploaded final Business Case attachment."""
+    try:
+        submission = MigrationIntakeSubmission.objects.get(pk=project_id)
+    except MigrationIntakeSubmission.DoesNotExist:
+        return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    if not submission.business_case_file:
+        return Response({"error": "No Business Case attachment on file."}, status=status.HTTP_404_NOT_FOUND)
+
+    try:
+        handle = submission.business_case_file.open("rb")
+    except (FileNotFoundError, OSError):
+        raise Http404("Business Case attachment is missing from storage.")
+
+    filename = submission.business_case_file_name or submission.business_case_file.name.rsplit("/", 1)[-1]
+    return FileResponse(handle, as_attachment=True, filename=filename)

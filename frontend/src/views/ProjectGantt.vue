@@ -4,7 +4,7 @@
     :subtitle="pageSubtitle"
     tag="Gantt"
     :back-to="backTo"
-    back-label="Back to project"
+    :back-label="backLabel"
     full-width
   >
     <mc-notification
@@ -450,7 +450,14 @@ const currentStageCommentHistory = computed(() => {
 
 const historyDialogHeading = computed(() => 'Plan comment history')
 
-const backTo = computed(() => `/migration-dashboard/${route.params.id}`)
+const backTo = computed(() =>
+  route.query.from === 'toll-gates'
+    ? `/toll-gates?project=${route.query.project || route.params.id}`
+    : `/migration-dashboard/${route.params.id}`
+)
+const backLabel = computed(() =>
+  route.query.from === 'toll-gates' ? 'Back to toll gates' : 'Back to project'
+)
 
 const pageTitle = computed(() =>
   project.value?.projectName ? `Gantt — ${project.value.projectName}` : 'Project Gantt'

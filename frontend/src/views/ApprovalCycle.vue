@@ -4,10 +4,15 @@
       <!-- ===================== VIEW 1 — APPROVAL INBOX ===================== -->
       <section v-if="view === 'inbox'" class="ac-shell" aria-labelledby="ac-inbox-title">
         <nav class="ac-crumbs" aria-label="Breadcrumb">
-          <a href="#" @click.prevent>Home</a>
+          <router-link v-if="cameFromTollGates" :to="tollGatesBackTo">Toll Gates</router-link>
+          <a v-else href="#" @click.prevent>Home</a>
           <span aria-hidden="true">/</span>
           <span class="ac-crumbs-current">Approvals</span>
         </nav>
+
+        <router-link v-if="cameFromTollGates" class="ac-back" :to="tollGatesBackTo">
+          &lsaquo; Back to toll gates
+        </router-link>
 
         <h1 id="ac-inbox-title" class="ac-title">Approvals</h1>
         <p class="ac-subtitle">
@@ -459,11 +464,18 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { regionAreaMapping } from '../data/regionAreaMapping.js'
 
+const route = useRoute()
 const router = useRouter()
+
+const cameFromTollGates = computed(() => route.query.from === 'toll-gates')
+const tollGatesBackTo = computed(() =>
+  route.query.project ? `/toll-gates?project=${route.query.project}` : '/toll-gates'
+)
+
 const view = ref('inbox')
 const loading = ref(false)
 const loadError = ref('')
@@ -977,6 +989,19 @@ async function decideParallel(role, action) {
   margin: 0 auto;
   max-width: 1400px;
   width: 100%;
+}
+
+.ac-back {
+  color: var(--ac-blue);
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-decoration: none;
+}
+
+.ac-back:hover {
+  text-decoration: underline;
 }
 
 .ac-crumbs {

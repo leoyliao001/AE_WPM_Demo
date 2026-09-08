@@ -21,6 +21,16 @@ def _serialize_approval_file(submission):
     }
 
 
+def serialize_business_case_file(submission):
+    if not submission.business_case_file:
+        return None
+    return {
+        "name": submission.business_case_file_name or submission.business_case_file.name.rsplit("/", 1)[-1],
+        "size": submission.business_case_file_size,
+        "url": f"/api/migration-dashboard/projects/{submission.pk}/business-case/file/",
+    }
+
+
 def _primary_site(submission):
     sites = (submission.default_location_strategies or []) + (submission.custom_location_strategies or [])
     for site in sites:
@@ -92,6 +102,7 @@ def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
                 if submission.business_case_submission_date
                 else ""
             ),
+            "businessCaseFile": serialize_business_case_file(submission),
             "updatedAt": submission.updated_at.isoformat() if submission.updated_at else "",
         }
     )

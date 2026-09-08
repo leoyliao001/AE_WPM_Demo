@@ -47,6 +47,9 @@ backend/scripts/run_sqlite_to_mssql_sync_as_system.cmd
 # Local Django settings (machine-specific DB host/creds) - do not commit
 backend/config/settings.py
 
+# Uploaded artefacts (Business Case attachments)
+backend/media/
+
 # npm registry auth (never commit)
 .npmrc
 
