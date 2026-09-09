@@ -212,5 +212,18 @@ export const buildDetailSections = (project) => [
     accent: '#F3880E',
     icon: 'mi-exclamation-triangle',
     items: [{ label: 'Risks', value: project.risks || '—', multiline: true }]
+  },
+  {
+    id: 'attachments',
+    title: 'Attachments & Supporting Documents',
+    accent: '#0077B8',
+    icon: 'mi-file',
+    items: [
+      {
+        label: 'Attachments',
+        value: project.attachments || [],
+        isAttachments: true
+      }
+    ]
   }
 ]

@@ -129,6 +129,8 @@ export const buildSubmissionPreview = ({
 
   customApprovalFileMeta,
 
+  selectedAttachments = [],
+
   migrationTypes,
 
   requestor = REQUESTOR_PLACEHOLDER,
@@ -209,7 +211,17 @@ export const buildSubmissionPreview = ({
 
     jobLevelTotal: Number(form.jl2 || 0) + Number(form.jl3 || 0) + Number(form.jl4 || 0),
 
-    risks: form.risks.trim()
+    risks: form.risks.trim(),
+
+    attachments: (selectedAttachments || []).map((file) => ({
+
+      name: file.name,
+
+      size: file.size,
+
+      type: file.type
+
+    }))
 
   }
 
@@ -380,6 +392,30 @@ export const previewSections = (preview) => [
         value: preview.risks || '—',
 
         multiline: true
+
+      }
+
+    ]
+
+  },
+
+  {
+
+    id: 'attachments',
+
+    title: 'Attachments & Supporting Documents',
+
+    items: [
+
+      {
+
+        label: 'Uploaded Files',
+
+        value: preview.attachments?.length
+
+          ? preview.attachments.map((f) => f.name).join(', ')
+
+          : 'None'
 
       }
 

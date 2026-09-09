@@ -55,6 +55,28 @@ class MigrationIntakeSubmission(models.Model):
         return f"{self.migration_request_id} — {self.project_name}"
 
 
+class MigrationIntakeAttachment(models.Model):
+    """Attachments for Migration Project Intake Form."""
+
+    submission = models.ForeignKey(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    file = models.FileField(upload_to="intake_attachments/%Y/%m/", max_length=255)
+    file_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField(null=True, blank=True)
+    file_type = models.CharField(max_length=128, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "migration_intake_attachment"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.submission.migration_request_id} — {self.file_name}"
+
+
 class FpoMapping(models.Model):
     """FPO extended list — hierarchical process / FPO mapping."""
 

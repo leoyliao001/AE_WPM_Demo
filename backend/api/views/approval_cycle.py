@@ -19,6 +19,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import ApprovalWorkflow, MigrationIntakeSubmission
+from api.services.migration_dashboard import serialize_intake_attachments
 from api.permissions.approval_access import (
     get_request_email,
     load_approval_input_rows,
@@ -171,6 +172,7 @@ def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: di
             getattr(workflow, "business_case_submitted_date", None)
             or submission.business_case_submission_date
         ),
+        "attachments": serialize_intake_attachments(submission),
         "status": submission.status,
         "step": progress["step"],
         "totalSteps": progress["seqLen"] + len(PARALLEL_ROLES),

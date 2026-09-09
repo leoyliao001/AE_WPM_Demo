@@ -172,10 +172,33 @@
             v-for="item in section.items"
             :key="item.label"
             class="detail-item"
-            :class="{ 'detail-item--multiline': item.multiline }"
+            :class="{ 'detail-item--multiline': item.multiline || item.isAttachments }"
           >
             <dt>{{ item.label }}</dt>
-            <dd>{{ item.value }}</dd>
+            <dd v-if="item.isAttachments">
+              <div v-if="!item.value || !item.value.length" class="empty-attachment-text">
+                No attachments uploaded.
+              </div>
+              <div v-else class="attachments-download-list">
+                <a
+                  v-for="att in item.value"
+                  :key="att.id"
+                  :href="att.url"
+                  class="attachment-download-btn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                >
+                  <mc-icon icon="mi-file" size="18" />
+                  <span class="attachment-name">{{ att.name }}</span>
+                  <span v-if="att.size" class="attachment-size">
+                    ({{ Math.round(att.size / 1024) }} KB)
+                  </span>
+                  <mc-icon icon="mi-arrow-down" size="16" />
+                </a>
+              </div>
+            </dd>
+            <dd v-else>{{ item.value }}</dd>
           </div>
         </dl>
       </section>
@@ -983,6 +1006,53 @@ watch(() => route.params.id, loadProject)
   display: flex;
   justify-content: flex-end;
   padding-top: 8px;
+}
+
+.attachments-download-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.attachment-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #f0f7fc;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  color: #0284c7;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.attachment-download-btn:hover {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0369a1;
+  text-decoration: none;
+}
+
+.attachment-name {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.empty-attachment-text {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 13px;
 }
 
 @media (max-width: 640px) {

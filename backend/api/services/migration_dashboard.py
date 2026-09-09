@@ -31,6 +31,19 @@ def serialize_business_case_file(submission):
     }
 
 
+def serialize_intake_attachments(submission: MigrationIntakeSubmission) -> list[dict]:
+    return [
+        {
+            "id": att.id,
+            "name": att.file_name,
+            "size": att.file_size,
+            "type": att.file_type,
+            "url": f"/api/migration-intake/attachments/{att.id}/download/",
+        }
+        for att in submission.attachments.all()
+    ]
+
+
 def _primary_site(submission):
     sites = (submission.default_location_strategies or []) + (submission.custom_location_strategies or [])
     for site in sites:
@@ -103,6 +116,7 @@ def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
                 else ""
             ),
             "businessCaseFile": serialize_business_case_file(submission),
+            "attachments": serialize_intake_attachments(submission),
             "updatedAt": submission.updated_at.isoformat() if submission.updated_at else "",
         }
     )

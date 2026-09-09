@@ -114,6 +114,17 @@ def _serialize_row(item: MigrationIntakeSubmission) -> dict:
         "jl4": item.jl4 or "0",
         "job_level_total": str(item.job_level_total or 0),
         "risks": item.risks or "",
+        "attachment_names": ", ".join(att.file_name for att in item.attachments.all()),
+        "attachments": [
+            {
+                "id": att.id,
+                "name": att.file_name,
+                "size": att.file_size,
+                "type": att.file_type,
+                "url": f"/api/migration-intake/attachments/{att.id}/download/",
+            }
+            for att in item.attachments.all()
+        ],
     }
 
 

@@ -582,6 +582,75 @@
           </div>
         </section>
 
+        <!-- Section 5 -->
+        <section class="form-section form-section--optional" :style="{ '--section-accent': '#0077B8' }">
+          <div class="section-head">
+            <span class="section-icon"><mc-icon icon="mi-paperclip" size="24" /></span>
+            <div>
+              <div class="section-title-row">
+                <h2 class="section-title">Attachments & Supporting Documents</h2>
+                <mc-tag appearance="neutral" fit="small" label="Optional" />
+              </div>
+              <p class="section-desc">Upload supporting documents (PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP, Images).</p>
+            </div>
+          </div>
+
+          <div class="section-body">
+            <div
+              class="attachment-dropzone"
+              :class="{ 'attachment-dropzone--active': attachmentDragOver }"
+              @dragover.prevent="attachmentDragOver = true"
+              @dragleave.prevent="attachmentDragOver = false"
+              @drop.prevent="onAttachmentDrop"
+            >
+              <input
+                ref="attachmentFileInputRef"
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.ppt,.pptx,.csv,.txt,.zip,.png,.jpg,.jpeg"
+                class="hidden-file-input"
+                @change="onAttachmentSelected"
+              />
+              <div class="dropzone-content">
+                <mc-icon icon="mi-upload" size="32" />
+                <p class="dropzone-title">
+                  Drag & drop files here, or
+                  <button type="button" class="dropzone-browse-btn" @click="triggerAttachmentBrowse">
+                    Browse Files
+                  </button>
+                </p>
+                <p class="dropzone-hint">
+                  Supports PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP, Images (up to 50 MB per file)
+                </p>
+              </div>
+            </div>
+
+            <div v-if="selectedAttachments.length" class="attachment-list">
+              <div
+                v-for="(file, idx) in selectedAttachments"
+                :key="`${file.name}-${idx}`"
+                class="attachment-item"
+              >
+                <div class="attachment-item-info">
+                  <mc-icon icon="mi-file" size="20" />
+                  <div class="attachment-item-text">
+                    <span class="attachment-item-name">{{ file.name }}</span>
+                    <span class="attachment-item-size">{{ formatFileSize(file.size) }}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="attachment-remove-btn"
+                  title="Remove file"
+                  @click="removeAttachment(idx)"
+                >
+                  <mc-icon icon="mi-x" size="18" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <footer class="form-footer">
           <div class="footer-target">
             <mc-icon icon="mi-arrow-down" size="20" />
@@ -969,6 +1038,7 @@ const openSubmissionPreview = () => {
   submissionPreview.value = buildSubmissionPreview({
     form,
     customApprovalFileMeta,
+    selectedAttachments: selectedAttachments.value,
     migrationTypes,
     requestor
   })
@@ -1318,6 +1388,73 @@ const showNotice = (type, title, message) => {
   notice.message = message
 }
 
+const ALLOWED_ATTACHMENT_EXTENSIONS = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.xlsm',
+  '.ppt',
+  '.pptx',
+  '.csv',
+  '.txt',
+  '.zip',
+  '.png',
+  '.jpg',
+  '.jpeg'
+]
+const MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
+
+const selectedAttachments = ref([])
+const attachmentFileInputRef = ref(null)
+const attachmentDragOver = ref(false)
+
+const triggerAttachmentBrowse = () => {
+  attachmentFileInputRef.value?.click()
+}
+
+const addAttachmentFiles = (files) => {
+  const invalidFiles = []
+  for (const file of files) {
+    const ext = '.' + file.name.split('.').pop().toLowerCase()
+    if (!ALLOWED_ATTACHMENT_EXTENSIONS.includes(ext)) {
+      invalidFiles.push(`${file.name} (unsupported format)`)
+      continue
+    }
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      invalidFiles.push(`${file.name} (exceeds 50MB limit)`)
+      continue
+    }
+    if (!selectedAttachments.value.some((f) => f.name === file.name && f.size === file.size)) {
+      selectedAttachments.value.push(file)
+    }
+  }
+  if (invalidFiles.length) {
+    showNotice(
+      'error',
+      'File upload warning',
+      `The following files could not be added: ${invalidFiles.join(', ')}`
+    )
+  }
+}
+
+const onAttachmentSelected = (event) => {
+  const files = Array.from(event.target.files || [])
+  addAttachmentFiles(files)
+  if (event.target) event.target.value = ''
+}
+
+const onAttachmentDrop = (event) => {
+  attachmentDragOver.value = false
+  const files = Array.from(event.dataTransfer?.files || [])
+  addAttachmentFiles(files)
+}
+
+const removeAttachment = (index) => {
+  selectedAttachments.value.splice(index, 1)
+}
+
 const clearNotice = () => {
   notice.message = ''
 }
@@ -1348,8 +1485,17 @@ const onSubmit = async () => {
 
   submitting.value = true
   try {
-    const { data } = await axios.post('/api/migration-intake/submit/', submissionPreview.value)
+    const formData = new FormData()
+    formData.append('payload', JSON.stringify(submissionPreview.value))
+    for (const file of selectedAttachments.value) {
+      formData.append('attachments', file)
+    }
+
+    const { data } = await axios.post('/api/migration-intake/submit/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
     localStorage.removeItem(DRAFT_KEY)
+    selectedAttachments.value = []
     previewDialogOpen.value = false
     showNotice(
       'success',
@@ -1430,6 +1576,115 @@ onMounted(loadDraft)
   flex-wrap: wrap;
   gap: 12px;
   padding: 16px 20px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.attachment-dropzone {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  background: #f9fafb;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.attachment-dropzone--active {
+  border-color: #0077b8;
+  background: #eff6ff;
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropzone-title {
+  font-size: 14px;
+  color: #374151;
+  margin: 0;
+}
+
+.dropzone-browse-btn {
+  background: none;
+  border: none;
+  color: #0077b8;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-size: 14px;
+}
+
+.dropzone-browse-btn:hover {
+  color: #005a87;
+}
+
+.dropzone-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.attachment-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attachment-item-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.attachment-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  word-break: break-all;
+}
+
+.attachment-item-size {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.attachment-remove-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment-remove-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
 }
 
 .flow-step {

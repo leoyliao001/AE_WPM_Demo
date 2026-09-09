@@ -308,6 +308,36 @@
               </dl>
             </div>
 
+            <!-- Slot 4 — attachments -->
+            <div class="ac-card">
+              <h2 class="ac-card-title">Intake Attachments</h2>
+              <div v-if="detail.attachments && detail.attachments.length" class="ac-attachments-list">
+                <a
+                  v-for="att in detail.attachments"
+                  :key="att.id"
+                  :href="att.url"
+                  class="ac-doc-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true" width="16" height="16">
+                    <path
+                      d="M11.5 2.5H5.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V6.5l-4-4Z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linejoin="round"
+                    />
+                    <path d="M11.5 2.5v4h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+                  </svg>
+                  <span>{{ att.name }}</span>
+                  <span v-if="att.size" class="ac-metric-note">({{ Math.round(att.size / 1024) }} KB)</span>
+                </a>
+              </div>
+              <p v-else class="ac-doc-empty">No intake attachments uploaded.</p>
+            </div>
+
             <div class="ac-card">
               <h2 class="ac-card-title">Activity</h2>
               <ol class="ac-activity">

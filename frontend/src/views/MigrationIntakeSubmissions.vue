@@ -159,7 +159,8 @@ const ALL_COLUMNS = [
   { key: 'jl3', label: 'JL3', width: 70 },
   { key: 'jl4', label: 'JL4', width: 70 },
   { key: 'job_level_total', label: 'Job Level Total', width: 120 },
-  { key: 'risks', label: 'Risks', width: 220 }
+  { key: 'risks', label: 'Risks', width: 220 },
+  { key: 'attachment_names', label: 'Attachments', width: 200 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)

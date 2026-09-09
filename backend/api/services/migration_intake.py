@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from api.models import MigrationIntakeSubmission
+from api.models import MigrationIntakeAttachment, MigrationIntakeSubmission
 
 
 def _as_list(value):
@@ -37,10 +37,10 @@ def _normalize_pairs(pairs, keys):
 
 
 @transaction.atomic
-def create_submission_from_payload(payload: dict) -> MigrationIntakeSubmission:
+def create_submission_from_payload(payload: dict, files=None) -> MigrationIntakeSubmission:
     approval_file = payload.get("customApprovalFile") or {}
 
-    return MigrationIntakeSubmission.objects.create(
+    submission = MigrationIntakeSubmission.objects.create(
         migration_request_id=payload["migrationRequestId"],
         requested_date=payload.get("requestedDate", ""),
         requestor=payload.get("requestor", ""),
@@ -81,3 +81,14 @@ def create_submission_from_payload(payload: dict) -> MigrationIntakeSubmission:
         job_level_total=int(payload.get("jobLevelTotal") or 0),
         risks=payload.get("risks", ""),
     )
+
+    for uploaded_file in (files or []):
+        MigrationIntakeAttachment.objects.create(
+            submission=submission,
+            file=uploaded_file,
+            file_name=uploaded_file.name,
+            file_size=uploaded_file.size,
+            file_type=getattr(uploaded_file, "content_type", "") or "",
+        )
+
+    return submission
