@@ -477,7 +477,6 @@ const ganttStateById = computed(() => {
     let state = 'pending'
     if (task.completedAt) state = 'complete'
     else if (task.actualStatus === 'late') state = 'at_risk'
-    else if (task.plan) state = 'active'
     map[task.id] = state
   }
   return map

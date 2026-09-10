@@ -151,6 +151,7 @@
             :style="{ backgroundColor: barType.color }"
           />
           <span class="gantt-legend__label">{{ barType.label }}</span>
+          <span class="gantt-legend__hint">{{ barType.hint }}</span>
         </template>
       </button>
       <span class="gantt-legend__tip">Click to show / hide · multi-select</span>

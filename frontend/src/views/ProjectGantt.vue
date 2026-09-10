@@ -493,7 +493,11 @@ const applyGanttPayload = (data, projectData = null) => {
   const nextTemplate = Array.isArray(data?.template_tasks)
     ? data.template_tasks
     : projectGanttFixture.tasks
-  tasks.value = cloneTasks(nextTasks.length ? nextTasks : projectGanttFixture.tasks)
+  const initialTasks = cloneTasks(nextTasks.length ? nextTasks : projectGanttFixture.tasks)
+  tasks.value = initialTasks.map((task) => ({
+    ...task,
+    plan: task.plan || (task.standard ? { ...task.standard } : null)
+  }))
   templateTasks.value = cloneTasks(nextTemplate)
 
   if (Array.isArray(data?.weeks) && data.weeks.length) {
