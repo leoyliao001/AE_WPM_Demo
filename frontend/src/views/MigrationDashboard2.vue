@@ -368,6 +368,17 @@
               @optionselected="(e) => setMultiFilterFromEvent(bowlerProductFilters.countries, e)">
               <mc-option v-for="option in bowlerCountryOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
             </mc-multi-select>
+
+            <mc-multi-select
+              ref="bowlerGscLeaderMultiEl"
+              :key="'bowler-gsc-leader-ms-' + bowlerGscLeaderKey"
+              listsearch
+              label="GSC Leaders"
+              :value.prop="bowlerProductFilters.gscLeaders"
+              @input="(e) => setMultiFilterFromEvent(bowlerProductFilters.gscLeaders, e)"
+              @optionselected="(e) => setMultiFilterFromEvent(bowlerProductFilters.gscLeaders, e)">
+              <mc-option v-for="option in bowlerGscLeaderOptions" :key="option" :value="String(option)">{{ option }}</mc-option>
+            </mc-multi-select>
           </section>
 
           <section class="kpi-row kpi-row--compact">
@@ -641,7 +652,8 @@ const bowlerProductFilters = ref({
   products: [],
   regions: [],
   areas: [],
-  countries: []
+  countries: [],
+  gscLeaders: []
 })
 
 const pages = [
@@ -795,6 +807,7 @@ const bowlerProductMultiEl = ref(null)
 const bowlerRegionMultiEl = ref(null)
 const bowlerAreaMultiEl = ref(null)
 const bowlerCountryMultiEl = ref(null)
+const bowlerGscLeaderMultiEl = ref(null)
 
 // Keys to force mc-multi-select remount when option sets change
 const projectHealthMigrationTypeKey = computed(() => projectHealthMigrationTypeOptions.value.length)
@@ -807,6 +820,7 @@ const bowlerProductKey = computed(() => bowlerProductOptions.value.length)
 const bowlerRegionKey = computed(() => bowlerRegionOptions.value.length)
 const bowlerAreaKey = computed(() => bowlerAreaOptions.value.length)
 const bowlerCountryKey = computed(() => bowlerCountryOptions.value.length)
+const bowlerGscLeaderKey = computed(() => bowlerGscLeaderOptions.value.length)
 
 // Helper to normalize various incoming shapes into string arrays
 const normalizeToStringList = (value) => {
@@ -871,6 +885,9 @@ const syncAllMultiFiltersFromDom = () => {
   if (bowlerCountryMultiEl.value?.value != null) {
     bowlerProductFilters.value.countries = normalizeToStringList(bowlerCountryMultiEl.value.value)
   }
+  if (bowlerGscLeaderMultiEl.value?.value != null) {
+    bowlerProductFilters.value.gscLeaders = normalizeToStringList(bowlerGscLeaderMultiEl.value.value)
+  }
 }
 
 const filteredMultiOptions = (options, query) => {
@@ -897,6 +914,7 @@ const toggleMultiValue = (key, value) => {
     if (key === 'bowlerRegions') return bowlerProductFilters.value.regions
     if (key === 'bowlerAreas') return bowlerProductFilters.value.areas
     if (key === 'bowlerCountries') return bowlerProductFilters.value.countries
+    if (key === 'bowlerGscLeaders') return bowlerProductFilters.value.gscLeaders
     return projectHealthFilters.value[key] ?? []
   })()
 
@@ -906,6 +924,7 @@ const toggleMultiValue = (key, value) => {
   if (key === 'bowlerRegions') bowlerProductFilters.value.regions = next
   if (key === 'bowlerAreas') bowlerProductFilters.value.areas = next
   if (key === 'bowlerCountries') bowlerProductFilters.value.countries = next
+  if (key === 'bowlerGscLeaders') bowlerProductFilters.value.gscLeaders = next
   if (key in projectHealthFilters.value) projectHealthFilters.value[key] = next
 }
 
@@ -919,7 +938,8 @@ const toggleSelectAll = (key) => {
     bowlerProducts: bowlerProductOptions.value,
     bowlerRegions: bowlerRegionOptions.value,
     bowlerAreas: bowlerAreaOptions.value,
-    bowlerCountries: bowlerCountryOptions.value
+    bowlerCountries: bowlerCountryOptions.value,
+    bowlerGscLeaders: bowlerGscLeaderOptions.value
   }
   const target = source[key] || []
   if (key in projectHealthFilters.value) {
@@ -929,6 +949,7 @@ const toggleSelectAll = (key) => {
   if (key === 'bowlerRegions') bowlerProductFilters.value.regions = bowlerProductFilters.value.regions.length === target.length ? [] : [...target]
   if (key === 'bowlerAreas') bowlerProductFilters.value.areas = bowlerProductFilters.value.areas.length === target.length ? [] : [...target]
   if (key === 'bowlerCountries') bowlerProductFilters.value.countries = bowlerProductFilters.value.countries.length === target.length ? [] : [...target]
+  if (key === 'bowlerGscLeaders') bowlerProductFilters.value.gscLeaders = bowlerProductFilters.value.gscLeaders.length === target.length ? [] : [...target]
 }
 
 const selectAllBowlerProductFilters = async () => {
@@ -936,6 +957,7 @@ const selectAllBowlerProductFilters = async () => {
   bowlerProductFilters.value.regions = [...bowlerRegionOptions.value]
   bowlerProductFilters.value.areas = [...bowlerAreaOptions.value]
   bowlerProductFilters.value.countries = [...bowlerCountryOptions.value]
+  bowlerProductFilters.value.gscLeaders = [...bowlerGscLeaderOptions.value]
   await nextTick()
 }
 
@@ -1546,15 +1568,42 @@ const bowlerCountryOptions = computed(() => {
   )
 })
 
+// GSC Leader isn't tracked on migration intake projects directly — it comes from
+// BPM ROFO/Actual rows, keyed by product. Build a product -> leader set lookup
+// so the Bowler Product Level tab can still filter product tags by GSC Leader.
+const bowlerProductGscLeaderMap = computed(() => {
+  const map = new Map()
+  const addRow = (row) => {
+    const product = String(row.product || '').trim()
+    const leader = String(row.gsc_leader || '').trim()
+    if (!product || !leader) return
+    if (!map.has(product)) map.set(product, new Set())
+    map.get(product).add(leader)
+  }
+  bpmRofoRows.value.forEach(addRow)
+  bpmActualRows.value.forEach(addRow)
+  return map
+})
+
+const bowlerGscLeaderOptions = computed(() => {
+  const values = [
+    ...bpmRofoRows.value.map((row) => row.gsc_leader),
+    ...bpmActualRows.value.map((row) => row.gsc_leader)
+  ]
+  return uniqStrings(values)
+})
+
 const filteredBowlerProjects = computed(() => {
   const selectedProducts = bowlerProductFilters.value.products.filter(Boolean)
   const selectedRegions = bowlerProductFilters.value.regions.filter(Boolean)
   const selectedAreas = bowlerProductFilters.value.areas.filter(Boolean)
   const selectedCountries = bowlerProductFilters.value.countries.filter(Boolean)
+  const selectedGscLeaders = bowlerProductFilters.value.gscLeaders.filter(Boolean)
   const allProductsSelected = selectedProducts.length === bowlerProductOptions.value.length && bowlerProductOptions.value.length > 0
   const allRegionsSelected = selectedRegions.length === bowlerRegionOptions.value.length && bowlerRegionOptions.value.length > 0
   const allAreasSelected = selectedAreas.length === bowlerAreaOptions.value.length && bowlerAreaOptions.value.length > 0
   const allCountriesSelected = selectedCountries.length === bowlerCountryOptions.value.length && bowlerCountryOptions.value.length > 0
+  const allGscLeadersSelected = selectedGscLeaders.length === bowlerGscLeaderOptions.value.length && bowlerGscLeaderOptions.value.length > 0
 
   return filteredProjects.value.filter((project) => {
     if (!allProductsSelected && selectedProducts.length) {
@@ -1573,6 +1622,14 @@ const filteredBowlerProjects = computed(() => {
       const matchesCountry = projectCountries.some((item) => selectedCountries.includes(item))
       if (!matchesCountry) return false
     }
+    if (!allGscLeadersSelected && selectedGscLeaders.length) {
+      const projectProducts = (project.products ?? []).map((item) => String(item).trim())
+      const matchesGscLeader = projectProducts.some((product) => {
+        const leaders = bowlerProductGscLeaderMap.value.get(product)
+        return leaders && selectedGscLeaders.some((leader) => leaders.has(leader))
+      })
+      if (!matchesGscLeader) return false
+    }
     return true
   })
 })
@@ -1583,7 +1640,8 @@ const bowlerHasActiveFilters = computed(() => {
     isFullSelection(bowlerProductFilters.value.products, bowlerProductOptions.value) &&
     isFullSelection(bowlerProductFilters.value.regions, bowlerRegionOptions.value) &&
     isFullSelection(bowlerProductFilters.value.areas, bowlerAreaOptions.value) &&
-    isFullSelection(bowlerProductFilters.value.countries, bowlerCountryOptions.value)
+    isFullSelection(bowlerProductFilters.value.countries, bowlerCountryOptions.value) &&
+    isFullSelection(bowlerProductFilters.value.gscLeaders, bowlerGscLeaderOptions.value)
   )
 })
 
