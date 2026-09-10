@@ -84,15 +84,31 @@ import {
 } from '../utils/handsontableColumnWidths.js'
 
 const ALL_COLUMNS = [
+  { key: 'status', label: 'Status', width: 100 },
   { key: 'project_name', label: 'Project Name', width: 220 },
   { key: 'country', label: 'Country', width: 140 },
   { key: 'product', label: 'Product', width: 180 },
   { key: 'region', label: 'Region', width: 120 },
   { key: 'area', label: 'Area', width: 160 },
+  { key: 'gsc_site', label: 'GSC Site to be Offshored', width: 160 },
+  { key: 'function', label: 'Function', width: 160 },
+  { key: 'function_id_description', label: 'Function ID + Description', width: 200 },
+  { key: 'cost_center', label: 'Cost Center', width: 140 },
+  { key: 'pid', label: 'PID', width: 120 },
+  { key: 'bu', label: 'BU', width: 100 },
   { key: 'onboarding_month', label: 'Onboarding Month', width: 180 },
   { key: 'year', label: 'Year', width: 100 },
   { key: 'bpm_owner', label: 'BPM Owner', width: 180 },
+  { key: 'gsc_leader', label: 'GSC Leaders', width: 160 },
+  { key: 'gsc1_leader', label: 'GSC-1 Leaders', width: 160 },
+  { key: 'part_not_part_of_rofo', label: 'Part/Not part of ROFO', width: 180 },
+  { key: 'frontline_staff_cost_per_fte', label: 'Frontline Staff Cost per FTE', width: 180 },
+  { key: 'gsc_staff_cost_per_fte', label: 'GSC Staff Cost per FTE', width: 180 },
+  { key: 'project_cost', label: 'Project Cost', width: 140 },
+  { key: 'x_column', label: 'X', width: 80 },
+  { key: 'base_pids', label: 'Base PIDs', width: 140 },
   { key: 'positions_to_be_offshored_in_gsc', label: 'Positions to be Offshored in GSC', width: 180 },
+  { key: 'positions_to_be_released_in_frontline', label: 'Positions to be Released in Frontline', width: 200 },
   { key: 'rofo_value', label: 'ROFO Value', width: 150 },
   { key: 'notes', label: 'Notes', width: 260 }
 ]
@@ -433,14 +449,31 @@ async function handleUpload(event) {
         })
         const positions = normalized.positions_to_be_offshored_in_gsc || normalized.positions_to_be_offshored || normalized.positions || normalized.rofo_value || normalized.rofo || normalized.value || ''
         return {
+          status: normalized.status || '',
           project_name: normalized.project_name || normalized.project || '',
+          country: normalized.country || '',
           product: normalized.product || normalized.product_name || '',
           region: normalized.region || '',
           area: normalized.area || '',
+          gsc_site: normalized.gsc_site || normalized.gsc_site_to_be_offshored || '',
+          function: normalized.function || '',
+          function_id_description: normalized.function_id_description || '',
+          cost_center: normalized.cost_center || '',
+          pid: normalized.pid || '',
+          bu: normalized.bu || '',
           onboarding_month: normalized.onboarding_month || normalized.onboarding || '',
           year: normalized.year || selectedYear.value,
           bpm_owner: normalized.bpm_owner || normalized.owner || '',
+          gsc_leader: normalized.gsc_leader || normalized.gsc_leaders || '',
+          gsc1_leader: normalized.gsc1_leader || normalized.gsc_1_leader || normalized.gsc_1_leaders || '',
+          part_not_part_of_rofo: normalized.part_not_part_of_rofo || '',
+          frontline_staff_cost_per_fte: normalized.frontline_staff_cost_per_fte || '',
+          gsc_staff_cost_per_fte: normalized.gsc_staff_cost_per_fte || '',
+          project_cost: normalized.project_cost || '',
+          x_column: normalized.x || '',
+          base_pids: normalized.base_pids || '',
           positions_to_be_offshored_in_gsc: positions,
+          positions_to_be_released_in_frontline: normalized.positions_to_be_released_in_frontline || '',
           rofo_value: positions,
           notes: normalized.notes || normalized.comment || ''
         }
