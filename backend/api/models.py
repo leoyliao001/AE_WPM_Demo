@@ -297,6 +297,7 @@ class BpmRofo(models.Model):
     """BPM ROFO planning table by onboarding month and year."""
 
     project_name = models.CharField(max_length=255, blank=True, default="")
+    country = models.CharField(max_length=128, blank=True, default="")
     product = models.CharField(max_length=255, blank=True, default="")
     region = models.CharField(max_length=64, blank=True, default="")
     area = models.CharField(max_length=128, blank=True, default="")
@@ -325,6 +326,7 @@ class BpmActual(models.Model):
     """BPM Actuals table by onboarding month and year."""
 
     project_name = models.CharField(max_length=255, blank=True, default="")
+    country = models.CharField(max_length=128, blank=True, default="")
     product = models.CharField(max_length=255, blank=True, default="")
     region = models.CharField(max_length=64, blank=True, default="")
     area = models.CharField(max_length=128, blank=True, default="")

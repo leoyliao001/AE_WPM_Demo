@@ -85,6 +85,7 @@ import {
 
 const ALL_COLUMNS = [
   { key: 'project_name', label: 'Project Name', width: 220 },
+  { key: 'country', label: 'Country', width: 140 },
   { key: 'product', label: 'Product', width: 180 },
   { key: 'region', label: 'Region', width: 120 },
   { key: 'area', label: 'Area', width: 160 },

@@ -144,12 +144,22 @@ def build_dashboard_summary(submissions) -> dict:
     by_status = {}
     by_region = {}
     by_product = {}
+    unique_areas = set()
+    unique_countries = set()
 
     for submission in submissions:
         fte = _parse_fte(submission.fte_number)
         total_fte += fte
         _add_bucket(by_status, submission.status, fte)
         _add_bucket(by_region, submission.region, fte)
+        for area in submission.areas or []:
+            area_name = str(area).strip()
+            if area_name:
+                unique_areas.add(area_name)
+        for country in submission.countries or []:
+            country_name = str(country).strip()
+            if country_name:
+                unique_countries.add(country_name)
         for product in submission.products or []:
             product_name = str(product).strip()
             if product_name:
@@ -161,6 +171,8 @@ def build_dashboard_summary(submissions) -> dict:
         "byStatus": by_status,
         "byRegion": by_region,
         "byProduct": by_product,
+        "uniqueAreas": sorted(unique_areas),
+        "uniqueCountries": sorted(unique_countries),
     }
 
     # TG-level status summary (counts + fte per TG per RAG-like bucket)

@@ -283,13 +283,34 @@
                           </tr>
 
                           <template v-if="isTypeExpanded(row.key, typeRow.type)">
-                            <tr v-for="statusRow in typeRow.statuses" :key="row.key + '::' + typeRow.type + '::' + statusRow.status" class="nested-row level-2">
-                              <td>{{ statusRow.status }}</td>
-                              <td>{{ statusRow.count }}</td>
-                              <td>{{ formatWholeNumber(statusRow.migratable) }}</td>
-                              <td>{{ formatWholeNumber(statusRow.actuals) }}</td>
-                              <td>{{ formatWholeNumber(statusRow.gap) }}</td>
-                            </tr>
+                            <template v-for="statusRow in typeRow.statuses" :key="row.key + '::' + typeRow.type + '::' + statusRow.status">
+                              <tr class="nested-row level-2">
+                                <td>
+                                  <button class="expand-btn small" @click.stop="toggleStatus(row.key, typeRow.type, statusRow.status)">{{ isStatusExpanded(row.key, typeRow.type, statusRow.status) ? '−' : '+' }}</button>
+                                  {{ statusRow.status }}
+                                </td>
+                                <td>{{ statusRow.count }}</td>
+                                <td>{{ formatWholeNumber(statusRow.migratable) }}</td>
+                                <td>{{ formatWholeNumber(statusRow.actuals) }}</td>
+                                <td>{{ formatWholeNumber(statusRow.gap) }}</td>
+                              </tr>
+
+                              <template v-if="isStatusExpanded(row.key, typeRow.type, statusRow.status)">
+                                <tr v-for="project in statusRow.projects" :key="project.key" class="nested-row level-3">
+                                  <td class="level-3__label">
+                                    <span class="level-3__bullet" aria-hidden="true">•</span>
+                                    <span>
+                                      <strong>{{ project.label }}</strong>
+                                      <span v-if="project.migrationRequestId" class="level-3__meta">{{ project.migrationRequestId }}</span>
+                                    </span>
+                                  </td>
+                                  <td>1</td>
+                                  <td>{{ formatWholeNumber(project.migratable) }}</td>
+                                  <td>{{ formatWholeNumber(project.actuals) }}</td>
+                                  <td>{{ formatWholeNumber(project.gap) }}</td>
+                                </tr>
+                              </template>
+                            </template>
                           </template>
                         </template>
                       </template>
@@ -410,6 +431,7 @@
                 <thead>
                   <tr>
                     <th>Product</th>
+                    <th class="table-type-head"></th>
                     <th v-for="month in bpmMonthColumns" :key="month.key">{{ month.label }}</th>
                     <th>Total</th>
                   </tr>
@@ -417,17 +439,17 @@
                 <tbody>
                   <template v-for="group in productMonthlyRows" :key="group.product">
                     <tr v-for="rowType in ['target', 'actual', 'gap']" :key="`${group.product}-${rowType}`">
-                      <td v-if="rowType === 'target'" class="table-group-label">{{ group.product }}</td>
-                      <td v-else class="table-sub-label">{{ rowType === 'target' ? 'Target' : rowType === 'actual' ? 'Actual' : 'GAP' }}</td>
+                      <td v-if="rowType === 'target'" class="table-group-label" :rowspan="3">{{ group.product }}</td>
+                      <td class="table-sub-label">{{ rowType === 'target' ? 'Target' : rowType === 'actual' ? 'Actual' : 'GAP' }}</td>
                       <td
                         v-for="month in bpmMonthColumns"
                         :key="`${group.product}-${rowType}-${month.key}`"
                         :class="monthCellClass(rowType, rowGroupValue(group, rowType, month.key))"
                       >
-                        {{ formatWholeNumber(rowGroupValue(group, rowType, month.key)) }}
+                        {{ rowGroupValue(group, rowType, month.key) === null ? '' : formatWholeNumber(rowGroupValue(group, rowType, month.key)) }}
                       </td>
                       <td :class="monthCellClass(rowType, rowGroupValue(group, rowType, 'total'))">
-                        {{ formatWholeNumber(rowGroupValue(group, rowType, 'total')) }}
+                        {{ rowGroupValue(group, rowType, 'total') === null ? '' : formatWholeNumber(rowGroupValue(group, rowType, 'total')) }}
                       </td>
                     </tr>
                   </template>
@@ -692,6 +714,13 @@ const normalizeBpmNumber = (value) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const readBpmNumber = (value) => {
+  if (value === null || value === undefined || value === '') return null
+  const raw = String(value).trim().replace(/,/g, '')
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 const normalizePartFlag = (value) => {
   if (value === null || value === undefined || value === '') return ''
   return String(value).trim().toLowerCase()
@@ -741,6 +770,7 @@ const projectHealthFilters = ref({
   product: [],
   gscSite: []
 })
+const dashboardSummary = ref({ uniqueAreas: [], uniqueCountries: [] })
 const projectHealthFiltersInitialized = ref(false)
 const activeMultiFilter = ref('')
 const multiFilterSearch = ref({
@@ -899,6 +929,14 @@ const toggleSelectAll = (key) => {
   if (key === 'bowlerRegions') bowlerProductFilters.value.regions = bowlerProductFilters.value.regions.length === target.length ? [] : [...target]
   if (key === 'bowlerAreas') bowlerProductFilters.value.areas = bowlerProductFilters.value.areas.length === target.length ? [] : [...target]
   if (key === 'bowlerCountries') bowlerProductFilters.value.countries = bowlerProductFilters.value.countries.length === target.length ? [] : [...target]
+}
+
+const selectAllBowlerProductFilters = async () => {
+  bowlerProductFilters.value.products = [...bowlerProductOptions.value]
+  bowlerProductFilters.value.regions = [...bowlerRegionOptions.value]
+  bowlerProductFilters.value.areas = [...bowlerAreaOptions.value]
+  bowlerProductFilters.value.countries = [...bowlerCountryOptions.value]
+  await nextTick()
 }
 
 const projectHealthMigrationTypeOptions = computed(() => {
@@ -1389,9 +1427,10 @@ const requestorRows = computed(() => {
     .slice(0, 20)
 })
 
-// Drilldown state & aggregated details by manager -> migrationType -> status
+// Drilldown state & aggregated details by manager -> migrationType -> status -> project
 const expandedManagers = ref([])
 const expandedTypeKeys = ref([])
+const expandedStatusKeys = ref([])
 
 const toggleManager = (key) => {
   const i = expandedManagers.value.indexOf(key)
@@ -1409,15 +1448,25 @@ const toggleType = (managerKey, type) => {
 }
 const isTypeExpanded = (managerKey, type) => expandedTypeKeys.value.includes(_typeKey(managerKey, type))
 
+const _statusKey = (managerKey, type, status) => `${managerKey}||${type}||${status}`
+const toggleStatus = (managerKey, type, status) => {
+  const k = _statusKey(managerKey, type, status)
+  const i = expandedStatusKeys.value.indexOf(k)
+  if (i >= 0) expandedStatusKeys.value.splice(i, 1)
+  else expandedStatusKeys.value.push(k)
+}
+const isStatusExpanded = (managerKey, type, status) => expandedStatusKeys.value.includes(_statusKey(managerKey, type, status))
+
 const managerDetails = computed(() => {
   const map = {}
   for (const project of executiveFilteredProjects.value) {
     const manager = project.owner || project.requestor || 'Unknown'
     const type = String(project.migrationType || 'Unknown')
     const status = String(project.status || '(blank)')
+    const projectLabel = `${project.migrationRequestId || project.id || 'Project'}${project.projectName ? ` · ${project.projectName}` : ''}`
     if (!map[manager]) map[manager] = {}
     if (!map[manager][type]) {
-      map[manager][type] = { type, projects: 0, migratable: 0, actuals: 0, statuses: {} }
+      map[manager][type] = { type, projects: 0, migratable: 0, actuals: 0, statuses: {}, projectsByStatus: {} }
     }
     const m = projectMetrics(project)
     map[manager][type].projects += 1
@@ -1428,6 +1477,19 @@ const managerDetails = computed(() => {
     map[manager][type].statuses[status].count += 1
     map[manager][type].statuses[status].migratable += m.migratable
     map[manager][type].statuses[status].actuals += m.actuals
+
+    if (!map[manager][type].projectsByStatus[status]) map[manager][type].projectsByStatus[status] = []
+    map[manager][type].projectsByStatus[status].push({
+      id: project.id,
+      key: `${project.id ?? projectLabel}`,
+      label: projectLabel,
+      migrationRequestId: project.migrationRequestId || '',
+      projectName: project.projectName || '',
+      projects: 1,
+      migratable: m.migratable,
+      actuals: m.actuals,
+      gap: Math.max(0, m.migratable - m.actuals)
+    })
   }
 
   const result = {}
@@ -1436,7 +1498,12 @@ const managerDetails = computed(() => {
       .map((t) => ({
         ...t,
         gap: Math.max(0, t.migratable - t.actuals),
-        statuses: Object.values(t.statuses).map((s) => ({ ...s, gap: Math.max(0, s.migratable - s.actuals) }))
+        statuses: Object.values(t.statuses)
+          .map((s) => ({
+            ...s,
+            gap: Math.max(0, s.migratable - s.actuals),
+            projects: (t.projectsByStatus[s.status] || []).slice().sort((a, b) => b.migratable - a.migratable)
+          }))
           .sort((a, b) => b.count - a.count)
       }))
       .sort((a, b) => b.migratable - a.migratable)
@@ -1468,25 +1535,15 @@ const bowlerRegionOptions = computed(() => {
 })
 
 const bowlerAreaOptions = computed(() => {
-  const values = new Set()
-  for (const project of projects.value) {
-    for (const area of project.areas ?? []) {
-      const label = String(area).trim()
-      if (label) values.add(label)
-    }
-  }
-  return [...values].sort()
+  return uniqStrings(dashboardSummary.value.uniqueAreas?.length ? dashboardSummary.value.uniqueAreas : projects.value.flatMap((project) => project.areas ?? []))
 })
 
 const bowlerCountryOptions = computed(() => {
-  const values = new Set()
-  for (const project of projects.value) {
-    for (const country of project.countries ?? []) {
-      const label = String(country).trim()
-      if (label) values.add(label)
-    }
-  }
-  return [...values].sort()
+  return uniqStrings(
+    dashboardSummary.value.uniqueCountries?.length
+      ? dashboardSummary.value.uniqueCountries
+      : projects.value.flatMap((project) => project.countries ?? [])
+  )
 })
 
 const filteredBowlerProjects = computed(() => {
@@ -1494,26 +1551,40 @@ const filteredBowlerProjects = computed(() => {
   const selectedRegions = bowlerProductFilters.value.regions.filter(Boolean)
   const selectedAreas = bowlerProductFilters.value.areas.filter(Boolean)
   const selectedCountries = bowlerProductFilters.value.countries.filter(Boolean)
+  const allProductsSelected = selectedProducts.length === bowlerProductOptions.value.length && bowlerProductOptions.value.length > 0
+  const allRegionsSelected = selectedRegions.length === bowlerRegionOptions.value.length && bowlerRegionOptions.value.length > 0
+  const allAreasSelected = selectedAreas.length === bowlerAreaOptions.value.length && bowlerAreaOptions.value.length > 0
+  const allCountriesSelected = selectedCountries.length === bowlerCountryOptions.value.length && bowlerCountryOptions.value.length > 0
 
   return filteredProjects.value.filter((project) => {
-    if (selectedProducts.length) {
+    if (!allProductsSelected && selectedProducts.length) {
       const projectProducts = (project.products ?? []).map((item) => String(item).trim())
       const matchesProduct = projectProducts.some((item) => selectedProducts.includes(item))
       if (!matchesProduct) return false
     }
-    if (selectedRegions.length && !selectedRegions.includes(project.region)) return false
-    if (selectedAreas.length) {
+    if (!allRegionsSelected && selectedRegions.length && !selectedRegions.includes(project.region)) return false
+    if (!allAreasSelected && selectedAreas.length) {
       const projectAreas = (project.areas ?? []).map((item) => String(item).trim())
       const matchesArea = projectAreas.some((item) => selectedAreas.includes(item))
       if (!matchesArea) return false
     }
-    if (selectedCountries.length) {
+    if (!allCountriesSelected && selectedCountries.length) {
       const projectCountries = (project.countries ?? []).map((item) => String(item).trim())
       const matchesCountry = projectCountries.some((item) => selectedCountries.includes(item))
       if (!matchesCountry) return false
     }
     return true
   })
+})
+
+const bowlerHasActiveFilters = computed(() => {
+  const isFullSelection = (selected, options) => selected.length === options.length && options.length > 0
+  return !(
+    isFullSelection(bowlerProductFilters.value.products, bowlerProductOptions.value) &&
+    isFullSelection(bowlerProductFilters.value.regions, bowlerRegionOptions.value) &&
+    isFullSelection(bowlerProductFilters.value.areas, bowlerAreaOptions.value) &&
+    isFullSelection(bowlerProductFilters.value.countries, bowlerCountryOptions.value)
+  )
 })
 
 const productRows = computed(() => {
@@ -1578,54 +1649,76 @@ const productMonthlyRows = computed(() => {
     const name = String(product || '').trim() || 'Overall'
     monthBuckets[name] = {
       product: name,
-      target: Array(13).fill(0),
-      actual: Array(13).fill(0),
-      gap: Array(13).fill(0)
+      target: Array(13).fill(null),
+      actual: Array(13).fill(null),
+      gap: Array(13).fill(null),
+      total: { target: null, actual: null, gap: null }
     }
   }
 
   if (!productNames.size) {
-    return [{ product: 'Overall', target: Array(13).fill(0), actual: Array(13).fill(0), gap: Array(13).fill(0) }]
+    return [{ product: 'Overall', target: Array(13).fill(null), actual: Array(13).fill(null), gap: Array(13).fill(null), total: { target: null, actual: null, gap: null } }]
   }
 
   for (const row of bpmRofoRows.value) {
     const product = String(row.product || '').trim() || 'Overall'
     const month = normalizeMonthKey(row.onboarding_month, bpmYear.value)
     if (!month) continue
-    const value = normalizeBpmNumber(row.positions_to_be_offshored_in_gsc) || normalizeBpmNumber(row.rofo_value) || normalizeBpmNumber(row.positions_to_be_offshored)
-    if (!monthBuckets[product]) monthBuckets[product] = { product, target: Array(13).fill(0), actual: Array(13).fill(0), gap: Array(13).fill(0) }
+    const rawValue = readBpmNumber(row.positions_to_be_offshored_in_gsc)
+      ?? readBpmNumber(row.rofo_value)
+      ?? readBpmNumber(row.positions_to_be_offshored)
+    if (rawValue === null) continue
+    const value = rawValue
+    if (!monthBuckets[product]) monthBuckets[product] = { product, target: Array(13).fill(null), actual: Array(13).fill(null), gap: Array(13).fill(null), total: { target: null, actual: null, gap: null } }
     monthBuckets[product].target[month] += value
-    monthBuckets[product].target[12] += value
+    monthBuckets[product].total.target = (monthBuckets[product].total.target ?? 0) + value
   }
 
   for (const row of bpmActualRows.value) {
     const product = String(row.product || '').trim() || 'Overall'
     const month = normalizeMonthKey(row.onboarding_month, bpmYear.value)
     if (!month) continue
-    const value = normalizeBpmNumber(row.positions_to_be_offshored_in_gsc) || normalizeBpmNumber(row.actual_value) || normalizeBpmNumber(row.positions_to_be_offshored)
-    if (!monthBuckets[product]) monthBuckets[product] = { product, target: Array(13).fill(0), actual: Array(13).fill(0), gap: Array(13).fill(0) }
+    const rawValue = readBpmNumber(row.positions_to_be_offshored_in_gsc)
+      ?? readBpmNumber(row.actual_value)
+      ?? readBpmNumber(row.positions_to_be_offshored)
+    if (rawValue === null) continue
+    const value = rawValue
+    if (!monthBuckets[product]) monthBuckets[product] = { product, target: Array(13).fill(null), actual: Array(13).fill(null), gap: Array(13).fill(null), total: { target: null, actual: null, gap: null } }
     monthBuckets[product].actual[month] += value
-    monthBuckets[product].actual[12] += value
+    monthBuckets[product].total.actual = (monthBuckets[product].total.actual ?? 0) + value
   }
 
   const result = Object.values(monthBuckets).map((entry) => {
     for (let month = 1; month <= 12; month += 1) {
-      entry.gap[month] = entry.target[month] - entry.actual[month]
+      const target = entry.target[month]
+      const actual = entry.actual[month]
+      entry.gap[month] = target === null && actual === null ? null : (target ?? 0) - (actual ?? 0)
     }
-    entry.gap[12] = entry.target[12] - entry.actual[12]
+    if (entry.total.target !== null || entry.total.actual !== null) {
+      entry.total.gap = (entry.total.target ?? 0) - (entry.total.actual ?? 0)
+    }
     return entry
   })
 
-  const overall = { product: 'Overall', target: Array(13).fill(0), actual: Array(13).fill(0), gap: Array(13).fill(0) }
+  const overall = { product: 'Overall', target: Array(13).fill(null), actual: Array(13).fill(null), gap: Array(13).fill(null), total: { target: null, actual: null, gap: null } }
   for (const entry of result) {
     for (let month = 1; month <= 12; month += 1) {
-      overall.target[month] += entry.target[month]
-      overall.actual[month] += entry.actual[month]
-      overall.gap[month] = overall.target[month] - overall.actual[month]
+      const target = entry.target[month]
+      const actual = entry.actual[month]
+      if (target !== null) overall.target[month] = (overall.target[month] ?? 0) + target
+      if (actual !== null) overall.actual[month] = (overall.actual[month] ?? 0) + actual
     }
-    overall.target[12] += entry.target[12]
-    overall.actual[12] += entry.actual[12]
-    overall.gap[12] = overall.target[12] - overall.actual[12]
+    if (entry.total.target !== null) overall.total.target = (overall.total.target ?? 0) + entry.total.target
+    if (entry.total.actual !== null) overall.total.actual = (overall.total.actual ?? 0) + entry.total.actual
+  }
+
+  for (let month = 1; month <= 12; month += 1) {
+    if (overall.target[month] !== null || overall.actual[month] !== null) {
+      overall.gap[month] = (overall.target[month] ?? 0) - (overall.actual[month] ?? 0)
+    }
+  }
+  if (overall.total.target !== null || overall.total.actual !== null) {
+    overall.total.gap = (overall.total.target ?? 0) - (overall.total.actual ?? 0)
   }
 
   return [overall, ...result.filter((entry) => entry.product !== 'Overall')].sort((a, b) => {
@@ -1636,11 +1729,12 @@ const productMonthlyRows = computed(() => {
 })
 
 const rowGroupValue = (group, type, key) => {
-  if (key === 'total') return group[type][12] ?? 0
-  return group[type][key] ?? 0
+  if (key === 'total') return group.total?.[type] ?? null
+  return group[type][key] ?? null
 }
 
 const monthCellClass = (type, value) => {
+  if (value === null || value === undefined || value === '') return 'month-cell month-cell--empty'
   if (type === 'target') return value >= 0 ? 'month-cell month-cell--target' : 'month-cell month-cell--negative'
   if (type === 'actual') return value >= 0 ? 'month-cell month-cell--actual' : 'month-cell month-cell--negative'
   return value >= 0 ? 'month-cell month-cell--gap-positive' : 'month-cell month-cell--gap-negative'
@@ -1894,8 +1988,13 @@ const loadProjects = async () => {
   try {
     const { data } = await axios.get('/api/migration-dashboard/projects/')
     projects.value = data.rows ?? []
+    dashboardSummary.value = {
+      uniqueAreas: data.summary?.uniqueAreas ?? [],
+      uniqueCountries: data.summary?.uniqueCountries ?? []
+    }
     // backend now returns tg_summary inside summary
     tgSummary.value = (data.summary && data.summary.tg_summary) || []
+    await selectAllBowlerProductFilters()
   } catch (error) {
     loadError.value =
       error?.response?.data?.error ?? 'Unable to load migration projects. Please try again.'
@@ -3029,6 +3128,10 @@ onMounted(async () => {
 }
 
 .table-shell {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
   overflow: auto;
 }
 
@@ -3048,14 +3151,20 @@ onMounted(async () => {
 
 .data-table th,
 .data-table td {
-  border-bottom: 1px solid var(--dash-border);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
   font-size: 13px;
   padding: 10px 12px;
   text-align: left;
 }
 
+.data-table th:last-child,
+.data-table td:last-child {
+  border-right: none;
+}
+
 .data-table th {
-  background: #f5f8fc;
+  background: linear-gradient(180deg, #f8fbff 0%, #f1f6fb 100%);
   color: #425466;
   font-weight: 700;
 }
@@ -3071,11 +3180,16 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
+.table-type-head {
+  width: 72px;
+}
+
 .table-group-label {
   background: rgba(0, 119, 184, 0.04);
 }
 
 .month-cell {
+  border-radius: 0;
   color: #161616;
   font-weight: 700;
   text-align: center;
@@ -3100,6 +3214,10 @@ onMounted(async () => {
 
 .month-cell--negative {
   color: #7a1f1f;
+}
+
+.month-cell--empty {
+  color: transparent;
 }
 
 .is-gap {

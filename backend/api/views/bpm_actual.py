@@ -8,6 +8,7 @@ from api.permissions.attributes_access import require_attributes_access
 
 ALL_FIELDS = [
     ("project_name", "Project Name"),
+    ("country", "Country"),
     ("product", "Product"),
     ("region", "Region"),
     ("area", "Area"),
@@ -25,6 +26,7 @@ def _serialize_row(item: BpmActual) -> dict:
     return {
         "id": item.id,
         "project_name": item.project_name,
+        "country": item.country,
         "product": item.product,
         "region": item.region,
         "area": item.area,
