@@ -1,6 +1,6 @@
 <template>
   <PageShell
-    title="Migration Dashboard (test)"
+    title="Migration Dashboard"
     subtitle="KPI concepts adapted from the WPM Power BI report — using current intake data and project styling."
     tag="Dashboard v2"
     back-label="Back to Welcome"
@@ -450,7 +450,14 @@
                 <tbody>
                   <template v-for="group in productMonthlyRows" :key="group.product">
                     <tr v-for="rowType in ['target', 'actual', 'gap']" :key="`${group.product}-${rowType}`">
-                      <td v-if="rowType === 'target'" class="table-group-label" :rowspan="3">{{ group.product }}</td>
+                      <td v-if="rowType === 'target'" class="table-group-label" :rowspan="3">
+                        <span class="product-cell">
+                          <span class="product-cell__icon" :class="`product-cell__icon--${getProductIconTone(group.product)}`">
+                            <mc-icon :icon="getProductIcon(group.product)" size="18" />
+                          </span>
+                          <span class="product-cell__label">{{ group.product }}</span>
+                        </span>
+                      </td>
                       <td class="table-sub-label">{{ rowType === 'target' ? 'Target' : rowType === 'actual' ? 'Actual' : 'GAP' }}</td>
                       <td
                         v-for="month in bpmMonthColumns"
@@ -622,6 +629,7 @@ import '@maersk-global/mds-components-core/mc-input'
 import '@maersk-global/mds-components-core/mc-multi-select'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
+import '@maersk-global/mds-components-core/mc-icon'
 
 const router = useRouter()
 
@@ -1797,6 +1805,27 @@ const monthCellClass = (type, value) => {
   if (type === 'actual') return value >= 0 ? 'month-cell month-cell--actual' : 'month-cell month-cell--negative'
   return value >= 0 ? 'month-cell month-cell--gap-positive' : 'month-cell month-cell--gap-negative'
 }
+
+const productIconMap = [
+  { match: /^overall$/i, icon: 'mi-chart-bars-vertical', tone: 'blue' },
+  { match: /^booking services$/i, icon: 'mi-calendar', tone: 'violet' },
+  { match: /^customs clearance$/i, icon: 'mi-shield', tone: 'green' },
+  { match: /^demurrage/i, icon: 'mi-clock', tone: 'orange' },
+  { match: /^destination coordination services$/i, icon: 'mi-map', tone: 'teal' },
+  { match: /^freight management$/i, icon: 'mi-truck', tone: 'violet' },
+  { match: /^general air$/i, icon: 'mi-plane', tone: 'blue' },
+  { match: /^general customs$/i, icon: 'mi-box', tone: 'green' },
+  { match: /^\(unassigned\s*\/\s*other\)$/i, icon: 'mi-list', tone: 'blue' }
+]
+
+const getProductIconMeta = (product) => {
+  const name = String(product || '').trim()
+  return productIconMap.find((item) => item.match.test(name)) || { icon: 'mi-tag', tone: 'blue' }
+}
+
+const getProductIcon = (product) => getProductIconMeta(product).icon
+
+const getProductIconTone = (product) => getProductIconMeta(product).tone
 
 const productRankedItems = computed(() => {
   const max = productRows.value[0]?.migratable || 1
@@ -3186,10 +3215,10 @@ onMounted(async () => {
 }
 
 .table-shell {
-  background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
   overflow: auto;
 }
 
@@ -3209,9 +3238,9 @@ onMounted(async () => {
 
 .data-table th,
 .data-table td {
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  border-right: 1px solid rgba(15, 23, 42, 0.05);
-  font-size: 13px;
+  border-bottom: 1px solid rgba(203, 213, 225, 0.65);
+  border-right: 1px solid rgba(203, 213, 225, 0.45);
+  font-size: 12px;
   padding: 10px 12px;
   text-align: left;
 }
@@ -3222,9 +3251,11 @@ onMounted(async () => {
 }
 
 .data-table th {
-  background: linear-gradient(180deg, #f8fbff 0%, #f1f6fb 100%);
-  color: #425466;
+  background: #e2ebf9;
+  color: #23476f;
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .data-table tfoot td {
@@ -3234,6 +3265,7 @@ onMounted(async () => {
 
 .table-group-label,
 .table-sub-label {
+  color: #18324c;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -3243,31 +3275,78 @@ onMounted(async () => {
 }
 
 .table-group-label {
-  background: rgba(0, 119, 184, 0.04);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.product-cell {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+}
+
+.product-cell__icon {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.product-cell__icon--blue {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.product-cell__icon--green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.product-cell__icon--orange {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+}
+
+.product-cell__icon--violet {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.product-cell__icon--teal {
+  background: rgba(20, 184, 166, 0.12);
+  color: #0f766e;
+}
+
+.product-cell__label {
+  line-height: 1.2;
 }
 
 .month-cell {
   border-radius: 0;
-  color: #161616;
+  color: #1f2937;
+  font-size: 12px;
   font-weight: 700;
+  min-width: 56px;
   text-align: center;
   white-space: nowrap;
 }
 
 .month-cell--target {
-  background: rgba(0, 119, 184, 0.08);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 .month-cell--actual {
-  background: rgba(36, 174, 110, 0.1);
+  background: rgba(34, 197, 94, 0.08);
 }
 
 .month-cell--gap-positive {
-  background: rgba(255, 166, 0, 0.08);
+  background: rgba(251, 146, 60, 0.08);
 }
 
 .month-cell--gap-negative {
-  background: rgba(220, 38, 38, 0.08);
+  background: rgba(248, 113, 113, 0.08);
 }
 
 .month-cell--negative {
