@@ -85,23 +85,21 @@ import {
 
 const ALL_COLUMNS = [
   { key: 'status', label: 'Status', width: 100 },
-  { key: 'project_name', label: 'Project Name', width: 220 },
   { key: 'country', label: 'Country', width: 140 },
-  { key: 'product', label: 'Product', width: 180 },
   { key: 'region', label: 'Region', width: 120 },
   { key: 'area', label: 'Area', width: 160 },
   { key: 'gsc_site', label: 'GSC Site to be Offshored', width: 160 },
   { key: 'function', label: 'Function', width: 160 },
   { key: 'function_id_description', label: 'Function ID + Description', width: 200 },
+  { key: 'product', label: 'Product', width: 180 },
   { key: 'cost_center', label: 'Cost Center', width: 140 },
   { key: 'pid', label: 'PID', width: 120 },
-  { key: 'bu', label: 'BU', width: 100 },
-  { key: 'onboarding_month', label: 'Onboarding Month', width: 180 },
-  { key: 'year', label: 'Year', width: 100 },
-  { key: 'bpm_owner', label: 'BPM Owner', width: 180 },
+  { key: 'project_name', label: 'Project Name', width: 220 },
+  { key: 'part_not_part_of_rofo', label: 'Part/Not part of ROFO', width: 180 },
   { key: 'gsc_leader', label: 'GSC Leaders', width: 160 },
   { key: 'gsc1_leader', label: 'GSC-1 Leaders', width: 160 },
-  { key: 'part_not_part_of_rofo', label: 'Part/Not part of ROFO', width: 180 },
+  { key: 'bpm_owner', label: 'BPM Owner', width: 180 },
+  { key: 'bu', label: 'BU', width: 100 },
   { key: 'frontline_staff_cost_per_fte', label: 'Frontline Staff Cost per FTE', width: 180 },
   { key: 'gsc_staff_cost_per_fte', label: 'GSC Staff Cost per FTE', width: 180 },
   { key: 'project_cost', label: 'Project Cost', width: 140 },
@@ -110,6 +108,8 @@ const ALL_COLUMNS = [
   { key: 'positions_to_be_offshored_in_gsc', label: 'Positions to be Offshored in GSC', width: 180 },
   { key: 'positions_to_be_released_in_frontline', label: 'Positions to be Released in Frontline', width: 200 },
   { key: 'rofo_value', label: 'ROFO Value', width: 150 },
+  { key: 'year', label: 'Year', width: 100 },
+  { key: 'onboarding_month', label: 'Onboarding Month', width: 180 },
   { key: 'notes', label: 'Notes', width: 260 }
 ]
 
