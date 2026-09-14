@@ -4,6 +4,7 @@
     subtitle="Migration lifecycle grouped into the five PMI process groups — Initiating through Closing."
     tag="Governance"
     back-to="/"
+    full-width
   >
     <div class="project-picker">
       <label class="project-picker__label" for="tg-project-search">Show progress for project</label>
