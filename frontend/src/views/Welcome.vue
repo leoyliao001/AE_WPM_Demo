@@ -247,7 +247,7 @@ const go = (route) => {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  justify-content: safe center;
+  justify-content: flex-start;
   min-height: 0;
   overflow-x: clip;
   overflow-y: auto;
@@ -259,8 +259,10 @@ const go = (route) => {
 
 .welcome-layout {
   align-items: stretch;
-  display: flex;
+  display: grid;
   gap: 28px;
+  grid-auto-rows: 1fr;
+  grid-template-columns: 440px minmax(0, 1fr);
   margin: 0 auto;
   max-width: 1560px;
   padding: 32px 24px 40px;
@@ -325,8 +327,10 @@ const go = (route) => {
     0 2px 4px rgba(9, 30, 51, 0.18),
     0 18px 40px rgba(9, 30, 51, 0.22);
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   isolation: isolate;
+  min-height: 0;
   overflow: hidden;
   padding: 28px 26px;
   position: relative;
@@ -466,7 +470,9 @@ const go = (route) => {
 }
 
 .page-content {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   margin: 0;
   max-width: none;
   min-width: 0;
