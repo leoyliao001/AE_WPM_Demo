@@ -54,7 +54,6 @@ const baseNavItems = [
   { label: 'Intake', to: '/migration-intake', icon: 'mi-file-arrows-square' },
   { label: 'Dashboard', to: '/migration-dashboard', icon: 'mi-chart-bars-vertical' },
   { label: 'L&D', to: '/ld-dashboard', icon: 'mi-monitor' },
-  { label: 'Project', to: '/project-dashboard', icon: 'mi-file-check' },
   { label: 'Chatbot', to: '/migration-chatbot', icon: 'mi-chatbot' }
 ]
 
