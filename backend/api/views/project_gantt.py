@@ -69,7 +69,7 @@ TEMPLATE_TASKS = [
     {"id": "business-case", "name": "Business Case (Memo)", "startWeek": 1, "endWeek": 2},
     {"id": "fbp-approval", "name": "FBP approval", "startWeek": 3, "endWeek": 4},
     {"id": "functional-head", "name": "Functional head approval", "startWeek": 3, "endWeek": 3},
-    {"id": "elt-approval", "name": "ELT approg", "startWeek": 5, "endWeek": 5},
+    {"id": "elt-approval", "name": "ELT approval", "startWeek": 5, "endWeek": 5},
     {"id": "gsc-head", "name": "GSC Head -1 approval", "startWeek": 5, "endWeek": 5},
     {
         "id": "opportunity-assessment",
@@ -322,7 +322,8 @@ def merge_gantt_tasks_with_template(
 
         if base:
             standard = dict(base["standard"])
-            name = saved_name or base["name"]
+            # Correct the legacy typo without overwriting intentional custom names.
+            name = base["name"] if saved_name == "ELT approg" else (saved_name or base["name"])
         else:
             standard = _parse_range(saved.get("standard"), fallback=None)
             name = saved_name or "Untitled stage"

@@ -142,7 +142,7 @@ export const projectGanttTasks = [
   },
   {
     id: 'elt-approval',
-    name: 'ELT approg',
+    name: 'ELT approval',
     standard: range(5, 5),
     plan: null,
     actual: null,
