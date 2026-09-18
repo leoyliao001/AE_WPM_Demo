@@ -32,7 +32,7 @@
           appearance="neutral"
           variant="plain"
           fit="small"
-          icon="mi-cross"
+          icon="mi-times-circle"
           @click="clearSelection"
         />
         <ul v-if="suggestionsOpen && filteredProjects.length" class="project-picker__suggestions">
@@ -605,7 +605,7 @@ const ARTEFACT_STAGES = [
     index: '03',
     title: 'Execute',
     caption: 'Do the work',
-    icon: 'mi-rocket',
+    icon: 'mi-play-circle',
     color: '#9566ef',
     items: [
       { label: 'Deliverables / outputs', source: 'volume-transfer' },
