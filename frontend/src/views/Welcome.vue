@@ -37,7 +37,7 @@
             <PulseLogo :size="52" />
             <div class="brand-lockup__text">
               <p class="brand-lockup__wordmark">WPM <span>Pulse</span></p>
-              <p class="brand-lockup__eyebrow">Workplace Migration Platform</p>
+              <p class="brand-lockup__eyebrow">WORKPLACEMENT AND MIGRATION - DIGITAL HUB</p>
             </div>
           </section>
 
@@ -86,32 +86,8 @@
               </div>
             </article>
 
-            <article class="ws-card ws-card--wide" :style="{ '--accent': msp.accent }">
-              <span class="ws-card__icon">
-                <mc-icon :icon="msp.icon" size="24" />
-              </span>
-              <div class="ws-card__body">
-                <p class="ws-card__eyebrow">{{ msp.eyebrow }}</p>
-                <h3 class="ws-card__title">{{ msp.title }}</h3>
-                <p class="ws-card__desc">{{ msp.description }}</p>
-              </div>
-              <div class="ws-card__partners">
-                <p class="ws-card__partners-label">Select partner</p>
-                <div class="ws-card__actions">
-                  <button
-                    v-for="partner in msp.partners"
-                    :key="partner.label"
-                    type="button"
-                    class="ws-action ws-action--solid"
-                    :disabled="!partner.route"
-                    :title="partner.route ? undefined : 'Coming soon'"
-                    @click="go(partner.route)"
-                  >
-                    {{ partner.label }}
-                  </button>
-                </div>
-                <p class="ws-card__partners-hint">Opens that partner's dedicated dashboard</p>
-              </div>
+            <article class="ws-card ws-card--wide" style="--accent: #003f6e">
+              <p class="ws-card__eyebrow">MIGRATION SUCCESS PARTNERS</p>
             </article>
           </div>
         </div>
@@ -207,19 +183,6 @@ const workspaceCards = [
     actions: [{ label: 'Start chat', route: '/migration-chatbot' }]
   }
 ]
-
-const msp = {
-  eyebrow: 'Migration success partners',
-  title: 'MSP',
-  description: 'Select your dedicated view.',
-  icon: 'mi-people',
-  accent: '#003F6E',
-  partners: [
-    { label: 'L&D', route: '/ld-dashboard' },
-    { label: 'S&R', route: '' },
-    { label: 'TAA', route: '' }
-  ]
-}
 
 const go = (route) => {
   if (!route) return
@@ -541,6 +504,7 @@ const go = (route) => {
 }
 
 .workspace-grid {
+  align-items: start;
   display: grid;
   gap: 20px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -577,7 +541,8 @@ const go = (route) => {
 .ws-card--wide {
   align-items: center;
   grid-column: 1 / -1;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
+  min-height: 130px;
 }
 
 .ws-card__icon {
@@ -623,41 +588,12 @@ const go = (route) => {
   padding-bottom: 14px;
 }
 
-.ws-card--wide .ws-card__desc {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
 .ws-card__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   grid-column: 2;
   padding-top: 14px;
-}
-
-.ws-card--wide .ws-card__actions {
-  grid-column: auto;
-  padding-top: 0;
-}
-
-.ws-card__partners {
-  text-align: right;
-}
-
-.ws-card__partners-label {
-  color: #161616;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  margin: 0 0 10px;
-  text-transform: uppercase;
-}
-
-.ws-card__partners-hint {
-  color: #9aa0a6;
-  font-size: 11.5px;
-  margin: 10px 0 0;
 }
 
 .ws-action {
@@ -741,15 +677,6 @@ const go = (route) => {
     grid-template-columns: 1fr;
   }
 
-  .ws-card--wide {
-    grid-template-columns: auto 1fr;
-  }
-
-  .ws-card__partners {
-    grid-column: 1 / -1;
-    padding-top: 14px;
-    text-align: left;
-  }
 }
 
 @media (max-width: 760px) {

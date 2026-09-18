@@ -402,7 +402,7 @@ const phases = [
   {
     id: 'initiating',
     index: 1,
-    title: 'Initiating',
+    title: 'Initiate',
     icon: 'mi-file-arrows-square',
     accent: '#0077B8',
     description: 'Intake, sign-off on the opportunity, and every approval needed before planning begins.',
@@ -425,7 +425,7 @@ const phases = [
   {
     id: 'planning',
     index: 2,
-    title: 'Planning',
+    title: 'Plan',
     icon: 'mi-chart-bars-vertical',
     accent: '#42B0D5',
     description: 'Build the migration schedule, capture risks, and line up training ahead of execution.',
@@ -439,7 +439,7 @@ const phases = [
   {
     id: 'executing',
     index: 3,
-    title: 'Executing',
+    title: 'Execute',
     icon: 'mi-monitor',
     accent: '#F3880E',
     description: 'Deliver the L&D training stage, knowledge transfer, and ramp-up of transferred volume.',
@@ -466,7 +466,7 @@ const phases = [
   {
     id: 'closing',
     index: 5,
-    title: 'Closing',
+    title: 'Close & Realise Value',
     icon: 'mi-flag',
     accent: '#E85454',
     description: 'Recommend sign-off and release the capacity that migration frees up.',
@@ -575,7 +575,7 @@ const ARTEFACT_STAGES = [
   {
     id: 'initiating',
     index: '01',
-    title: 'Initiating',
+    title: 'Initiate',
     caption: 'Authorise & define',
     icon: 'mi-play-circle',
     color: '#2d8cff',
@@ -589,7 +589,7 @@ const ARTEFACT_STAGES = [
   {
     id: 'planning',
     index: '02',
-    title: 'Planning',
+    title: 'Plan',
     caption: 'Build the roadmap',
     icon: 'mi-map',
     color: '#22b8b0',
@@ -603,7 +603,7 @@ const ARTEFACT_STAGES = [
   {
     id: 'executing',
     index: '03',
-    title: 'Executing',
+    title: 'Execute',
     caption: 'Do the work',
     icon: 'mi-rocket',
     color: '#9566ef',
@@ -631,7 +631,7 @@ const ARTEFACT_STAGES = [
   {
     id: 'closing',
     index: '05',
-    title: 'Closing',
+    title: 'Close & Realise Value',
     caption: 'Finalise & learn',
     icon: 'mi-check-circle',
     color: '#2d8cff',
@@ -1093,7 +1093,6 @@ onBeforeUnmount(() => {
   font-weight: 700;
   letter-spacing: 0.04em;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .artefact-card__caption {
