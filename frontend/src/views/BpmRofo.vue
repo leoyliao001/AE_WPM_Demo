@@ -26,6 +26,25 @@
         </div>
         <div class="toolbar-right">
           <span v-if="pendingCount" class="meta-pill meta-pill--pending">{{ pendingCount }} pending</span>
+          <mc-button
+            v-if="isAdmin"
+            appearance="neutral"
+            variant="plain"
+            fit="small"
+            label="Field Mapping"
+            icon="mi-information"
+            title="Excel header to database field (admin only)"
+            @click="mappingDialogOpen = true"
+          />
+          <mc-button
+            appearance="neutral"
+            variant="outlined"
+            fit="small"
+            label="Download Template"
+            icon="mi-arrow-to-bottom"
+            title="Download an empty Excel template with the expected headers"
+            @click="downloadTemplate"
+          />
           <label class="upload-box">
             <input ref="uploadInput" type="file" accept=".xlsx,.xls,.csv" @change="handleUpload" />
             <span>Upload Excel</span>
@@ -62,6 +81,40 @@
         class="ht-theme-horizon handsontable-host"
         :class="{ 'is-hidden': loading && !hotReady }"
       />
+
+      <mc-dialog
+        :open="mappingDialogOpen"
+        heading="Field Mapping — BPM ROFO"
+        dimension="large"
+        showclosebutton
+        @closing="mappingDialogOpen = false"
+      >
+        <div class="mapping-dialog-body">
+          <p class="mapping-summary">
+            How the importer reads an uploaded sheet. {{ mappingRows.length }} columns reported by the API<span v-if="mappingHiddenCount">, {{ mappingHiddenCount }} not rendered in the grid</span>.
+          </p>
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>Excel header</th>
+                <th>Database field</th>
+                <th>Also accepted</th>
+                <th>On upload</th>
+                <th>In grid</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in mappingRows" :key="row.key">
+                <td>{{ row.label }}</td>
+                <td><code>{{ row.key }}</code></td>
+                <td class="mapping-aliases">{{ row.alsoAccepted.join(', ') || '—' }}</td>
+                <td>{{ row.computed ? 'derived' : 'mapped' }}</td>
+                <td :class="{ 'mapping-drift': !row.inGrid }">{{ row.inGrid ? 'shown' : 'not shown' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </mc-dialog>
     </div>
   </div>
 </template>
@@ -76,6 +129,9 @@ import 'handsontable/styles/ht-theme-horizon.min.css'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-loading-indicator'
+import '@maersk-global/mds-components-core/mc-dialog'
+import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
+import { createRowPicker, describeMapping } from '../utils/bpmUploadMapping.js'
 import {
   hasStoredColumnWidths,
   loadColumnWidths,
@@ -114,6 +170,24 @@ const ALL_COLUMNS = [
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
+const COLUMN_WIDTH_BY_KEY = new Map(ALL_COLUMNS.map((c) => [c.key, c.width]))
+
+// Header spellings the importer still honours beyond a column's own label and
+// field key, for spreadsheets written before the download template existed.
+const UPLOAD_HEADER_ALIASES = {
+  project_name: ['project'],
+  product: ['product_name'],
+  onboarding_month: ['onboarding'],
+  bpm_owner: ['owner'],
+  gsc1_leader: ['gsc_1_leader'],
+  notes: ['comment'],
+  positions_to_be_offshored_in_gsc: ['positions_to_be_offshored', 'positions'],
+  rofo_value: ['rofo', 'value']
+}
+
+// Filled by the logic in handleUpload rather than a straight header match.
+const UPLOAD_COMPUTED_KEYS = ['positions_to_be_offshored_in_gsc', 'rofo_value', 'year']
+const DEFAULT_TEMPLATE_WIDTH = 140
 const COLUMN_WIDTH_STORAGE_ID = 'bpm-rofo'
 
 const hotContainer = ref(null)
@@ -127,6 +201,9 @@ const rowCount = ref(0)
 const allChanges = ref([])
 const saveProgressMessage = ref('')
 const uploadInput = ref(null)
+const serverColumns = ref([])
+const isAdmin = ref(false)
+const mappingDialogOpen = ref(false)
 const currentYear = new Date().getFullYear()
 const selectedYear = ref(currentYear)
 
@@ -138,6 +215,29 @@ const yearOptions = computed(() => {
   return years
 })
 const pendingCount = computed(() => allChanges.value.length)
+
+// Headers for the upload template follow the column list the API reports, so a
+// backend field change shows up in the template without a frontend edit.
+// ALL_COLUMNS is only the fallback for when the first load has not landed yet.
+const templateColumns = computed(() => {
+  const fromServer = serverColumns.value
+    .filter((col) => col && col.key)
+    .map((col) => ({
+      key: col.key,
+      label: col.label || col.key,
+      width: COLUMN_WIDTH_BY_KEY.get(col.key) || DEFAULT_TEMPLATE_WIDTH
+    }))
+  return fromServer.length ? fromServer : ALL_COLUMNS
+})
+
+const mappingRows = computed(() =>
+  describeMapping(templateColumns.value, {
+    aliases: UPLOAD_HEADER_ALIASES,
+    computedKeys: UPLOAD_COMPUTED_KEYS,
+    gridKeys: ALL_KEYS
+  })
+)
+const mappingHiddenCount = computed(() => mappingRows.value.filter((row) => !row.inGrid).length)
 
 function normalizeCellValue(value) {
   if (value === null || value === undefined) return ''
@@ -414,6 +514,7 @@ async function loadData() {
   try {
     const { data } = await axios.get('/api/bpm-rofo/', { params: { year: selectedYear.value } })
     rowCount.value = data.count || 0
+    serverColumns.value = Array.isArray(data.columns) ? data.columns : []
     await nextTick()
     initHot(data.rows || [])
   } catch (e) {
@@ -431,6 +532,21 @@ function onYearChange(event) {
   void loadData()
 }
 
+function downloadTemplate() {
+  try {
+    const columns = templateColumns.value
+    const worksheet = XLSX.utils.aoa_to_sheet([columns.map((c) => c.label)])
+    worksheet['!cols'] = columns.map((c) => ({ wch: Math.max(12, Math.round((c.width || DEFAULT_TEMPLATE_WIDTH) / 8)) }))
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'BPM ROFO')
+    XLSX.writeFile(workbook, `bpm-rofo-template-${selectedYear.value}.xlsx`)
+  } catch (e) {
+    const msg = e?.message || 'Failed to generate template'
+    error.value = msg
+    alert(`Download template failed: ${msg}`)
+  }
+}
+
 async function handleUpload(event) {
   const file = event.target.files?.[0]
   if (!file) return
@@ -440,43 +556,21 @@ async function handleUpload(event) {
     const workbook = XLSX.read(arrayBuffer, { type: 'array' })
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false })
+    const columns = templateColumns.value
     const uniqueData = rows
       .map((row) => {
-        const normalized = {}
-        Object.entries(row).forEach(([key, value]) => {
-          const normKey = String(key).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')
-          normalized[normKey] = value
+        const pick = createRowPicker(row, columns, UPLOAD_HEADER_ALIASES)
+        const item = {}
+        columns.forEach((col) => {
+          item[col.key] = pick(col.key)
         })
-        const positions = normalized.positions_to_be_offshored_in_gsc || normalized.positions_to_be_offshored || normalized.positions || normalized.rofo_value || normalized.rofo || normalized.value || ''
-        return {
-          status: normalized.status || '',
-          project_name: normalized.project_name || normalized.project || '',
-          country: normalized.country || '',
-          product: normalized.product || normalized.product_name || '',
-          region: normalized.region || '',
-          area: normalized.area || '',
-          gsc_site: normalized.gsc_site || normalized.gsc_site_to_be_offshored || '',
-          function: normalized.function || '',
-          function_id_description: normalized.function_id_description || '',
-          cost_center: normalized.cost_center || '',
-          pid: normalized.pid || '',
-          bu: normalized.bu || '',
-          onboarding_month: normalized.onboarding_month || normalized.onboarding || '',
-          year: normalized.year || selectedYear.value,
-          bpm_owner: normalized.bpm_owner || normalized.owner || '',
-          gsc_leader: normalized.gsc_leader || normalized.gsc_leaders || '',
-          gsc1_leader: normalized.gsc1_leader || normalized.gsc_1_leader || normalized.gsc_1_leaders || '',
-          part_not_part_of_rofo: normalized.part_not_part_of_rofo || '',
-          frontline_staff_cost_per_fte: normalized.frontline_staff_cost_per_fte || '',
-          gsc_staff_cost_per_fte: normalized.gsc_staff_cost_per_fte || '',
-          project_cost: normalized.project_cost || '',
-          x_column: normalized.x || '',
-          base_pids: normalized.base_pids || '',
-          positions_to_be_offshored_in_gsc: positions,
-          positions_to_be_released_in_frontline: normalized.positions_to_be_released_in_frontline || '',
-          rofo_value: positions,
-          notes: normalized.notes || normalized.comment || ''
-        }
+        // The offshored-position count and the BPM ROFO value are the same
+        // figure, so either header fills both fields.
+        const positions = pick('positions_to_be_offshored_in_gsc') || pick('rofo_value')
+        item.positions_to_be_offshored_in_gsc = positions
+        item.rofo_value = positions
+        item.year = pick('year') || selectedYear.value
+        return item
       })
       .filter((item) => item.project_name || item.product || item.onboarding_month || item.rofo_value)
 
@@ -509,6 +603,9 @@ function handleGlobalKeydown(event) {
 
 onMounted(() => {
   loadData()
+  fetchMyAttributesAccess().then((access) => {
+    isAdmin.value = !!access?.is_super_admin
+  })
   window.addEventListener('resize', onResize)
   document.addEventListener('keydown', handleGlobalKeydown)
 })
@@ -613,4 +710,13 @@ onBeforeUnmount(() => {
 :deep(.handsontable) {
   width: 100% !important;
 }
+.mapping-dialog-body { display: flex; flex-direction: column; gap: 12px; }
+.mapping-summary { margin: 0; font-size: 13px; color: #4a5568; line-height: 1.6; }
+.mapping-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mapping-table th,
+.mapping-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.mapping-table th { font-weight: 600; color: #00243d; background: #f7fafc; position: sticky; top: 0; }
+.mapping-table code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #2d3748; }
+.mapping-aliases { color: #718096; font-size: 12px; }
+.mapping-drift { color: #b7791f; font-weight: 600; }
 </style>
