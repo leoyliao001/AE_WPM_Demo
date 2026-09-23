@@ -1,12 +1,9 @@
 import { reactive } from 'vue'
 
-const DEFAULT_CLIENT_ID = '9017db46-5822-46b7-8d47-c2bcf3a57876'
-const DEFAULT_TENANT_ID = 'common'
 const DEFAULT_USER_NAME = 'Signed in user'
-const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID || DEFAULT_CLIENT_ID
-const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID || DEFAULT_TENANT_ID
+const CLIENT_ID = import.meta.env.VITE_AZURE_CLIENT_ID || ''
+const TENANT_ID = import.meta.env.VITE_AZURE_TENANT_ID || ''
 const REDIRECT_URI_OVERRIDE = import.meta.env.VITE_AZURE_REDIRECT_URI || ''
-const AUTHORITY_BASE_URL = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`
 const SCOPES = ['openid', 'profile', 'offline_access', 'User.Read']
 const STORAGE_PREFIX = 'wpm.azure.auth'
 const ACCESS_TOKEN_KEY = `${STORAGE_PREFIX}.accessToken`
@@ -60,6 +57,14 @@ export function getCurrentUserEmail() {
   return String(username).trim().toLowerCase()
 }
 
+function getAuthorityBaseUrl() {
+  if (!TENANT_ID) {
+    throw new Error('Azure SSO is not configured. Set VITE_AZURE_TENANT_ID in the frontend environment.')
+  }
+
+  return `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`
+}
+
 function getRedirectUri() {
   // Prefer site root — Azure app registration is typically https://host/ only
   const raw = REDIRECT_URI_OVERRIDE || `${window.location.origin}/`
@@ -81,6 +86,23 @@ function getRedirectUri() {
   }
 
   return normalized.toString()
+}
+
+function redirectToConfiguredOrigin() {
+  if (!REDIRECT_URI_OVERRIDE || typeof window === 'undefined') {
+    return false
+  }
+
+  const redirectUrl = new URL(getRedirectUri())
+  if (redirectUrl.origin === window.location.origin) {
+    return false
+  }
+
+  redirectUrl.pathname = window.location.pathname
+  redirectUrl.search = window.location.search
+  redirectUrl.hash = window.location.hash
+  window.location.replace(redirectUrl.toString())
+  return true
 }
 
 function toBase64Url(input) {
@@ -203,6 +225,7 @@ function setErrorState(message) {
   azureAuthState.accessToken = ''
   azureAuthState.user = null
   azureAuthState.error = message
+  console.error('[azureAuth] SSO unavailable:', message)
 }
 
 async function fetchGraphProfile(accessToken, fallbackUser) {
@@ -230,7 +253,7 @@ async function fetchGraphProfile(accessToken, fallbackUser) {
 }
 
 async function exchangeToken(body) {
-  const response = await fetch(`${AUTHORITY_BASE_URL}/token`, {
+  const response = await fetch(`${getAuthorityBaseUrl()}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
@@ -238,10 +261,21 @@ async function exchangeToken(body) {
     body: new URLSearchParams(body)
   })
 
-  const payload = await response.json()
+  let payload = {}
+  try {
+    payload = await response.json()
+  } catch {
+    payload = {}
+  }
 
   if (!response.ok) {
-    const errorMessage = payload.error_description || payload.error || 'Azure sign-in failed.'
+    const details = [
+      payload.error_description || payload.error || `HTTP ${response.status}`,
+      payload.error_codes?.length ? `codes: ${payload.error_codes.join(', ')}` : '',
+      payload.trace_id ? `trace: ${payload.trace_id}` : '',
+      payload.correlation_id ? `correlation: ${payload.correlation_id}` : ''
+    ].filter(Boolean)
+    const errorMessage = details.length ? details.join(' | ') : 'Azure sign-in failed.'
     throw new Error(errorMessage)
   }
 
@@ -317,7 +351,7 @@ async function redirectToMicrosoftLogin() {
   const state = generateRandomString()
   const nonce = generateRandomString()
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
-  const authorizeUrl = new URL(`${AUTHORITY_BASE_URL}/authorize`)
+  const authorizeUrl = new URL(`${getAuthorityBaseUrl()}/authorize`)
 
   sessionStorage.setItem(STATE_KEY, state)
   sessionStorage.setItem(NONCE_KEY, nonce)
@@ -369,6 +403,7 @@ export async function initAzureAuth() {
   const searchParams = new URLSearchParams(window.location.search)
   const forceRealSso = searchParams.get('sso') === '1'
   const forceMock = searchParams.get('mockSso') === '1'
+  const authError = searchParams.get('error')
 
   // localhost / 127.0.0.1 cannot use company Azure redirect URIs — skip Microsoft login
   if ((isLocalDevHost() && !forceRealSso) || forceMock) {
@@ -384,7 +419,14 @@ export async function initAzureAuth() {
     return
   }
 
-  const authError = searchParams.get('error')
+  if (!TENANT_ID) {
+    setErrorState('Azure SSO is not configured. Set VITE_AZURE_TENANT_ID in the frontend environment.')
+    return
+  }
+
+  if (!searchParams.get('code') && !authError && redirectToConfiguredOrigin()) {
+    return
+  }
 
   if (authError) {
     const description = searchParams.get('error_description') || authError

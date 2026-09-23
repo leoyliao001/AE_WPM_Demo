@@ -31,7 +31,11 @@
       >
         <span class="user-badge__name">{{ azureAuthState.user.username || azureAuthState.user.name }}</span>
       </div>
-      <span v-else-if="azureAuthState.error" class="user-status user-status--error">SSO unavailable</span>
+      <span
+        v-else-if="azureAuthState.error"
+        class="user-status user-status--error"
+        :title="azureAuthState.error"
+      >SSO unavailable</span>
     </div>
     <div class="app-header-divider" aria-hidden="true" />
   </header>

@@ -41,6 +41,22 @@ function copyMdsIconsPlugin() {
 
       fs.mkdirSync(targetDir, { recursive: true })
       fs.cpSync(sourceDir, targetDir, { recursive: true, force: true })
+
+      // Keep names used by older MDS components available after the package rename.
+      const aliases = {
+        '20px/mi-information.js': '20px/mi-info-circle.js',
+        '20px/mi-cross.js': '20px/mi-times-circle.js',
+        '24px/mi-information.js': '24px/mi-info-circle.js',
+        '24px/mi-cross.js': '24px/mi-times-circle.js',
+        '24px/mi-rocket.js': '24px/mi-play-circle.js'
+      }
+      for (const [alias, source] of Object.entries(aliases)) {
+        const sourcePath = resolve(targetDir, source)
+        const aliasPath = resolve(targetDir, alias)
+        if (fs.existsSync(sourcePath)) {
+          fs.copyFileSync(sourcePath, aliasPath)
+        }
+      }
     }
   }
 }
@@ -49,6 +65,7 @@ export default defineConfig(() => ({
   // Apache serves the SPA from the site root. Root-relative assets also work
   // when a client refreshes a nested Vue route such as /migration-dashboard/.
   base: '/',
+  envDir: resolve(__dirname, '..'),
   cacheDir: resolve(__dirname, '.vite-cache'),
   resolve: {
     alias: {
