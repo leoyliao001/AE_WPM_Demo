@@ -3,8 +3,6 @@ import Welcome from '../views/Welcome.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
 import MigrationDashboard2 from '../views/MigrationDashboard2.vue'
-import MigrationProjectDetail from '../views/MigrationProjectDetail.vue'
-import LDDashboard from '../views/LDDashboard.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
 import FpoMapping from '../views/FpoMapping.vue'
 import ProductOwnership from '../views/ProductOwnership.vue'
@@ -56,11 +54,6 @@ const routes = [
   { path: '/migration-intake', name: 'MigrationIntake', component: MigrationIntake },
   { path: '/migration-dashboard', name: 'MigrationDashboard', component: MigrationDashboard2 },
   {
-    path: '/migration-dashboard/:id',
-    name: 'MigrationProjectDetail',
-    component: MigrationProjectDetail
-  },
-  {
     path: '/migration-dashboard/:id/opportunity-assessment',
     name: 'OpportunityAssessment',
     component: OpportunityAssessment
@@ -75,7 +68,6 @@ const routes = [
     name: 'BusinessCase',
     component: BusinessCase
   },
-  { path: '/ld-dashboard', name: 'LDDashboard', component: LDDashboard },
   // Project: current user's submitted projects only (?mine=1)
   { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
   { path: '/project-dashboard/:section', redirect: '/project-dashboard' },

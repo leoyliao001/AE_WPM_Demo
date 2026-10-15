@@ -74,49 +74,6 @@ export const migrationTableColumns = [
   { id: 'fteAllocation', label: 'FTE allocation', noWrap: true }
 ]
 
-export const ldDashboardRows = [
-  {
-    id: 1,
-    projectName: 'APAC Ocean Consolidation',
-    product: 'Ocean OPS',
-    tasks: 'Process mapping, SOP alignment, trainer onboarding',
-    timeline: 'Q2 2026 – Q3 2026',
-    fte: 6
-  },
-  {
-    id: 2,
-    projectName: 'EU Customs Modernization',
-    product: 'Customs',
-    tasks: 'Compliance training, system walkthrough',
-    timeline: 'Q3 2026 – Q4 2026',
-    fte: 4
-  },
-  {
-    id: 3,
-    projectName: 'Air Freight Digitization',
-    product: 'Air',
-    tasks: 'Role-based curriculum, assessment design',
-    timeline: 'Q2 2026 – Q3 2026',
-    fte: 3
-  },
-  {
-    id: 4,
-    projectName: 'Americas CL Rollout',
-    product: 'Contract Logistics',
-    tasks: 'Warehouse ops training, change management',
-    timeline: 'Q4 2026 – Q1 2027',
-    fte: 8
-  }
-]
-
-export const ldDashboardColumns = [
-  { id: 'projectName', label: 'Project name', noWrap: true },
-  { id: 'product', label: 'Product', noWrap: true },
-  { id: 'tasks', label: 'Tasks to be migrated (Scoping overview)', noWrap: false },
-  { id: 'timeline', label: 'Timeline for L&D stage', noWrap: true },
-  { id: 'fte', label: 'FTE', noWrap: true }
-]
-
 export const projectMilestones = [
   {
     id: 'gantt',

@@ -431,8 +431,7 @@ const phases = [
     description: 'Build the migration schedule, capture risks, and line up training ahead of execution.',
     tiles: [
       { id: 'gantt', label: 'Gantt' },
-      { id: null, label: 'Risk Register' },
-      { id: 'training', label: 'Training' }
+      { id: null, label: 'Risk Register' }
     ],
     ganttSteps: []
   },
@@ -485,7 +484,6 @@ const TILE_ROUTES = {
   opportunity: (id) => `/migration-dashboard/${id}/opportunity-assessment`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
-  training: () => '/ld-dashboard'
 }
 
 const milestoneStateById = computed(() => {

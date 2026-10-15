@@ -1303,7 +1303,7 @@ const onBreakdownSelect = (key) => {
 }
 
 const openProject = (id) => {
-  router.push(`/migration-dashboard/${id}`)
+  router.push({ path: '/toll-gates', query: { project: String(id) } })
 }
 
 const createDetailRows = () =>

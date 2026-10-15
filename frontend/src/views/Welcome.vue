@@ -1,687 +1,234 @@
 <template>
   <div class="welcome-page">
-    <div class="welcome-scroll">
-      <div class="welcome-layout">
-        <aside class="welcome-aside">
-          <section class="principles-panel" aria-label="Work Placement Principles">
-            <div class="principles-panel__head">
-              <span class="principles-panel__badge">
-                <mc-icon icon="mi-light-bulb" size="22" />
+    <main class="welcome-scroll">
+      <section class="hero-section">
+        <div class="hero-copy">
+          <p class="eyebrow">WPM PULSE <span>-</span> DIGITAL HUB</p>
+          <h1>Moving work.<br />Moving forward.<br />Together.</h1>
+          <p class="hero-description">
+            The global home for the migration lifecycle - from location decision to stable run.
+          </p>
+          <div class="hero-actions">
+            <button type="button" class="button button--primary" @click="go('/migration-intake')">
+              Start a migration <span aria-hidden="true">&#8594;</span>
+            </button>
+          </div>
+          <div class="hero-highlights" aria-label="WPM Pulse benefits">
+            <div v-for="highlight in heroHighlights" :key="highlight.title" class="hero-highlight">
+              <span class="hero-highlight__icon"><mc-icon :icon="highlight.icon" size="17" /></span>
+              <span>
+                <strong>{{ highlight.title }}</strong>
+                <small>{{ highlight.description }}</small>
               </span>
-              <div class="principles-panel__head-text">
-                <span class="principles-panel__eyebrow">Principles</span>
-                <h2 class="principles-panel__count">5 Work Placement Principles</h2>
-              </div>
             </div>
+          </div>
+        </div>
+        <div class="hero-image" role="img" aria-label="Colleagues collaborating around a table" />
+      </section>
 
-            <ol class="principles-list">
-              <li
-                v-for="principle in principles"
-                :key="principle.number"
-                class="principle-card"
-                :style="{ '--card-accent': principle.accent }"
-              >
-                <span class="principle-card__number">{{ principle.number }}</span>
-                <div class="principle-card__body">
-                  <span class="principle-card__eyebrow">Principle {{ principle.number }}</span>
-                  <h3 class="principle-card__title">{{ principle.title }}</h3>
-                  <p class="principle-card__desc">{{ principle.description }}</p>
-                </div>
-              </li>
-            </ol>
-          </section>
-        </aside>
+      <section class="hub-section" aria-labelledby="explore-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow eyebrow--dark">WPM PULSE</p>
+            <h2 id="explore-heading">Explore the hub</h2>
+          </div>
+          <p class="section-note">Everything you need to make workplace migration simpler, clearer and more connected.</p>
+        </div>
 
-        <div class="page-content">
-          <section class="brand-lockup" aria-label="WPM Pulse">
-            <PulseLogo :size="52" />
-            <div class="brand-lockup__text">
-              <p class="brand-lockup__wordmark">WPM <span>Pulse</span></p>
-              <p class="brand-lockup__eyebrow">WORKPLACEMENT AND MIGRATION - DIGITAL HUB</p>
+        <div class="explore-grid">
+          <article
+            v-for="(card, index) in exploreCards"
+            :key="card.title"
+            class="explore-card"
+            :style="{ '--card-delay': `${index * 70}ms` }"
+          >
+            <div class="explore-card__visual">
+              <div class="explore-card__image" :style="{ backgroundImage: `url(${card.image})` }" />
+              <span class="explore-card__icon"><mc-icon :icon="card.icon" size="18" /></span>
             </div>
-          </section>
-
-          <header class="workspace-head">
-            <div class="workspace-head__text">
-              <h2 class="workspace-head__title">Choose a workspace</h2>
-              <p class="workspace-head__sub">{{ workspaceCards.length + 1 }} entry points into the platform</p>
-            </div>
-            <div class="status-pill">
-              <span class="status-pill__dot" aria-hidden="true" />
-              <div>
-                <p class="status-pill__title">All systems operational</p>
-                <p class="status-pill__meta">Last refresh: {{ lastRefresh }}</p>
-              </div>
-            </div>
-          </header>
-
-          <div class="workspace-grid">
-            <article
-              v-for="(card, index) in workspaceCards"
-              :key="card.id"
-              class="ws-card"
-              :style="{ '--accent': card.accent, '--card-delay': `${index * 70}ms` }"
-            >
-              <span class="ws-card__icon">
-                <mc-icon :icon="card.icon" size="24" />
-              </span>
-              <div class="ws-card__body">
-                <p class="ws-card__eyebrow">{{ card.eyebrow }}</p>
-                <h3 class="ws-card__title">{{ card.title }}</h3>
-                <p class="ws-card__desc">{{ card.description }}</p>
-              </div>
-              <div class="ws-card__actions">
+            <div class="explore-card__body">
+              <p class="card-kicker">{{ card.kicker }}</p>
+              <h3>{{ card.title }}</h3>
+              <p>{{ card.description }}</p>
+              <div class="card-actions" :class="{ 'card-actions--split': card.actions.length > 1 }">
                 <button
                   v-for="action in card.actions"
                   :key="action.label"
                   type="button"
-                  class="ws-action"
-                  :class="`ws-action--${action.variant || 'solid'}`"
-                  :disabled="!action.route"
-                  :title="action.route ? undefined : 'Coming soon'"
+                  class="card-link"
                   @click="go(action.route)"
                 >
-                  {{ action.label }}
+                  {{ action.label }} <span aria-hidden="true">&#8594;</span>
                 </button>
               </div>
-            </article>
-
-            <article class="ws-card ws-card--wide" style="--accent: #003f6e">
-              <p class="ws-card__eyebrow">MIGRATION SUCCESS PARTNERS</p>
-            </article>
-          </div>
+            </div>
+          </article>
         </div>
-      </div>
-    </div>
+
+        <div class="quick-links" aria-label="More WPM Pulse resources">
+          <button
+            v-for="link in quickLinks"
+            :key="link.title"
+            type="button"
+            class="quick-link"
+            :class="{ 'quick-link--inactive': !link.route }"
+            @click="link.route && go(link.route)"
+          >
+            <span class="quick-link__icon"><mc-icon :icon="link.icon" size="20" /></span>
+            <span>
+              <strong>{{ link.title }}</strong>
+              <small>{{ link.description }}</small>
+            </span>
+            <span v-if="link.route" class="quick-link__arrow" aria-hidden="true">&#8594;</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-icon'
-import PulseLogo from '../components/PulseLogo.vue'
 
 const router = useRouter()
 
-const lastRefresh = computed(() =>
-  `today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
-)
-
-const principles = [
-  {
-    number: 1,
-    title: 'Standardization',
-    description: 'Enable standardization, avoid business disruption & consistently improve customer outcomes.',
-    accent: '#0077B8'
-  },
-  {
-    number: 2,
-    title: 'Scaling',
-    description: 'Scale the process and minimize GSC/Area handovers to ensure clear process ownership.',
-    accent: '#6DAA28'
-  },
-  {
-    number: 3,
-    title: 'Health Metrics',
-    description: 'Perform better on enterprise health metrics and control environment.',
-    accent: '#42B0D5'
-  },
-  {
-    number: 4,
-    title: 'Stakeholder',
-    description: 'Reduce need for in-person external stakeholder interactions.',
-    accent: '#F3880E'
-  },
-  {
-    number: 5,
-    title: 'Cost Reduction',
-    description: 'Reduce cost to serve leading to positive P&L impact.',
-    accent: '#003F6E'
-  }
+const heroHighlights = [
+  { icon: 'mi-globe', title: 'Global visibility', description: 'One place for every migration' },
+  { icon: 'mi-users', title: 'Better collaboration', description: 'Connect teams and partners' },
+  { icon: 'mi-chart-bars-vertical', title: 'Confident decisions', description: 'From data to impact' }
 ]
 
-const workspaceCards = [
+const exploreCards = [
   {
-    id: 'executive-view',
-    eyebrow: 'Portfolio dashboards',
-    title: 'Executive View',
-    description: 'Enterprise-level RAG, completion and artefact health across every migration.',
-    icon: 'mi-chart-bars-vertical',
-    accent: '#42B0D5',
-    actions: [{ label: 'Open dashboards', route: '/migration-dashboard' }]
-  },
-  {
-    id: 'wpm-workspace',
-    eyebrow: 'Dashboards, portfolio & programme',
-    title: 'WPM',
-    description:
-      'Workplace migration dashboards and management, plus drill-down into any individual project portfolio or programme.',
-    icon: 'mi-flag',
-    accent: '#0077B8',
-    actions: [{ label: 'Open WPM workspace', route: '/toll-gates' }]
-  },
-  {
-    id: 'migration-hub',
-    eyebrow: 'Track or start a migration',
+    kicker: 'Track your migrations',
     title: 'Migration Hub',
-    description: 'Check the status of your active migrations, or raise a new migration request.',
-    icon: 'mi-arrow-right',
-    accent: '#F3880E',
-    actions: [
-      { label: 'New migration', route: '/migration-intake' },
-      { label: 'My migrations', route: '/project-dashboard', variant: 'outline' }
-    ]
+    description: 'Track your active migrations and review their progress.',
+    actions: [{ label: 'My migrations', route: '/project-dashboard' }],
+    icon: 'mi-file-arrows-square',
+    image: '/port-twilight.webp'
   },
   {
-    id: 'pulse-assistant',
-    eyebrow: 'Migration chatbot',
-    title: 'Pulse Assistant',
-    description: 'Ask anything about process, artefacts or your project status — answered instantly.',
-    icon: 'mi-chatbot',
-    accent: '#12857D',
-    actions: [{ label: 'Start chat', route: '/migration-chatbot' }]
+    kicker: 'Dashboards and insight',
+    title: 'Portfolio & Dashboards',
+    description: 'Enterprise view of every migration, programme and project.',
+    actions: [{ label: 'Open', route: '/migration-dashboard' }],
+    icon: 'mi-chart-bars-vertical',
+    image: '/aefc68e4-4be4-4ebf-a3b1-38b9915c8db7.webp'
+  },
+  {
+    kicker: 'GSC locations and guardrails',
+    title: 'Location Strategy',
+    description: 'Make confident placement decisions with clear location insight.',
+    actions: [{ label: 'Open', route: '/gsc-site-mapping' }],
+    icon: 'mi-map',
+    image: '/c05f31e9-c833-4481-8bfa-754f8317ebcf.webp'
+  },
+  {
+    kicker: 'Your delivery network',
+    title: 'Success Partners',
+    description: 'Your HR, Finance, Tech, Legal and TA partners and focal points.',
+    actions: [{ label: 'Open', route: '/migration-chatbot' }],
+    icon: 'mi-users',
+    image: '/Collaboration.png'
   }
 ]
 
-const go = (route) => {
-  if (!route) return
-  router.push(route)
-}
+const quickLinks = [
+  { title: 'Playbook & Standards', description: 'Lifecycle stages, artefacts, templates', icon: 'mi-file-arrows-square', route: '' },
+  { title: 'Governance & Approvals', description: 'ELT approval route and forums', icon: 'mi-shield-check', route: '/approval-workflow' },
+  { title: 'Pulse Assistant', description: 'Ask anything about process or status', icon: 'mi-chatbot', route: '/migration-chatbot' }
+]
+
+const go = (route) => router.push(route)
 </script>
 
 <style scoped>
 .welcome-page {
-  --mb: #42b0d5;
-  --mm: #0077b8;
-  --md: #003f6e;
-  background: #fff;
+  --navy: #0b2b4b;
+  --blue: #0077b8;
+  --cyan: #42b0d5;
+  --paper: #f3f6f8;
+  --line: #dfe8ed;
+  --muted: #6d8193;
+  background: var(--paper);
+  color: #102d49;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  isolation: isolate;
   min-height: 0;
   overflow: hidden;
-  position: relative;
   width: 100%;
 }
 
-.welcome-scroll {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  justify-content: flex-start;
-  min-height: 0;
-  overflow-x: clip;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  position: relative;
-  z-index: 1;
+.welcome-scroll { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto; padding-bottom: 0; }
+.hero-section, .hub-section { margin: 0; width: 100%; }
+.hero-section { background: linear-gradient(120deg, #eaf6fa 0%, #f8fcfd 50%, #edf7fa 100%); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; min-height: clamp(350px, 42vh, 430px); }
+.hero-copy { align-self: center; background: transparent; max-width: 620px; padding: 16px clamp(28px, 4vw, 64px) 16px clamp(44px, 8vw, 140px); }
+.eyebrow, .card-kicker { color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: .14em; margin: 0; text-transform: uppercase; }
+.eyebrow span { color: var(--cyan); }
+.hero-copy h1 { color: var(--navy); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(40px, 3vw, 50px); font-weight: 700; letter-spacing: -.025em; line-height: .94; margin: 12px 0 13px; }
+.hero-description { color: #60758a; font-size: 15px; line-height: 1.55; margin: 0; max-width: 430px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.button { border: 1px solid var(--navy); border-radius: 3px; cursor: pointer; font: 700 12px 'Maersk Text', sans-serif; padding: 11px 16px; transition: transform .2s ease, box-shadow .2s ease; }
+.button:hover { box-shadow: 0 5px 12px rgba(11, 43, 75, .16); transform: translateY(-2px); }
+.button--primary { background: var(--navy); color: #fff; }
+.button--secondary { background: #fff; color: var(--navy); }
+.button span, .card-link span { margin-left: 7px; }
+.hero-highlights { display: flex; gap: 16px; margin-top: 22px; }
+.hero-highlight { align-items: center; color: var(--navy); display: flex; flex: 1 1 0; gap: 8px; min-width: 0; }
+.hero-highlight__icon { align-items: center; background: #edf7fb; border-radius: 50%; color: var(--blue); display: flex; flex: 0 0 30px; height: 30px; justify-content: center; }
+.hero-highlight > span:last-child { min-width: 0; }
+.hero-highlight strong, .hero-highlight small { display: block; }
+.hero-highlight strong { font-size: 11px; white-space: nowrap; }
+.hero-highlight small { color: var(--muted); font-size: 10px; line-height: 1.3; margin-top: 3px; }
+.hero-image { background: linear-gradient(110deg, rgba(11, 43, 75, .08), transparent 35%), url('/Collaboration-Hero.jpg') center 35% / cover; min-height: clamp(350px, 42vh, 430px); clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); }
+.hub-section { padding: 20px 0 22px; }
+.section-heading { align-items: end; display: grid; gap: 24px; grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr); margin-bottom: 20px; padding: 0 clamp(32px, 5vw, 80px); }
+.eyebrow--dark { color: var(--blue); }
+.section-heading h2 { color: var(--navy); font-size: 25px; letter-spacing: -.01em; margin: 6px 0 0; }
+.section-note { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; max-width: 470px; }
+.explore-grid { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.explore-card { animation: reveal .55s ease both; animation-delay: var(--card-delay); background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 5px 14px rgba(18, 50, 75, .05); overflow: hidden; transition: box-shadow .2s ease, transform .2s ease; }
+.explore-card:hover { box-shadow: 0 12px 24px rgba(18, 50, 75, .14); transform: translateY(-3px); }
+.explore-card__visual { position: relative; }
+.explore-card__image { background-position: center; background-size: cover; height: 96px; }
+.explore-card__icon { align-items: center; background: #edf7fb; border: 4px solid #fff; border-radius: 50%; bottom: -17px; color: var(--blue); display: flex; height: 38px; justify-content: center; left: 16px; position: absolute; width: 38px; }
+.explore-card__body { padding: 14px 16px 13px; }
+.card-kicker { font-size: 10px; letter-spacing: .08em; }
+.explore-card h3 { color: var(--navy); font-size: 15px; margin: 7px 0 6px; }
+.explore-card p:not(.card-kicker) { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; min-height: 35px; }
+.card-actions { align-items: stretch; border-top: 1px solid #e6edf1; display: flex; gap: 16px; margin-top: auto; padding-top: 7px; }
+.card-actions--split { gap: 10px; }
+.card-link { align-items: center; background: transparent; border: 0; border-radius: 0; color: var(--navy); cursor: pointer; display: flex; flex: 1 1 0; font: 700 12px 'Maersk Text', sans-serif; justify-content: space-between; margin: 0; min-height: 44px; min-width: 0; padding: 0; text-align: left; transition: color .2s ease; }
+.card-link span { align-items: center; border: 1px solid #d6e3e9; border-radius: 50%; color: var(--blue); display: inline-flex; height: 26px; justify-content: center; transition: background .2s ease, border-color .2s ease, color .2s ease; width: 26px; }
+.card-link:hover { color: var(--blue); }
+.card-link:hover span { background: #eaf5fa; border-color: #b9dce9; }
+.card-link:focus-visible { border-radius: 3px; outline: 3px solid color-mix(in srgb, var(--blue) 35%, white); outline-offset: 2px; }
+.quick-links { background: var(--line); border-bottom: 1px solid var(--line); display: grid; gap: 1px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 1px; }
+.quick-link { align-items: center; background: rgba(255, 255, 255, .76); border: 0; border-radius: 0; color: var(--navy); cursor: pointer; display: flex; gap: 13px; min-width: 0; padding: 18px clamp(20px, 3vw, 48px); text-align: left; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.quick-link:hover { border-color: #9ccde0; }
+.quick-link:hover { background: #fff; transform: translateY(-2px); }
+.quick-link--inactive { cursor: default; }
+.quick-link--inactive:hover { border-color: var(--line); transform: none; }
+.quick-link__icon { align-items: center; background: #edf7fb; border-radius: 6px; color: var(--blue); display: flex; flex: 0 0 36px; height: 36px; justify-content: center; }
+.quick-link strong, .quick-link small { display: block; }
+.quick-link strong { font-size: 12px; }
+.quick-link small { color: var(--muted); font-size: 11px; margin-top: 4px; }
+.quick-link__arrow { color: var(--blue); font-size: 17px; margin-left: auto; }
+@keyframes reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 821px) {
+  .hub-section { display: flex; flex: 1 1 auto; flex-direction: column; justify-content: space-evenly; min-height: 0; }
+  .section-heading { margin-bottom: 0; }
+  .explore-grid { flex: 0 0 clamp(220px, 26vh, 260px); min-height: clamp(220px, 26vh, 260px); }
+  .quick-links { margin-top: 0; }
+  .explore-card { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .explore-card__image { flex: 0 0 116px; }
+  .explore-card__body { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+  .card-actions { align-self: stretch; }
 }
-
-.welcome-layout {
-  align-items: stretch;
-  display: grid;
-  gap: 28px;
-  grid-auto-rows: 1fr;
-  grid-template-columns: 440px minmax(0, 1fr);
-  margin: 0 auto;
-  max-width: 1560px;
-  padding: 32px 24px 40px;
-  width: 100%;
-}
-
-.welcome-aside {
-  display: flex;
-  flex: 0 0 440px;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
-}
-
-.brand-lockup {
-  align-items: center;
-  animation: fade-up 0.55s ease both;
-  background: linear-gradient(120deg, #0b2b47 0%, #143c60 60%, #0d2c49 100%);
-  border-radius: 14px;
-  box-shadow: 0 2px 4px rgba(9, 30, 51, 0.16), 0 12px 28px rgba(9, 30, 51, 0.18);
-  display: flex;
-  gap: 16px;
-  margin-bottom: 22px;
-  padding: 18px 24px;
-}
-
-.brand-lockup__text {
-  min-width: 0;
-}
-
-.brand-lockup__wordmark {
-  color: #fff;
-  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  margin: 0;
-}
-
-.brand-lockup__wordmark span {
-  color: #5cc9ec;
-}
-
-.brand-lockup__eyebrow {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  margin: 5px 0 0;
-  text-transform: uppercase;
-}
-
-.principles-panel {
-  animation: fade-up 0.55s ease both;
-  background-color: #0b2b47;
-  background-image: url('/Collaboration.png');
-  background-position: center;
-  background-size: cover;
-  border-radius: 16px;
-  box-shadow:
-    0 2px 4px rgba(9, 30, 51, 0.18),
-    0 18px 40px rgba(9, 30, 51, 0.22);
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  isolation: isolate;
-  min-height: 0;
-  overflow: hidden;
-  padding: 28px 26px;
-  position: relative;
-}
-
-.principles-panel::before {
-  background: linear-gradient(165deg, rgba(8, 27, 45, 0.86) 0%, rgba(10, 34, 56, 0.8) 45%, rgba(8, 27, 45, 0.9) 100%);
-  content: '';
-  inset: 0;
-  position: absolute;
-  z-index: -1;
-}
-
-.principles-panel__head {
-  align-items: center;
-  display: flex;
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.principles-panel__badge {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 12px;
-  color: #7fd6f2;
-  display: inline-flex;
-  flex-shrink: 0;
-  height: 44px;
-  justify-content: center;
-  width: 44px;
-}
-
-.principles-panel__head-text {
-  min-width: 0;
-}
-
-.principles-panel__eyebrow {
-  color: #7fd6f2;
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.principles-panel__count {
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.3;
-  margin: 2px 0 0;
-}
-
-.principles-list {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 4px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.principle-card {
-  --card-accent: #0077b8;
-  align-items: flex-start;
-  background: transparent;
-  border: none;
-  border-radius: 10px;
-  box-shadow: none;
-  display: flex;
-  gap: 14px;
-  padding: 12px 12px 12px 16px;
-  position: relative;
-  transition: background 0.2s ease;
-}
-
-.principle-card::before {
-  background: var(--card-accent);
-  border-radius: 999px;
-  content: '';
-  height: calc(100% - 20px);
-  left: 0;
-  position: absolute;
-  top: 10px;
-  width: 3px;
-}
-
-.principle-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.principle-card__number {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid color-mix(in srgb, var(--card-accent) 55%, transparent);
-  border-radius: 999px;
-  color: #fff;
-  display: flex;
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 700;
-  height: 26px;
-  justify-content: center;
-  width: 26px;
-}
-
-.principle-card__body {
-  min-width: 0;
-}
-
-.principle-card__eyebrow {
-  color: color-mix(in srgb, var(--card-accent) 55%, white);
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.principle-card__title {
-  color: #fff;
-  font-size: 14.5px;
-  font-weight: 700;
-  line-height: 1.3;
-  margin: 3px 0 4px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-
-.principle-card__desc {
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 12.5px;
-  line-height: 1.55;
-  margin: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-
-.page-content {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  margin: 0;
-  max-width: none;
-  min-width: 0;
-  padding: 0;
-  position: relative;
-  width: 100%;
-  z-index: 1;
-}
-
-.workspace-head {
-  align-items: flex-start;
-  animation: fade-up 0.55s ease both;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: space-between;
-  margin-bottom: 22px;
-}
-
-.workspace-head__title {
-  color: #161616;
-  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-
-.workspace-head__sub {
-  color: #6c757d;
-  font-size: 13.5px;
-  margin: 6px 0 0;
-}
-
-.status-pill {
-  align-items: center;
-  background: #fff;
-  border: 1px solid rgba(22, 22, 22, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
-  display: flex;
-  gap: 10px;
-  padding: 10px 16px;
-}
-
-.status-pill__dot {
-  background: #17a34a;
-  border-radius: 999px;
-  box-shadow: 0 0 0 3px rgba(23, 163, 74, 0.16);
-  flex-shrink: 0;
-  height: 9px;
-  width: 9px;
-}
-
-.status-pill__title {
-  color: #161616;
-  font-size: 12.5px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.status-pill__meta {
-  color: #8a9099;
-  font-size: 11.5px;
-  margin: 2px 0 0;
-}
-
-.workspace-grid {
-  align-items: start;
-  display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-}
-
-.ws-card {
-  --accent: #0077b8;
-  animation: fade-up 0.55s ease both;
-  animation-delay: var(--card-delay, 0ms);
-  background: #fff;
-  border: 1px solid rgba(22, 22, 22, 0.07);
-  border-left: 4px solid var(--accent);
-  border-radius: 12px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 2px 4px rgba(15, 23, 42, 0.05),
-    0 10px 24px rgba(15, 23, 42, 0.07);
-  display: grid;
-  gap: 4px 16px;
-  grid-template-columns: auto 1fr;
-  padding: 22px 24px;
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-.ws-card:hover {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 6px 14px rgba(15, 23, 42, 0.08),
-    0 20px 40px rgba(0, 63, 110, 0.14);
-  transform: translateY(-3px);
-}
-
-.ws-card--wide {
-  align-items: center;
-  grid-column: 1 / -1;
-  grid-template-columns: 1fr;
-  min-height: 130px;
-}
-
-.ws-card__icon {
-  align-items: center;
-  background: color-mix(in srgb, var(--accent) 12%, white);
-  border-radius: 10px;
-  color: var(--accent);
-  display: inline-flex;
-  grid-row: span 2;
-  height: 44px;
-  justify-content: center;
-  width: 44px;
-}
-
-.ws-card__body {
-  min-width: 0;
-}
-
-.ws-card__eyebrow {
-  color: var(--accent);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  margin: 0;
-  text-transform: uppercase;
-}
-
-.ws-card__title {
-  color: #161616;
-  font-family: 'Maersk Headline', 'Maersk Text', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  margin: 4px 0 8px;
-}
-
-.ws-card__desc {
-  border-bottom: 1px solid rgba(22, 22, 22, 0.08);
-  color: #6c757d;
-  font-size: 13px;
-  line-height: 1.55;
-  margin: 0;
-  padding-bottom: 14px;
-}
-
-.ws-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  grid-column: 2;
-  padding-top: 14px;
-}
-
-.ws-action {
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  min-width: 74px;
-  padding: 9px 18px;
-  transition: filter 0.2s ease, background 0.2s ease;
-}
-
-.ws-action:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.ws-action:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 35%, white);
-  outline-offset: 1px;
-}
-
-.ws-action--outline {
-  background: #fff;
-  color: var(--accent);
-}
-
-.ws-action--outline:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) 8%, white);
-  filter: none;
-}
-
-.ws-action:disabled {
-  background: #f2f4f6;
-  border-color: rgba(22, 22, 22, 0.1);
-  color: #9aa0a6;
-  cursor: not-allowed;
-}
-
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .brand-lockup,
-  .principles-panel,
-  .workspace-head,
-  .ws-card {
-    animation: none;
-  }
-
-  .ws-card:hover {
-    transform: none;
-  }
-}
-
-@media (max-width: 1240px) {
-  .welcome-layout {
-    flex-direction: column;
-  }
-
-  .welcome-aside {
-    flex-basis: auto;
-    width: 100%;
-  }
-}
-
-@media (max-width: 900px) {
-  .workspace-grid {
-    grid-template-columns: 1fr;
-  }
-
-}
-
-@media (max-width: 760px) {
-  .welcome-layout {
-    padding: 24px 16px 32px;
-  }
-}
+@media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
+@media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { flex-wrap: wrap; gap: 14px 20px; } .explore-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
+@media (max-width: 520px) { .hero-copy h1 { font-size: 40px; } .hero-highlights { display: grid; grid-template-columns: 1fr; } .explore-grid, .quick-links { grid-template-columns: 1fr; } }
 </style>

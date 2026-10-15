@@ -57,7 +57,6 @@ const baseNavItems = [
   // Hidden for now: Future Service Model, Final CI Review
   { label: 'Intake', to: '/migration-intake', icon: 'mi-file-arrows-square' },
   { label: 'Dashboard', to: '/migration-dashboard', icon: 'mi-chart-bars-vertical' },
-  { label: 'L&D', to: '/ld-dashboard', icon: 'mi-monitor' },
   { label: 'Chatbot', to: '/migration-chatbot', icon: 'mi-chatbot' }
 ]
 
