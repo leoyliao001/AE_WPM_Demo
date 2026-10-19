@@ -61,7 +61,7 @@ const baseNavItems = [
 ]
 
 const databaseNavItem = {
-  label: 'Database',
+  label: 'Admin',
   to: '/project-attributes',
   icon: 'mi-database',
   matchPaths: [

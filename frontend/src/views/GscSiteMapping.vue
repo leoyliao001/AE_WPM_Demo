@@ -3,7 +3,7 @@
     <div class="gsc-page-inner">
       <header class="gsc-toolbar">
         <div class="toolbar-left">
-          <router-link class="back-link" to="/project-attributes">
+          <router-link class="back-link" :to="backTarget">
             <mc-button
               appearance="neutral"
               variant="plain"
@@ -95,6 +95,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 import Handsontable from 'handsontable'
 import 'handsontable/styles/handsontable.min.css'
@@ -119,6 +120,8 @@ const ALL_COLUMNS = [
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
 const COLUMN_WIDTH_STORAGE_ID = 'gsc-site-mapping'
+const route = useRoute()
+const backTarget = computed(() => route.query.from === 'welcome' ? '/' : '/project-attributes')
 
 const hotContainer = ref(null)
 const hotInstance = shallowRef(null)

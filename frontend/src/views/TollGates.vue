@@ -1,8 +1,8 @@
 <template>
   <PageShell
+    class="toll-gates-page-shell"
     title="Toll Gates"
     subtitle="Migration lifecycle grouped into the five PMI process groups — Initiating through Closing."
-    tag="Governance"
     back-to="/"
     full-width
   >
@@ -59,7 +59,7 @@
       <span v-if="loadingProject" class="project-picker__hint">Loading progress…</span>
       <span v-else-if="projectError" class="project-picker__hint project-picker__hint--error">{{ projectError }}</span>
       <span v-else-if="!selectedProjectId" class="project-picker__hint">
-        Search and pick a project to see live progress for each step below.
+        Pick a project to see live progress.
       </span>
     </div>
 
@@ -155,22 +155,37 @@
                 class="artefact-item"
                 :class="`artefact-item--${item.status}`"
               >
-                <span class="artefact-item__icon">
-                  <mc-icon icon="mi-file" size="14" />
-                </span>
-                <span class="artefact-item__text">
-                  <span class="artefact-item__label">{{ item.label }}</span>
-                  <span class="artefact-item__status">{{ ARTEFACT_STATUS_LABEL[item.status] }}</span>
-                </span>
+                <button
+                  v-if="item.source === 'business_case'"
+                  type="button"
+                  class="artefact-item__link"
+                  :disabled="!canNavigate(item.source, 'tile')"
+                  @click="goToStep(item.source, 'tile')"
+                >
+                  <span class="artefact-item__icon">
+                    <mc-icon icon="mi-file" size="14" />
+                  </span>
+                  <span class="artefact-item__text">
+                    <span class="artefact-item__label">{{ item.label }}</span>
+                    <span class="artefact-item__status">{{ ARTEFACT_STATUS_LABEL[item.status] }}</span>
+                  </span>
+                  <span class="artefact-item__link-arrow" aria-hidden="true">›</span>
+                </button>
+                <template v-else>
+                  <span class="artefact-item__icon">
+                    <mc-icon icon="mi-file" size="14" />
+                  </span>
+                  <span class="artefact-item__text">
+                    <span class="artefact-item__label">{{ item.label }}</span>
+                    <span class="artefact-item__status">{{ ARTEFACT_STATUS_LABEL[item.status] }}</span>
+                  </span>
+                </template>
               </li>
             </ul>
           </div>
 
           <footer class="artefact-card__foot">
             <span class="artefact-gate" :class="`artefact-gate--${stage.rag}`">{{ stage.gateLabel }}</span>
-            <button type="button" class="artefact-card__link" @click="scrollToPhase(stage.id)">
-              View stage ›
-            </button>
           </footer>
         </article>
       </div>
@@ -184,8 +199,7 @@
     <section class="quick-tools" aria-labelledby="quick-tools-title">
       <header class="quick-tools__head">
         <div>
-          <p class="quick-tools__eyebrow">Project toolkit</p>
-          <h2 id="quick-tools-title" class="quick-tools__title">Project Tools</h2>
+          <h2 id="quick-tools-title" class="quick-tools__title">Project Artefacts</h2>
           <p class="quick-tools__sub">
             Access the tools used to prepare, plan and govern this migration.
           </p>
@@ -229,97 +243,6 @@
       </div>
     </section>
 
-    <div v-if="selectedProjectId && !loadingProject && !projectError" class="overall-progress">
-      <div class="overall-progress__ring" :style="{ '--pct': overallTotals.pct }">
-        <span class="overall-progress__value">{{ overallTotals.pct }}%</span>
-      </div>
-      <div class="overall-progress__text">
-        <span class="overall-progress__eyebrow">Progress overview</span>
-        <strong>Overall toll gate completion</strong>
-        <span>{{ overallTotals.complete }} of {{ overallTotals.total }} tracked steps complete</span>
-      </div>
-    </div>
-
-    <section
-      v-for="phase in phases"
-      :key="phase.id"
-      :id="`phase-${phase.id}`"
-      class="phase-section"
-      :style="{ '--phase-accent': phase.accent }"
-    >
-      <div class="phase-head">
-        <span class="phase-index">{{ phase.index }}</span>
-        <span class="phase-icon">
-          <mc-icon :icon="phase.icon" size="22" />
-        </span>
-        <div class="phase-head__text">
-          <h2>{{ phase.title }}</h2>
-          <p v-if="phase.description">{{ phase.description }}</p>
-        </div>
-        <div v-if="selectedProjectId && phaseTotals(phase).total" class="phase-progress">
-          <strong>{{ phaseTotals(phase).complete }}/{{ phaseTotals(phase).total }}</strong>
-          <span>steps complete</span>
-          <div class="phase-progress__track">
-            <div
-              class="phase-progress__fill"
-              :style="{ width: `${phaseTotals(phase).pct}%` }"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="phase-groups">
-        <div v-if="phase.tiles.length" class="phase-group">
-          <h3>Dashboard tiles</h3>
-          <div class="tg-stepper">
-            <div
-              v-for="(tile, index) in phase.tiles"
-              :key="tile.label"
-              class="tg-stepper__item"
-              :class="[`tg-stepper__item--${stepState(tile.id)}`, { 'tg-stepper__item--clickable': canNavigate(tile.id, 'tile') }]"
-              @click="goToStep(tile.id, 'tile')"
-            >
-              <div
-                v-if="index > 0"
-                class="tg-stepper__connector"
-                :class="{ 'tg-stepper__connector--complete': isConnectorComplete(phase.tiles, index) }"
-              />
-              <div class="tg-stepper__node">
-                <mc-icon v-if="stepState(tile.id) === 'complete'" icon="mi-check" size="14" />
-                <mc-icon v-else-if="stepState(tile.id) === 'at_risk'" icon="mi-exclamation-triangle" size="14" />
-                <mc-icon v-else icon="mi-clock" size="14" />
-              </div>
-              <span class="tg-stepper__label">{{ tile.label }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="phase.ganttSteps.length" class="phase-group">
-          <h3>Gantt steps</h3>
-          <div class="tg-stepper tg-stepper--wrap">
-            <div
-              v-for="(step, index) in phase.ganttSteps"
-              :key="step.label"
-              class="tg-stepper__item"
-              :class="[`tg-stepper__item--${stepState(step.id)}`, { 'tg-stepper__item--clickable': canNavigate(step.id, 'gantt') }]"
-              @click="goToStep(step.id, 'gantt')"
-            >
-              <div
-                v-if="index > 0"
-                class="tg-stepper__connector"
-                :class="{ 'tg-stepper__connector--complete': isConnectorComplete(phase.ganttSteps, index) }"
-              />
-              <div class="tg-stepper__node">
-                <mc-icon v-if="stepState(step.id) === 'complete'" icon="mi-check" size="14" />
-                <mc-icon v-else-if="stepState(step.id) === 'at_risk'" icon="mi-exclamation-triangle" size="14" />
-                <mc-icon v-else icon="mi-clock" size="14" />
-              </div>
-              <span class="tg-stepper__label">{{ step.label }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   </PageShell>
 </template>
 
@@ -396,87 +319,6 @@ const onDocumentClick = (event) => {
   }
 }
 
-// Tile ids match milestone ids from migrationDashboardProgress.js; Gantt step ids
-// match TEMPLATE_TASKS ids in backend/api/views/project_gantt.py.
-const phases = [
-  {
-    id: 'initiating',
-    index: 1,
-    title: 'Initiate',
-    icon: 'mi-file-arrows-square',
-    accent: '#0077B8',
-    description: 'Intake, sign-off on the opportunity, and every approval needed before planning begins.',
-    tiles: [
-      { id: 'intake', label: 'Project Charter' },
-      { id: 'business_case', label: 'Business Case' },
-      { id: 'opportunity', label: 'Opportunity assessment' },
-      { id: 'approvals', label: 'Approvals' }
-    ],
-    ganttSteps: [
-      { id: 'business-case', label: 'Business case' },
-      { id: 'fbp-approval', label: 'FBP approval' },
-      { id: 'functional-head', label: 'Functional head approval' },
-      { id: 'elt-approval', label: 'ELT approval' },
-      { id: 'gsc-head', label: 'GSC head-1 approval' },
-      { id: 'pid-approval', label: 'PID approval' },
-      { id: 'hiring-request', label: 'Hiring request approval' }
-    ]
-  },
-  {
-    id: 'planning',
-    index: 2,
-    title: 'Plan',
-    icon: 'mi-chart-bars-vertical',
-    accent: '#42B0D5',
-    description: 'Build the migration schedule, capture risks, and line up training ahead of execution.',
-    tiles: [
-      { id: 'gantt', label: 'Gantt' },
-      { id: null, label: 'Risk Register' }
-    ],
-    ganttSteps: []
-  },
-  {
-    id: 'executing',
-    index: 3,
-    title: 'Execute',
-    icon: 'mi-monitor',
-    accent: '#F3880E',
-    description: 'Deliver the L&D training stage, knowledge transfer, and ramp-up of transferred volume.',
-    tiles: [],
-    ganttSteps: [
-      { id: 'neo-training', label: 'NEO + GSC L&D business & training stage' },
-      { id: 'knowledge-transfer', label: 'Knowledge Transfer + System Training + Assessments' },
-      { id: 'volume-transfer', label: 'Volume Transfer/Ramp-up stage' }
-    ]
-  },
-  {
-    id: 'monitor-control',
-    index: 4,
-    title: 'Monitor & Control',
-    icon: 'mi-exclamation-triangle',
-    accent: '#6DAA28',
-    description: 'Track stability through Hypercare and confirm exit success criteria are met.',
-    tiles: [],
-    ganttSteps: [
-      { id: 'hypercare', label: 'Hypercare stage' },
-      { id: 'hypercare-exit', label: 'Hypercare Exit Success Criteria Review' }
-    ]
-  },
-  {
-    id: 'closing',
-    index: 5,
-    title: 'Close & Realise Value',
-    icon: 'mi-flag',
-    accent: '#E85454',
-    description: 'Recommend sign-off and release the capacity that migration frees up.',
-    tiles: [{ id: 'golive', label: 'Go-live' }],
-    ganttSteps: [
-      { id: 'sign-off', label: 'Migration Sign-off recommendation' },
-      { id: 'capacity-release', label: 'Recommended soonest Capacity Release' }
-    ]
-  }
-]
-
 // Where each trackable step id navigates to once a project is selected.
 const TILE_ROUTES = {
   intake: (id) => `/migration-dashboard/${id}`,
@@ -518,13 +360,6 @@ const stepState = (stepId) => {
   return milestoneStateById.value[stepId] ?? ganttStateById.value[stepId] ?? 'pending'
 }
 
-const isConnectorComplete = (steps, index) => {
-  const prev = steps[index - 1]
-  if (!prev) return false
-  const state = stepState(prev.id)
-  return state === 'complete' || state === 'active'
-}
-
 const canNavigate = (stepId, kind) => {
   if (!selectedProjectId.value || !stepId) return false
   if (kind === 'tile') return typeof TILE_ROUTES[stepId] === 'function'
@@ -538,22 +373,6 @@ const goToStep = (stepId, kind) => {
   // `from` lets the destination page send the user back here instead of its default parent.
   router.push({ path: to, query: { from: 'toll-gates', project: id } })
 }
-
-const phaseTotals = (phase) => {
-  const trackable = [...phase.tiles, ...phase.ganttSteps].filter((s) => s.id)
-  const total = trackable.length
-  const complete = trackable.filter((s) => stepState(s.id) === 'complete').length
-  const pct = total ? Math.round((complete / total) * 100) : 0
-  return { total, complete, pct }
-}
-
-const overallTotals = computed(() => {
-  const trackable = phases.flatMap((ph) => [...ph.tiles, ...ph.ganttSteps]).filter((s) => s.id)
-  const total = trackable.length
-  const complete = trackable.filter((s) => stepState(s.id) === 'complete').length
-  const pct = total ? Math.round((complete / total) * 100) : 0
-  return { total, complete, pct }
-})
 
 const ARTEFACT_LEGEND = [
   { status: 'secured', label: 'Secured' },
@@ -675,10 +494,6 @@ const artefactTotals = computed(() => {
     atRiskStages: stages.filter((stage) => stage.rag !== 'green').length
   }
 })
-
-const scrollToPhase = (phaseId) => {
-  document.getElementById(`phase-${phaseId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
 
 const QUICK_STATUS_LABEL = {
   complete: 'Complete',
@@ -1181,6 +996,52 @@ onBeforeUnmount(() => {
   gap: 10px;
   min-height: 48px;
   padding: 8px 10px;
+}
+
+.artefact-item__link {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.artefact-item__link:disabled {
+  cursor: not-allowed;
+}
+
+.artefact-item__link:not(:disabled):hover .artefact-item__label {
+  color: #0077b8;
+  text-decoration: underline;
+}
+
+.artefact-item__link:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid rgba(0, 119, 184, 0.45);
+  outline-offset: 3px;
+}
+
+.artefact-item__link-arrow {
+  color: #0077b8;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.artefact-item__link:not(:disabled):hover .artefact-item__link-arrow,
+.artefact-item__link:not(:disabled):focus-visible .artefact-item__link-arrow {
+  opacity: 1;
+  transform: translateX(2px);
 }
 
 .artefact-item--secured {
@@ -1894,263 +1755,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.overall-progress {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border: 1px solid #e4e9ef;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  background: linear-gradient(135deg, rgba(0, 119, 184, 0.05) 0%, rgba(66, 176, 213, 0.04) 100%);
-}
-
-.overall-progress__ring {
-  --pct: 0;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: conic-gradient(#0077b8 calc(var(--pct) * 1%), #e4e9ef 0);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.overall-progress__ring::before {
-  content: '';
-  position: absolute;
-}
-
-.overall-progress__value {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  color: #161616;
-}
-
-.overall-progress__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-  color: #56626c;
-}
-
-.overall-progress__eyebrow {
-  color: #1673df;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  margin-bottom: 2px;
-  text-transform: uppercase;
-}
-
-.overall-progress__text strong {
-  font-size: 15px;
-  color: #161616;
-}
-
-.phase-section {
-  border: 1px solid #e4e9ef;
-  border-left: 4px solid var(--phase-accent, #0077b8);
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 20px;
-  background: #fff;
-}
-
-.phase-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.phase-index {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--phase-accent, #0077b8);
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.phase-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--phase-accent, #0077b8);
-  flex-shrink: 0;
-}
-
-.phase-head__text {
-  flex: 1 1 auto;
-}
-
-.phase-head__text h2 {
-  margin: 0 0 4px;
-  font-size: 18px;
-}
-
-.phase-head__text p {
-  margin: 0;
-  color: #56626c;
-  font-size: 14px;
-}
-
-.phase-progress {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  min-width: 140px;
-  font-size: 12px;
-  color: #56626c;
-}
-
-.phase-progress strong {
-  font-size: 15px;
-  color: #161616;
-}
-
-.phase-progress__track {
-  width: 120px;
-  height: 5px;
-  border-radius: 999px;
-  background: #e4e9ef;
-  overflow: hidden;
-}
-
-.phase-progress__fill {
-  height: 100%;
-  background: var(--phase-accent, #0077b8);
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-.phase-groups {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-.phase-group h3 {
-  margin: 0 0 14px;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #7a8894;
-}
-
-.tg-stepper {
-  display: flex;
-  gap: 0;
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.tg-stepper--wrap {
-  flex-wrap: wrap;
-  row-gap: 20px;
-}
-
-.tg-stepper__item {
-  align-items: center;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 96px;
-  max-width: 130px;
-  position: relative;
-  padding: 0 4px;
-}
-
-.tg-stepper__item--clickable {
-  cursor: pointer;
-}
-
-.tg-stepper__connector {
-  background: #d7dde3;
-  height: 2px;
-  left: calc(-50% + 16px);
-  position: absolute;
-  top: 15px;
-  width: calc(100% - 32px);
-  z-index: 0;
-}
-
-.tg-stepper__connector--complete {
-  background: #6daa28;
-}
-
-.tg-stepper__node {
-  align-items: center;
-  background: #fff;
-  border: 2px solid #d7dde3;
-  border-radius: 999px;
-  color: #6c757d;
-  display: flex;
-  height: 32px;
-  justify-content: center;
-  position: relative;
-  width: 32px;
-  z-index: 1;
-  flex-shrink: 0;
-}
-
-.tg-stepper__item--complete .tg-stepper__node {
-  background: #eef8e8;
-  border-color: #6daa28;
-  color: #6daa28;
-}
-
-.tg-stepper__item--active .tg-stepper__node {
-  background: #0077b8;
-  border-color: #0077b8;
-  color: #fff;
-  box-shadow: 0 0 0 4px rgba(0, 119, 184, 0.15);
-}
-
-.tg-stepper__item--at_risk .tg-stepper__node {
-  background: #fff5f5;
-  border-color: #e85454;
-  color: #e85454;
-}
-
-.tg-stepper__label {
-  color: #6c757d;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.3;
-  text-align: center;
-}
-
-.tg-stepper__item--complete .tg-stepper__label {
-  color: #5a9420;
-}
-
-.tg-stepper__item--active .tg-stepper__label {
-  color: #0077b8;
-  font-weight: 600;
-}
-
-.tg-stepper__item--at_risk .tg-stepper__label {
-  color: #e85454;
-  font-weight: 600;
-}
-
 /* Extend the lifecycle dashboard language to the supporting Toll Gates panels. */
 .project-picker {
   align-items: center;
@@ -2227,113 +1831,133 @@ onBeforeUnmount(() => {
   border-top-color: #edf0f5;
 }
 
-.overall-progress {
-  align-items: center;
-  background: linear-gradient(135deg, #f5f9ff 0%, #fff 100%);
-  border: 1px solid #e2ebf6;
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(35, 63, 100, 0.05);
-  gap: 14px;
-  margin-bottom: 22px;
-  padding: 14px 18px;
-}
+@media (min-width: 721px) {
+  .toll-gates-page-shell :deep(.page-content) {
+    padding-top: 14px;
+    padding-bottom: 40px;
+  }
 
-.overall-progress__ring {
-  background: conic-gradient(#2d8cff calc(var(--pct) * 1%), #e6edf5 0);
-  height: 58px;
-  width: 58px;
-}
+  .toll-gates-page-shell :deep(.back-link) {
+    margin-bottom: 8px;
+  }
 
-.overall-progress__value {
-  color: #102542;
-  height: 44px;
-  width: 44px;
-}
+  .toll-gates-page-shell :deep(.header-main) {
+    margin-bottom: 10px;
+  }
 
-.overall-progress__text {
-  color: #71819a;
-  font-size: 12px;
-}
+  .toll-gates-page-shell :deep(.page-title) {
+    font-size: clamp(28px, 3vw, 36px);
+    line-height: 1;
+    margin: 6px 0 4px;
+  }
 
-.overall-progress__text strong {
-  color: #102542;
-  font-size: 14px;
-}
+  .toll-gates-page-shell :deep(.page-subtitle) {
+    font-size: 13px;
+    line-height: 1.35;
+  }
 
-.phase-section {
-  background: linear-gradient(145deg, #fff 0%, #fbfdff 100%);
-  border: 1px solid #e4ebf4;
-  border-left: 3px solid var(--phase-accent, #2d8cff);
-  border-radius: 12px;
-  box-shadow: 0 7px 18px rgba(35, 63, 100, 0.06);
-  margin-bottom: 18px;
-  padding: 18px 20px;
-}
+  .project-picker {
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+  }
 
-.phase-head {
-  align-items: center;
-  border-bottom: 1px solid #edf0f5;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
-}
+  .project-picker__label {
+    font-size: 12px;
+  }
 
-.phase-index {
-  background: color-mix(in srgb, var(--phase-accent, #2d8cff) 12%, white);
-  border-radius: 8px;
-  color: var(--phase-accent, #2d8cff);
-  height: 34px;
-  width: 34px;
-}
+  .project-picker__input {
+    height: 34px;
+  }
 
-.phase-icon {
-  background: color-mix(in srgb, var(--phase-accent, #2d8cff) 11%, white);
-  border-radius: 50%;
-  height: 38px;
-  width: 38px;
-}
+  .project-picker__hint {
+    font-size: 11px;
+  }
 
-.phase-head__text h2 {
-  color: #102542;
-  font-size: 17px;
-}
+  .artefact-board {
+    margin-bottom: 20px;
+    padding: 8px 16px 7px;
+  }
 
-.phase-head__text p,
-.phase-progress {
-  color: #71819a;
-  font-size: 12px;
-}
+  .artefact-board__head {
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
 
-.phase-progress strong {
-  color: #102542;
-  font-size: 14px;
-}
+  .artefact-board__title {
+    font-size: clamp(21px, 1.9vw, 26px);
+    letter-spacing: -0.04em;
+    margin-top: 1px;
+  }
 
-.phase-progress__track {
-  background: #e8eef5;
-  height: 6px;
-}
+  .artefact-board__sub {
+    font-size: 11px;
+    margin-top: 2px;
+  }
 
-.phase-group h3 {
-  color: #71819a;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-}
+  .artefact-board__meta {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: min(100%, 500px);
+  }
 
-.tg-stepper__node {
-  background: #fff;
-  border-color: #dbe5ef;
-}
+  .artefact-legend {
+    gap: 8px;
+  }
 
-.tg-stepper__item--active .tg-stepper__node {
-  background: #edf4ff;
-  border-color: #2d8cff;
-  box-shadow: 0 0 0 4px rgba(45, 140, 255, 0.12);
-  color: #2d8cff;
-}
+  .artefact-kpis {
+    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 
-.tg-stepper__label {
-  color: #71819a;
+  .artefact-kpi {
+    align-items: center;
+    display: grid;
+    gap: 4px 8px;
+    grid-template-columns: minmax(0, 1fr) 26px;
+    min-height: 0;
+    padding: 6px 8px;
+  }
+
+  .artefact-kpi__copy {
+    display: flex;
+    flex-direction: column;
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .artefact-kpi__icon {
+    grid-column: 2;
+    grid-row: 1;
+    height: 26px;
+    width: 26px;
+  }
+
+  .artefact-kpi__icon mc-icon {
+    height: 15px;
+    width: 15px;
+  }
+
+  .artefact-kpi__label {
+    order: 2;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+  }
+
+  .artefact-kpi__value {
+    font-size: 17px;
+    line-height: 1.1;
+    margin-top: 2px;
+    order: 1;
+  }
+
+  .artefact-board__note {
+    margin-top: 8px;
+  }
 }
 
 @media (max-width: 720px) {

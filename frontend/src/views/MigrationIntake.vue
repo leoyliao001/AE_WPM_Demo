@@ -39,7 +39,13 @@
         </div>
       </header>
 
-      <div class="intake-form">
+      <div v-if="submissionComplete" class="submission-locked-banner" role="status">
+        <mc-icon icon="mi-lock" size="20" />
+        <span>This migration request has been submitted and is now read-only.</span>
+      </div>
+
+      <div class="intake-form" :class="{ 'intake-form--complete': submissionComplete }">
+        <div class="intake-form-content" :inert="submissionComplete">
         <p class="required-fields-legend">
           <RequiredMark />
           <span>Required field</span>
@@ -668,6 +674,7 @@
             />
           </div>
         </footer>
+        </div>
 
         <mc-dialog
           :open="validationDialogOpen"
@@ -695,6 +702,54 @@
               @click="closeValidationDialog"
             />
           </div>
+        </mc-dialog>
+
+        <mc-dialog
+          :open="completionDialogOpen"
+          heading="Migration request submitted"
+          dimension="medium"
+          showclosebutton
+          hasfooterslot
+          @closing="closeCompletionDialog"
+        >
+          <div class="completion-dialog-body">
+            <span class="completion-dialog-icon" aria-hidden="true">
+              <mc-icon icon="mi-check" size="28" />
+            </span>
+            <p class="completion-dialog-message">
+              Your migration request has been submitted successfully. The form is now locked and can no longer be edited.
+            </p>
+            <p v-if="completedRequestId" class="completion-dialog-reference">
+              Request ID: <strong>{{ completedRequestId }}</strong>
+            </p>
+          </div>
+          <div slot="secondaryAction" class="completion-dialog-secondary-actions">
+            <mc-button
+              type="button"
+              appearance="neutral"
+              variant="outlined"
+              fit="medium"
+              label="Home"
+              @click="router.push('/')"
+            />
+            <mc-button
+              type="button"
+              appearance="neutral"
+              variant="outlined"
+              fit="medium"
+              label="My Projects"
+              @click="router.push('/project-dashboard')"
+            />
+          </div>
+          <mc-button
+            slot="primaryAction"
+            type="button"
+            appearance="primary"
+            variant="filled"
+            fit="medium"
+            label="Submit a new request"
+            @click="startNewRequest"
+          />
         </mc-dialog>
 
         <mc-dialog
@@ -771,6 +826,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import RequiredMark from '../components/RequiredMark.vue'
 import axios from 'axios'
 import { getAreasForRegion, regions } from '../data/regionAreaMapping'
@@ -806,6 +862,7 @@ import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-dialog'
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
+const router = useRouter()
 
 const migrationTypes = [
   { value: '1:1-transfer', label: '1:1 Transfer' },
@@ -872,6 +929,9 @@ const customApprovalFileMeta = reactive({ name: '', size: 0, type: '' })
 const validationDialogOpen = ref(false)
 const validationErrors = ref([])
 const previewDialogOpen = ref(false)
+const completionDialogOpen = ref(false)
+const submissionComplete = ref(false)
+const completedRequestId = ref('')
 const submissionPreview = ref(null)
 
 const form = reactive({
@@ -1009,6 +1069,14 @@ const onNumericInput = (field, event) => {
 
 const closeValidationDialog = () => {
   validationDialogOpen.value = false
+}
+
+const closeCompletionDialog = () => {
+  completionDialogOpen.value = false
+}
+
+const startNewRequest = () => {
+  window.location.reload()
 }
 
 const onValidationDialogClosing = () => {
@@ -1497,12 +1565,11 @@ const onSubmit = async () => {
     localStorage.removeItem(DRAFT_KEY)
     selectedAttachments.value = []
     previewDialogOpen.value = false
-    showNotice(
-      'success',
-      'Submitted successfully',
-      data.message ??
-        `Migration request ${submissionPreview.value.migrationRequestId} has been saved to the database.`
-    )
+    submissionComplete.value = true
+    completedRequestId.value =
+      data?.migrationRequestId ?? submissionPreview.value.migrationRequestId ?? ''
+    clearNotice()
+    completionDialogOpen.value = true
   } catch (error) {
     const message =
       error?.response?.data?.error ??
@@ -1547,6 +1614,69 @@ onMounted(loadDraft)
 
 .header-main {
   margin-bottom: 28px;
+}
+
+.submission-locked-banner {
+  align-items: center;
+  background: #edf7fb;
+  border: 1px solid #b9dce9;
+  border-radius: 8px;
+  color: #174a68;
+  display: flex;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+}
+
+.intake-form--complete .intake-form-content {
+  opacity: 0.72;
+}
+
+.completion-dialog-body {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 8px;
+  text-align: center;
+}
+
+.completion-dialog-icon {
+  align-items: center;
+  background: #e8f5ec;
+  border-radius: 50%;
+  color: #237a3b;
+  display: inline-flex;
+  height: 56px;
+  justify-content: center;
+  width: 56px;
+}
+
+.completion-dialog-message {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 460px;
+}
+
+.completion-dialog-reference {
+  background: #f4f8fa;
+  border-radius: 6px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 14px;
+}
+
+.completion-dialog-reference strong {
+  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+}
+
+.completion-dialog-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .page-title {
