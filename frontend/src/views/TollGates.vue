@@ -148,15 +148,15 @@
               </div>
             </div>
 
-            <ul class="artefact-list">
+            <ul :id="`artefact-list-${stage.id}`" class="artefact-list">
               <li
-                v-for="item in stage.items"
+                v-for="item in stage.items.slice(0, isArtefactStageExpanded(stage.id) ? stage.items.length : 4)"
                 :key="item.label"
                 class="artefact-item"
                 :class="`artefact-item--${item.status}`"
               >
                 <button
-                  v-if="item.source === 'business_case'"
+                  v-if="item.source && TILE_ROUTES[item.source]"
                   type="button"
                   class="artefact-item__link"
                   :disabled="!canNavigate(item.source, 'tile')"
@@ -182,6 +182,16 @@
                 </template>
               </li>
             </ul>
+            <button
+              v-if="stage.items.length > 4"
+              :aria-controls="`artefact-list-${stage.id}`"
+              :aria-expanded="isArtefactStageExpanded(stage.id)"
+              class="artefact-list__toggle"
+              type="button"
+              @click="toggleArtefactStage(stage.id)"
+            >
+              {{ isArtefactStageExpanded(stage.id) ? 'Show fewer' : `Show all ${stage.items.length} items` }}
+            </button>
           </div>
 
           <footer class="artefact-card__foot">
@@ -386,6 +396,17 @@ const ARTEFACT_STATUS_LABEL = {
   not_started: 'Not started'
 }
 
+const expandedArtefactStages = ref(new Set())
+
+const isArtefactStageExpanded = (stageId) => expandedArtefactStages.value.has(stageId)
+
+const toggleArtefactStage = (stageId) => {
+  const expanded = new Set(expandedArtefactStages.value)
+  if (expanded.has(stageId)) expanded.delete(stageId)
+  else expanded.add(stageId)
+  expandedArtefactStages.value = expanded
+}
+
 // `source` links an artefact to an existing tracked step id; artefacts without a
 // source have no system of record yet and stay "Not started".
 const ARTEFACT_STAGES = [
@@ -397,10 +418,17 @@ const ARTEFACT_STAGES = [
     icon: 'mi-play-circle',
     color: '#2d8cff',
     items: [
-      { label: 'Project Charter / mandate', source: 'intake' },
-      { label: 'Business case', source: 'business_case' },
-      { label: 'Stakeholder register', source: 'approvals' },
-      { label: 'High-level scope statement', source: 'opportunity' }
+      { label: 'Opportunity Assessment/Task details', source: 'opportunity' },
+      { label: 'Scope Statement', source: null },
+      { label: 'Stakeholder Registration', source: 'approvals' },
+      { label: 'Business Case', source: 'business_case' },
+      { label: 'Project Charter', source: 'intake' },
+      { label: 'Tollgate Automation', source: null },
+      { label: 'People Consultation & Compliance', source: null },
+      { label: 'Resources', source: null },
+      { label: 'Access & Enablement Requirements', source: null },
+      { label: 'Business Impact Analysis', source: null },
+      { label: 'Gantt', source: 'gantt' }
     ]
   },
   {
@@ -502,7 +530,7 @@ const QUICK_STATUS_LABEL = {
   pending: 'Not started'
 }
 
-// Ids reuse TILE_ROUTES so clicking a card opens the same page as the stepper below.
+// Ids reuse TILE_ROUTES so cards open the existing destination for each artefact.
 const quickCards = [
   {
     id: 'opportunity',
@@ -984,6 +1012,30 @@ onBeforeUnmount(() => {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.artefact-list__toggle {
+  background: transparent;
+  border: 0;
+  color: #0077b8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 8px;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.artefact-list__toggle:hover {
+  color: #005f93;
+  text-decoration: underline;
+}
+
+.artefact-list__toggle:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid rgba(0, 119, 184, 0.45);
+  outline-offset: 2px;
 }
 
 .artefact-item {
