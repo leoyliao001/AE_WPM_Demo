@@ -35,14 +35,23 @@
           <p class="section-note">From the location decision to stable run — plan, govern, deliver and measure every migration.</p>
         </div>
 
-        <div id="explore-cards" ref="exploreGrid" class="explore-grid" @scroll="updateExploreScrollbar">
+        <div class="explore-carousel">
+          <button
+            type="button"
+            class="explore-nav explore-nav--previous"
+            aria-label="Scroll hub cards left"
+            aria-controls="explore-cards"
+            :disabled="!exploreScroll.canScrollLeft"
+            @click="scrollExploreCards(-1)"
+          >
+            <span aria-hidden="true">&#8249;</span>
+          </button>
+        <div id="explore-cards" ref="exploreGrid" class="explore-grid" @scroll="updateExploreScroll">
           <article
             v-for="(card, index) in exploreCards"
             :key="card.title"
             class="explore-card"
-            :class="{ 'explore-card--linked': card.actions.some(({ route }) => route) }"
             :style="{ '--card-delay': `${index * 70}ms` }"
-            @click="navigateCard(card, $event)"
           >
             <div class="explore-card__visual">
               <div class="explore-card__image" :style="{ backgroundImage: `url(${card.image})` }" />
@@ -50,14 +59,7 @@
             </div>
             <div class="explore-card__body">
               <p class="card-kicker">{{ card.kicker }}</p>
-              <RouterLink
-                v-if="card.actions.some(({ route }) => route)"
-                class="explore-card__title-link"
-                :to="card.actions.find(({ route }) => route).route"
-              >
-                <h3>{{ card.title }}</h3>
-              </RouterLink>
-              <h3 v-else>{{ card.title }}</h3>
+              <h3>{{ card.title }}</h3>
               <p>{{ card.description }}</p>
               <ul class="card-tags" :aria-label="`${card.title} topics`">
                 <li v-for="tag in card.tags" :key="tag">{{ tag }}</li>
@@ -85,25 +87,16 @@
             </div>
           </article>
         </div>
-        <div
-          v-if="exploreScrollbar.visible"
-          ref="exploreScrollbarTrack"
-          class="explore-scrollbar"
-          role="scrollbar"
-          aria-label="Explore hub cards"
-          aria-controls="explore-cards"
-          aria-orientation="horizontal"
-          :aria-valuemin="0"
-          :aria-valuemax="Math.round(exploreScrollbar.maxScroll)"
-          :aria-valuenow="Math.round(exploreScrollbar.scrollLeft)"
-          tabindex="0"
-          @pointerdown.prevent="startExploreScrollbarDrag"
-          @pointermove="dragExploreScrollbar"
-          @pointerup="stopExploreScrollbarDrag"
-          @pointercancel="stopExploreScrollbarDrag"
-          @keydown="handleExploreScrollbarKeydown"
-        >
-          <span class="explore-scrollbar__thumb" :style="exploreScrollbarThumbStyle" />
+          <button
+            type="button"
+            class="explore-nav explore-nav--next"
+            aria-label="Scroll hub cards right"
+            aria-controls="explore-cards"
+            :disabled="!exploreScroll.canScrollRight"
+            @click="scrollExploreCards(1)"
+          >
+            <span aria-hidden="true">&#8250;</span>
+          </button>
         </div>
 
         <div class="hub-principles" aria-label="WPM Pulse benefits">
@@ -124,104 +117,43 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-icon'
 
 const router = useRouter()
 const exploreGrid = ref(null)
-const exploreScrollbarTrack = ref(null)
-const exploreScrollbar = ref({ visible: false, maxScroll: 0, scrollLeft: 0, thumbWidth: 0, thumbOffset: 0 })
-let exploreScrollbarResizeObserver
-let exploreScrollbarDragOffset = 0
+const exploreScroll = ref({ canScrollLeft: false, canScrollRight: false })
+let exploreResizeObserver
 
-const exploreScrollbarThumbStyle = computed(() => ({
-  width: `${exploreScrollbar.value.thumbWidth}px`,
-  transform: `translateX(${exploreScrollbar.value.thumbOffset}px)`
-}))
-
-const updateExploreScrollbar = () => {
+const updateExploreScroll = () => {
   const grid = exploreGrid.value
   if (!grid) return
   const maxScroll = Math.max(0, grid.scrollWidth - grid.clientWidth)
-  const trackWidth = exploreScrollbarTrack.value?.clientWidth ?? grid.clientWidth
-  const thumbWidth = maxScroll === 0
-    ? trackWidth
-    : Math.min(trackWidth, Math.max(48, trackWidth * grid.clientWidth / grid.scrollWidth))
-  const maxThumbOffset = Math.max(0, trackWidth - thumbWidth)
-  const scrollLeft = Math.min(maxScroll, grid.scrollLeft)
-
-  exploreScrollbar.value = {
-    visible: maxScroll > 0,
-    maxScroll,
-    scrollLeft,
-    thumbWidth,
-    thumbOffset: maxScroll === 0 ? 0 : maxThumbOffset * scrollLeft / maxScroll
+  exploreScroll.value = {
+    canScrollLeft: grid.scrollLeft > 1,
+    canScrollRight: grid.scrollLeft < maxScroll - 1
   }
 }
 
-const startExploreScrollbarDrag = (event) => {
-  if (!exploreScrollbar.value.visible) return
-  const track = event.currentTarget
-  const rect = track.getBoundingClientRect()
-  exploreScrollbarDragOffset = event.target === track
-    ? exploreScrollbar.value.thumbWidth / 2
-    : event.clientX - rect.left - exploreScrollbar.value.thumbOffset
-  track.setPointerCapture(event.pointerId)
-  dragExploreScrollbar(event)
-}
-
-const dragExploreScrollbar = (event) => {
-  const track = event.currentTarget
-  if (!track.hasPointerCapture(event.pointerId)) return
-  const rect = track.getBoundingClientRect()
-  const maxThumbOffset = rect.width - exploreScrollbar.value.thumbWidth
-  const thumbOffset = Math.max(0, Math.min(maxThumbOffset, event.clientX - rect.left - exploreScrollbarDragOffset))
-  if (maxThumbOffset > 0 && exploreGrid.value) {
-    exploreGrid.value.scrollLeft = exploreScrollbar.value.maxScroll * thumbOffset / maxThumbOffset
-  }
-}
-
-const stopExploreScrollbarDrag = (event) => {
-  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  }
-}
-
-const handleExploreScrollbarKeydown = (event) => {
+const scrollExploreCards = (direction) => {
   const grid = exploreGrid.value
   if (!grid) return
-  const pageStep = grid.clientWidth * 0.8
-  const keyScroll = {
-    ArrowLeft: -48,
-    ArrowRight: 48,
-    PageDown: pageStep,
-    PageUp: -pageStep,
-    Home: -grid.scrollLeft,
-    End: grid.scrollWidth - grid.clientWidth - grid.scrollLeft
-  }[event.key]
-  if (keyScroll !== undefined) {
-    event.preventDefault()
-    grid.scrollLeft = Math.max(0, Math.min(grid.scrollWidth - grid.clientWidth, grid.scrollLeft + keyScroll))
-  }
+  const card = grid.querySelector('.explore-card')
+  const gap = parseFloat(getComputedStyle(grid).columnGap) || 0
+  grid.scrollBy({
+    left: direction * ((card?.getBoundingClientRect().width ?? grid.clientWidth) + gap),
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+  })
 }
 
-const navigateCard = (card, event) => {
-  if (event.target.closest('a, button')) return
-  const destination = card.actions.find(({ route }) => route)?.route
-  if (destination) go(destination)
-}
-
-onMounted(async () => {
-  updateExploreScrollbar()
-  await nextTick()
-  updateExploreScrollbar()
-  exploreScrollbarResizeObserver = new ResizeObserver(updateExploreScrollbar)
-  if (exploreGrid.value) exploreScrollbarResizeObserver.observe(exploreGrid.value)
-  if (exploreScrollbarTrack.value) exploreScrollbarResizeObserver.observe(exploreScrollbarTrack.value)
+onMounted(() => {
+  updateExploreScroll()
+  exploreResizeObserver = new ResizeObserver(updateExploreScroll)
+  if (exploreGrid.value) exploreResizeObserver.observe(exploreGrid.value)
 })
 
-onBeforeUnmount(() => exploreScrollbarResizeObserver?.disconnect())
+onBeforeUnmount(() => exploreResizeObserver?.disconnect())
 
 const heroHighlights = [
   { icon: 'mi-shield-check', title: 'Govern', description: 'Toll gates, approvals & audit-ready evidence' },
@@ -318,7 +250,7 @@ const go = (route) => router.push(route)
 
 .welcome-scroll { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto; padding-bottom: 0; }
 .hero-section, .hub-section { margin: 0; width: 100%; }
-.hero-section { background: linear-gradient(120deg, #eaf6fa 0%, #f8fcfd 50%, #edf7fa 100%); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: clamp(350px, 42vh, 430px); }
+.hero-section { background: linear-gradient(120deg, #eaf6fa 0%, #f8fcfd 50%, #edf7fa 100%); border-bottom: 1px solid var(--line); display: grid; flex-shrink: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: clamp(290px, 33vh, 350px); }
 .hero-copy { align-self: center; background: transparent; min-width: 0; padding: 16px clamp(24px, 2vw, 32px) 16px 24px; }
 .eyebrow, .card-kicker { color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: .14em; margin: 0; text-transform: uppercase; }
 .hero-title { color: var(--navy); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 12px; }
@@ -339,31 +271,27 @@ const go = (route) => router.push(route)
 .hero-highlight strong, .hero-highlight small { display: block; }
 .hero-highlight strong { font-size: 13px; }
 .hero-highlight small { color: var(--muted); font-size: 11px; line-height: 1.45; margin-top: 4px; }
-.hero-image { background: linear-gradient(110deg, rgba(11, 43, 75, .08), transparent 35%), url('/Collaboration-Hero.jpg') center 35% / cover; min-height: clamp(350px, 42vh, 430px); min-width: 0; clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); }
-.hub-section { padding: 20px 0 22px; }
-.section-heading { align-items: center; display: grid; gap: 24px; grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr); margin-bottom: 20px; padding: 0 clamp(24px, 2vw, 32px); }
+.hero-image { background: linear-gradient(110deg, rgba(11, 43, 75, .08), transparent 35%), url('/Collaboration-Hero.jpg') center 35% / cover; min-height: 0; min-width: 0; clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); }
+.hub-section { padding: 10px 0 22px; }
+.section-heading { align-items: center; display: grid; gap: 16px; grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr); margin-top: 92px; margin-bottom: 10px; padding: 0 clamp(24px, 2vw, 32px); }
 .eyebrow--dark { color: var(--blue); }
-.section-heading h2 { color: var(--navy); font-size: 25px; letter-spacing: -.01em; margin: 6px 0 0; }
+.section-heading h2 { color: var(--navy); font-size: 23px; letter-spacing: -.01em; margin: 3px 0 0; }
 .section-note { color: var(--muted); font-size: 14px; justify-self: end; line-height: 1.5; margin: 0; max-width: 470px; text-align: right; }
-.explore-grid { display: grid; gap: 12px; grid-auto-columns: 340px; grid-auto-flow: column; grid-template-columns: none; grid-template-rows: 230px; overflow-x: auto; overscroll-behavior-inline: contain; padding: 0 clamp(24px, 2vw, 32px) 8px; scroll-padding-inline: clamp(24px, 2vw, 32px); scroll-snap-type: x proximity; scrollbar-width: none; }
+.explore-carousel { flex: 0 0 auto; margin-bottom: 10px; min-width: 0; padding: 0 44px; position: relative; }
+.explore-grid { display: grid; gap: 12px; grid-auto-columns: 340px; grid-auto-flow: column; grid-template-columns: none; grid-template-rows: minmax(290px, auto); overflow-x: auto; overscroll-behavior-inline: contain; padding: 4px 0 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
 .explore-grid::-webkit-scrollbar { display: none; }
-.explore-scrollbar { background: #f1f6f8; border-radius: 999px; cursor: pointer; height: 6px; margin: 2px clamp(24px, 2vw, 32px) 0; overflow: hidden; position: relative; touch-action: none; transition: background .2s ease; }
-.explore-scrollbar__thumb { background: linear-gradient(90deg, #d2e8ef, #c4e0e9); border: 1px solid #f1f6f8; border-radius: 999px; cursor: grab; height: 100%; left: 0; min-width: 48px; opacity: .6; position: absolute; top: 0; transition: background .2s ease, border-color .2s ease, opacity .2s ease; }
-.explore-scrollbar:hover { background: #e8f0f3; }
-.explore-scrollbar:hover .explore-scrollbar__thumb,
-.explore-scrollbar:focus-visible .explore-scrollbar__thumb { background: linear-gradient(90deg, #b9dce7, #a8d2e0); border-color: #e8f0f3; opacity: 1; }
-.explore-scrollbar:active .explore-scrollbar__thumb { cursor: grabbing; }
-.explore-scrollbar:focus-visible { outline: 2px solid color-mix(in srgb, var(--blue) 45%, white); outline-offset: 3px; }
-@media (hover: none) { .explore-scrollbar__thumb { opacity: .8; } }
-.explore-card { animation: reveal .55s ease both; animation-delay: var(--card-delay); background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 5px 14px rgba(18, 50, 75, .05); overflow: hidden; scroll-snap-align: start; transition: box-shadow .2s ease, transform .2s ease; }
-.explore-card--linked { cursor: pointer; }
-.explore-card__title-link { color: inherit; text-decoration: none; }
-.explore-card__title-link:focus-visible { border-radius: 2px; outline: 2px solid color-mix(in srgb, var(--blue) 45%, white); outline-offset: 2px; }
+.explore-nav { align-items: center; background: #fff; border: 1px solid #d6e3e9; border-radius: 50%; color: var(--blue); cursor: pointer; display: flex; font: 28px/1 'Maersk Text', sans-serif; height: 32px; justify-content: center; padding: 0; position: absolute; top: 50%; transform: translateY(-50%); width: 32px; }
+.explore-nav--previous { left: 6px; }
+.explore-nav--next { right: 6px; }
+.explore-nav:hover:not(:disabled) { background: #eaf5fa; border-color: #a8d2e0; }
+.explore-nav:disabled { cursor: default; opacity: .35; }
+.explore-nav:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.explore-card { animation: reveal .55s ease both; animation-delay: var(--card-delay); background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 5px 14px rgba(18, 50, 75, .05); display: flex; flex-direction: column; overflow: hidden; scroll-snap-align: start; transition: box-shadow .2s ease, transform .2s ease; }
 .explore-card:hover { box-shadow: 0 12px 24px rgba(18, 50, 75, .14); transform: translateY(-3px); }
 .explore-card__visual { position: relative; }
 .explore-card__image { background-position: center; background-size: cover; height: 96px; }
 .explore-card__icon { align-items: center; background: #edf7fb; border: 4px solid #fff; border-radius: 50%; bottom: -17px; color: var(--blue); display: flex; height: 38px; justify-content: center; left: 16px; position: absolute; width: 38px; }
-.explore-card__body { padding: 14px 16px 13px; }
+.explore-card__body { display: flex; flex: 1; flex-direction: column; padding: 14px 16px 8px; }
 .card-kicker { font-size: 10px; letter-spacing: .08em; }
 .explore-card h3 { color: var(--navy); font-size: 15px; margin: 7px 0 6px; }
 .explore-card p:not(.card-kicker) { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; min-height: 35px; }
@@ -377,7 +305,7 @@ const go = (route) => router.push(route)
 .card-link:hover { color: var(--blue); }
 .card-link:hover span { background: #eaf5fa; border-color: #b9dce9; }
 .card-link:focus-visible { border-radius: 3px; outline: 3px solid color-mix(in srgb, var(--blue) 35%, white); outline-offset: 2px; }
-.hub-principles { display: grid; flex: 0 0 auto; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 24px clamp(24px, 2vw, 32px) 0; }
+.hub-principles { border-top: 1px solid #d6e3e9; display: grid; flex: 0 0 auto; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0 clamp(24px, 2vw, 32px); padding-top: 14px; }
 .hub-principle { align-items: center; background: linear-gradient(145deg, #fff 0%, #f8fbfc 100%); border: 1px solid #e1ebef; border-radius: 10px; box-shadow: 0 3px 10px rgba(18, 50, 75, .045); display: flex; gap: 11px; min-width: 0; padding: 12px; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .hub-principle:hover { border-color: #c9e1e9; box-shadow: 0 6px 16px rgba(18, 50, 75, .09); transform: translateY(-2px); }
 .hub-principle__icon { align-items: center; background: linear-gradient(145deg, #e6f5fa, #d9eef5); border: 1px solid #d8edf4; border-radius: 9px; color: var(--blue); display: flex; flex: 0 0 34px; height: 34px; justify-content: center; width: 34px; }
@@ -386,9 +314,18 @@ const go = (route) => router.push(route)
 .hub-principle p { color: #60758a; font-size: 10px; line-height: 1.35; margin: 0; }
 @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 821px) {
+  .hero-copy { padding-top: 12px; padding-bottom: 12px; }
+  .hero-title { font-size: clamp(28px, 3vw, 34px); margin-bottom: 8px; }
+  .hero-slogan { font-size: 20px; margin-bottom: 8px; }
+  .hero-description { font-size: 13px; line-height: 1.35; }
+  .hero-actions { margin-top: 10px; }
+  .hero-highlights { gap: 10px; margin-top: 14px; }
+  .hero-highlight { gap: 4px; }
+  .hero-highlight__icon { height: 28px; width: 28px; }
+  .hero-highlight small { font-size: 10px; line-height: 1.3; margin-top: 2px; }
   .hub-section { display: flex; flex: 1 0 auto; flex-direction: column; justify-content: flex-start; min-height: 0; padding-bottom: 0; }
-  .section-heading { margin-bottom: 24px; }
-  .explore-grid { flex: 0 0 auto; grid-template-rows: 230px; }
+  .section-heading { margin-bottom: 10px; }
+  .explore-grid { flex: 0 0 auto; grid-template-rows: minmax(290px, auto); }
   .hub-principles { margin-top: auto; margin-bottom: 24px; }
   .explore-card { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .explore-card__image { flex: 0 0 116px; }
@@ -396,12 +333,11 @@ const go = (route) => router.push(route)
   .card-actions { align-self: stretch; }
 }
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
-@media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: minmax(280px, 78vw); grid-template-rows: minmax(250px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
+@media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
 @media (max-width: 820px) { .hub-principles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .hero-title { font-size: 26px; } .hero-slogan { font-size: 18px; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .explore-grid { grid-auto-columns: minmax(280px, 84vw); } .hub-principles { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .hero-title { font-size: 26px; } .hero-slogan { font-size: 18px; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
 @media (min-width: 821px) and (max-height: 850px) {
-  .hero-section,
-  .hero-image { min-height: 260px; }
+  .hero-section { min-height: 230px; }
   .hero-copy { padding: 10px 20px 10px 24px; }
   .hero-title { font-size: 30px; line-height: 1.05; margin-bottom: 6px; }
   .hero-slogan { font-size: 16px; line-height: 1.02; margin-bottom: 7px; }
@@ -417,7 +353,7 @@ const go = (route) => router.push(route)
   .section-heading { margin-bottom: 10px; }
   .section-heading h2 { font-size: 20px; line-height: 1.15; margin-top: 3px; }
   .section-note { font-size: 12px; line-height: 1.35; }
-  .explore-grid { grid-template-rows: 220px; gap: 8px; padding-bottom: 8px; }
+  .explore-grid { grid-template-rows: minmax(220px, auto); gap: 8px; padding-bottom: 8px; }
   .explore-card__image { flex-basis: 68px; height: 68px; }
   .explore-card__icon { height: 32px; width: 32px; }
   .explore-card__body { padding: 8px 12px 7px; }
@@ -437,8 +373,7 @@ const go = (route) => router.push(route)
   .hub-principle p { font-size: 9px; line-height: 1.2; }
 }
 @media (min-width: 821px) and (max-height: 700px) {
-  .hero-section,
-  .hero-image { min-height: 210px; }
+  .hero-section { min-height: 190px; }
   .hero-copy { padding-top: 6px; padding-bottom: 6px; }
   .hero-title { font-size: 26px; margin-bottom: 4px; }
   .hero-slogan { font-size: 14px; line-height: 1; margin-bottom: 5px; }
@@ -455,7 +390,7 @@ const go = (route) => router.push(route)
   .eyebrow--dark { font-size: 8px; }
   .section-heading h2 { font-size: 18px; margin-top: 2px; }
   .section-note { font-size: 10px; line-height: 1.25; }
-  .explore-grid { grid-template-rows: 206px; gap: 6px; padding-bottom: 6px; }
+  .explore-grid { grid-template-rows: minmax(206px, auto); gap: 6px; padding-bottom: 6px; }
   .explore-card__image { flex-basis: 52px; height: 52px; }
   .explore-card__icon { height: 28px; width: 28px; }
   .explore-card__body { padding: 6px 9px 5px; }
