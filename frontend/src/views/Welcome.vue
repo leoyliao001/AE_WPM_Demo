@@ -254,6 +254,7 @@ const go = (route) => router.push(route)
 .hero-copy { align-self: center; background: transparent; min-width: 0; padding: 16px clamp(24px, 2vw, 32px) 16px 24px; }
 .eyebrow, .card-kicker { color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: .14em; margin: 0; text-transform: uppercase; }
 .hero-title { color: var(--navy); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 12px; }
+.hero-title { position: relative; top: -20px; }
 .hero-title span { color: inherit; }
 .eyebrow span { color: var(--cyan); }
 .hero-slogan { color: var(--blue); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(18px, 2vw, 24px); font-weight: 700; letter-spacing: -.025em; line-height: 1.08; margin: 0 0 13px 12px; }
@@ -273,7 +274,7 @@ const go = (route) => router.push(route)
 .hero-highlight small { color: var(--muted); font-size: 11px; line-height: 1.45; margin-top: 4px; }
 .hero-image { background: linear-gradient(110deg, rgba(11, 43, 75, .08), transparent 35%), url('/Collaboration-Hero.jpg') center 35% / cover; min-height: 0; min-width: 0; clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); }
 .hub-section { padding: 10px 0 22px; }
-.section-heading { align-items: center; display: grid; gap: 16px; grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr); margin-top: 92px; margin-bottom: 10px; padding: 0 clamp(24px, 2vw, 32px); }
+.section-heading { align-items: center; display: grid; gap: 16px; grid-template-columns: minmax(220px, .8fr) minmax(280px, 1.2fr); margin-top: 22px; margin-bottom: 10px; padding: 0 clamp(24px, 2vw, 32px); }
 .eyebrow--dark { color: var(--blue); }
 .section-heading h2 { color: var(--navy); font-size: 23px; letter-spacing: -.01em; margin: 3px 0 0; }
 .section-note { color: var(--muted); font-size: 14px; justify-self: end; line-height: 1.5; margin: 0; max-width: 470px; text-align: right; }
@@ -314,7 +315,8 @@ const go = (route) => router.push(route)
 .hub-principle p { color: #60758a; font-size: 10px; line-height: 1.35; margin: 0; }
 @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 821px) {
-  .hero-copy { padding-top: 12px; padding-bottom: 12px; }
+  .hero-section { min-height: calc(clamp(290px, 33vh, 350px) + 50px); }
+  .hero-copy { padding-top: 37px; padding-bottom: 37px; }
   .hero-title { font-size: clamp(28px, 3vw, 34px); margin-bottom: 8px; }
   .hero-slogan { font-size: 20px; margin-bottom: 8px; }
   .hero-description { font-size: 13px; line-height: 1.35; }
@@ -337,8 +339,8 @@ const go = (route) => router.push(route)
 @media (max-width: 820px) { .hub-principles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .hero-title { font-size: 26px; } .hero-slogan { font-size: 18px; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
 @media (min-width: 821px) and (max-height: 850px) {
-  .hero-section { min-height: 230px; }
-  .hero-copy { padding: 10px 20px 10px 24px; }
+  .hero-section { min-height: 280px; }
+  .hero-copy { padding: 35px 20px 35px 24px; }
   .hero-title { font-size: 30px; line-height: 1.05; margin-bottom: 6px; }
   .hero-slogan { font-size: 16px; line-height: 1.02; margin-bottom: 7px; }
   .hero-description { font-size: 13px; line-height: 1.35; }
@@ -373,8 +375,8 @@ const go = (route) => router.push(route)
   .hub-principle p { font-size: 9px; line-height: 1.2; }
 }
 @media (min-width: 821px) and (max-height: 700px) {
-  .hero-section { min-height: 190px; }
-  .hero-copy { padding-top: 6px; padding-bottom: 6px; }
+  .hero-section { min-height: 240px; }
+  .hero-copy { padding-top: 31px; padding-bottom: 31px; }
   .hero-title { font-size: 26px; margin-bottom: 4px; }
   .hero-slogan { font-size: 14px; line-height: 1; margin-bottom: 5px; }
   .hero-description { font-size: 11px; line-height: 1.25; }
