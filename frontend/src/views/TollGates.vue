@@ -427,7 +427,6 @@ const ARTEFACT_STAGES = [
       { label: 'Stakeholder Registration', source: 'stakeholders' },
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'intake' },
-      { label: 'Tollgate Automation', source: null },
       { label: 'People Consultation & Compliance', source: null },
       { label: 'Resources', source: null },
       { label: 'Access & Enablement Requirements', source: null },
