@@ -335,6 +335,26 @@ The global `mc-top-bar` header links to the main pages. All local frontend route
 | **Project Dashboard** | http://localhost:3002/project-dashboard | Individual project opportunity assessment and milestone hub |
 | **Milestone detail** | http://localhost:3002/project-dashboard/:section | Drill-down for a specific milestone (e.g. `gantt`, `approvals`, `business-case`, `cost`, `training`) |
 | **Migration Chatbot** | http://localhost:3002/migration-chatbot | Guided Q&A and migration support chatbot demo |
+| **Scope Statement** | http://localhost:3002/migration-dashboard/:id/scope-statement | Project-linked scope workspace, opened from Toll Gates → Initiate → Scope Statement |
+
+#### Scope Statement workspace
+
+The Scope Statement uses the selected intake project's numeric ID in its URL and
+displays its Migration Request ID, project name and original ambition FTE. Its
+visual layout follows Toll Gates: a project summary, five FTE indicators, a
+headcount agreement table, and paired exception / scope narrative panels.
+
+Agreed and exception FTE for JL2, JL3 and JL4 are **manually maintained**, not
+automatically sourced from Opportunity Assessment. Final FTE accepts whole
+numbers. Each job level requires supporting evidence before it can be locked
+(PDF, DOCX, MSG or XLSX, up to 20 MB per file). The page shows variances,
+reconciliation against intake ambition, and submission readiness.
+
+The intake requestor can save drafts and lock or unlock job levels before
+submission. All three levels must be locked and scope text provided (maximum
+2,000 characters) before the submit action becomes available. Submission freezes
+the statement; this version does not include a separate sign-off or reopen flow.
+Save/upload errors remain inline without hiding the form.
 
 ### Redirects
 

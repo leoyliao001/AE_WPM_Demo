@@ -23,6 +23,8 @@ import ApprovalCycle from '../views/ApprovalCycle.vue'
 import BusinessCase from '../views/BusinessCase.vue'
 import ApprovalFinalReview from '../views/ApprovalFinalReview.vue'
 import TollGates from '../views/TollGates.vue'
+import ScopeStatement from '../views/ScopeStatement.vue'
+import ScopeStatementsDatabase from '../views/ScopeStatementsDatabase.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -40,7 +42,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/project-gantt-attributes': 'project_gantt',
   '/bpm-rofo': 'bpm_rofo',
   '/bpm-actual': 'bpm_actual',
-  '/attributes-access-control': 'access_control'
+  '/attributes-access-control': 'access_control',
+  '/scope-statements-database': 'scope_statement'
 }
 
 const routes = [
@@ -62,6 +65,11 @@ const routes = [
     path: '/migration-dashboard/:id/gantt',
     name: 'ProjectGantt',
     component: ProjectGantt
+  },
+  {
+    path: '/migration-dashboard/:id/scope-statement',
+    name: 'ScopeStatement',
+    component: ScopeStatement
   },
   {
     path: '/migration-dashboard/:id/business-case',
@@ -117,6 +125,11 @@ const routes = [
     path: '/attributes-access-control',
     name: 'AttributesAccessControl',
     component: AttributesAccessControl
+  },
+  {
+    path: '/scope-statements-database',
+    name: 'ScopeStatementsDatabase',
+    component: ScopeStatementsDatabase
   },
   { path: '/approval-cycle', name: 'ApprovalCycle', component: ApprovalCycle },
   {

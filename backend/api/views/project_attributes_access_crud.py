@@ -25,6 +25,7 @@ WRITABLE_FIELDS = [
     "bpm_rofo",
     "bpm_actual",
     "access_control",
+    "scope_statement",
 ]
 
 
@@ -56,6 +57,7 @@ def _extract_payload(item: dict) -> dict:
         payload["bpm_rofo"] = True
         payload["bpm_actual"] = True
         payload["access_control"] = True
+        payload["scope_statement"] = True
     return payload
 
 

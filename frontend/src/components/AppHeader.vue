@@ -76,6 +76,7 @@ const databaseNavItem = {
     '/bpm-rofo',
     '/bpm-actual',
     '/attributes-access-control',
+    '/scope-statements-database',
     '/approval-workflow',
     '/input-for-approval'
   ]

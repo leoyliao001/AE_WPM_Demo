@@ -14,9 +14,33 @@ from api.views.opportunity_assessment import (
     save_opportunity_assessment,
     upload_opportunity_excel,
 )
+from api.views.scope_statement import (
+    download_scope_evidence,
+    delete_scope_statement_database,
+    get_scope_statement,
+    list_scope_statement_database,
+    save_scope_statement_database,
+    save_scope_statement,
+    upload_scope_evidence,
+)
 
 urlpatterns = [
     path("projects/", list_projects, name="migration-dashboard-projects"),
+    path("scope-statements/", list_scope_statement_database, name="scope-statement-database"),
+    path("scope-statements/data/", save_scope_statement_database, name="scope-statement-database-save"),
+    path("scope-statements/data/delete/", delete_scope_statement_database, name="scope-statement-database-delete"),
+    path("projects/<int:project_id>/scope-statement/", get_scope_statement, name="scope-statement"),
+    path("projects/<int:project_id>/scope-statement/save/", save_scope_statement, name="scope-statement-save"),
+    path(
+        "projects/<int:project_id>/scope-statement/evidence/<str:job_level>/",
+        upload_scope_evidence,
+        name="scope-statement-evidence",
+    ),
+    path(
+        "projects/<int:project_id>/scope-statement/evidence/download/<int:evidence_id>/",
+        download_scope_evidence,
+        name="scope-statement-evidence-download",
+    ),
     path("projects/<int:project_id>/", project_detail, name="migration-dashboard-project-detail"),
     path(
         "projects/<int:project_id>/business-case/submit/",

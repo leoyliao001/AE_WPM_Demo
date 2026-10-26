@@ -28,6 +28,7 @@ ALL_FIELDS = [
     ("bpm_rofo", "BPM ROFO (Y/N)"),
     ("bpm_actual", "BPM Actual (Y/N)"),
     ("access_control", "Access Control (Y/N)"),
+    ("scope_statement", "Scope Statement (Y/N)"),
 ]
 
 BOOL_FIELDS = {
@@ -44,6 +45,7 @@ BOOL_FIELDS = {
     "bpm_rofo",
     "bpm_actual",
     "access_control",
+    "scope_statement",
 }
 
 
@@ -70,6 +72,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "bpm_rofo": "Y",
             "bpm_actual": "Y",
             "access_control": "Y",
+            "scope_statement": "Y",
         }
     return {
         "id": item.id,
@@ -87,6 +90,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "bpm_rofo": _yn(item.bpm_rofo),
         "bpm_actual": _yn(item.bpm_actual),
         "access_control": _yn(item.access_control),
+        "scope_statement": _yn(item.scope_statement),
     }
 
 
@@ -113,6 +117,7 @@ def my_attributes_access(request):
                     "bpm_rofo": False,
                     "bpm_actual": False,
                     "access_control": False,
+                    "scope_statement": False,
                 },
             }
         )

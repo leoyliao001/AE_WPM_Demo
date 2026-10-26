@@ -24,6 +24,7 @@ TABLE_KEYS = (
     "bpm_rofo",
     "bpm_actual",
     "access_control",
+    "scope_statement",
 )
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$|^[^@\s]+@localhost$", re.I)
@@ -123,6 +124,7 @@ def build_access_snapshot(email: str) -> dict:
         "bpm_rofo": is_super or bool(row.bpm_rofo),
         "bpm_actual": is_super or bool(row.bpm_actual),
         "access_control": is_super or bool(row.access_control),
+        "scope_statement": is_super or bool(row.scope_statement),
     }
     return {
         "email": email,

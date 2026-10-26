@@ -77,6 +77,76 @@ class MigrationIntakeAttachment(models.Model):
         return f"{self.submission.migration_request_id} — {self.file_name}"
 
 
+class ScopeStatement(models.Model):
+    """Per-project scope statement draft and submission record."""
+
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="scope_statement",
+    )
+    scope_text = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=16, default="draft")
+    revision = models.PositiveIntegerField(default=0)
+    ambition_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    final_project_fte = models.PositiveIntegerField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    submitted_by = models.CharField(max_length=254, blank=True, default="")
+    audit_log = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "scope_statement"
+
+    def __str__(self):
+        return f"{self.project.migration_request_id} — Scope Statement"
+
+
+class ScopeStatementLine(models.Model):
+    statement = models.ForeignKey(
+        ScopeStatement,
+        on_delete=models.CASCADE,
+        related_name="lines",
+    )
+    job_level = models.CharField(
+        max_length=3,
+        choices=[("JL2", "JL2"), ("JL3", "JL3"), ("JL4", "JL4")],
+    )
+    agreed_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    not_agreed_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    final_fte = models.PositiveIntegerField(null=True, blank=True)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    locked_by = models.CharField(max_length=254, blank=True, default="")
+
+    class Meta:
+        db_table = "scope_statement_line"
+        ordering = ["job_level"]
+        constraints = [
+            models.UniqueConstraint(fields=["statement", "job_level"], name="scope_unique_job_level"),
+        ]
+
+    def __str__(self):
+        return f"{self.statement.project.migration_request_id} — {self.job_level}"
+
+
+class ScopeStatementEvidence(models.Model):
+    line = models.ForeignKey(
+        ScopeStatementLine,
+        on_delete=models.CASCADE,
+        related_name="evidence",
+    )
+    file = models.FileField(upload_to="scope_evidence/%Y/%m/", max_length=255)
+    file_name = models.CharField(max_length=255)
+    file_size = models.PositiveIntegerField()
+    uploaded_by = models.CharField(max_length=254)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "scope_statement_evidence"
+        ordering = ["id"]
+
+
 class FpoMapping(models.Model):
     """FPO extended list — hierarchical process / FPO mapping."""
 
@@ -423,6 +493,7 @@ class ProjectAttributesAccess(models.Model):
     bpm_rofo = models.BooleanField(default=False)
     bpm_actual = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
+    scope_statement = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

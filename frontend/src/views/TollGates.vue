@@ -334,6 +334,7 @@ const TILE_ROUTES = {
   intake: (id) => `/migration-dashboard/${id}`,
   business_case: (id) => `/migration-dashboard/${id}/business-case`,
   opportunity: (id) => `/migration-dashboard/${id}/opportunity-assessment`,
+  scope_statement: (id) => `/migration-dashboard/${id}/scope-statement`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -419,7 +420,7 @@ const ARTEFACT_STAGES = [
     color: '#2d8cff',
     items: [
       { label: 'Opportunity Assessment/Task details', source: 'opportunity' },
-      { label: 'Scope Statement', source: null },
+      { label: 'Scope Statement', source: 'scope_statement' },
       { label: 'Stakeholder Registration', source: 'approvals' },
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'intake' },

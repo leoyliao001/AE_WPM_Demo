@@ -215,6 +215,17 @@ const allTables = [
     accent: '#7B61FF',
     route: '/attributes-access-control',
     actionLabel: 'Open Access Control'
+  },
+  {
+    id: 'scope-statements',
+    tableKey: 'scope_statement',
+    title: 'Scope Statements',
+    description:
+      'Saved scope statements, job-level agreements, submission history, and evidence metadata by migration project.',
+    icon: 'mi-file-check',
+    accent: '#0F766E',
+    route: '/scope-statements-database',
+    actionLabel: 'View Scope Statements'
   }
 ]
 
