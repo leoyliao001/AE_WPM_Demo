@@ -78,7 +78,7 @@
             <section v-for="group in registration.groups" :key="group.id" class="role-group">
               <header class="role-group__header"><h3>{{ group.label }}</h3><span>{{ group.roles.length }}</span></header>
               <div class="role-stack">
-                <button v-for="role in group.roles" :key="role.code" type="button" class="role-card" :class="roleCardClass(role)" @click="openRole(role)">
+                <button v-for="role in group.roles" :key="role.code" type="button" class="role-card" :class="roleCardClass(role)" :title="role.assignmentRule ? `Assignment rule: ${role.assignmentRule}` : role.description" @click="openRole(role)">
                   <span class="role-accent" />
                   <span class="role-card__body">
                     <span class="role-card__top"><strong>{{ role.label }}</strong>
@@ -95,6 +95,7 @@
                       <span v-if="peopleForRole(role).length > 3" class="more-count">+{{ peopleForRole(role).length - 3 }}</span>
                     </span>
                     <span v-else class="role-person-empty">+ Assign Project Team person</span>
+                    <span v-if="role.assignmentRule" class="nomination-hint">Assigned by {{ role.assignmentRule }}</span>
                     <span class="role-card__foot"><span>{{ role.multiple ? 'Multiple people' : 'One focal' }}</span><span>{{ role.required ? 'Required' : 'If applicable' }}</span></span>
                   </span>
                   <span class="role-chevron" aria-hidden="true">›</span>
@@ -142,6 +143,13 @@
           </header>
           <div class="drawer-content">
             <p class="role-description">{{ activeRole.description }}</p>
+            <div class="assignment-rule-note">
+              <span class="assignment-rule-note__label">Assignment rule</span>
+              <strong>{{ activeRole.assignmentRule ? `Assigned by ${activeRole.assignmentRule}` : 'Manually selected from the Project Team' }}</strong>
+              <small v-if="activeRole.assignmentRule">The assigning person must already be assigned and locked in the specified role.</small>
+              <small v-else>Any authorized project editor can assign this role from the Project Team.</small>
+            </div>
+            <div v-if="!canEditActiveRole" class="assignment-readonly-note">You can view this role, but only a locked {{ activeRole.assignmentRule }} can change its assignment.</div>
             <div v-if="isLocked(activeRole.code)" class="locked-notice">Locked by {{ activeAssignment.lockedBy }}. Unlock before changing assigned people.</div>
 
             <template v-if="activeRole.code === 'msp_focals'">
@@ -155,13 +163,13 @@
             </template>
 
             <template v-else>
-              <label v-if="!activeRole.required" class="na-option"><input v-model="activeAssignment.notApplicable" type="checkbox" :disabled="isLocked(activeRole.code)" /> Not applicable</label>
+              <label v-if="!activeRole.required" class="na-option"><input v-model="activeAssignment.notApplicable" type="checkbox" :disabled="isLocked(activeRole.code) || !canEditActiveRole" /> Not applicable</label>
               <template v-if="!activeAssignment.notApplicable">
                 <div class="section-row"><div><h3>Assigned people</h3><p>{{ activeRole.multiple ? 'Select one or more Project Team members.' : 'Select one Project Team member.' }}</p></div><span class="neutral-badge">{{ activeAssignment.personIds.length }} selected</span></div>
                 <label class="search-box"><span class="sr-only">Search Project Team</span><input v-model="memberQuery" type="search" placeholder="Search Project Team by name or email…" /></label>
                 <div v-if="filteredTeamMembers.length" class="member-picker">
                   <label v-for="person in filteredTeamMembers" :key="person.id" class="member-option" :class="{ 'member-option--selected': activeAssignment.personIds.includes(person.id) }">
-                    <input :type="activeRole.multiple ? 'checkbox' : 'radio'" :name="`stakeholder-${activeRole.code}`" :checked="activeAssignment.personIds.includes(person.id)" :disabled="isLocked(activeRole.code)" @change="togglePerson(person.id, $event.target.checked)" />
+                    <input :type="activeRole.multiple ? 'checkbox' : 'radio'" :name="`stakeholder-${activeRole.code}`" :checked="activeAssignment.personIds.includes(person.id)" :disabled="isLocked(activeRole.code) || !canEditActiveRole" @change="togglePerson(person.id, $event.target.checked)" />
                     <span class="avatar" :style="avatarStyle(person)">{{ initials(person.fullName) }}</span>
                     <span class="member-copy"><strong>{{ person.fullName }}</strong><small>{{ person.email }}<template v-if="person.organization"> · {{ person.organization }}</template><template v-if="person.location"> · {{ person.location }}</template></small></span>
                   </label>
@@ -171,13 +179,13 @@
               </template>
             </template>
 
-            <label class="field-label notes-field">Notes (optional)<textarea v-model="activeAssignment.notes" rows="3" placeholder="Add a note…" :disabled="isLocked(activeRole.code)" /></label>
+            <label class="field-label notes-field">Notes (optional)<textarea v-model="activeAssignment.notes" rows="3" placeholder="Add a note…" :disabled="isLocked(activeRole.code) || !canEditActiveRole" /></label>
             <div class="drawer-note">Only people manually added to this project’s Project Team can be assigned. Locked stakeholders are used for approvals and notifications.</div>
           </div>
           <footer class="drawer-footer">
             <button class="button button--outline" type="button" :disabled="Boolean(busy)" @click="closeRole">Cancel</button>
             <button v-if="isLocked(activeRole.code)" class="button button--outline" type="button" :disabled="Boolean(busy)" @click="unlockRole">Unlock</button>
-            <button class="button button--outline" type="button" :disabled="Boolean(busy) || isLocked(activeRole.code)" @click="saveDraft">Save draft</button>
+            <button class="button button--outline" type="button" :disabled="Boolean(busy) || isLocked(activeRole.code) || !canEditActiveRole" @click="saveDraft">Save draft</button>
             <button v-if="!isLocked(activeRole.code)" class="button button--primary" type="button" :disabled="Boolean(busy) || !isRoleFilled(activeRole)" @click="saveAndLock">Save and lock</button>
           </footer>
         </aside>
@@ -248,6 +256,8 @@ const filteredTeamMembers = computed(() => {
   return teamMembers.value.filter((person) => `${person.fullName} ${person.email} ${person.organization} ${person.location}`.toLowerCase().includes(query))
 })
 const activeAssignment = computed(() => roleDraft.value || { personIds: [], mspRows: [], notes: '', notApplicable: false })
+const assignmentPermissions = computed(() => registration.value?.assignmentPermissions || {})
+const canEditActiveRole = computed(() => !activeRole.value?.assignmentRule || assignmentPermissions.value[activeRole.value.code] === true)
 const statusKey = computed(() => {
   if (requiredRoles.value.length && requiredRoles.value.every((role) => isRoleFilled(role) && isLocked(role.code))) return 'locked'
   return registration.value?.saved ? 'progress' : 'not-started'
@@ -836,6 +846,13 @@ watch(projectId, loadData, { immediate: true })
   font-weight: 650;
 }
 
+.nomination-hint {
+  color: #77899b;
+  font-family: 'Maersk Text', sans-serif;
+  font-size: 9px;
+  line-height: 1.3;
+}
+
 .role-card__foot {
   color: #72849a;
   font-size: 9px;
@@ -893,6 +910,45 @@ watch(projectId, loadData, { immediate: true })
   color: #5e7288;
   font-size: 13px;
   margin-bottom: 20px;
+}
+
+.assignment-rule-note {
+  background: #f5f8fc;
+  border-left: 2px solid #9db5c9;
+  border-radius: 4px;
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 9px 11px;
+}
+
+.assignment-rule-note__label {
+  color: #77899b;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.assignment-rule-note strong {
+  color: #334d63;
+  font-size: 11px;
+}
+
+.assignment-rule-note small {
+  color: #728397;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.assignment-readonly-note {
+  background: #fbf6eb;
+  border-radius: 4px;
+  color: #7b6131;
+  font-size: 10px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  padding: 8px 10px;
 }
 
 .section-row h3,

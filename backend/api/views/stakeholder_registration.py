@@ -63,6 +63,22 @@ ROLE_DEFINITIONS = {
     for group in STAKEHOLDER_GROUPS
     for role in group["roles"]
 }
+ASSIGNMENT_RULES = {
+    "project_sponsor": {
+        "assignerRoleCodes": ["area_poc", "wpm_focals"],
+        "assignmentRule": "Area POC or WPM Focal",
+    },
+    "area_sme": {
+        "assignerRoleCodes": ["area_poc"],
+        "assignmentRule": "Area POC",
+    },
+    "gsc_sme": {
+        "assignerRoleCodes": ["gsc_head_1"],
+        "assignmentRule": "GSC Head-1",
+    },
+}
+for _role_code, _rule in ASSIGNMENT_RULES.items():
+    ROLE_DEFINITIONS[_role_code].update(_rule)
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$|^[^@\s]+@localhost$", re.I)
 
 
@@ -102,7 +118,31 @@ def _authorize(request, project):
     return email, None
 
 
-def _serialize(project, registration):
+def _can_assign_role(registration, email, role_code):
+    rule = ASSIGNMENT_RULES.get(role_code)
+    if rule is None:
+        return True
+    if registration is None:
+        return False
+
+    team_members_by_id = {
+        person["id"]: normalize_email(person.get("email"))
+        for person in (registration.team_members or [])
+    }
+    assignments = registration.assignments or {}
+    for assigner_role_code in rule["assignerRoleCodes"]:
+        assigner = assignments.get(assigner_role_code, {})
+        if not assigner.get("lockedAt"):
+            continue
+        if any(
+            team_members_by_id.get(person_id) == email
+            for person_id in assigner.get("personIds", [])
+        ):
+            return True
+    return False
+
+
+def _serialize(project, registration, email):
     assignments = copy.deepcopy(registration.assignments or {}) if registration else {}
     for role_code in ROLE_DEFINITIONS:
         assignments.setdefault(role_code, _empty_assignment(role_code))
@@ -116,6 +156,10 @@ def _serialize(project, registration):
         "updatedAt": registration.updated_at.isoformat() if registration else "",
         "updatedBy": registration.updated_by if registration else "",
         "groups": STAKEHOLDER_GROUPS,
+        "assignmentPermissions": {
+            role_code: _can_assign_role(registration, email, role_code)
+            for role_code in ROLE_DEFINITIONS
+        },
         "teamMembers": registration.team_members if registration else [],
         "assignments": assignments,
         "auditLog": registration.audit_log if registration else [],
@@ -211,11 +255,15 @@ def _normalize_assignments(raw_assignments, team_members):
 
 
 def _assignment_content(assignment):
-    return {
-        key: assignment.get(key)
-        for key in ("personIds", "mspRows", "notApplicable", "notes")
-        if key in assignment
+    content = {
+        "notApplicable": assignment.get("notApplicable", False),
+        "notes": assignment.get("notes", ""),
     }
+    if "mspRows" in assignment:
+        content["mspRows"] = assignment.get("mspRows", [])
+    else:
+        content["personIds"] = assignment.get("personIds", [])
+    return content
 
 
 def _role_is_filled(role, assignment):
@@ -237,7 +285,7 @@ def _append_audit(registration, email, action, role_code="", details=""):
     })
     registration.updated_by = email
     registration.revision += 1
-    registration.save(update_fields=["audit_log", "updated_by", "revision", "updated_at"])
+    registration.save()
 
 
 @api_view(["GET"])
@@ -249,7 +297,7 @@ def get_stakeholder_registration(request, project_id):
     if error:
         return error
     registration = StakeholderRegistration.objects.filter(project=project).first()
-    return Response(_serialize(project, registration))
+    return Response(_serialize(project, registration, email))
 
 
 @api_view(["POST"])
@@ -282,6 +330,15 @@ def save_stakeholder_registration(request, project_id):
             previous_assignments = registration.assignments if registration else {}
             for role_code, next_assignment in new_assignments.items():
                 previous = previous_assignments.get(role_code, _empty_assignment(role_code))
+                if (
+                    _assignment_content(previous) != _assignment_content(next_assignment)
+                    and not _can_assign_role(registration, email, role_code)
+                ):
+                    assigners = ROLE_DEFINITIONS[role_code].get("assignmentRule", "the designated role owner")
+                    return Response(
+                        {"error": f"Only a locked {assigners} can assign {ROLE_DEFINITIONS[role_code]['label']}."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
                 if previous.get("lockedAt") and _assignment_content(previous) != _assignment_content(next_assignment):
                     return Response(
                         {"error": f"{ROLE_DEFINITIONS[role_code]['label']} is locked. Unlock it before editing."},
@@ -349,7 +406,7 @@ def save_stakeholder_registration(request, project_id):
                 details=f"{action.replace('_', ' ').title()} stakeholder assignment.",
             )
 
-    return Response(_serialize(project, registration))
+    return Response(_serialize(project, registration, email))
 
 
 @api_view(["GET"])
