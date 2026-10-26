@@ -132,7 +132,8 @@ const YN_KEYS = new Set([
   'bpm_rofo',
   'bpm_actual',
   'access_control',
-  'scope_statement'
+  'scope_statement',
+  'stakeholder_registration'
 ])
 
 const ALL_COLUMNS = [
@@ -150,7 +151,8 @@ const ALL_COLUMNS = [
   { key: 'bpm_rofo', label: 'BPM ROFO (Y/N)', width: 140 },
   { key: 'bpm_actual', label: 'BPM Actual (Y/N)', width: 150 },
   { key: 'access_control', label: 'Access Control (Y/N)', width: 160 },
-  { key: 'scope_statement', label: 'Scope Statement (Y/N)', width: 190 }
+  { key: 'scope_statement', label: 'Scope Statement (Y/N)', width: 190 },
+  { key: 'stakeholder_registration', label: 'Stakeholder Registration (Y/N)', width: 220 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)

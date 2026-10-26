@@ -24,6 +24,8 @@ import BusinessCase from '../views/BusinessCase.vue'
 import ApprovalFinalReview from '../views/ApprovalFinalReview.vue'
 import TollGates from '../views/TollGates.vue'
 import ScopeStatement from '../views/ScopeStatement.vue'
+import StakeholderRegistration from '../views/StakeholderRegistration.vue'
+import StakeholderRegistrationsDatabase from '../views/StakeholderRegistrationsDatabase.vue'
 import ScopeStatementsDatabase from '../views/ScopeStatementsDatabase.vue'
 import {
   canAccessAttributesTable,
@@ -43,7 +45,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/bpm-rofo': 'bpm_rofo',
   '/bpm-actual': 'bpm_actual',
   '/attributes-access-control': 'access_control',
-  '/scope-statements-database': 'scope_statement'
+  '/scope-statements-database': 'scope_statement',
+  '/stakeholder-registrations-database': 'stakeholder_registration'
 }
 
 const routes = [
@@ -70,6 +73,16 @@ const routes = [
     path: '/migration-dashboard/:id/scope-statement',
     name: 'ScopeStatement',
     component: ScopeStatement
+  },
+  {
+    path: '/migration-dashboard/:id/stakeholder-registration',
+    name: 'StakeholderRegistration',
+    component: StakeholderRegistration
+  },
+  {
+    path: '/stakeholder-registrations-database',
+    name: 'StakeholderRegistrationsDatabase',
+    component: StakeholderRegistrationsDatabase
   },
   {
     path: '/migration-dashboard/:id/business-case',

@@ -275,6 +275,7 @@ const selectedProjectId = ref(String(route.query.project || ''))
 const project = ref(null)
 const ganttTasks = ref([])
 const ganttSaved = ref(false)
+const stakeholderRegistrationComplete = ref(false)
 const oaHasRows = ref(false)
 const loadingProject = ref(false)
 const projectError = ref('')
@@ -335,6 +336,7 @@ const TILE_ROUTES = {
   business_case: (id) => `/migration-dashboard/${id}/business-case`,
   opportunity: (id) => `/migration-dashboard/${id}/opportunity-assessment`,
   scope_statement: (id) => `/migration-dashboard/${id}/scope-statement`,
+  stakeholders: (id) => `/migration-dashboard/${id}/stakeholder-registration`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -346,6 +348,7 @@ const milestoneStateById = computed(() => {
   // the coarse project.status index (which barely changes after intake).
   return {
     intake: 'complete',
+    stakeholders: stakeholderRegistrationComplete.value ? 'complete' : 'pending',
     business_case: p.businessCaseSubmissionDate ? 'complete' : 'pending',
     opportunity: oaHasRows.value ? 'complete' : 'pending',
     approvals: ganttStateById.value['hiring-request'] === 'complete' ? 'complete' : 'pending',
@@ -421,7 +424,7 @@ const ARTEFACT_STAGES = [
     items: [
       { label: 'Opportunity Assessment/Task details', source: 'opportunity' },
       { label: 'Scope Statement', source: 'scope_statement' },
-      { label: 'Stakeholder Registration', source: 'approvals' },
+      { label: 'Stakeholder Registration', source: 'stakeholders' },
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'intake' },
       { label: 'Tollgate Automation', source: null },
@@ -580,6 +583,7 @@ const loadProjectData = async (id) => {
   ganttTasks.value = []
   ganttSaved.value = false
   oaHasRows.value = false
+  stakeholderRegistrationComplete.value = false
   projectError.value = ''
   if (!id) return
   loadingProject.value = true
@@ -604,6 +608,23 @@ const loadProjectData = async (id) => {
     oaHasRows.value = !!data.has_existing_rows
   } catch {
     oaHasRows.value = false
+  }
+
+  try {
+    const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/stakeholder-registration/`)
+    const roles = (data.groups || []).flatMap((group) => group.roles || [])
+    stakeholderRegistrationComplete.value = Boolean(data.saved) && roles
+      .filter((role) => role.required)
+      .every((role) => {
+        const assignment = data.assignments?.[role.code]
+        if (!assignment?.lockedAt) return false
+        if (assignment.notApplicable) return true
+        return role.code === 'msp_focals'
+          ? (assignment.mspRows || []).length > 0 && assignment.mspRows.every((row) => row.personIds?.length === 1)
+          : (assignment.personIds || []).length > 0
+      })
+  } catch {
+    stakeholderRegistrationComplete.value = false
   }
 }
 

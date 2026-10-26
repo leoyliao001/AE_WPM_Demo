@@ -77,6 +77,7 @@ const databaseNavItem = {
     '/bpm-actual',
     '/attributes-access-control',
     '/scope-statements-database',
+    '/stakeholder-registrations-database',
     '/approval-workflow',
     '/input-for-approval'
   ]

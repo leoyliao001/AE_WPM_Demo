@@ -7,6 +7,7 @@ from api.models import (
 	ProjectAttributesAccess,
 	ScopeStatement,
 	ScopeStatementLine,
+	StakeholderRegistration,
 )
 
 
@@ -255,5 +256,140 @@ class ScopeStatementAccessControlTests(TestCase):
 		self.assertEqual(save_response.status_code, 200)
 		self.assertFalse(self.target.scope_statement)
 		self.assertTrue(self.target.access_control)
+
+
+class StakeholderRegistrationTests(TestCase):
+	def setUp(self):
+		self.project = MigrationIntakeSubmission.objects.create(
+			migration_request_id="WPM_PRJ_TEST_STAKEHOLDERS",
+			requested_date="26 Oct 2026",
+			requestor="project.owner@example.com",
+			project_name="Stakeholder test project",
+			migration_type="Other",
+			migration_type_value="other",
+			region="APA",
+			function_name="Operations",
+			proposed_scope="Test scope",
+			fte_number="1",
+		)
+		self.client = APIClient()
+		self.url = f"/api/migration-dashboard/projects/{self.project.id}/stakeholder-registration/"
+		self.save_url = f"{self.url}save/"
+		self.headers = {"HTTP_X_USER_EMAIL": "local.dev@localhost"}
+
+	def test_catalog_includes_manual_gsc_leaders_and_empty_project_roster(self):
+		response = self.client.get(self.url, **self.headers)
+		roles = [role for group in response.data["groups"] for role in group["roles"]]
+
+		self.assertEqual(response.status_code, 200)
+		self.assertFalse(response.data["saved"])
+		self.assertIn("gsc_leaders", {role["code"] for role in roles})
+		self.assertTrue(all(role.get("source", "manual") == "manual" for role in roles))
+		self.assertEqual(response.data["teamMembers"], [])
+
+	def test_save_requires_assigned_people_to_belong_to_project_team(self):
+		response = self.client.post(
+			self.save_url,
+			{"teamMembers": [], "assignments": {"project_sponsor": {"personIds": ["not-a-team-member"]}}},
+			format="json",
+			**self.headers,
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(StakeholderRegistration.objects.filter(project=self.project).exists())
+
+	def test_save_and_lock_records_manual_project_team_assignments(self):
+		team_member = {
+			"id": "person-1",
+			"fullName": "Alex Kim",
+			"email": "alex.kim@example.com",
+			"title": "Area lead",
+			"organization": "Ocean Ops",
+			"location": "Copenhagen",
+		}
+		payload = {
+			"action": "save",
+			"teamMembers": [team_member],
+			"assignments": {"project_sponsor": {"personIds": ["person-1"]}},
+		}
+		save_response = self.client.post(self.save_url, payload, format="json", **self.headers)
+		lock_response = self.client.post(
+			self.save_url,
+			{"action": "lock", "roleCode": "project_sponsor"},
+			format="json",
+			**self.headers,
+		)
+
+		self.assertEqual(save_response.status_code, 200)
+		self.assertEqual(lock_response.status_code, 200)
+		self.assertEqual(lock_response.data["teamMembers"][0]["email"], team_member["email"])
+		self.assertEqual(lock_response.data["assignments"]["project_sponsor"]["lockedBy"], "local.dev@localhost")
+		self.assertEqual(lock_response.data["auditLog"][-1]["action"], "lock")
+
+		payload["assignments"]["project_sponsor"]["personIds"] = []
+		locked_edit = self.client.post(self.save_url, payload, format="json", **self.headers)
+		self.assertEqual(locked_edit.status_code, 409)
+
+	def test_admin_list_requires_stakeholder_registration_permission(self):
+		ProjectAttributesAccess.objects.create(
+			email="stakeholder-admin@example.com",
+			stakeholder_registration=True,
+		)
+		registration = StakeholderRegistration.objects.create(
+			project=self.project,
+			team_members=[{"id": "person-1", "fullName": "Alex Kim", "email": "alex.kim@example.com"}],
+			assignments={"project_sponsor": {"personIds": ["person-1"], "lockedAt": "", "lockedBy": ""}},
+		)
+
+		allowed = self.client.get(
+			"/api/migration-dashboard/stakeholder-registrations/",
+			HTTP_X_USER_EMAIL="stakeholder-admin@example.com",
+		)
+		denied = self.client.get(
+			"/api/migration-dashboard/stakeholder-registrations/",
+			HTTP_X_USER_EMAIL="no-access@example.com",
+		)
+
+		self.assertEqual(allowed.status_code, 200)
+		self.assertEqual(allowed.data["count"], 1)
+		self.assertEqual(allowed.data["rows"][0]["registration_id"], registration.id)
+		self.assertEqual(allowed.data["rows"][0]["project_sponsor"], "Alex Kim")
+		self.assertEqual(denied.status_code, 403)
+
+	def test_stakeholder_registration_access_is_a_separate_permission(self):
+		ProjectAttributesAccess.objects.create(
+			email="scope-only@example.com",
+			scope_statement=True,
+			stakeholder_registration=False,
+		)
+		response = self.client.get(
+			"/api/migration-dashboard/stakeholder-registrations/",
+			HTTP_X_USER_EMAIL="scope-only@example.com",
+		)
+
+		self.assertEqual(response.status_code, 403)
+
+	def test_access_control_schema_includes_stakeholder_registration_permission(self):
+		ProjectAttributesAccess.objects.create(
+			email="stakeholder-admin@example.com",
+			stakeholder_registration=True,
+		)
+		response = self.client.get(
+			"/api/project-attributes-access/",
+			HTTP_X_USER_EMAIL="local.dev@localhost",
+		)
+		row = next(item for item in response.data["rows"] if item["email"] == "stakeholder-admin@example.com")
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIn(
+			{"key": "stakeholder_registration", "label": "Stakeholder Registration (Y/N)"},
+			response.data["columns"],
+		)
+		self.assertEqual(row["stakeholder_registration"], "Y")
+
+	def test_new_access_control_row_defaults_stakeholder_registration_to_n(self):
+		person = ProjectAttributesAccess.objects.create(email="new-user@example.com")
+
+		self.assertFalse(person.stakeholder_registration)
 
 # Create your tests here.

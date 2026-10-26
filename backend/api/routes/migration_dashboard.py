@@ -23,9 +23,25 @@ from api.views.scope_statement import (
     save_scope_statement,
     upload_scope_evidence,
 )
+from api.views.stakeholder_registration import list_stakeholder_registrations
+from api.views.stakeholder_registration import (
+    get_stakeholder_registration,
+    save_stakeholder_registration,
+)
 
 urlpatterns = [
     path("projects/", list_projects, name="migration-dashboard-projects"),
+    path("stakeholder-registrations/", list_stakeholder_registrations, name="stakeholder-registration-database"),
+    path(
+        "projects/<int:project_id>/stakeholder-registration/",
+        get_stakeholder_registration,
+        name="stakeholder-registration",
+    ),
+    path(
+        "projects/<int:project_id>/stakeholder-registration/save/",
+        save_stakeholder_registration,
+        name="stakeholder-registration-save",
+    ),
     path("scope-statements/", list_scope_statement_database, name="scope-statement-database"),
     path("scope-statements/data/", save_scope_statement_database, name="scope-statement-database-save"),
     path("scope-statements/data/delete/", delete_scope_statement_database, name="scope-statement-database-delete"),

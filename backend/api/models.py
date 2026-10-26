@@ -147,6 +147,29 @@ class ScopeStatementEvidence(models.Model):
         ordering = ["id"]
 
 
+class StakeholderRegistration(models.Model):
+    """Per-project manually maintained stakeholder registry for Toll Gates."""
+
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="stakeholder_registration",
+    )
+    team_members = models.JSONField(default=list)
+    assignments = models.JSONField(default=dict)
+    audit_log = models.JSONField(default=list)
+    revision = models.PositiveIntegerField(default=0)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "stakeholder_registration"
+
+    def __str__(self):
+        return f"{self.project.migration_request_id} — Stakeholder Registration"
+
+
 class FpoMapping(models.Model):
     """FPO extended list — hierarchical process / FPO mapping."""
 
@@ -494,6 +517,7 @@ class ProjectAttributesAccess(models.Model):
     bpm_actual = models.BooleanField(default=False)
     access_control = models.BooleanField(default=False)
     scope_statement = models.BooleanField(default=False)
+    stakeholder_registration = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

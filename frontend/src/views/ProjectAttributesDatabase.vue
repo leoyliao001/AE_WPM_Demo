@@ -226,6 +226,17 @@ const allTables = [
     accent: '#0F766E',
     route: '/scope-statements-database',
     actionLabel: 'View Scope Statements'
+  },
+  {
+    id: 'stakeholder-registration',
+    tableKey: 'stakeholder_registration',
+    title: 'Stakeholder Registration',
+    description:
+      'Manually assigned Project Team members, stakeholder roles, lock status, and change history by migration project.',
+    icon: 'mi-users',
+    accent: '#176b87',
+    route: '/stakeholder-registrations-database',
+    actionLabel: 'View Registrations'
   }
 ]
 
