@@ -229,6 +229,27 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertEqual(self.client.get("/api/migration-dashboard/business-cases/").status_code, 200)
 
     @patch("api.views.approval_cycle._notify_next_approvers")
+    def test_super_admin_must_revise_submitted_case_and_cannot_submit_for_owner(self, notify):
+        self.rates()
+        response = self.save(action="submit")
+        self.assertEqual(response.status_code, 200, response.data)
+        ProjectAttributesAccess.objects.create(email="admin@example.com", is_super_admin=True)
+        self.client.credentials(HTTP_X_USER_EMAIL="admin@example.com")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["canEdit"])
+        self.assertEqual(self.save().status_code, 409)
+        self.assertEqual(self.save(action="revise", reason="").status_code, 400)
+        response = self.save(action="revise", reason="Admin correction")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["canEdit"])
+        response = self.save(details={"rationale": "Admin corrected rationale"})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["updatedBy"], "admin@example.com")
+        self.assertEqual(response.data["history"][-2]["reason"], "Admin correction")
+        self.assertEqual(self.save(action="submit").status_code, 403)
+
+    @patch("api.views.approval_cycle._notify_next_approvers")
     def test_online_submit_starts_existing_workflow_without_file(self, notify):
         self.rates()
         with self.captureOnCommitCallbacks(execute=True):

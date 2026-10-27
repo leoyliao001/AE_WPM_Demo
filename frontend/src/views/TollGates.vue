@@ -276,6 +276,7 @@ const project = ref(null)
 const ganttTasks = ref([])
 const ganttSaved = ref(false)
 const stakeholderRegistrationComplete = ref(false)
+const scopeStatementState = ref('pending')
 const oaHasRows = ref(false)
 const loadingProject = ref(false)
 const projectError = ref('')
@@ -351,6 +352,7 @@ const milestoneStateById = computed(() => {
     intake: 'complete',
     project_charter: p.projectCharterSaved ? 'active' : 'pending',
     stakeholders: stakeholderRegistrationComplete.value ? 'complete' : 'pending',
+    scope_statement: scopeStatementState.value,
     business_case: p.businessCaseNeedsReview || ['needs_review', 'draft', 'returned'].includes(p.businessCaseOnlineStatus)
       ? 'pending'
       : ['submitted', 'approved'].includes(p.businessCaseOnlineStatus) || p.businessCaseSubmissionDate ? 'complete' : 'pending',
@@ -587,6 +589,7 @@ const loadProjectData = async (id) => {
   ganttSaved.value = false
   oaHasRows.value = false
   stakeholderRegistrationComplete.value = false
+  scopeStatementState.value = 'pending'
   projectError.value = ''
   if (!id) return
   loadingProject.value = true
@@ -604,7 +607,16 @@ const loadProjectData = async (id) => {
     loadingProject.value = false
   }
 
-  // Best-effort: Opportunity Assessment is requestor-only, so a 403 here just
+  try {
+    const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/scope-statement/`)
+    scopeStatementState.value = data.status === 'submitted' && !data.reviewRequired
+      ? 'complete'
+      : data.saved ? 'active' : 'pending'
+  } catch (error) {
+    projectError.value = error?.response?.data?.error ?? 'Unable to load Scope Statement status.'
+  }
+
+  // Best-effort: Opportunity Assessment requires requestor or Super Admin access, so a 403 here
   // means "can't verify" — leave it pending rather than failing the page.
   try {
     const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/opportunity-assessment/`)

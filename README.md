@@ -322,6 +322,15 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
   locations are blocked explicitly until a per-location FTE allocation model is
   defined; no equal split or first-location assumption is made. Opportunity
   Assessment does not currently have an independent formal approval record.
+- The Artefact Delivery Dashboard reads Scope Statement status from its project
+  API: submitted scope without a review flag is Secured; a saved draft or scope
+  requiring review is In progress; an unsaved scope is Not started.
+- Access Control Super Admins have all attribute-table permissions and can
+  manage other requestors' Opportunity Assessments and stakeholder assignments.
+  Locked stakeholder roles must still be unlocked before editing. Submitted
+  Scope Statements and Business Cases still require reopening with a revision
+  reason; Business Case resubmission remains requestor-only and approval
+  decisions remain restricted to configured approvers.
 - Export uses the browser's Print / Save as PDF for the online view. No new
   package or Word/PPT export service is required. Apply backend migrations before
   opening the new pages.

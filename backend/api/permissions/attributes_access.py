@@ -142,6 +142,10 @@ def build_access_snapshot(email: str) -> dict:
     }
 
 
+def is_super_admin(email: str) -> bool:
+    return bool(build_access_snapshot(email)["is_super_admin"])
+
+
 def can_access_table(email: str, table_key: str) -> bool:
     if table_key not in TABLE_KEYS:
         return False

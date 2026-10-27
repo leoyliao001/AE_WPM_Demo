@@ -14,6 +14,7 @@ from api.models import MigrationIntakeSubmission, StakeholderRegistration
 from api.permissions.attributes_access import (
     can_access_table,
     get_request_email,
+    is_super_admin,
     normalize_email,
     require_attributes_access,
 )
@@ -143,6 +144,7 @@ def _can_assign_role(registration, email, role_code):
 
 
 def _serialize(project, registration, email):
+    super_admin = is_super_admin(email)
     assignments = copy.deepcopy(registration.assignments or {}) if registration else {}
     for role_code in ROLE_DEFINITIONS:
         assignments.setdefault(role_code, _empty_assignment(role_code))
@@ -157,7 +159,7 @@ def _serialize(project, registration, email):
         "updatedBy": registration.updated_by if registration else "",
         "groups": STAKEHOLDER_GROUPS,
         "assignmentPermissions": {
-            role_code: _can_assign_role(registration, email, role_code)
+            role_code: super_admin or _can_assign_role(registration, email, role_code)
             for role_code in ROLE_DEFINITIONS
         },
         "teamMembers": registration.team_members if registration else [],
@@ -313,6 +315,7 @@ def save_stakeholder_registration(request, project_id):
     if action not in {"save", "lock", "unlock", "lock_all"}:
         return Response({"error": "Unsupported action."}, status=status.HTTP_400_BAD_REQUEST)
 
+    super_admin = is_super_admin(email)
     with transaction.atomic():
         registration = StakeholderRegistration.objects.select_for_update().filter(project=project).first()
         if action == "save":
@@ -332,6 +335,7 @@ def save_stakeholder_registration(request, project_id):
                 previous = previous_assignments.get(role_code, _empty_assignment(role_code))
                 if (
                     _assignment_content(previous) != _assignment_content(next_assignment)
+                    and not super_admin
                     and not _can_assign_role(registration, email, role_code)
                 ):
                     assigners = ROLE_DEFINITIONS[role_code].get("assignmentRule", "the designated role owner")

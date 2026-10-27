@@ -19,7 +19,7 @@ from api.models import (
     ServiceCatalogue,
     WorkingHours,
 )
-from api.permissions.attributes_access import get_request_email, normalize_email
+from api.permissions.attributes_access import get_request_email, is_super_admin, normalize_email
 from api.services.opportunity_assessment_excel import (
     build_opportunity_template,
     parse_opportunity_workbook,
@@ -28,7 +28,7 @@ from api.views.fpo_mapping import _build_cascade_tree, _serialize_row as seriali
 
 OA_REQUESTOR_DENIED = (
     "Access denied. This Opportunity Assessment was not submitted by you. "
-    "Only the original requestor can open it."
+    "Only the original requestor or a Super Admin can open it."
 )
 
 # Labels for OA grid/API. Column order always follows OpportunityAssessment model field order.
@@ -375,14 +375,14 @@ def _get_project(project_id: int):
 
 
 def _deny_unless_requestor(request, project):
-    """Only the intake requestor (SSO email) may access Opportunity Assessment."""
+    """Allow the intake requestor and Super Admins to manage the assessment."""
     email = get_request_email(request)
     if not email:
         return Response(
             {"error": "Sign in required. Missing SSO email."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
-    if normalize_email(email) != normalize_email(project.requestor):
+    if normalize_email(email) != normalize_email(project.requestor) and not is_super_admin(email):
         return Response({"error": OA_REQUESTOR_DENIED}, status=status.HTTP_403_FORBIDDEN)
     return None
 

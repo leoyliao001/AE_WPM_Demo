@@ -49,6 +49,7 @@ backend/config/settings.py
 
 # Uploaded artefacts (Business Case attachments)
 backend/media/
+backend/scope_evidence/
 
 # npm registry auth (never commit)
 .npmrc
