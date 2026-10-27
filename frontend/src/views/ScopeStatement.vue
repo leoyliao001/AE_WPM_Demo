@@ -97,6 +97,10 @@
         <div v-if="success" class="notice notice--success" role="status">
           <mc-icon icon="mi-check" size="18" /><span>{{ success }}</span>
         </div>
+        <div v-if="statement.reviewRequired" class="notice notice--info" role="alert">
+          <mc-icon icon="mi-flag" size="18" />
+          <span>Scope review required: Intake source data has changed. Reopen for revision, review the updated sources and resubmit Scope before Business Case financials or submission can proceed.</span>
+        </div>
         <div v-if="isSubmitted" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" />
           <span>Submitted {{ formatDate(statement.submittedAt) }} by {{ statement.submittedBy }}. This statement is now read-only.</span>
@@ -104,6 +108,14 @@
         <div v-else-if="!canEdit" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>Read-only view. The original intake requestor can edit this statement.</span>
         </div>
+        <form v-if="isSubmitted" class="detail-card scope-boundaries" @submit.prevent="reopenScope">
+          <h2>Reopen for revision</h2>
+          <p class="section-description">Authorised editors can reopen this submitted Scope as a draft. Existing job-level locks and evidence are preserved; unlock the relevant level normally before changing its agreement.</p>
+          <label class="scope-revision-reason">Revision reason (required, maximum 2,000 characters)
+            <textarea v-model="revisionReason" :disabled="isBusy" maxlength="2000" rows="2" required />
+          </label>
+          <button type="submit" class="scope-add-wave" :disabled="isBusy || !revisionReason.trim()">Reopen for revision</button>
+        </form>
 
         <section class="agreement-card" aria-labelledby="agreement-title">
           <header class="section-heading">
@@ -212,7 +224,7 @@
           <section class="detail-card narrative-card" aria-labelledby="narrative-title">
             <header class="detail-heading">
               <div><p class="eyebrow">Project boundaries</p><h2 id="narrative-title">High-level scope statement</h2></div>
-              <span class="required-label">{{ isSubmitted ? 'Submitted' : 'Required' }}</span>
+              <span class="required-label">{{ statement.reviewRequired ? 'Review required' : isSubmitted ? 'Submitted' : 'Required' }}</span>
             </header>
             <p id="scope-help" class="section-description">Define the activities, locations and responsibilities included in this migration, and what remains out of scope.</p>
             <label for="scope-narrative" class="sr-only">High-level scope statement</label>
@@ -224,12 +236,32 @@
           </section>
         </div>
 
+        <section class="detail-card scope-boundaries" aria-labelledby="scope-plan-title">
+          <header class="detail-heading"><div><p class="eyebrow">Source record for Business Case and Charter</p><h2 id="scope-plan-title">Boundaries and migration waves</h2></div></header>
+          <div class="scope-boundary-fields">
+            <label>Out of scope<textarea v-model="outOfScope" :disabled="!canEdit || isBusy" rows="3" /></label>
+            <label>Assumptions<textarea v-model="assumptions" :disabled="!canEdit || isBusy" rows="3" /></label>
+          </div>
+          <p class="section-description">Maintain actual migration waves here. Dates use YYYY-MM-DD and FTE must be a non-negative whole number. If waves are provided, their total must match final project FTE before submission. These source values are read-only in Business Case.</p>
+          <div class="table-scroll">
+            <table class="exception-table"><thead><tr><th>Wave name</th><th>Date (YYYY-MM-DD)</th><th>FTE</th><th>Action</th></tr></thead>
+              <tbody><tr v-for="(wave, index) in waves" :key="index">
+                <td><input v-model="wave.name" :aria-label="`Wave ${index + 1} name`" :disabled="!canEdit || isBusy" /></td>
+                <td><input v-model="wave.date" type="date" :aria-label="`Wave ${index + 1} date`" :disabled="!canEdit || isBusy" /></td>
+                <td><input v-model="wave.fte" type="number" min="0" step="1" :aria-label="`Wave ${index + 1} FTE`" :disabled="!canEdit || isBusy" /></td>
+                <td><button type="button" :disabled="!canEdit || isBusy" :aria-label="`Remove wave ${index + 1}`" @click="waves.splice(index, 1)">Remove</button></td>
+              </tr><tr v-if="!waves.length"><td colspan="4">No migration waves defined.</td></tr></tbody>
+            </table>
+          </div>
+          <button type="button" class="scope-add-wave" :disabled="!canEdit || isBusy || waves.length >= 100" @click="waves.push({ name: '', date: '', fte: '' })">Add wave</button>
+        </section>
+
         <footer class="readiness-bar">
           <div class="readiness-copy">
-            <span class="readiness-icon" :class="{ 'readiness-icon--complete': ready || isSubmitted }"><mc-icon :icon="ready || isSubmitted ? 'mi-check' : 'mi-shield'" size="22" /></span>
+            <span class="readiness-icon" :class="{ 'readiness-icon--complete': !statement.reviewRequired && (ready || isSubmitted) }"><mc-icon :icon="!statement.reviewRequired && (ready || isSubmitted) ? 'mi-check' : 'mi-shield'" size="22" /></span>
             <div>
-              <strong>{{ isSubmitted ? 'Scope commitment secured' : ready ? 'Ready to submit' : 'Build your scope commitment' }}</strong>
-              <p>{{ isSubmitted ? 'Final project FTE is recorded. This statement is frozen.' : 'Lock each job level and complete the scope statement to submit.' }}</p>
+              <strong>{{ statement.reviewRequired ? 'Scope review required' : isSubmitted ? 'Scope commitment secured' : ready ? 'Ready to submit' : 'Build your scope commitment' }}</strong>
+              <p>{{ statement.reviewRequired ? 'Review changed Intake sources and resubmit Scope to restore Business Case readiness.' : isSubmitted ? 'Final project FTE is recorded. This statement is frozen.' : 'Lock each job level and complete the scope statement to submit.' }}</p>
             </div>
           </div>
           <div class="readiness-steps" aria-label="Submission requirements">
@@ -247,6 +279,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
+import { useUnsavedChanges } from '../composables/useUnsavedChanges.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 
@@ -256,6 +289,10 @@ const backTo = computed(() => `/toll-gates?project=${projectId.value}`)
 const statement = ref(null)
 const lines = ref([])
 const scopeText = ref('')
+const outOfScope = ref('')
+const assumptions = ref('')
+const waves = ref([])
+const revisionReason = ref('')
 const loading = ref(true)
 const busy = ref('')
 const error = ref('')
@@ -277,10 +314,11 @@ const totalVariance = computed(() => completeField('agreedFte') && allFinalEnter
 const reconciliationGap = computed(() => completeField('agreedFte') && completeField('notAgreedFte') ? agreedTotal.value + exceptionTotal.value - ambition.value : null)
 const reconciled = computed(() => reconciliationGap.value !== null && Math.abs(reconciliationGap.value) < 0.00005)
 const ready = computed(() => lockedCount.value === 3 && Boolean(scopeText.value.trim()))
-const statusKey = computed(() => isSubmitted.value ? 'submitted' : ready.value ? 'ready' : 'draft')
-const statusLabel = computed(() => isSubmitted.value ? 'Submitted' : ready.value ? 'Ready to submit' : 'Draft')
+const statusKey = computed(() => statement.value?.reviewRequired ? 'draft' : isSubmitted.value ? 'submitted' : ready.value ? 'ready' : 'draft')
+const statusLabel = computed(() => statement.value?.reviewRequired ? 'Review required' : isSubmitted.value ? 'Submitted' : ready.value ? 'Ready to submit' : 'Draft')
 const aboveAgreed = computed(() => lines.value.filter((line) => variance(line) > 0).map((line) => line.jobLevel).join(', '))
-const dirty = computed(() => Boolean(statement.value) && snapshot() !== savedSnapshot.value)
+const dirty = computed(() => Boolean(statement.value) && (snapshot() !== savedSnapshot.value || !!revisionReason.value.trim()))
+useUnsavedChanges(dirty, computed(() => isBusy.value || loading.value))
 
 function validNumber(value, whole = false) {
   return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value)) &&
@@ -329,12 +367,15 @@ function formatDate(value) {
 }
 
 function snapshot() {
-  return JSON.stringify({ text: scopeText.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
+  return JSON.stringify({ text: scopeText.value, outOfScope: outOfScope.value, assumptions: assumptions.value, waves: waves.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
 }
 
 function applyResponse(data) {
   statement.value = data
   scopeText.value = data.scopeText
+  outOfScope.value = data.outOfScope ?? ''
+  assumptions.value = data.assumptions ?? ''
+  waves.value = (data.waves || []).map(wave => ({ name: wave.name, date: wave.date, fte: wave.fte }))
   lines.value = data.lines.map((line) => ({
     ...line,
     agreedFte: line.agreedFte === null ? '' : Number(line.agreedFte),
@@ -348,11 +389,31 @@ function errorMessage(caught, fallback) {
   return caught?.response?.data?.error || caught?.response?.data?.detail || fallback
 }
 
+async function reopenScope() {
+  if (!isSubmitted.value || isBusy.value || !revisionReason.value.trim()) return
+  busy.value = 'revise'
+  error.value = ''
+  success.value = ''
+  try {
+    const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
+      action: 'revise', revision: statement.value.revision, reason: revisionReason.value.trim()
+    })
+    applyResponse(data)
+    revisionReason.value = ''
+    success.value = 'Scope reopened as a draft. Existing job-level locks and evidence are preserved.'
+  } catch (caught) {
+    error.value = errorMessage(caught, 'Unable to reopen Scope. Your reason is retained; reload if another editor has changed the record.')
+  } finally {
+    busy.value = ''
+  }
+}
+
 async function loadData() {
   loading.value = true
   error.value = ''
   success.value = ''
   statement.value = null
+  revisionReason.value = ''
   const id = projectId.value
   try {
     const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/scope-statement/`)
@@ -365,6 +426,12 @@ async function loadData() {
 }
 
 async function persist(action, extra = {}) {
+  if (waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
+      Number.isNaN(Date.parse(wave.date)) || new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
+      !validNumber(wave.fte, true))) {
+    error.value = 'Each wave needs a name, valid YYYY-MM-DD date and non-negative integer FTE. Complete or remove unfinished rows before saving.'
+    return false
+  }
   const editableLines = lines.value.filter((line) => !line.lockedAt)
   if (editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
     line[key] !== '' && !validNumber(line[key], key === 'finalFte')
@@ -376,6 +443,9 @@ async function persist(action, extra = {}) {
     action,
     revision: statement.value.revision,
     scopeText: scopeText.value,
+    outOfScope: outOfScope.value,
+    assumptions: assumptions.value,
+    waves: waves.value.map(wave => ({ name: wave.name.trim(), date: wave.date, fte: Number(wave.fte) })),
     lines: editableLines.map((line) => ({
       jobLevel: line.jobLevel,
       agreedFte: line.agreedFte === '' ? null : line.agreedFte,
@@ -452,6 +522,14 @@ watch(projectId, loadData, { immediate: true })
 </script>
 
 <style scoped>
+.scope-boundaries { margin-top: 24px; }
+.scope-boundary-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.scope-boundary-fields label, .scope-revision-reason { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.scope-boundary-fields textarea, .scope-revision-reason textarea { width: 100%; padding: 12px; border: 1px solid #bdcbd5; border-radius: 6px; font: inherit; resize: vertical; }
+.scope-boundaries td input { width: 100%; min-width: 90px; padding: 8px; border: 1px solid #bdcbd5; border-radius: 5px; font: inherit; }
+.scope-boundaries button { padding: 8px 12px; border: 1px solid #bdcbd5; border-radius: 5px; background: white; color: #17364b; cursor: pointer; }
+.scope-boundaries button:disabled { opacity: .5; cursor: not-allowed; }
+.scope-add-wave { margin-top: 16px; }
 .scope-page {
   --scope-navy: #10314f;
   --scope-muted: #6f8292;

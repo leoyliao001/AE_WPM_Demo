@@ -843,6 +843,7 @@ import {
 } from '../data/areaLocationStrategyMapping'
 import { languageOptions } from '../data/languageOptions'
 import { functions, getProductsForFunction } from '../data/functionProductMapping'
+import { migrationTypes } from '../data/intakeOptions'
 import {
   buildSubmissionPreview,
   collectValidationErrors,
@@ -863,11 +864,6 @@ import '@maersk-global/mds-components-core/mc-dialog'
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
 const router = useRouter()
-
-const migrationTypes = [
-  { value: '1:1-transfer', label: '1:1 Transfer' },
-  { value: 'co-location', label: 'Co-Location' }
-]
 
 const filteredAreas = computed(() => getAreasForRegion(form.region))
 const filteredProducts = computed(() => getProductsForFunction(form.function))

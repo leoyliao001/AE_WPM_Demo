@@ -27,6 +27,9 @@ WRITABLE_FIELDS = [
     "access_control",
     "scope_statement",
     "stakeholder_registration",
+    "project_charter",
+    "business_case",
+    "cost_rates",
 ]
 
 
@@ -60,6 +63,9 @@ def _extract_payload(item: dict) -> dict:
         payload["access_control"] = True
         payload["scope_statement"] = True
         payload["stakeholder_registration"] = True
+        payload["project_charter"] = True
+        payload["business_case"] = True
+        payload["cost_rates"] = True
     return payload
 
 

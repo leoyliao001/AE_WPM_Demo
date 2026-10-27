@@ -30,6 +30,9 @@ ALL_FIELDS = [
     ("access_control", "Access Control (Y/N)"),
     ("scope_statement", "Scope Statement (Y/N)"),
     ("stakeholder_registration", "Stakeholder Registration (Y/N)"),
+    ("project_charter", "Project Charter (Y/N)"),
+    ("business_case", "Business Case (Y/N)"),
+    ("cost_rates", "Business Case Cost Rates (Y/N)"),
 ]
 
 BOOL_FIELDS = {
@@ -48,6 +51,9 @@ BOOL_FIELDS = {
     "access_control",
     "scope_statement",
     "stakeholder_registration",
+    "project_charter",
+    "business_case",
+    "cost_rates",
 }
 
 
@@ -76,6 +82,9 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "access_control": "Y",
             "scope_statement": "Y",
             "stakeholder_registration": "Y",
+            "project_charter": "Y",
+            "business_case": "Y",
+            "cost_rates": "Y",
         }
     return {
         "id": item.id,
@@ -95,6 +104,9 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "access_control": _yn(item.access_control),
         "scope_statement": _yn(item.scope_statement),
         "stakeholder_registration": _yn(item.stakeholder_registration),
+        "project_charter": _yn(item.project_charter),
+        "business_case": _yn(item.business_case),
+        "cost_rates": _yn(item.cost_rates),
     }
 
 
@@ -123,6 +135,9 @@ def my_attributes_access(request):
                     "access_control": False,
                     "scope_statement": False,
                     "stakeholder_registration": False,
+                    "project_charter": False,
+                    "business_case": False,
+                    "cost_rates": False,
                 },
             }
         )

@@ -21,12 +21,16 @@ import BpmRofo from '../views/BpmRofo.vue'
 import BpmActual from '../views/BpmActual.vue'
 import ApprovalCycle from '../views/ApprovalCycle.vue'
 import BusinessCase from '../views/BusinessCase.vue'
+import BusinessCasesDatabase from '../views/BusinessCasesDatabase.vue'
+import CostRatesDatabase from '../views/CostRatesDatabase.vue'
 import ApprovalFinalReview from '../views/ApprovalFinalReview.vue'
 import TollGates from '../views/TollGates.vue'
 import ScopeStatement from '../views/ScopeStatement.vue'
 import StakeholderRegistration from '../views/StakeholderRegistration.vue'
 import StakeholderRegistrationsDatabase from '../views/StakeholderRegistrationsDatabase.vue'
 import ScopeStatementsDatabase from '../views/ScopeStatementsDatabase.vue'
+import ProjectCharter from '../views/ProjectCharter.vue'
+import ProjectChartersDatabase from '../views/ProjectChartersDatabase.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -46,10 +50,17 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/bpm-actual': 'bpm_actual',
   '/attributes-access-control': 'access_control',
   '/scope-statements-database': 'scope_statement',
-  '/stakeholder-registrations-database': 'stakeholder_registration'
+  '/stakeholder-registrations-database': 'stakeholder_registration',
+  '/project-charters-database': 'project_charter',
+  '/business-cases-database': 'business_case',
+  '/cost-rates-database': 'cost_rates'
 }
 
 const routes = [
+  { path: '/business-cases-database', name: 'BusinessCasesDatabase', component: BusinessCasesDatabase },
+  { path: '/cost-rates-database', name: 'CostRatesDatabase', component: CostRatesDatabase },
+  { path: '/migration-dashboard/:id/project-charter', name: 'ProjectCharter', component: ProjectCharter },
+  { path: '/project-charters-database', name: 'ProjectChartersDatabase', component: ProjectChartersDatabase },
   { path: '/', name: 'Welcome', component: Welcome },
   { path: '/welcome', redirect: '/' },
   { path: '/welcome-photo-demo', redirect: '/' },

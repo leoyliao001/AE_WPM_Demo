@@ -222,6 +222,110 @@ npm run dev
 
 Frontend URL: **http://localhost:3002** — open this in your browser.
 
+### Project Charter (draft workflow)
+
+- Toll Gates > Initiate > Project Charter opens `/migration-dashboard/:id/project-charter`.
+- The charter reads Intake, locked Stakeholder Registration people, Scope Statement,
+  saved Gantt dates/task completion and Business Case approval state live. Missing
+  structured benefits, risks, scope waves, out-of-scope and assumptions are labelled
+  unavailable; uploaded Business Case documents are not parsed or replaced by sample data.
+- The `project_charter` table stores only charter-owned vision wording, phase notes,
+  add-only additional success criteria, source fingerprint and draft revision/audit metadata.
+  Saving or regenerating vision never updates the upstream artefacts. Stale saves/deletes
+  are rejected; vision is regenerated only on explicit request.
+- Admin (`/project-attributes`) includes Project Charters for browsing, creating,
+  editing and deleting drafts directly in the maintenance page's record form,
+  without reopening the project presentation page. Access Control has a separate Project Charter permission;
+  project requestors can manage their own charter but cannot browse/delete Admin records.
+- Run backend migrations before opening the feature. This release is draft-only:
+  no submission, approval, approved-version archive or export is enabled. Saving a
+  draft shows the Toll Gates item as in progress, not secured.
+
+### Online Business Case
+
+- `/migration-dashboard/:id/business-case` is an online record, not a mandatory
+  final-document upload. Four sections cover Intake, read-only Scope, calculated
+  financials and Business Case-owned narrative. Existing final attachments remain
+  downloadable; old uploads are not interpreted as populated online records.
+  Use **Edit project details** in Project overview to edit Intake, then
+  **Save project details** or **Cancel editing**. Saving also includes pending
+  Business Case changes; cancelling discards only Intake edits. Reload, financial
+  refresh and Print / Save PDF are grouped under **More actions**.
+  The workspace uses MDS buttons, tags and notifications, with brand typography
+  and design tokens for surfaces, borders, form controls and responsive layouts.
+  The compact page header places actions beside the title and metadata below.
+  The layout follows Migration Intake: a white full-width canvas, bold page title,
+  icon navigation and rounded section cards with blue, cyan, green and orange
+  accent rules. Semantic status colours retain their meaning.
+  Intake editing uses controlled single-select and searchable MDS multi-select
+  fields with the same region/area/country, function/product and destination
+  mappings as Migration Intake. The canonical catalogue is
+  `backend/api/data/intake_options.json`, consumed by both frontend mappings and
+  Business Case server validation. Parent changes retain dependent values for
+  explicit review rather than silently deleting them. Unchanged legacy values
+  remain saveable; changed selections must match the current catalogue and parents.
+  Date order is validated server-side; migration type codes and area/country
+  pairs are updated with their source fields. New custom destinations must first
+  be approved at the Intake source; this editor does not replace that approval.
+  Edit controls use a consistent medium MDS size and a two-column layout:
+  Function/Products, Region/Areas and start/end dates share rows; rationale
+  spans the full width. Function and multi-select dropdowns include search;
+  short single-select lists remain unfiltered. Mobile uses one column.
+  `business_case.saved_snapshot` stores the latest complete page capture.
+  Every successful save, source refresh, submission or revision also appends
+  the capture as `pageSnapshot` in `financial_history`, including project
+  identity, Intake, Scope, narrative, financial inputs/results/rate basis,
+  source versions and approval state at capture. Later source changes do not
+  rewrite saved copies. Failed saves and version conflicts do not create copies.
+  Both the business page and Admin editor expose read-only **Saved page snapshots**
+  with version selection. Existing records keep an empty latest snapshot until
+  their next successful save; old historical data is not presented as a complete
+  capture. The normal business page continues showing live source data and its
+  review warnings; snapshots are evidence, not an independent editable source.
+- `business_case` stores draft details, one-time costs/adjustments, revisions,
+  audit events and immutable calculation/source snapshots. Editing Intake here
+  updates the original `migration_intake_submission` record. Scope-owned data
+  stays in `scope_statement` and its job-level lines; out-of-scope, assumptions
+  and dated migration waves are maintained there, not in Business Case.
+- Admin has separate Business Case and Business Case Cost Rates maintenance cards,
+  controlled by the `business_case` and `cost_rates` Access Control permissions.
+  Administration uses record forms, not the presentation page. The project
+  requestor remains the only user allowed to formally submit.
+- Maintain fully loaded **annual** costs by exact source country / destination
+  GSC site, job level and target-start year in `business_case_cost_rate`. Each
+  rate has a currency, version and USD-per-local-unit conversion factor (USD = 1).
+  There are no seeded illustrative rates. Missing rates or sources block
+  financial calculation and submission, but do not prevent saving a draft.
+- Calculations use locked Scope final FTE, Decimal arithmetic and USD totals:
+  current/future annual cost = sum(FTE x annual rate x USD conversion);
+  gross and recurring benefit = current minus future; benefit percentage =
+  gross/current; net first-year benefit = gross minus adjusted one-time cost;
+  payback months = adjusted one-time cost/(gross/12). The first-year formula is
+  full run-rate, not prorated by waves. Zero current cost has no percentage;
+  non-positive benefit has no payback period. These cases display explanations.
+- A nonzero manual adjustment requires a reason and never overwrites the baseline.
+  Source, rate and financial histories retain the basis used at each save/refresh/
+  submission. Calculation refresh preserves adjustments.
+- Complete/submit validates submitted Scope, all locked FTE, financial readiness,
+  business owner, dates and required narrative, then starts the existing approval
+  chain (Area Head, PMO, BPM, conditional FBP, WPM, parallel ELT/GSC Head).
+  It does not create an alternative one-click approval path.
+- Submitted records are locked. Reopening requires a reason, preserves the prior
+  approval evidence, clears the active approval chain, and requires resubmission.
+  Relevant upstream changes flag submitted/approved online cases for review and
+  block further approvals until reviewed and resubmitted. Optimistic source and
+  record versions reject stale saves. Scope can also be reopened with a reason;
+  existing job-level locks must still be explicitly unlocked before FTE changes.
+  Changes to Intake scope inputs (function/process, locations or target dates)
+  also flag an already-submitted Scope for review and resubmission.
+- Current financials require one source country and one destination GSC. Multiple
+  locations are blocked explicitly until a per-location FTE allocation model is
+  defined; no equal split or first-location assumption is made. Opportunity
+  Assessment does not currently have an independent formal approval record.
+- Export uses the browser's Print / Save as PDF for the online view. No new
+  package or Word/PPT export service is required. Apply backend migrations before
+  opening the new pages.
+
 > Use **port 3002** as the development frontend entry point. The backend serves APIs only; Vite proxies `/api` to `http://127.0.0.1:8001` by default.
 > To develop against the **production** backend instead, override the target rather than starting a second server:
 >

@@ -14,6 +14,7 @@ import logging
 import threading
 
 from django.utils import timezone
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -150,6 +151,11 @@ def _join_list(values) -> list:
 
 
 def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: dict, my_roles: set, approval_rows) -> dict:
+    from api.models import BusinessCase
+    from api.services.business_case import build_business_case, case_status
+    record = BusinessCase.objects.filter(project=submission).first()
+    online_status = case_status(record, build_business_case(submission, record)[3], progress) if record else None
+    blocked = record is not None and online_status not in {"submitted", "approved"}
     return {
         "migration_request_id": submission.migration_request_id,
         "project_name": submission.project_name,
@@ -180,9 +186,11 @@ def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: di
         "beyondBudget": progress["beyondBudget"],
         "currentRole": _current_role(progress),
         "parallel": {"elt": progress["parallel"]["elt"] or "pending", "gscHead": progress["parallel"]["gsc_head"] or "pending"},
-        "completed": progress["completed"],
+        "completed": progress["completed"] and not blocked,
+        "businessCaseStatus": online_status,
+        "businessCaseBlocked": blocked,
         "myRoles": sorted(my_roles),
-        "actionable": _is_actionable(progress, my_roles),
+        "actionable": not blocked and _is_actionable(progress, my_roles),
         "responsibleApprovers": {
             role: recipients_for_role(role, submission.function_name, submission.products, approval_rows)
             for role in ALL_ROLES
@@ -222,6 +230,7 @@ def list_approval_queue(request):
 
 
 @api_view(["POST"])
+@transaction.atomic
 def submit_approval_decision(request):
     """Record a decision for one role/stage of one request, after checking access."""
     email = get_request_email(request)
@@ -244,10 +253,17 @@ def submit_approval_decision(request):
         return Response({"error": "budget_status must be 'within' or 'beyond'."}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        submission = MigrationIntakeSubmission.objects.get(migration_request_id=migration_request_id)
+        submission = MigrationIntakeSubmission.objects.select_for_update().get(migration_request_id=migration_request_id)
     except MigrationIntakeSubmission.DoesNotExist:
         return Response({"error": "Request not found."}, status=status.HTTP_404_NOT_FOUND)
 
+    from api.models import BusinessCase
+    from api.services.business_case import build_business_case, case_status
+    record = BusinessCase.objects.select_for_update().filter(project=submission).first()
+    if record:
+        fingerprint = build_business_case(submission, record)[3]
+        if case_status(record, fingerprint, None) != "submitted":
+            return Response({"error": "The online Business Case must be current and submitted before approval. Reopen, review and resubmit changed sources."}, status=409)
     workflow, _created = ApprovalWorkflow.objects.get_or_create(migration_request_id=migration_request_id)
 
     approval_rows = load_approval_input_rows()
@@ -289,6 +305,14 @@ def submit_approval_decision(request):
     workflow.save()
 
     updated_progress = _progress(workflow)
+    if record:
+        record.revision += 1
+        record.audit_log = [*record.audit_log, {
+            "action": action, "role": role, "comment": comment, "by": email,
+            "at": timezone.now().isoformat(), "revision": record.revision,
+        }]
+        record.updated_by = email
+        record.save()
     if action == "approved":
         _notify_next_approvers(submission, updated_progress, approval_rows, role)
     elif action == "returned":

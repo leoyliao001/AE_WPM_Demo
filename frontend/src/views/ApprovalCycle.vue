@@ -134,6 +134,7 @@
                   <td>
                     <span class="ac-row-title">{{ row.title }}</span>
                     <span class="ac-row-sub">{{ row.id }} · submitted {{ row.submitted }}</span>
+                    <span v-if="row.businessCaseBlocked" class="ac-row-sub">{{ businessCaseWarning(row) }}</span>
                   </td>
                   <td><span class="ac-tag ac-tag-info">{{ row.type }}</span></td>
                   <td>
@@ -202,10 +203,14 @@
             <span class="ac-tag" :class="budgetTagClass(detail)">
               {{ budgetLabel(detail) }}
             </span>
-            <span class="ac-tag ac-tag-neutral">{{ detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
+            <span class="ac-tag ac-tag-neutral">{{ detail.businessCaseBlocked ? 'Business Case blocked' : detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
           </div>
         </div>
 
+        <div v-if="detail.businessCaseBlocked" class="ac-banner" role="alert">
+          <span class="ac-banner-mark" aria-hidden="true">!</span>
+          <div><strong>{{ businessCaseWarning(detail) }}</strong><p>Business Case must be reviewed and resubmitted before approval decisions can continue.</p></div>
+        </div>
         <div v-if="detail.beyondBudget" class="ac-banner" role="status">
           <span class="ac-banner-mark" aria-hidden="true">!</span>
           <div>
@@ -355,8 +360,12 @@
           </div>
 
           <aside class="ac-decision-col">
+            <div v-if="detail.businessCaseBlocked" class="ac-card ac-decision">
+              <h2 class="ac-card-title">Approval paused</h2>
+              <p class="ac-card-sub">Business Case must be reviewed and resubmitted. Previous approval statuses do not indicate completion of the current Business Case.</p>
+            </div>
             <!-- Sequential phase: Area Head / PMO Review / BPM Review / FBP Approve -->
-            <div v-if="!isParallelPhase(detail)" class="ac-card ac-decision">
+            <div v-else-if="!isParallelPhase(detail)" class="ac-card ac-decision">
               <h2 class="ac-card-title">Your decision</h2>
               <p class="ac-card-sub">Step {{ detail.step }} of {{ totalStepsFor(detail) }} — {{ stageNameFor(detail) }}</p>
 
@@ -551,6 +560,9 @@ const sequentialLength = (beyondBudget) => (beyondBudget ? 5 : 4)
 const totalStepsFor = (row) => stepsFor(row.beyondBudget).length
 
 const isParallelPhase = (row) => row.step > sequentialLength(row.beyondBudget)
+const businessCaseWarning = (row) => row.businessCaseStatus === 'needs_review'
+  ? 'Business Case needs review.'
+  : 'Business Case is not currently submitted for approval.'
 
 const stageNameFor = (row) => {
   const seqLen = sequentialLength(row.beyondBudget)
@@ -562,6 +574,7 @@ const chainFor = (row) => {
   const steps = stepsFor(row.beyondBudget)
   const seqLen = sequentialLength(row.beyondBudget)
   return steps.map((name, i) => {
+    if (row.businessCaseBlocked) return { name, state: 'todo', meta: 'Paused · Business Case must be reviewed and resubmitted' }
     const n = i + 1
     if (n <= seqLen) {
       if (n < row.step) return { name, state: 'done', meta: 'Approved' }
@@ -769,12 +782,14 @@ const toRow = (r) => {
     decisions: r.decisions || {},
     responsibleApprovers: r.responsibleApprovers || {},
     businessCaseSubmittedAt: r.businessCaseSubmittedAt || null,
+    businessCaseStatus: r.businessCaseStatus ?? null,
+    businessCaseBlocked: !!r.businessCaseBlocked,
     step: r.step,
     totalSteps: r.totalSteps,
     parallel: { elt: r.parallel?.elt || 'pending', gscHead: r.parallel?.gscHead || 'pending' },
-    completed: !!r.completed,
+    completed: !!r.completed && !r.businessCaseBlocked,
     myRoles: r.myRoles || [],
-    actionable: !!r.actionable,
+    actionable: !!r.actionable && !r.businessCaseBlocked,
     waiting: '',
     waitingDetail: '',
     slaBreached: false,
@@ -810,9 +825,9 @@ const toRow = (r) => {
     status: r.status || ''
   }
   const timeline = approvalTimeline(row)
-  row.waiting = timeline.waiting
-  row.waitingDetail = timeline.detail
-  row.slaBreached = timeline.breached
+  row.waiting = row.businessCaseBlocked ? businessCaseWarning(row) : timeline.waiting
+  row.waitingDetail = row.businessCaseBlocked ? 'Business Case must be reviewed and resubmitted.' : timeline.detail
+  row.slaBreached = !row.businessCaseBlocked && timeline.breached
   return row
 }
 
@@ -919,6 +934,10 @@ function exportRows() {
 // Posts a decision to the backend, which re-checks approval_input access server-side,
 // then swaps in the fresh row it returns so step/parallel/actionable stay in sync.
 async function postDecision(role, action, commentText, extra = {}) {
+  if (detail.value?.businessCaseBlocked) {
+    decisionMessage.value = 'Business Case must be reviewed and resubmitted.'
+    return { ok: false }
+  }
   try {
     const { data } = await axios.post('/api/approval-cycle/decision/', {
       migration_request_id: detail.value.id,
@@ -983,7 +1002,7 @@ async function decideParallel(role, action) {
   if (ok) {
     const other = role === 'elt' ? detail.value.parallel.gscHead : detail.value.parallel.elt
     decisionMessage.value =
-      action === 'approved' && other === 'approved'
+      detail.value.completed && !detail.value.businessCaseBlocked && action === 'approved' && other === 'approved'
         ? `${id} fully approved — ELT and GSC Head have both signed off.`
         : `${id}: ${roleLabel} ${action}.`
     parallelComment.value[role] = ''

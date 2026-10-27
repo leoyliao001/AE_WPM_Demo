@@ -1,4 +1,4 @@
-from api.models import MigrationIntakeSubmission, OpportunityAssessment
+from api.models import BusinessCase, MigrationIntakeSubmission, OpportunityAssessment, ProjectCharter
 
 
 def _join_preview(values, limit=3):
@@ -91,6 +91,9 @@ def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
 
 
 def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
+    from api.services.business_case import approval_progress, build_business_case, case_status
+    online = BusinessCase.objects.filter(project=submission).first()
+    online_status = case_status(online, build_business_case(submission, online)[3], approval_progress(submission)) if online else None
     overview = serialize_project_overview(submission)
     overview.update(
         {
@@ -104,6 +107,7 @@ def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
             "customApprovalFile": _serialize_approval_file(submission),
             "products": submission.products or [],
             "proposedScope": submission.proposed_scope,
+            "projectCharterSaved": ProjectCharter.objects.filter(project=submission).exists(),
             "languageDependencies": submission.language_dependencies or [],
             "jl2": submission.jl2,
             "jl3": submission.jl3,
@@ -116,6 +120,8 @@ def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
                 else ""
             ),
             "businessCaseFile": serialize_business_case_file(submission),
+            "businessCaseOnlineStatus": online_status,
+            "businessCaseNeedsReview": online_status == "needs_review",
             "attachments": serialize_intake_attachments(submission),
             "updatedAt": submission.updated_at.isoformat() if submission.updated_at else "",
         }

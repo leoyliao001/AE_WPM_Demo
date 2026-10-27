@@ -47,7 +47,7 @@
         label="Reload"
         icon="mi-arrow-clockwise"
         :disabled="loading || busy"
-        @click="loadData"
+        @click="reloadData"
       />
     </div>
 
@@ -86,11 +86,12 @@
             </td>
             <td v-for="column in columns" :key="column.key" :title="rawCell(row[column.key])">
               <textarea
-                v-if="column.key === 'scope_text' && canEditCell(row, column)"
+                v-if="['scope_text', 'out_of_scope', 'assumptions', 'waves'].includes(column.key) && canEditCell(row, column)"
                 v-model="row[column.key]"
                 rows="2"
-                maxlength="2000"
-                aria-label="Scope Statement"
+                :maxlength="column.key === 'scope_text' ? 2000 : undefined"
+                :aria-label="column.label"
+                :placeholder="column.key === 'waves' ? '[{&quot;name&quot;:&quot;Wave name&quot;,&quot;date&quot;:&quot;YYYY-MM-DD&quot;,&quot;fte&quot;:0}]' : undefined"
               />
               <input
                 v-else-if="canEditCell(row, column)"
@@ -120,6 +121,7 @@
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
+import { useUnsavedChanges } from '../composables/useUnsavedChanges.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-notification'
 
@@ -146,6 +148,7 @@ const filteredRows = computed(() => {
 const pendingRows = computed(() => rows.value.filter(isRowPending))
 const pendingCount = computed(() => pendingRows.value.length)
 const savedCount = computed(() => rows.value.filter((row) => row.statement_id).length)
+const { canLeave } = useUnsavedChanges(computed(() => pendingCount.value > 0), computed(() => busy.value || loading.value))
 
 function rowSnapshot(row) {
   return JSON.stringify(editableColumns.value.map((column) => [column.key, row[column.key] ?? '']))
@@ -159,7 +162,7 @@ function isRowPending(row) {
 }
 
 function canEditCell(row, column) {
-  if (!column.editable || row.scope_status === 'submitted') return false
+  if (busy.value || loading.value || !column.editable || row.scope_status === 'submitted') return false
   if (column.editable === 'new') return !row.statement_id
   const lockedLevel = column.key.match(/^(jl\d+)_(agreed_fte|not_agreed_fte|final_fte)$/)?.[1]
   return !lockedLevel || !row[`${lockedLevel}_locked_at`]
@@ -215,7 +218,10 @@ function buildSavePayload(row) {
   const payload = {
     statement_id: row.statement_id,
     migration_request_id: row.migration_request_id,
-    scope_text: row.scope_text
+    scope_text: row.scope_text,
+    out_of_scope: row.out_of_scope ?? '',
+    assumptions: row.assumptions ?? '',
+    waves: row.waves || '[]'
   }
   for (const level of ['jl2', 'jl3', 'jl4']) {
     payload[`${level}_agreed_fte`] = row[`${level}_agreed_fte`]
@@ -234,7 +240,7 @@ function apiErrorMessage(caught, fallback) {
 }
 
 async function saveData() {
-  if (!pendingRows.value.length || busy.value) return
+  if (!pendingRows.value.length || busy.value || loading.value) return
   busy.value = true
   error.value = ''
   success.value = ''
@@ -254,7 +260,7 @@ async function saveData() {
 }
 
 async function deleteSelected() {
-  if (!selectedIds.value.length || busy.value) return
+  if (!selectedIds.value.length || busy.value || loading.value) return
   const confirmed = window.confirm(
     'Delete the selected Scope Statement records and their evidence files? This cannot be undone.'
   )
@@ -298,6 +304,10 @@ async function loadData() {
   } finally {
     loading.value = false
   }
+}
+
+function reloadData() {
+  if (canLeave()) loadData()
 }
 
 onMounted(loadData)

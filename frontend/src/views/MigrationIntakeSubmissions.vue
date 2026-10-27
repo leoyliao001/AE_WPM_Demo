@@ -50,7 +50,7 @@
             label="Reload"
             icon="mi-arrow-clockwise"
             :disabled="loading || saving || deleting"
-            @click="loadData"
+            @click="reloadData"
           />
         </div>
       </header>
@@ -96,6 +96,7 @@
                 or <code>X|Y; A|B</code>.
               </li>
               <li>Location Strategy Custom: <code>Y</code> or <code>N</code>.</li>
+              <li>Business Owner, Target Start Date, Target End Date and Initial Rationale are source fields for the online Business Case. Dates use <code>YYYY-MM-DD</code>; Target Start Date determines the cost-rate year.</li>
             </ul>
           </section>
           <section class="help-section">
@@ -130,6 +131,7 @@ import {
   persistColumnWidths,
   resolveColumnWidth
 } from '../utils/handsontableColumnWidths.js'
+import { useUnsavedChanges } from '../composables/useUnsavedChanges.js'
 
 const ALL_COLUMNS = [
   { key: 'migration_request_id', label: 'Migration Request ID', width: 200 },
@@ -137,6 +139,10 @@ const ALL_COLUMNS = [
   { key: 'requestor', label: 'Requestor', width: 180 },
   { key: 'status', label: 'Status', width: 100 },
   { key: 'project_name', label: 'Project Name', width: 200 },
+  { key: 'business_owner', label: 'Business Owner', width: 200 },
+  { key: 'target_start_date', label: 'Target Start Date (YYYY-MM-DD)', width: 220 },
+  { key: 'target_end_date', label: 'Target End Date (YYYY-MM-DD)', width: 220 },
+  { key: 'initial_rationale', label: 'Initial Rationale', width: 260 },
   { key: 'migration_type', label: 'Migration Type', width: 160 },
   { key: 'migration_type_value', label: 'Migration Type Value', width: 150 },
   { key: 'region', label: 'Region', width: 100 },
@@ -185,6 +191,8 @@ const route = useRoute()
 const appliedBpmYear = ref(null)
 const appliedSection = ref(null)
 const pendingCount = computed(() => allChanges.value.length)
+const intakePending = computed(() => loading.value || saving.value || deleting.value)
+const { canLeave } = useUnsavedChanges(computed(() => pendingCount.value > 0), intakePending)
 
 function emptyRow() {
   const row = { id: null, _cid: crypto.randomUUID() }
@@ -367,6 +375,9 @@ function initHot(rows) {
     themeName: 'ht-theme-horizon',
     className: 'htLeft htMiddle',
     headerClassName: 'htLeft',
+    beforeChange(changes, source) {
+      if (source !== 'loadData' && source !== 'api' && intakePending.value) return false
+    },
     afterChange(changes, source) {
       if (!changes || source === 'loadData' || source === 'api') return
       if (!['edit', 'Autofill.fill', 'CopyPaste.paste', 'UndoRedo.undo', 'UndoRedo.redo'].includes(source)) {
@@ -377,8 +388,8 @@ function initHot(rows) {
       touchedRows.forEach((visualRow) => trackChangedRow(this, visualRow))
     },
     beforeRemoveRow(index, amount, physicalRows) {
-      if (deleting.value) {
-        alert('Delete in progress, please wait…')
+      if (saving.value || deleting.value || loading.value) {
+        alert('An operation is in progress, please wait…')
         return false
       }
 
@@ -427,7 +438,7 @@ function onResize() {
 }
 
 async function saveData() {
-  if (saving.value || deleting.value) return
+  if (saving.value || deleting.value || loading.value) return
   if (allChanges.value.length === 0) {
     alert('No changes to save.')
     return
@@ -452,6 +463,20 @@ async function saveData() {
   if (uniqueData.length === 0) {
     alert('No valid rows to save.')
     return
+  }
+  for (const row of uniqueData) {
+    for (const key of ['target_start_date', 'target_end_date']) {
+      const value = row[key]
+      if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)) ||
+          new Date(value).toISOString().slice(0, 10) !== value)) {
+        error.value = `${key === 'target_start_date' ? 'Target Start Date' : 'Target End Date'} must be a valid YYYY-MM-DD date for ${row.migration_request_id || 'the edited row'}.`
+        return
+      }
+    }
+    if (row.target_start_date && row.target_end_date && row.target_end_date < row.target_start_date) {
+      error.value = `Target End Date cannot precede Target Start Date for ${row.migration_request_id || 'the edited row'}.`
+      return
+    }
   }
 
   saving.value = true
@@ -485,7 +510,7 @@ async function saveData() {
 }
 
 async function runDeleteRows(idsToRemove) {
-  if (deleting.value) return
+  if (saving.value || deleting.value || loading.value) return
   deleting.value = true
   error.value = ''
   try {
@@ -533,6 +558,10 @@ async function loadData() {
     onResize()
       // Re-apply query filters after data reload
       try { applyQueryFilters() } catch (e) { /* ignore */ }
+    }
+
+    function reloadData() {
+      if (canLeave()) loadData()
     }
 }
 

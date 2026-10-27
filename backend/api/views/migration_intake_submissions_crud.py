@@ -11,12 +11,13 @@ from __future__ import annotations
 import json
 
 from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.models import MigrationIntakeSubmission
-from api.permissions.attributes_access import require_attributes_access
+from api.permissions.attributes_access import get_request_email, require_attributes_access
 from api.views.migration_intake_submissions import (
     ALL_FIELDS,
     BOOL_FIELDS,
@@ -214,9 +215,15 @@ def save_migration_intake_submissions(request):
                 created_ids.append(obj.id)
             else:
                 obj = MigrationIntakeSubmission.objects.get(pk=int(record_id))
+                changes = {field: {"old": getattr(obj, field), "new": value}
+                           for field, value in payload.items() if getattr(obj, field) != value}
                 for field, value in payload.items():
                     setattr(obj, field, value)
-                obj.save(update_fields=WRITABLE_FIELDS)
+                obj.intake_audit_log = [*obj.intake_audit_log, {
+                    "at": timezone.now().isoformat(), "by": get_request_email(request),
+                    "from": "migration_intake_admin", "changes": changes,
+                }]
+                obj.save(update_fields=[*WRITABLE_FIELDS, "intake_audit_log", "updated_at"])
                 updated_ids.append(obj.id)
         except MigrationIntakeSubmission.DoesNotExist:
             errors.append({"id": record_id, "error": "Record not found."})

@@ -7,6 +7,11 @@
     back-label="Back to Admin"
     full-width
   >
+    <aside class="registry-help" aria-labelledby="registry-help-title">
+      <strong id="registry-help-title">How to update a registration</strong>
+      <p>Find your project below, then scroll the table horizontally to the far right and click <strong>Open</strong>. Edit the Project Team and role assignments on the project page, then save your changes there. This list is read-only.</p>
+      <p>Looking for Project Charter drafts instead? Go to <router-link to="/project-attributes">Admin &gt; Project Charters</router-link>.</p>
+    </aside>
     <div class="registry-toolbar">
       <label class="search-field">
         <span>Filter registrations</span>
@@ -88,6 +93,27 @@ onMounted(loadData)
 </script>
 
 <style scoped>
+.registry-help {
+  background: #eaf4fc;
+  border: 1px solid #aacde8;
+  border-left: 5px solid #0077b8;
+  border-radius: 6px;
+  color: #183b56;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+}
+
+.registry-help p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
+
+.registry-help a {
+  color: #006bb8;
+  font-weight: 700;
+}
+
 .registry-toolbar {
   align-items: end;
   display: flex;

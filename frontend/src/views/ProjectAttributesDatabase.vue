@@ -85,6 +85,36 @@ const access = ref(null)
 
 const allTables = [
   {
+    id: 'business-cases',
+    tableKey: 'business_case',
+    title: 'Business Case',
+    description: 'Create and maintain online Business Case records in an inline database editor. Review narrative, financial inputs and source calculations.',
+    icon: 'mi-file',
+    accent: '#176b87',
+    route: '/business-cases-database',
+    actionLabel: 'Maintain Business Cases'
+  },
+  {
+    id: 'cost-rates',
+    tableKey: 'cost_rates',
+    title: 'Cost Rates',
+    description: 'Maintain annual cost per FTE and USD exchange rates by exact location, job level, cost year and version.',
+    icon: 'mi-list-bullets',
+    accent: '#0F766E',
+    route: '/cost-rates-database',
+    actionLabel: 'Maintain Cost Rates'
+  },
+  {
+    id: 'project-charters',
+    tableKey: 'project_charter',
+    title: 'Project Charter',
+    description: 'Create, view, edit and delete project charter drafts. Maintain vision wording, phase notes and additional success criteria.',
+    icon: 'mi-file',
+    accent: '#176b87',
+    route: '/project-charters-database',
+    actionLabel: 'Maintain Project Charter'
+  },
+  {
     id: 'fpo-mapping',
     tableKey: 'fpo_mapping',
     title: 'FPO Mapping',

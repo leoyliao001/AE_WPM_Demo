@@ -80,6 +80,9 @@ def project_detail(request, project_id: int):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def submit_business_case(request, project_id: int):
     """Record final Business Case submission and begin the approval timeline."""
+    from api.models import BusinessCase
+    if BusinessCase.objects.filter(project_id=project_id).exists():
+        return Response({"error": "This project uses online Business Case submission. Complete and submit the online record instead."}, status=409)
     try:
         submission = MigrationIntakeSubmission.objects.get(pk=project_id)
     except MigrationIntakeSubmission.DoesNotExist:

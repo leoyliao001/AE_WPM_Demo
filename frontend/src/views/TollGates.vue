@@ -337,6 +337,7 @@ const TILE_ROUTES = {
   opportunity: (id) => `/migration-dashboard/${id}/opportunity-assessment`,
   scope_statement: (id) => `/migration-dashboard/${id}/scope-statement`,
   stakeholders: (id) => `/migration-dashboard/${id}/stakeholder-registration`,
+  project_charter: (id) => `/migration-dashboard/${id}/project-charter`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -348,8 +349,11 @@ const milestoneStateById = computed(() => {
   // the coarse project.status index (which barely changes after intake).
   return {
     intake: 'complete',
+    project_charter: p.projectCharterSaved ? 'active' : 'pending',
     stakeholders: stakeholderRegistrationComplete.value ? 'complete' : 'pending',
-    business_case: p.businessCaseSubmissionDate ? 'complete' : 'pending',
+    business_case: p.businessCaseNeedsReview || ['needs_review', 'draft', 'returned'].includes(p.businessCaseOnlineStatus)
+      ? 'pending'
+      : ['submitted', 'approved'].includes(p.businessCaseOnlineStatus) || p.businessCaseSubmissionDate ? 'complete' : 'pending',
     opportunity: oaHasRows.value ? 'complete' : 'pending',
     approvals: ganttStateById.value['hiring-request'] === 'complete' ? 'complete' : 'pending',
     gantt: ganttSaved.value ? 'complete' : 'pending',
@@ -426,7 +430,7 @@ const ARTEFACT_STAGES = [
       { label: 'Scope Statement', source: 'scope_statement' },
       { label: 'Stakeholder Registration', source: 'stakeholders' },
       { label: 'Business Case', source: 'business_case' },
-      { label: 'Project Charter', source: 'intake' },
+      { label: 'Project Charter', source: 'project_charter' },
       { label: 'People Consultation & Compliance', source: null },
       { label: 'Resources', source: null },
       { label: 'Access & Enablement Requirements', source: null },

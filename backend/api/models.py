@@ -37,6 +37,11 @@ class MigrationIntakeSubmission(models.Model):
     jl4 = models.CharField(max_length=8, default="0")
     job_level_total = models.PositiveSmallIntegerField(default=0)
     risks = models.TextField(blank=True)
+    business_owner = models.CharField(max_length=255, blank=True, default="")
+    target_start_date = models.CharField(max_length=10, blank=True, default="")
+    target_end_date = models.CharField(max_length=10, blank=True, default="")
+    initial_rationale = models.TextField(blank=True, default="")
+    intake_audit_log = models.JSONField(default=list)
     business_case_submission_date = models.DateTimeField(null=True, blank=True)
     business_case_file = models.FileField(
         upload_to="business_case/%Y/%m/", null=True, blank=True, max_length=255
@@ -86,6 +91,10 @@ class ScopeStatement(models.Model):
         related_name="scope_statement",
     )
     scope_text = models.TextField(blank=True, default="")
+    out_of_scope = models.TextField(blank=True, default="")
+    assumptions = models.TextField(blank=True, default="")
+    waves = models.JSONField(default=list)
+    review_required = models.BooleanField(default=False)
     status = models.CharField(max_length=16, default="draft")
     revision = models.PositiveIntegerField(default=0)
     ambition_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
@@ -168,6 +177,64 @@ class StakeholderRegistration(models.Model):
 
     def __str__(self):
         return f"{self.project.migration_request_id} — Stakeholder Registration"
+
+
+class ProjectCharter(models.Model):
+    project = models.OneToOneField(
+        MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="project_charter"
+    )
+    vision = models.TextField(blank=True, default="")
+    deliverable_notes = models.JSONField(default=dict)
+    extra_success_criteria = models.JSONField(default=list)
+    source_fingerprint = models.CharField(max_length=64, blank=True, default="")
+    revision = models.PositiveIntegerField(default=0)
+    audit_log = models.JSONField(default=list)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "project_charter"
+
+    def __str__(self):
+        return f"{self.project.migration_request_id} - Project Charter"
+
+
+class BusinessCase(models.Model):
+    project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="online_business_case")
+    details = models.JSONField(default=dict)
+    financial_inputs = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=24, default="draft")
+    source_fingerprint = models.CharField(max_length=64, blank=True, default="")
+    review_required = models.BooleanField(default=False)
+    audit_log = models.JSONField(default=list)
+    financial_history = models.JSONField(default=list)
+    saved_snapshot = models.JSONField(default=dict)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "business_case"
+
+
+class BusinessCaseCostRate(models.Model):
+    location = models.CharField(max_length=255)
+    job_level = models.CharField(max_length=3, choices=[("JL2", "JL2"), ("JL3", "JL3"), ("JL4", "JL4")])
+    annual_cost = models.DecimalField(max_digits=18, decimal_places=4)
+    currency = models.CharField(max_length=3, default="USD")
+    usd_rate = models.DecimalField(max_digits=18, decimal_places=8, default=1)
+    year = models.PositiveSmallIntegerField()
+    version = models.CharField(max_length=64)
+    audit_log = models.JSONField(default=list)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "business_case_cost_rate"
+        constraints = [models.UniqueConstraint(fields=["location", "job_level", "year"], name="bc_rate_location_level_year")]
 
 
 class FpoMapping(models.Model):
@@ -518,6 +585,9 @@ class ProjectAttributesAccess(models.Model):
     access_control = models.BooleanField(default=False)
     scope_statement = models.BooleanField(default=False)
     stakeholder_registration = models.BooleanField(default=False)
+    project_charter = models.BooleanField(default=False)
+    business_case = models.BooleanField(default=False)
+    cost_rates = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -612,4 +682,3 @@ class ProjectGanttPlan(models.Model):
     def __str__(self):
         mid = self.migration_request_id or self.project_id
         return f"Gantt plan for {mid}"
-

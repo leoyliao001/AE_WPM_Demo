@@ -1,4 +1,8 @@
 from django.urls import path
+from api.views.business_case import (
+    get_business_case, save_business_case, list_business_cases, delete_business_case,
+    cost_rates, delete_cost_rate,
+)
 
 from api.views.migration_dashboard import (
     download_business_case,
@@ -7,6 +11,12 @@ from api.views.migration_dashboard import (
     submit_business_case,
 )
 from api.views.project_gantt import project_gantt
+from api.views.project_charter import (
+    get_project_charter,
+    save_project_charter,
+    list_project_charters,
+    delete_project_charter,
+)
 from api.views.opportunity_assessment import (
     delete_opportunity_assessment,
     download_opportunity_template,
@@ -30,6 +40,16 @@ from api.views.stakeholder_registration import (
 )
 
 urlpatterns = [
+    path("business-cases/", list_business_cases, name="business-case-database"),
+    path("cost-rates/", cost_rates, name="business-case-cost-rates"),
+    path("cost-rates/<int:rate_id>/", delete_cost_rate, name="business-case-cost-rate-delete"),
+    path("projects/<int:project_id>/business-case/", get_business_case, name="online-business-case"),
+    path("projects/<int:project_id>/business-case/save/", save_business_case, name="online-business-case-save"),
+    path("projects/<int:project_id>/business-case/delete/", delete_business_case, name="online-business-case-delete"),
+    path("project-charters/", list_project_charters, name="project-charter-database"),
+    path("projects/<int:project_id>/project-charter/", get_project_charter, name="project-charter"),
+    path("projects/<int:project_id>/project-charter/save/", save_project_charter, name="project-charter-save"),
+    path("projects/<int:project_id>/project-charter/delete/", delete_project_charter, name="project-charter-delete"),
     path("projects/", list_projects, name="migration-dashboard-projects"),
     path("stakeholder-registrations/", list_stakeholder_registrations, name="stakeholder-registration-database"),
     path(

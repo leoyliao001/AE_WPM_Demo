@@ -41,6 +41,10 @@ ALL_FIELDS = [
     ("jl4", "JL4"),
     ("job_level_total", "Job Level Total"),
     ("risks", "Risks"),
+    ("business_owner", "Business Owner"),
+    ("target_start_date", "Target Start Date"),
+    ("target_end_date", "Target End Date"),
+    ("initial_rationale", "Initial Migration Rationale"),
 ]
 
 LIST_FIELDS = {
@@ -114,6 +118,10 @@ def _serialize_row(item: MigrationIntakeSubmission) -> dict:
         "jl4": item.jl4 or "0",
         "job_level_total": str(item.job_level_total or 0),
         "risks": item.risks or "",
+        "business_owner": item.business_owner,
+        "target_start_date": item.target_start_date,
+        "target_end_date": item.target_end_date,
+        "initial_rationale": item.initial_rationale,
         "attachment_names": ", ".join(att.file_name for att in item.attachments.all()),
         "attachments": [
             {

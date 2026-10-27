@@ -1,4 +1,5 @@
 import json
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
@@ -77,7 +78,7 @@ def _number(value, label, *, allow_none=False, whole=False):
         number = Decimal(str(value))
     except InvalidOperation:
         raise ValueError(f"{label} must be a number.")
-    if number < 0 or number > MAX_FTE:
+    if not number.is_finite() or number < 0 or number > MAX_FTE:
         raise ValueError(f"{label} must be between 0 and {MAX_FTE}.")
     if whole and number != number.to_integral_value():
         raise ValueError(f"{label} must be a whole number.")
@@ -114,10 +115,14 @@ def _serialize_statement(project, statement, email):
         "projectName": project.project_name,
         "requestor": project.requestor,
         "status": statement.status if statement else "draft",
+        "reviewRequired": statement.review_required if statement else False,
         "saved": bool(statement),
         "canEdit": bool(email and _has_scope_statement_access(project, email)) and not (statement and statement.status == "submitted"),
         "revision": statement.revision if statement else 0,
         "scopeText": statement.scope_text if statement else "",
+        "outOfScope": statement.out_of_scope if statement else "",
+        "assumptions": statement.assumptions if statement else "",
+        "waves": statement.waves if statement else [],
         "ambitionFte": str(statement.ambition_fte) if statement and statement.ambition_fte is not None else str(project.fte_number or "0"),
         "finalProjectFte": statement.final_project_fte if statement else None,
         "submittedAt": statement.submitted_at.isoformat() if statement and statement.submitted_at else None,
@@ -133,6 +138,9 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
     {"key": "requestor", "label": "Requestor"},
     {"key": "intake_fte", "label": "Intake FTE"},
     {"key": "scope_text", "label": "Scope Statement", "editable": True},
+    {"key": "out_of_scope", "label": "Out of Scope", "editable": True},
+    {"key": "assumptions", "label": "Assumptions", "editable": True},
+    {"key": "waves", "label": "Migration Waves (JSON)", "editable": True},
     {"key": "scope_status", "label": "Scope Status"},
     {"key": "revision", "label": "Revision"},
     {"key": "ambition_fte", "label": "Ambition FTE"},
@@ -180,6 +188,9 @@ def list_scope_statement_database(_request):
             "requestor": project.requestor,
             "intake_fte": project.fte_number,
             "scope_text": statement.scope_text,
+            "out_of_scope": statement.out_of_scope,
+            "assumptions": statement.assumptions,
+            "waves": json.dumps(statement.waves),
             "scope_status": statement.status,
             "revision": statement.revision,
             "ambition_fte": str(statement.ambition_fte) if statement.ambition_fte is not None else str(project.fte_number or "0"),
@@ -258,6 +269,11 @@ def save_scope_statement_database(request):
                 if not isinstance(scope_text, str):
                     raise ValueError("Scope Statement must be text.")
                 statement.scope_text = scope_text[:2000]
+                _apply_scope_extensions(statement, {
+                    "outOfScope": item.get("out_of_scope", statement.out_of_scope),
+                    "assumptions": item.get("assumptions", statement.assumptions),
+                    "waves": item.get("waves", statement.waves),
+                })
 
                 for job_level in JOB_LEVELS:
                     prefix = job_level.lower()
@@ -394,9 +410,13 @@ def save_scope_statement(request, project_id):
         return Response({"error": "Expected JSON object payload."}, status=status.HTTP_400_BAD_REQUEST)
 
     action = (payload.get("action") or "save").strip().lower()
-    if action not in {"save", "lock", "unlock", "submit"}:
+    if action not in {"save", "lock", "unlock", "submit", "revise"}:
         return Response({"error": "Unsupported action."}, status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        _apply_scope_extensions(ScopeStatement(), payload)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
     with transaction.atomic():
         statement = _statement_for_project(project)
         if statement is None:
@@ -404,13 +424,28 @@ def save_scope_statement(request, project_id):
             for level in JOB_LEVELS:
                 ScopeStatementLine.objects.create(statement=statement, job_level=level)
 
-        if statement.status == "submitted" and action != "submit":
-            return Response({"error": "Submitted Scope Statement is frozen."}, status=status.HTTP_409_CONFLICT)
+        if action == "revise":
+            reason = payload.get("reason", "")
+            if not isinstance(reason, str) or not reason.strip() or len(reason) > 2000:
+                return Response({"error": "A revision reason of at most 2000 characters is required."}, status=400)
+            if statement.status != "submitted":
+                return Response({"error": "Only submitted Scope Statements can be reopened."}, status=409)
+            statement.status = "draft"
+            statement.audit_log = [*statement.audit_log, {
+                "action": "revise", "reason": reason.strip(), "by": email,
+                "at": timezone.now().isoformat(),
+            }]
+            statement.revision += 1
+            statement.save()
+            return Response(_serialize_statement(project, statement, email))
+        if statement.status == "submitted":
+            return Response({"error": "Submitted Scope Statement is frozen. Reopen for revision first."}, status=status.HTTP_409_CONFLICT)
 
         scope_text = payload.get("scopeText", statement.scope_text)
         if not isinstance(scope_text, str):
             return Response({"error": "Scope text must be a string."}, status=status.HTTP_400_BAD_REQUEST)
         statement.scope_text = scope_text[:2000]
+        _apply_scope_extensions(statement, payload)
 
         lines_payload = payload.get("lines")
         if isinstance(lines_payload, list):
@@ -463,7 +498,11 @@ def save_scope_statement(request, project_id):
                 return Response({"error": "Lock all job levels with evidence before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             statement.ambition_fte = Decimal(str(project.fte_number or 0))
             statement.final_project_fte = sum(int(line.final_fte or 0) for line in all_lines)
+            if statement.waves and sum(wave["fte"] for wave in statement.waves) != statement.final_project_fte:
+                transaction.set_rollback(True)
+                return Response({"error": "Migration wave FTE must equal the locked final project FTE."}, status=400)
             statement.status = "submitted"
+            statement.review_required = False
             statement.submitted_at = timezone.now()
             statement.submitted_by = email
         statement.revision += 1
@@ -477,6 +516,38 @@ def save_scope_statement(request, project_id):
         statement = _statement_for_project(project)
 
         return Response(_serialize_statement(project, statement, email))
+
+
+def _apply_scope_extensions(statement, payload):
+    for key, field in (("outOfScope", "out_of_scope"), ("assumptions", "assumptions")):
+        if key in payload:
+            value = payload[key]
+            if not isinstance(value, str) or len(value) > 10000:
+                raise ValueError(f"{key} must be text of at most 10000 characters.")
+            setattr(statement, field, value.strip())
+    if "waves" not in payload:
+        return
+    waves = payload["waves"]
+    if isinstance(waves, str):
+        try:
+            waves = json.loads(waves)
+        except ValueError:
+            raise ValueError("Migration waves must be a JSON list.")
+    if not isinstance(waves, list) or len(waves) > 100:
+        raise ValueError("At most 100 migration waves are allowed.")
+    cleaned = []
+    for wave in waves:
+        if not isinstance(wave, dict) or set(wave) - {"name", "date", "fte"}:
+            raise ValueError("Each wave needs a name, date and FTE.")
+        name = wave.get("name")
+        if not isinstance(name, str) or not name.strip() or len(name) > 255:
+            raise ValueError("Wave name is required and must be at most 255 characters.")
+        try:
+            day = date.fromisoformat(wave.get("date", "")).isoformat()
+        except (ValueError, TypeError):
+            raise ValueError("Wave date must be YYYY-MM-DD.")
+        cleaned.append({"name": name.strip(), "date": day, "fte": _number(wave.get("fte"), "Wave FTE", whole=True)})
+    statement.waves = cleaned
 
 
 @api_view(["POST"])
