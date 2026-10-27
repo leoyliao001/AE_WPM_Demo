@@ -1,14 +1,6 @@
 <template>
-  <PageShell title="Scope Statement" :show-header="false" full-width class="scope-page">
+  <PageShell title="Scope Statement" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" full-width class="scope-page">
     <div class="scope-workspace">
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <router-link :to="backTo"><mc-icon icon="mi-arrow-left" size="16" /> Toll Gates</router-link>
-        <span aria-hidden="true">/</span>
-        <span>Initiate</span>
-        <span aria-hidden="true">/</span>
-        <span class="breadcrumb__current">Scope Statement</span>
-      </nav>
-
       <div v-if="loading" class="state-panel" role="status">
         <span class="loading-indicator" />
         <h1>Preparing your scope workspace</h1>
@@ -40,6 +32,45 @@
                 {{ busy ? 'Saving changes...' : dirty ? 'Unsaved changes' : statement.saved ? 'All changes saved' : 'Not yet saved' }}
               </span>
               <div class="hero-actions__buttons">
+                <PermissionsRulesHelp title="Scope Statement">
+                  <section>
+                    <h3>Who can view and edit?</h3>
+                    <ul>
+                      <li>The original Migration Intake Requestor for this project: <strong>{{ statement.requestor }}</strong>.</li>
+                      <li>Users granted <strong>Scope Statement</strong> access in Project Attributes &gt; Access Control.</li>
+                      <li><strong>Super Admins</strong> have this permission automatically, including for projects requested by someone else. Access Control permission alone does not grant Scope Statement access.</li>
+                      <li>You must be signed in. Being named in the Project Team or a stakeholder role does not by itself grant access to this page.</li>
+                    </ul>
+                  </section>
+                  <section>
+                    <h3>Draft, submitted and review-required states</h3>
+                    <p>Current state: <strong>{{ isSubmitted ? 'Submitted - read-only' : 'Draft' }}</strong><template v-if="statement.reviewRequired">; <strong>Scope review required</strong></template>.</p>
+                    <ul>
+                      <li>In a draft, authorised editors can update scope text, out-of-scope items, assumptions and migration waves, then select <strong>Save draft</strong>.</li>
+                      <li>A submitted statement is read-only for everyone, including Super Admins. Enter a revision reason (maximum 2,000 characters) and select <strong>Reopen for revision</strong> before editing.</li>
+                      <li>Reopening preserves evidence and existing job-level locks. Unlock any job level whose FTE or evidence needs to change; reopening alone does not unlock it.</li>
+                    </ul>
+                  </section>
+                  <section>
+                    <h3>FTE agreement and evidence rules</h3>
+                    <ol>
+                      <li>For each of <strong>JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
+                      <li>Attach at least one supporting evidence file per job level. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
+                      <li>Lock each completed agreement. Locked rows cannot be edited or receive new evidence until an authorised editor selects <strong>Unlock</strong>. Save the updated agreement and lock it again.</li>
+                    </ol>
+                  </section>
+                  <section>
+                    <h3>Submit and downstream effects</h3>
+                    <ul>
+                      <li>Submission requires non-empty scope text (maximum 2,000 characters) and all three job levels locked with evidence.</li>
+                      <li>Final project FTE is the sum of the three final FTE values; Intake ambition is retained as the baseline, not a required matching total.</li>
+                      <li>Waves are optional. If provided, each needs a name, valid date and non-negative whole-number FTE; the wave FTE total must equal final project FTE.</li>
+                      <li>Authorised editors can submit Scope; this is not limited to the Requestor. Submitted Scope without a review flag is shown as <strong>Secured</strong> on the Artefact Delivery Dashboard.</li>
+                      <li>Changes to relevant Intake sources can require Scope review. Reopen, review and resubmit. Changes to Scope can also mark an existing submitted Business Case for review and block further approval until it is reviewed and resubmitted.</li>
+                      <li>Save, lock, unlock, evidence upload, submission and revision actions are recorded in the audit history, including the acting user and time; reopening also records the reason.</li>
+                    </ul>
+                  </section>
+                </PermissionsRulesHelp>
                 <mc-button appearance="neutral" variant="outlined" fit="small" label="Save draft" :disabled="!canEdit || isBusy" :loading="busy === 'save'" @click="saveData('save')" />
                 <mc-button appearance="primary" fit="small" label="Submit statement" :disabled="!canEdit || isBusy || !ready" :loading="busy === 'submit'" @click="saveData('submit')" />
               </div>
@@ -106,7 +137,7 @@
           <span>Submitted {{ formatDate(statement.submittedAt) }} by {{ statement.submittedBy }}. This statement is now read-only.</span>
         </div>
         <div v-else-if="!canEdit" class="notice notice--info">
-          <mc-icon icon="mi-shield" size="18" /><span>Read-only view. The original intake requestor can edit this statement.</span>
+          <mc-icon icon="mi-shield" size="18" /><span>Read-only view. Editing requires the project Requestor, Scope Statement access or Super Admin permission.</span>
         </div>
         <form v-if="isSubmitted" class="detail-card scope-boundaries" @submit.prevent="reopenScope">
           <h2>Reopen for revision</h2>
@@ -279,6 +310,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
+import PermissionsRulesHelp from '../components/PermissionsRulesHelp.vue'
 import { useUnsavedChanges } from '../composables/useUnsavedChanges.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
@@ -540,10 +572,6 @@ watch(projectId, loadData, { immediate: true })
 .scope-page mc-icon { color: inherit; }
 .scope-page :deep(.page-content) { padding: 28px 32px 64px; }
 .scope-workspace { width: 100%; max-width: 1520px; margin: 0 auto; }
-.breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 26px; color: #82919e; font-size: 12px; }
-.breadcrumb a { display: inline-flex; align-items: center; gap: 8px; color: #526b80; text-decoration: none; }
-.breadcrumb a:hover { color: #0077b8; }
-.breadcrumb__current { color: var(--scope-navy); font-weight: 600; }
 .scope-hero { border: 1px solid var(--scope-line); background: #f1f5f8; border-radius: 16px; padding: 28px; margin-bottom: 26px; }
 .scope-hero__top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
 .eyebrow { color: #658195; font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; margin: 0 0 8px; }
@@ -694,7 +722,6 @@ button:focus-visible, a:focus-visible, .table-scroll:focus-visible { outline: 2p
 }
 @media (max-width: 760px) {
   .scope-page :deep(.page-content) { padding: 20px 16px 40px; }
-  .breadcrumb { font-size: 10px; gap: 8px; margin-bottom: 20px; }
   .scope-hero { padding: 20px; border-radius: 12px; }
   .scope-heading__title { gap: 12px; }
   .hero-actions { align-items: flex-start; flex-direction: column; gap: 12px; }

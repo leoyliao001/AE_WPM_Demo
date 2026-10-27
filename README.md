@@ -331,6 +331,11 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
   Scope Statements and Business Cases still require reopening with a revision
   reason; Business Case resubmission remains requestor-only and approval
   decisions remain restricted to configured approvers.
+- Scope Statement and Stakeholder Registration each provide a **Permissions &
+  editing rules** dialog in their header. The guides explain page access,
+  locking, revision or assignment rules and dashboard completion. Stakeholder
+  assigner rules and the current user's assignment permissions are displayed
+  from the API; the guides do not change permissions or project data.
 - Export uses the browser's Print / Save as PDF for the online view. No new
   package or Word/PPT export service is required. Apply backend migrations before
   opening the new pages.

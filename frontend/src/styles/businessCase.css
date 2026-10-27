@@ -62,10 +62,8 @@ ul.bc-error, ul.bc-warning { padding-left: 34px; }
 }
 .bc-workspace .page-content { background: #fff; }
 .bc-workspace .page-main { max-width: none; width: 100%; margin: 0; gap: 24px; }
-.bc-workspace .bc-breadcrumb { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--bc-muted); font-size: 12px; padding: 2px 0; }
 .bc-workspace a { color: var(--bc-link); text-decoration: none; }
 .bc-workspace a:hover { text-decoration: underline; }
-.bc-workspace .bc-breadcrumb strong { color: var(--bc-ink); font-weight: 400; }
 .bc-workspace .bc-hero { border: 0; border-radius: 0; background: transparent; padding: 8px 0 0; box-shadow: none; }
 .bc-workspace :is(h1, h2) { font-family: var(--mds_brand_typography_headline_font-family, 'Maersk Headline'), Arial, sans-serif; }
 .bc-workspace .bc-hero h1 { color: var(--bc-ink); font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 12px 0 10px; }
@@ -172,7 +170,7 @@ ul.bc-error, ul.bc-warning { padding-left: 34px; }
 }
 @media print {
   html:has(.bc-page), body:has(.bc-page), #app:has(.bc-page), .app-layout:has(.bc-page), .app-main:has(.bc-page) { height: auto !important; overflow: visible !important; }
-  .app-layout:has(.bc-page) > header, .bc-page .bc-no-print { display: none !important; }
+  .app-layout:has(.bc-page) > header, .bc-page .bc-no-print, .bc-page .page-header { display: none !important; }
   .bc-page .page-content { padding: 0 !important; max-width: none !important; }
   .bc-page .page-main { display: block; }
   .bc-section, .bc-hero { margin-bottom: 16px; border-color: #bbb; }
