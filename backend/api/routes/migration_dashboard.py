@@ -1,4 +1,6 @@
 from django.urls import path
+from api.views.business_impact_analysis import business_impact_analysis
+from api.views.project_artefacts import project_artefact, resource_projects
 from api.views.business_case import (
     get_business_case, save_business_case, list_business_cases, delete_business_case,
     cost_rates, delete_cost_rate,
@@ -40,6 +42,10 @@ from api.views.stakeholder_registration import (
 )
 
 urlpatterns = [
+    path("projects/<int:project_id>/business-impact-analysis/", business_impact_analysis, name="business-impact-analysis"),
+    path("resources/", resource_projects, name="resource-projects"),
+    path("projects/<int:project_id>/resources/", project_artefact, {"kind": "resources"}, name="project-resources"),
+    path("projects/<int:project_id>/access-enablement/", project_artefact, {"kind": "access_enablement"}, name="access-enablement"),
     path("business-cases/", list_business_cases, name="business-case-database"),
     path("cost-rates/", cost_rates, name="business-case-cost-rates"),
     path("cost-rates/<int:rate_id>/", delete_cost_rate, name="business-case-cost-rate-delete"),

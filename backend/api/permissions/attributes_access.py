@@ -29,6 +29,9 @@ TABLE_KEYS = (
     "project_charter",
     "business_case",
     "cost_rates",
+    "resources",
+    "access_enablement",
+    "business_impact_analysis",
 )
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$|^[^@\s]+@localhost$", re.I)
@@ -133,6 +136,9 @@ def build_access_snapshot(email: str) -> dict:
         "project_charter": is_super or bool(row.project_charter),
         "business_case": is_super or bool(row.business_case),
         "cost_rates": is_super or bool(row.cost_rates),
+        "resources": is_super or bool(row.resources),
+        "access_enablement": is_super or bool(row.access_enablement),
+        "business_impact_analysis": is_super or bool(row.business_impact_analysis),
     }
     return {
         "email": email,

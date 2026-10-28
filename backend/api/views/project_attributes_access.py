@@ -33,6 +33,9 @@ ALL_FIELDS = [
     ("project_charter", "Project Charter (Y/N)"),
     ("business_case", "Business Case (Y/N)"),
     ("cost_rates", "Business Case Cost Rates (Y/N)"),
+    ("resources", "Resources (Y/N)"),
+    ("access_enablement", "Access & Enablement (Y/N)"),
+    ("business_impact_analysis", "Business Impact Analysis (Y/N)"),
 ]
 
 BOOL_FIELDS = {
@@ -54,6 +57,9 @@ BOOL_FIELDS = {
     "project_charter",
     "business_case",
     "cost_rates",
+    "resources",
+    "access_enablement",
+    "business_impact_analysis",
 }
 
 
@@ -85,6 +91,9 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "project_charter": "Y",
             "business_case": "Y",
             "cost_rates": "Y",
+            "resources": "Y",
+            "access_enablement": "Y",
+            "business_impact_analysis": "Y",
         }
     return {
         "id": item.id,
@@ -107,6 +116,9 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "project_charter": _yn(item.project_charter),
         "business_case": _yn(item.business_case),
         "cost_rates": _yn(item.cost_rates),
+        "resources": _yn(item.resources),
+        "access_enablement": _yn(item.access_enablement),
+        "business_impact_analysis": _yn(item.business_impact_analysis),
     }
 
 
@@ -138,6 +150,9 @@ def my_attributes_access(request):
                     "project_charter": False,
                     "business_case": False,
                     "cost_rates": False,
+                    "resources": False,
+                    "access_enablement": False,
+                    "business_impact_analysis": False,
                 },
             }
         )

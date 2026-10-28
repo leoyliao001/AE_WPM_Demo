@@ -114,6 +114,51 @@ class ScopeStatement(models.Model):
         return f"{self.project.migration_request_id} — Scope Statement"
 
 
+class ProjectResources(models.Model):
+    project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="resources")
+    rows = models.JSONField(default=list)
+    status = models.CharField(max_length=16, default="draft")
+    revision = models.PositiveIntegerField(default=0)
+    source_version = models.CharField(max_length=64, blank=True, default="")
+    audit_log = models.JSONField(default=list)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "project_resources"
+
+
+class AccessEnablement(models.Model):
+    project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="access_enablement")
+    systems = models.JSONField(default=list)
+    barriers = models.JSONField(default=list)
+    it_items = models.JSONField(default=list)
+    it_confirmation = models.JSONField(default=dict)
+    status = models.CharField(max_length=16, default="draft")
+    revision = models.PositiveIntegerField(default=0)
+    source_version = models.CharField(max_length=64, blank=True, default="")
+    audit_log = models.JSONField(default=list)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "access_enablement"
+
+
+class BusinessImpactAnalysis(models.Model):
+    project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="business_impact_analysis")
+    questionnaires = models.JSONField(default=dict)
+    source_snapshot = models.JSONField(default=dict)
+    source_version = models.CharField(max_length=64, blank=True, default="")
+    revision = models.PositiveIntegerField(default=0)
+    audit_log = models.JSONField(default=list)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "business_impact_analysis"
+
+
 class ScopeStatementLine(models.Model):
     statement = models.ForeignKey(
         ScopeStatement,
@@ -595,6 +640,9 @@ class ProjectAttributesAccess(models.Model):
     project_charter = models.BooleanField(default=False)
     business_case = models.BooleanField(default=False)
     cost_rates = models.BooleanField(default=False)
+    resources = models.BooleanField(default=False)
+    access_enablement = models.BooleanField(default=False)
+    business_impact_analysis = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

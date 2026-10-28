@@ -277,6 +277,9 @@ const ganttTasks = ref([])
 const ganttSaved = ref(false)
 const stakeholderRegistrationComplete = ref(false)
 const scopeStatementState = ref('pending')
+const resourcesState = ref('pending')
+const accessEnablementState = ref('pending')
+const businessImpactState = ref('pending')
 const oaHasRows = ref(false)
 const loadingProject = ref(false)
 const projectError = ref('')
@@ -339,6 +342,9 @@ const TILE_ROUTES = {
   scope_statement: (id) => `/migration-dashboard/${id}/scope-statement`,
   stakeholders: (id) => `/migration-dashboard/${id}/stakeholder-registration`,
   project_charter: (id) => `/migration-dashboard/${id}/project-charter`,
+  resources: (id) => `/migration-dashboard/${id}/resources`,
+  access_enablement: (id) => `/migration-dashboard/${id}/access-enablement`,
+  business_impact_analysis: (id) => `/migration-dashboard/${id}/business-impact-analysis`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -353,6 +359,9 @@ const milestoneStateById = computed(() => {
     project_charter: p.projectCharterSaved ? 'active' : 'pending',
     stakeholders: stakeholderRegistrationComplete.value ? 'complete' : 'pending',
     scope_statement: scopeStatementState.value,
+    resources: resourcesState.value,
+    access_enablement: accessEnablementState.value,
+    business_impact_analysis: businessImpactState.value,
     business_case: p.businessCaseNeedsReview || ['needs_review', 'draft', 'returned'].includes(p.businessCaseOnlineStatus)
       ? 'pending'
       : ['submitted', 'approved'].includes(p.businessCaseOnlineStatus) || p.businessCaseSubmissionDate ? 'complete' : 'pending',
@@ -434,9 +443,9 @@ const ARTEFACT_STAGES = [
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'project_charter' },
       { label: 'People Consultation & Compliance', source: null },
-      { label: 'Resources', source: null },
-      { label: 'Access & Enablement Requirements', source: null },
-      { label: 'Business Impact Analysis', source: null },
+      { label: 'Resources', source: 'resources' },
+      { label: 'Access & Enablement Requirements', source: 'access_enablement' },
+      { label: 'Business Impact Analysis', source: 'business_impact_analysis' },
       { label: 'Gantt', source: 'gantt' }
     ]
   },
@@ -590,9 +599,23 @@ const loadProjectData = async (id) => {
   oaHasRows.value = false
   stakeholderRegistrationComplete.value = false
   scopeStatementState.value = 'pending'
+  resourcesState.value = 'pending'
+  accessEnablementState.value = 'pending'
+  businessImpactState.value = 'pending'
   projectError.value = ''
   if (!id) return
   loadingProject.value = true
+  await Promise.all([
+    ['resources', resourcesState], ['access-enablement', accessEnablementState],
+    ['business-impact-analysis', businessImpactState],
+  ].map(async ([endpoint, state]) => {
+    try {
+      const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/${endpoint}/`)
+      if (String(selectedProjectId.value) === String(id)) state.value = data.status === 'confirmed' ? 'complete' : data.saved ? 'active' : 'pending'
+    } catch (caught) {
+      if (caught.response?.status !== 403) projectError.value = caught.response?.data?.error || 'Unable to load artefact status.'
+    }
+  }))
   try {
     const [detailRes, ganttRes] = await Promise.all([
       axios.get(`/api/migration-dashboard/projects/${id}/`),

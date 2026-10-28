@@ -502,6 +502,116 @@ value or its confirmation invalidates the Business Case source version and
 triggers the existing review workflow. Existing records are not auto-confirmed
 or backfilled; untouched historical approvals and saved snapshots stay intact.
 
+### Initiate: Business Impact Analysis / BCP questionnaire
+
+- Toll Gates links **Business Impact Analysis** to
+  `/migration-dashboard/:id/business-impact-analysis`. The page implements the
+  ten-question BCP / Business Resilience questionnaire from design slides 40-43.
+  Drafts, source snapshots, review identities and complete change history are
+  persisted in `business_impact_analysis` (migration `0055`).
+- One questionnaire is generated per distinct L1 / L2 / L3 process in the project's
+  Opportunity Assessment / Task details. L4 / task names are shown as activities.
+  Intake and Scope currently contain free text, not a structured process list:
+  if there are no L3 processes, one clearly labelled project-wide questionnaire
+  uses the Intake function. Define L3 processes in Task details to split coverage.
+  Removed process records are retained, never counted towards current readiness.
+- Blue source fields are read-only: Intake products, region / area and target
+  GSC sites; Task details process hierarchy; Scope text and submitted, fully
+  locked **Final FTE**. Final FTE is explicitly a project total, not a fabricated
+  per-process allocation and not the manual Migratable FTE. UTC operating windows
+  support overnight shifts. Q1 automatically derives "None - new process" in Q7.
+- Requestor, locked WPM Focals, Area POC / Area SME and BIA administrators can
+  prepare drafts. Other registered team members can view. All ten questions must
+  be answered before submitting; use `None` for no language dependency or no
+  additional BCP information. Unsubmitted Scope prevents submission, not drafting.
+  Yes / Maybe in Q8 creates a mandatory second-site attention flag. Every flag
+  and mitigation requires an owner email and target date; flagged questionnaires
+  also require at least one mitigation action.
+- Submission freezes answers for joint review by **Migration** (locked WPM
+  Focals), **Area** (locked Area POC / SME), **Execution** (locked GSC Leaders /
+  Head-1) and **Business Resilience** (a new optional Stakeholder Registration
+  role). Only the assigned role's user or a BIA administrator can record its
+  review. Administrators cannot invent missing assignments, and reviews on behalf
+  of an assigned role are visibly marked and audited. Review actor/time are
+  server-generated. All four reviews are required for final sign-off by Area,
+  Execution or a BIA administrator.
+- A reasoned reopen clears current reviews while preserving history. Changes to
+  Intake source fields, Scope, process coverage or reviewer assignments invalidate
+  existing reviews/sign-off. GET shows current source data without writing;
+  the next mutation logs old/new source snapshots and invalidates affected reviews.
+  Only all active processes signed off against the current source are **Secured**
+  in Toll Gates. This evidence does not automatically approve a project or trigger
+  go-live. Open mitigation actions remain visible; sign-off does not close them.
+- The dedicated **Business Impact Analysis** Access Control permission is wired
+  to the permission editor and Super Admin. Excel export includes all active
+  questionnaires, flags, mitigations, joint reviews and full audit snapshots,
+  including archived processes. Export does not save, approve or send email.
+
+### Initiate: Resources and Access & Enablement
+
+- Toll Gates links **Resources** to `/migration-dashboard/:id/resources` and
+  **Access & Enablement Requirements** to `/migration-dashboard/:id/access-enablement`.
+  The Resources portfolio at `/resources` shows accessible projects, product /
+  region / area / approval filters, approved versus pipeline capacity and Excel
+  export. Approval comes from the current online Business Case or a completed
+  legacy approval chain; capacity is available only from submitted, fully locked
+  Scope Final FTE. No sample positions or population are auto-created.
+- Resources has shared **Execution**, **Area** and **HR / TAA** views backed by
+  `project_resources`. One row represents one FTE. Execution owns site, hiring
+  type, language and PID details; HR updates requisition, hiring status, remarks,
+  DOJ and APMM ID in the same record. Efficiency has no requisition or tentative
+  DOJ; Actual DOJ means onboarding onto the project, and the deleted PID is
+  required before final confirmation.
+- Area PIDs can be submitted separately and are then immutable until reopened
+  with a reason. Final Resources confirmation requires a row count matching Scope
+  and complete Area / onboarding details. Confirmation freezes all views;
+  reopening requires a reason. A subsequent Scope change removes Secured status
+  until reviewed and reconfirmed.
+- Resources Excel export includes all positions, Area data, HR / TAA data and
+  audit history. Import accepts the exported **Execution** sheet, upserts by
+  Position ID and imports only Execution-owned columns. It preserves saved Area
+  and HR fields and stages changes locally until Save; it does not delete omitted
+  positions. File limit: 5 MB; project limit: 1,000 positions.
+- Access & Enablement is persisted in `access_enablement`. Systems are selected
+  from a versioned initial catalogue in `api/services/project_artefacts.py`.
+  The Other entry must be identified in access / licence type. This is a
+  readiness register, not an access-provisioning or licence-purchasing service.
+  Users needed defaults to locked population and remains editable. Overall
+  access is Yes only when at least one system exists and every system is secured.
+- Each unsecured system requires a barrier type, owner email, valid target date
+  and description of up to 500 characters. Saved barriers cannot be deleted:
+  securing or removing the system resolves them and preserves history. Overdue
+  open barriers are highlighted. Five standard IT items (laptop, headset,
+  monitor, VPN, MFA) use Scope population as required quantity. All must match
+  before IT confirmation. Changing quantities or Scope invalidates confirmation.
+  Submit requires all access secured and explicit IT confirmation; the confirmed
+  record freezes and can be reopened only with a reason.
+- Read access: Requestor, project roster members, or the relevant artefact
+  administrator. Requestor / locked WPM Focal can edit Resources and system /
+  barrier records and submit. A locked Area POC can update and submit Area
+  details. Locked GSC Leaders / GSC Head-1 can update and confirm IT readiness.
+  **Resources** and **Access & Enablement** Access Control permissions grant
+  administration of their respective artefacts; Super Admin includes both.
+  HR / TAA updates use the Resources administrator / project-lead permission in
+  this first version, since the current stakeholder registry has no HR role.
+- Both pages support draft save, revision + Scope-version conflict detection,
+  unsaved-change protection, Excel export and auditable old/new snapshots.
+  Toll Gates shows confirmed, current records as Secured; saved drafts and
+  source-invalidated records remain In progress.
+- Reminder links explicitly compose email drafts; they do not claim delivery.
+  For automated overdue barrier reminders, configure the existing Django email
+  backend and schedule the following command daily (it is not scheduled by the
+  app). Successful sends are audited and deduplicated per barrier per day;
+  failures are explicit and retryable. No production emails are sent by tests.
+
+  ```powershell
+  Set-Location backend
+  ..\.venv\Scripts\python.exe manage.py notify_enablement_barriers
+  ```
+
+- Apply migration `0054_resources_access_enablement` before using these pages.
+  People Consultation & Compliance and Business Impact Analysis are unchanged.
+
 ### Redirects
 
 | From | To |

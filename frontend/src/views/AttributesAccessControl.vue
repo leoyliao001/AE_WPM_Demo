@@ -136,7 +136,10 @@ const YN_KEYS = new Set([
   'stakeholder_registration',
   'project_charter',
   'business_case',
-  'cost_rates'
+  'cost_rates',
+  'resources',
+  'access_enablement',
+  'business_impact_analysis'
 ])
 
 const ALL_COLUMNS = [
@@ -158,7 +161,10 @@ const ALL_COLUMNS = [
   { key: 'stakeholder_registration', label: 'Stakeholder Registration (Y/N)', width: 220 },
   { key: 'project_charter', label: 'Project Charter (Y/N)', width: 190 },
   { key: 'business_case', label: 'Business Case (Y/N)', width: 190 },
-  { key: 'cost_rates', label: 'Cost Rates (Y/N)', width: 180 }
+  { key: 'cost_rates', label: 'Cost Rates (Y/N)', width: 180 },
+  { key: 'resources', label: 'Resources (Y/N)', width: 180 },
+  { key: 'access_enablement', label: 'Access & Enablement (Y/N)', width: 230 },
+  { key: 'business_impact_analysis', label: 'Business Impact Analysis (Y/N)', width: 250 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)

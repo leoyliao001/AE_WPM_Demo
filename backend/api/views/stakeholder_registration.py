@@ -55,6 +55,7 @@ STAKEHOLDER_GROUPS = [
         "label": "Project Team",
         "roles": [
             {"code": "wpm_focals", "label": "WPM Focals", "required": True, "multiple": True, "description": "WPM focal points assigned to this migration."},
+            {"code": "business_resilience", "label": "Business Resilience", "required": False, "multiple": True, "description": "Business Resilience reviewers for the BCP questionnaire. Lock this assignment before joint review."},
             {"code": "msp_focals", "label": "MSP Focals (if applicable)", "required": False, "multiple": True, "description": "One manually selected project-team focal for each applicable MSP."},
         ],
     },
