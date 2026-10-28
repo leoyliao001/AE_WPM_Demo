@@ -4,7 +4,7 @@
       <section class="hero-section">
         <div class="hero-copy">
           <h1 class="hero-title">WPM Pulse <span>-</span> Digital Hub</h1>
-          <h2 class="hero-slogan">Right Work<br />Right Place<br />Right Ownership</h2>
+          <h2 class="hero-slogan">Right Work | Right Place | Right Ownership</h2>
           <p class="hero-description">
             From location decision to realised value, in one governed workflow
           </p>
@@ -257,7 +257,7 @@ const go = (route) => router.push(route)
 .hero-title { position: relative; top: -20px; }
 .hero-title span { color: inherit; }
 .eyebrow span { color: var(--cyan); }
-.hero-slogan { color: var(--blue); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(18px, 2vw, 24px); font-weight: 700; letter-spacing: -.025em; line-height: 1.08; margin: 0 0 13px 12px; }
+.hero-slogan { color: var(--blue); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(18px, 2vw, 24px); font-weight: 700; letter-spacing: -.025em; line-height: 1.08; margin: 0 0 13px 12px; white-space: nowrap; }
 .hero-description { color: #60758a; font-size: 15px; line-height: 1.55; margin: 0; max-width: 430px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .button { border: 1px solid var(--navy); border-radius: 3px; cursor: pointer; font: 700 12px 'Maersk Text', sans-serif; padding: 11px 16px; transition: transform .2s ease, box-shadow .2s ease; }
@@ -337,7 +337,8 @@ const go = (route) => router.push(route)
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
 @media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
 @media (max-width: 820px) { .hub-principles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .hero-title { font-size: 26px; } .hero-slogan { font-size: 18px; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
+@media (min-width: 821px) and (max-width: 1100px) { .hero-slogan { font-size: clamp(14px, 1.7vw, 18px); } }
+@media (max-width: 520px) { .hero-title { font-size: 26px; } .hero-slogan { font-size: clamp(11px, 3.4vw, 18px); margin-left: 0; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
 @media (min-width: 821px) and (max-height: 850px) {
   .hero-section { min-height: 280px; }
   .hero-copy { padding: 35px 20px 35px 24px; }
