@@ -98,6 +98,8 @@ class ScopeStatement(models.Model):
     status = models.CharField(max_length=16, default="draft")
     revision = models.PositiveIntegerField(default=0)
     ambition_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    migratable_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    migratable_fte_confirmed = models.BooleanField(default=False)
     final_project_fte = models.PositiveIntegerField(null=True, blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     submitted_by = models.CharField(max_length=254, blank=True, default="")
@@ -140,10 +142,15 @@ class ScopeStatementLine(models.Model):
 
 
 class ScopeStatementEvidence(models.Model):
+    statement = models.ForeignKey(
+        ScopeStatement, on_delete=models.CASCADE, related_name="attachments",
+    )
+    # Retain original job-level provenance for files uploaded before shared attachments.
     line = models.ForeignKey(
         ScopeStatementLine,
         on_delete=models.CASCADE,
         related_name="evidence",
+        null=True, blank=True,
     )
     file = models.FileField(upload_to="scope_evidence/%Y/%m/", max_length=255)
     file_name = models.CharField(max_length=255)

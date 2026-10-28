@@ -334,6 +334,14 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
 - Export uses the browser's Print / Save as PDF for the online view. No new
   package or Word/PPT export service is required. Apply backend migrations before
   opening the new pages.
+- Stakeholder Registration's **Export** downloads an Excel workbook
+  (`<Migration Request ID>-stakeholders.xlsx`) with Overview, Stakeholder Roles,
+  Project Team, MSP Focals and the complete Change Log. Multiple assigned people
+  get separate rows; unassigned and not-applicable roles are retained, together
+  with contact information, notes and lock metadata. The export reflects current
+  page data, including local draft roster changes, without saving or changing
+  locks. Unsaved role-drawer selections must first be saved to appear on the page
+  and in the export.
 
 > Use **port 3002** as the development frontend entry point. The backend serves APIs only; Vite proxies `/api` to `http://127.0.0.1:8001` by default.
 > To develop against the **production** backend instead, override the target rather than starting a second server:
@@ -459,15 +467,35 @@ headcount agreement table, and paired exception / scope narrative panels.
 
 Agreed and exception FTE for JL2, JL3 and JL4 are **manually maintained**, not
 automatically sourced from Opportunity Assessment. Final FTE accepts whole
-numbers. Each job level requires supporting evidence before it can be locked
-(PDF, DOCX, MSG or XLSX, up to 20 MB per file). The page shows variances,
+numbers. The headcount agreement has one shared **Attachement** upload and
+download list (PDF, DOCX, MSG or XLSX, up to 20 MB per file). Existing job-level
+files are retained and linked to their statement by migration 0052. The page shows variances,
 reconciliation against intake ambition, and submission readiness.
 
-The intake requestor can save drafts and lock or unlock job levels before
-submission. All three levels must be locked and scope text provided (maximum
-2,000 characters) before the submit action becomes available. Submission freezes
-the statement; this version does not include a separate sign-off or reopen flow.
+Authorised editors can save drafts and use a single **Lock / Unlock** control
+at the top of the page. Lock requires complete agreed, exception and final FTE
+for all levels, manually confirmed Migratable FTE, Scope text (maximum 2,000 characters), a shared attachment and
+matching wave totals when provided. It freezes all editable page fields and
+uploads, including Admin edits, while downloads remain available. Existing
+partially locked statements are treated as page-locked and can be unlocked in
+one action. All three underlying level locks are still recorded for Business
+Case and Charter compatibility. Submission requires the whole page to be locked.
+Submitted statements must first be reopened with a revision reason, then unlocked
+before editing; reopening does not discard files.
 Save/upload errors remain inline without hiding the form.
+
+**Migratable FTE** is an independent manual Scope total, initially prefilled from
+the agreed JL2/JL3/JL4 sum, not an automatically authoritative aggregate.
+The user must explicitly confirm it; editing its value clears confirmation.
+Drafts may be saved before confirmation, but Lock and Submit require confirmation.
+The saved manual value is never replaced by subsequent JL changes. Reconciliation
+uses this manual total plus exceptions against Intake ambition. Business Case and
+Charter read the confirmed manual total from Scope; new Business Case snapshots
+include its value and confirmation state. Final FTE by JL remains the cost model,
+wave allocation and final delivery commitment basis. Changing either the manual
+value or its confirmation invalidates the Business Case source version and
+triggers the existing review workflow. Existing records are not auto-confirmed
+or backfilled; untouched historical approvals and saved snapshots stay intact.
 
 ### Redirects
 

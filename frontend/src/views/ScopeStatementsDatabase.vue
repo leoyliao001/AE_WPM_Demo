@@ -163,9 +163,9 @@ function isRowPending(row) {
 
 function canEditCell(row, column) {
   if (busy.value || loading.value || !column.editable || row.scope_status === 'submitted') return false
+  if (['jl2_locked_at', 'jl3_locked_at', 'jl4_locked_at'].some(key => row[key])) return false
   if (column.editable === 'new') return !row.statement_id
-  const lockedLevel = column.key.match(/^(jl\d+)_(agreed_fte|not_agreed_fte|final_fte)$/)?.[1]
-  return !lockedLevel || !row[`${lockedLevel}_locked_at`]
+  return true
 }
 
 function isNumericColumn(key) {
@@ -187,7 +187,7 @@ function displayCell(row, column) {
       return String(value)
     }
   }
-  if (column.key.endsWith('_evidence')) {
+  if (column.key === 'attachments') {
     try {
       const files = JSON.parse(value)
       return files.length ? files.map((file) => file.name).join(', ') : '—'

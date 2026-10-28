@@ -145,5 +145,13 @@ def build_charter_sources(project):
             {"label": "All four sign-off roles locked in Stakeholder Registration", "complete": all(item["people"] for item in signatories), "source": "stakeholder-registration"},
         ],
     }
+    if scope and scope.migratable_fte is not None:
+        sources["scope"]["migratableFte"] = str(scope.migratable_fte)
+        sources["scope"]["migratableFteConfirmed"] = scope.migratable_fte_confirmed
+        sources["facts"].append({
+            "label": "Migratable FTE (manually confirmed)",
+            "value": str(scope.migratable_fte) if scope.migratable_fte_confirmed else None,
+            "source": "Scope Statement" if scope.migratable_fte_confirmed else "Scope Statement - confirmation pending",
+        })
     fingerprint = hashlib.sha256(json.dumps(sources, sort_keys=True).encode()).hexdigest()
     return sources, fingerprint

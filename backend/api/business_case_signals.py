@@ -15,7 +15,7 @@ def capture_source_change(sender, instance, raw=False, **kwargs):
         return
     fields = {
         MigrationIntakeSubmission: INTAKE_FIELDS,
-        ScopeStatement: ("scope_text", "out_of_scope", "assumptions", "waves", "status", "final_project_fte", "review_required"),
+        ScopeStatement: ("scope_text", "out_of_scope", "assumptions", "waves", "status", "final_project_fte", "review_required", "migratable_fte", "migratable_fte_confirmed"),
         ScopeStatementLine: ("final_fte", "locked_at"),
         BusinessCaseCostRate: ("location", "job_level", "annual_cost", "currency", "usd_rate", "year", "version"),
     }[sender]

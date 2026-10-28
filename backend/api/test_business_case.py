@@ -61,6 +61,31 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertFalse(BusinessCase.objects.exists())
         self.assertEqual(response.data["savedSnapshot"], {})
 
+    def test_manual_migratable_fte_flows_to_snapshot_without_changing_cost_basis(self):
+        self.rates()
+        baseline_response = self.save()
+        self.assertEqual(baseline_response.status_code, 200, baseline_response.data)
+        baseline = baseline_response.data
+        self.scope.migratable_fte = "123.5"
+        self.scope.migratable_fte_confirmed = True
+        self.scope.save()
+        response = self.save(action="submit")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["scope"]["migratableFte"], "123.5000")
+        self.assertTrue(response.data["scope"]["migratableFteConfirmed"])
+        self.assertEqual(response.data["scope"]["finalProjectFte"], 98)
+        self.assertEqual(response.data["financials"]["metrics"], baseline["financials"]["metrics"])
+        snapshot = deepcopy(response.data["savedSnapshot"])
+        self.assertEqual(snapshot["scope"]["migratableFte"], "123.5000")
+        self.scope.migratable_fte = "124"
+        self.scope.save()
+        record = BusinessCase.objects.get()
+        self.assertTrue(record.review_required)
+        self.assertEqual(record.saved_snapshot, snapshot)
+        current = self.client.get(self.url).data
+        self.assertEqual(current["scope"]["migratableFte"], "124.0000")
+        self.assertEqual(current["status"], "needs_review")
+
     def test_complete_snapshot_is_persisted_and_sources_do_not_overwrite_it(self):
         response = self.save()
         self.assertEqual(response.status_code, 200, response.data)
@@ -406,6 +431,8 @@ class OnlineBusinessCaseTests(TestCase):
         response = self.client.post(scope_url + "save/", {"action": "revise", "reason": "Add wave detail"}, format="json")
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(self.client.get(self.url).data["status"], "needs_review")
+        response = self.client.post(scope_url + "save/", {"action": "unlock"}, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
         response = self.client.post(scope_url + "save/", {
             "outOfScope": "Customer escalations", "assumptions": "English only",
             "waves": [{"name": "Wave 1", "date": "2027-02-01", "fte": 98}],

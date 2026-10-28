@@ -30,7 +30,7 @@
           <div class="header-actions">
             <span v-if="error" class="feedback feedback--error" role="alert">{{ error }}</span>
             <span v-if="success" class="feedback feedback--success" role="status">{{ success }}</span>
-            <button class="button button--outline" type="button" @click="exportRegistry">Export</button>
+            <button class="button button--outline" type="button" :disabled="Boolean(busy)" @click="exportRegistry">{{ busy === 'export' ? 'Exporting…' : 'Export' }}</button>
             <button class="button button--outline" type="button" :disabled="Boolean(busy)" @click="teamPanelOpen = true">
               Project Team <span class="count-badge">{{ teamMembers.length }}</span>
             </button>
@@ -221,6 +221,8 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import { writeFile } from 'xlsx'
+import { buildStakeholderWorkbook } from '../utils/stakeholderRegistrationExport.js'
 import PageShell from '../components/PageShell.vue'
 import '@maersk-global/mds-components-core/mc-icon'
 
@@ -460,13 +462,20 @@ async function saveTeam() {
 }
 
 function exportRegistry() {
-  if (!registration.value) return
-  const url = URL.createObjectURL(new Blob([JSON.stringify(registration.value, null, 2)], { type: 'application/json' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `${registration.value.migrationRequestId}-stakeholders.json`
-  anchor.click()
-  URL.revokeObjectURL(url)
+  if (!registration.value || busy.value) return
+  busy.value = 'export'
+  error.value = ''
+  success.value = ''
+  try {
+    const workbook = buildStakeholderWorkbook(registration.value)
+    const requestId = String(registration.value.migrationRequestId || projectId.value).replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    writeFile(workbook, `${requestId}-stakeholders.xlsx`, { compression: true })
+    success.value = 'Excel export downloaded. Current page draft data is included; no changes were saved.'
+  } catch (caught) {
+    error.value = `Unable to export stakeholder registration: ${caught.message || 'Please try again.'}`
+  } finally {
+    busy.value = ''
+  }
 }
 
 function initials(name) {

@@ -67,6 +67,7 @@ urlpatterns = [
     path("scope-statements/data/delete/", delete_scope_statement_database, name="scope-statement-database-delete"),
     path("projects/<int:project_id>/scope-statement/", get_scope_statement, name="scope-statement"),
     path("projects/<int:project_id>/scope-statement/save/", save_scope_statement, name="scope-statement-save"),
+    path("projects/<int:project_id>/scope-statement/attachments/", upload_scope_evidence, name="scope-statement-attachments"),
     path(
         "projects/<int:project_id>/scope-statement/evidence/<str:job_level>/",
         upload_scope_evidence,

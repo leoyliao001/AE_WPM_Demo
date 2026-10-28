@@ -40,8 +40,9 @@
                 {{ busy ? 'Saving changes...' : dirty ? 'Unsaved changes' : statement.saved ? 'All changes saved' : 'Not yet saved' }}
               </span>
               <div class="hero-actions__buttons">
+                <mc-button v-if="canManage && !isSubmitted" appearance="neutral" variant="outlined" fit="small" :label="pageLocked ? 'Unlock' : 'Lock'" :disabled="isBusy || (!pageLocked && !canLockPage)" @click="saveData(pageLocked ? 'unlock' : 'lock')" />
                 <mc-button appearance="neutral" variant="outlined" fit="small" label="Save draft" :disabled="!canEdit || isBusy" :loading="busy === 'save'" @click="saveData('save')" />
-                <mc-button appearance="primary" fit="small" label="Submit statement" :disabled="!canEdit || isBusy || !ready" :loading="busy === 'submit'" @click="saveData('submit')" />
+                <mc-button appearance="primary" fit="small" label="Submit statement" :disabled="!canManage || isBusy || !ready" :loading="busy === 'submit'" @click="saveData('submit')" />
               </div>
             </div>
           </div>
@@ -68,14 +69,17 @@
               <p>Original migration baseline</p>
             </article>
             <article class="metric-card">
-              <div class="metric-card__top"><span>Agreed to migrate</span><mc-icon icon="mi-check" size="18" /></div>
-              <div class="metric-card__value">{{ totalDisplay('agreedFte') }}<span>FTE</span></div>
-              <p>Across three job levels</p>
+              <div class="metric-card__top"><span>Migratable FTE</span><mc-icon icon="mi-check" size="18" /></div>
+              <div class="metric-card__value metric-card__manual">
+                <input v-model="migratableFte" aria-label="Migratable FTE" type="number" min="0" max="99999999.9999" step="0.0001" :disabled="!canEdit || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
+              </div>
+              <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEdit || isBusy || !validNumber(migratableFte)" />I confirm this Migratable FTE</label>
+              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · JL total: {{ totalDisplay('agreedFte') }}</p>
             </article>
             <article class="metric-card metric-card--teal">
               <div class="metric-card__top"><span>Locked final FTE</span><mc-icon icon="mi-shield" size="18" /></div>
               <div class="metric-card__value">{{ formatNumber(lockedTotal) }}<span>FTE</span></div>
-              <p>{{ lockedCount }} of 3 job levels locked</p>
+              <p>{{ pageLocked ? 'Page locked for editing' : 'Page open for editing' }}</p>
             </article>
             <article class="metric-card">
               <div class="metric-card__top"><span>Not agreed</span><mc-icon icon="mi-file" size="18" /></div>
@@ -105,12 +109,15 @@
           <mc-icon icon="mi-shield" size="18" />
           <span>Submitted {{ formatDate(statement.submittedAt) }} by {{ statement.submittedBy }}. This statement is now read-only.</span>
         </div>
-        <div v-else-if="!canEdit" class="notice notice--info">
+        <div v-else-if="pageLocked" class="notice notice--info">
+          <mc-icon icon="mi-shield" size="18" /><span>The whole page is locked. Use Unlock at the top to edit project boundaries, FTE, migration waves or attachments.</span>
+        </div>
+        <div v-else-if="!canManage" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>Read-only view. The original intake requestor can edit this statement.</span>
         </div>
         <form v-if="isSubmitted" class="detail-card scope-boundaries" @submit.prevent="reopenScope">
           <h2>Reopen for revision</h2>
-          <p class="section-description">Authorised editors can reopen this submitted Scope as a draft. Existing job-level locks and evidence are preserved; unlock the relevant level normally before changing its agreement.</p>
+          <p class="section-description">Authorised editors can reopen this submitted Scope as a draft. Existing locks and attachments are preserved; use the page Unlock control before editing.</p>
           <label class="scope-revision-reason">Revision reason (required, maximum 2,000 characters)
             <textarea v-model="revisionReason" :disabled="isBusy" maxlength="2000" rows="2" required />
           </label>
@@ -126,8 +133,8 @@
             <span class="source-badge"><span /> Manually maintained</span>
           </header>
           <div class="agreement-intro">
-            <p>Confirm final FTE by job level and attach supporting evidence before locking.</p>
-            <span>{{ evidenceCount }} evidence file{{ evidenceCount === 1 ? '' : 's' }} attached</span>
+            <p>Confirm all FTE values and Scope text, then use Lock at the top to secure the whole page.</p>
+            <span>{{ evidenceCount }} file{{ evidenceCount === 1 ? '' : 's' }} attached</span>
           </div>
           <div class="table-scroll" tabindex="0" role="region" aria-label="Headcount agreement by job level">
             <table class="agreement-table">
@@ -137,9 +144,6 @@
                   <th scope="col">Agreed to migrate <span>Manual input · FTE</span></th>
                   <th scope="col">Final agreement <span>Whole numbers · FTE</span></th>
                   <th scope="col">Variance <span>Final − agreed</span></th>
-                  <th scope="col" class="evidence-heading">Supporting evidence</th>
-                  <th scope="col">Status</th>
-                  <th scope="col" class="action-heading">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,31 +152,6 @@
                   <td><input v-model="line.agreedFte" :aria-label="`${line.jobLevel} agreed FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999.9999" step="0.0001" placeholder="0" class="number-input" /></td>
                   <td><input v-model="line.finalFte" :aria-label="`${line.jobLevel} final FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999" step="1" placeholder="0" class="number-input number-input--final" /></td>
                   <td><span class="variance" :class="{ 'variance--negative': variance(line) < 0, 'variance--positive': variance(line) > 0 }">{{ varianceText(line) }}</span></td>
-                  <td class="evidence-cell">
-                    <ul v-if="line.evidence.length" class="evidence-list">
-                      <li v-for="item in line.evidence" :key="item.id">
-                        <button type="button" class="file-link" :disabled="isBusy" @click="downloadEvidence(item)">
-                          <mc-icon icon="mi-file" size="15" /><span :title="item.name">{{ item.name }}</span><mc-icon icon="mi-arrow-to-bottom" size="14" />
-                        </button>
-                      </li>
-                    </ul>
-                    <label v-if="canEdit && !line.lockedAt" class="attach-button" :class="{ 'attach-button--busy': isBusy }">
-                      <input type="file" :aria-label="`Attach evidence for ${line.jobLevel}`" accept=".pdf,.docx,.msg,.xlsx" :disabled="isBusy" @change="uploadEvidence(line.jobLevel, $event)" />
-                      <mc-icon icon="mi-arrow-to-top" size="14" />{{ busy === `upload-${line.jobLevel}` ? 'Uploading...' : 'Attach evidence' }}
-                    </label>
-                    <span v-else-if="!line.evidence.length" class="cell-caption">No evidence attached</span>
-                  </td>
-                  <td>
-                    <span class="status-badge status-badge--compact" :class="line.lockedAt ? 'status-badge--submitted' : 'status-badge--open'"><span class="status-dot" />{{ line.lockedAt ? 'Locked' : 'Open' }}</span>
-                    <span v-if="line.lockedAt" class="cell-caption locked-caption" :title="`${line.lockedBy} · ${formatDate(line.lockedAt)}`">Agreement secured</span>
-                  </td>
-                  <td class="row-action">
-                    <button v-if="canEdit && line.lockedAt" type="button" class="text-action text-action--muted" :disabled="isBusy" @click="saveData('unlock', { jobLevel: line.jobLevel })">Unlock</button>
-                    <button v-else-if="canEdit" type="button" class="lock-button" :disabled="isBusy || !canLock(line)" :title="canLock(line) ? 'Save and lock this agreement' : 'Complete agreed, exception and final FTE, and attach evidence first'" @click="saveData('lock', { jobLevel: line.jobLevel })">
-                      <mc-icon icon="mi-shield" size="14" />Lock final
-                    </button>
-                    <span v-else class="cell-caption">—</span>
-                  </td>
                 </tr>
               </tbody>
               <tfoot>
@@ -181,15 +160,28 @@
                   <td>{{ totalDisplay('agreedFte') }}</td>
                   <td>{{ totalDisplay('finalFte') }}</td>
                   <td><span class="variance" :class="{ 'variance--negative': totalVariance < 0 }">{{ totalVariance === null ? '—' : signedNumber(totalVariance) }}</span></td>
-                  <td>{{ evidenceCount }} file{{ evidenceCount === 1 ? '' : 's' }} attached</td>
-                  <td colspan="2">{{ lockedCount }} / 3 locked</td>
                 </tr>
               </tfoot>
             </table>
           </div>
+          <div class="scope-attachments">
+            <div class="scope-attachments__heading">
+              <div><h3>Attachement</h3><p class="section-description">Shared files for the entire headcount agreement. Existing attachment records are retained in this list.</p></div>
+              <label v-if="canEdit" class="attach-button" :class="{ 'attach-button--busy': isBusy }">
+                <input type="file" aria-label="Attachement" accept=".pdf,.docx,.msg,.xlsx" :disabled="isBusy" @change="uploadEvidence($event)" />
+                <mc-icon icon="mi-arrow-to-top" size="14" />{{ busy === 'upload' ? 'Uploading...' : 'Attachement' }}
+              </label>
+            </div>
+            <ul v-if="attachments.length" class="evidence-list">
+              <li v-for="item in attachments" :key="item.id"><button type="button" class="file-link" :disabled="isBusy" @click="downloadEvidence(item)">
+                <mc-icon icon="mi-file" size="15" /><span :title="item.name">{{ item.name }}</span><mc-icon icon="mi-arrow-to-bottom" size="14" />
+              </button></li>
+            </ul>
+            <p v-else class="section-description">No attachments uploaded.</p>
+          </div>
           <footer class="agreement-note">
             <mc-icon icon="mi-file" size="16" />
-            <span>Agreed and exception figures are entered manually, not synced from Opportunity Assessment. Evidence: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
+            <span>Agreed and exception figures are entered manually, not synced from Opportunity Assessment. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
           </footer>
           <p v-if="aboveAgreed" class="agreement-warning">Final FTE exceeds the agreed figure for {{ aboveAgreed }}. Review the variance before submitting.</p>
         </section>
@@ -215,7 +207,7 @@
               <mc-icon :icon="reconciled ? 'mi-check' : 'mi-chart-pie'" size="18" />
               <div>
                 <strong>{{ reconciled ? 'Ambition fully reconciled' : reconciliationGap === null ? 'Complete the headcount picture' : `${formatNumber(Math.abs(reconciliationGap))} FTE ${reconciliationGap > 0 ? 'above' : 'below'} ambition` }}</strong>
-                <span>{{ reconciliationGap === null ? 'Enter agreed and exception figures for all job levels.' : `${formatNumber(agreedTotal)} agreed + ${formatNumber(exceptionTotal)} exceptions / ${formatNumber(ambition)} ambition` }}</span>
+                <span>{{ reconciliationGap === null ? 'Enter Migratable FTE and exception figures for all job levels.' : `${formatNumber(migratableFte)} migratable + ${formatNumber(exceptionTotal)} exceptions / ${formatNumber(ambition)} ambition` }}</span>
               </div>
             </div>
             <router-link class="text-action oa-link" :to="{ path: `/migration-dashboard/${projectId}/opportunity-assessment`, query: { from: 'toll-gates', project: projectId } }">View Opportunity Assessment <span aria-hidden="true">↗</span></router-link>
@@ -261,10 +253,11 @@
             <span class="readiness-icon" :class="{ 'readiness-icon--complete': !statement.reviewRequired && (ready || isSubmitted) }"><mc-icon :icon="!statement.reviewRequired && (ready || isSubmitted) ? 'mi-check' : 'mi-shield'" size="22" /></span>
             <div>
               <strong>{{ statement.reviewRequired ? 'Scope review required' : isSubmitted ? 'Scope commitment secured' : ready ? 'Ready to submit' : 'Build your scope commitment' }}</strong>
-              <p>{{ statement.reviewRequired ? 'Review changed Intake sources and resubmit Scope to restore Business Case readiness.' : isSubmitted ? 'Final project FTE is recorded. This statement is frozen.' : 'Lock each job level and complete the scope statement to submit.' }}</p>
+              <p>{{ statement.reviewRequired ? 'Review changed Intake sources and resubmit Scope to restore Business Case readiness.' : isSubmitted ? 'Final project FTE is recorded. This statement is frozen.' : 'Confirm Migratable FTE, complete Scope text, all FTE values and an attachment, then lock the whole page to submit.' }}</p>
             </div>
           </div>
           <div class="readiness-steps" aria-label="Submission requirements">
+            <span :class="{ 'readiness-step--done': migratableFteConfirmed }"><span>{{ migratableFteConfirmed ? '✓' : '○' }}</span>Migratable FTE</span>
             <span v-for="line in lines" :key="line.jobLevel" :class="{ 'readiness-step--done': line.lockedAt }"><span>{{ line.lockedAt ? '✓' : '○' }}</span>{{ line.jobLevel }}</span>
             <span :class="{ 'readiness-step--done': scopeText.trim() }"><span>{{ scopeText.trim() ? '✓' : '○' }}</span>Scope text</span>
           </div>
@@ -289,6 +282,8 @@ const backTo = computed(() => `/toll-gates?project=${projectId.value}`)
 const statement = ref(null)
 const lines = ref([])
 const scopeText = ref('')
+const migratableFte = ref('')
+const migratableFteConfirmed = ref(false)
 const outOfScope = ref('')
 const assumptions = ref('')
 const waves = ref([])
@@ -300,20 +295,23 @@ const success = ref('')
 const savedSnapshot = ref('')
 const isBusy = computed(() => Boolean(busy.value))
 const isSubmitted = computed(() => statement.value?.status === 'submitted')
-const canEdit = computed(() => Boolean(statement.value?.canEdit) && !isSubmitted.value)
+const canManage = computed(() => Boolean(statement.value?.canEdit) && !isSubmitted.value)
+const pageLocked = computed(() => Boolean(statement.value?.pageLocked))
+const canEdit = computed(() => canManage.value && !pageLocked.value)
 const ambition = computed(() => Number(statement.value?.ambitionFte || 0))
 const lockedCount = computed(() => lines.value.filter((line) => line.lockedAt).length)
 const lockedTotal = computed(() => lines.value.filter((line) => line.lockedAt).reduce((sum, line) => sum + Number(line.finalFte), 0))
-const evidenceCount = computed(() => lines.value.reduce((sum, line) => sum + line.evidence.length, 0))
+const attachments = computed(() => statement.value?.attachments || [])
+const evidenceCount = computed(() => attachments.value.length)
 const agreedTotal = computed(() => sumField('agreedFte'))
 const exceptionTotal = computed(() => sumField('notAgreedFte'))
 const finalTotal = computed(() => sumField('finalFte'))
 const allFinalEntered = computed(() => completeField('finalFte'))
 const coverage = computed(() => allFinalEntered.value && ambition.value > 0 ? Math.round(finalTotal.value / ambition.value * 100) : null)
 const totalVariance = computed(() => completeField('agreedFte') && allFinalEntered.value ? finalTotal.value - agreedTotal.value : null)
-const reconciliationGap = computed(() => completeField('agreedFte') && completeField('notAgreedFte') ? agreedTotal.value + exceptionTotal.value - ambition.value : null)
+const reconciliationGap = computed(() => validNumber(migratableFte.value) && completeField('notAgreedFte') ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
 const reconciled = computed(() => reconciliationGap.value !== null && Math.abs(reconciliationGap.value) < 0.00005)
-const ready = computed(() => lockedCount.value === 3 && Boolean(scopeText.value.trim()))
+const ready = computed(() => lockedCount.value === 3 && Boolean(scopeText.value.trim()) && migratableFteConfirmed.value)
 const statusKey = computed(() => statement.value?.reviewRequired ? 'draft' : isSubmitted.value ? 'submitted' : ready.value ? 'ready' : 'draft')
 const statusLabel = computed(() => statement.value?.reviewRequired ? 'Review required' : isSubmitted.value ? 'Submitted' : ready.value ? 'Ready to submit' : 'Draft')
 const aboveAgreed = computed(() => lines.value.filter((line) => variance(line) > 0).map((line) => line.jobLevel).join(', '))
@@ -358,16 +356,16 @@ function exceptionPercentage(value) {
   return validNumber(value) && ambition.value > 0 ? `${(Number(value) / ambition.value * 100).toFixed(1)}%` : '—'
 }
 
-function canLock(line) {
-  return validNumber(line.agreedFte) && validNumber(line.notAgreedFte) && validNumber(line.finalFte, true) && line.evidence.length > 0
-}
+const canLockPage = computed(() => completeField('agreedFte') && completeField('notAgreedFte') &&
+  allFinalEntered.value && evidenceCount.value > 0 && Boolean(scopeText.value.trim()) &&
+  validNumber(migratableFte.value) && migratableFteConfirmed.value)
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : ''
 }
 
 function snapshot() {
-  return JSON.stringify({ text: scopeText.value, outOfScope: outOfScope.value, assumptions: assumptions.value, waves: waves.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
+  return JSON.stringify({ text: scopeText.value, migratableFte: migratableFte.value, migratableFteConfirmed: migratableFteConfirmed.value, outOfScope: outOfScope.value, assumptions: assumptions.value, waves: waves.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
 }
 
 function applyResponse(data) {
@@ -382,6 +380,8 @@ function applyResponse(data) {
     notAgreedFte: line.notAgreedFte === null ? '' : Number(line.notAgreedFte),
     finalFte: line.finalFte === null ? '' : line.finalFte
   }))
+  migratableFte.value = data.migratableFte ?? (completeField('agreedFte') ? sumField('agreedFte') : '')
+  migratableFteConfirmed.value = Boolean(data.migratableFteConfirmed)
   savedSnapshot.value = snapshot()
 }
 
@@ -400,7 +400,7 @@ async function reopenScope() {
     })
     applyResponse(data)
     revisionReason.value = ''
-    success.value = 'Scope reopened as a draft. Existing job-level locks and evidence are preserved.'
+    success.value = 'Scope reopened as a draft. Use Unlock at the top to edit the page. Attachments are preserved.'
   } catch (caught) {
     error.value = errorMessage(caught, 'Unable to reopen Scope. Your reason is retained; reload if another editor has changed the record.')
   } finally {
@@ -426,6 +426,17 @@ async function loadData() {
 }
 
 async function persist(action, extra = {}) {
+  if (action === 'unlock' || action === 'submit') {
+    const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
+      action, revision: statement.value.revision
+    })
+    applyResponse(data)
+    return true
+  }
+  if (migratableFte.value !== '' && !validNumber(migratableFte.value)) {
+    error.value = 'Enter a non-negative Migratable FTE within the permitted range.'
+    return false
+  }
   if (waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
       Number.isNaN(Date.parse(wave.date)) || new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
       !validNumber(wave.fte, true))) {
@@ -442,6 +453,8 @@ async function persist(action, extra = {}) {
   const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
     action,
     revision: statement.value.revision,
+    migratableFte: migratableFte.value === '' ? null : migratableFte.value,
+    migratableFteConfirmed: migratableFteConfirmed.value,
     scopeText: scopeText.value,
     outOfScope: outOfScope.value,
     assumptions: assumptions.value,
@@ -459,15 +472,15 @@ async function persist(action, extra = {}) {
 }
 
 async function saveData(action, extra = {}) {
-  if (!canEdit.value || isBusy.value) return
+  if (!canManage.value || isBusy.value) return
   busy.value = action
   error.value = ''
   success.value = ''
   try {
     if (await persist(action, extra)) {
       success.value = action === 'submit' ? 'Scope Statement submitted. The final agreement has been recorded.' :
-        action === 'lock' ? `${extra.jobLevel} agreement locked with supporting evidence.` :
-          action === 'unlock' ? `${extra.jobLevel} is open for editing.` : 'Draft saved successfully.'
+        action === 'lock' ? 'The whole Scope Statement is locked.' :
+          action === 'unlock' ? 'The whole Scope Statement is open for editing.' : 'Draft saved successfully.'
     }
   } catch (caught) {
     error.value = errorMessage(caught, 'Unable to save your changes. Please try again.')
@@ -476,7 +489,7 @@ async function saveData(action, extra = {}) {
   }
 }
 
-async function uploadEvidence(jobLevel, event) {
+async function uploadEvidence(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file || !canEdit.value || isBusy.value) return
@@ -486,16 +499,16 @@ async function uploadEvidence(jobLevel, event) {
     error.value = 'Choose a non-empty PDF, DOCX, MSG or XLSX file no larger than 20 MB.'
     return
   }
-  busy.value = `upload-${jobLevel}`
+  busy.value = 'upload'
   try {
     // Persist editable values before the upload response replaces the local draft.
     if (!await persist('save')) return
     const form = new FormData()
     form.append('file', file)
     form.append('revision', String(statement.value.revision))
-    const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/evidence/${jobLevel}/`, form)
+    const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/attachments/`, form)
     applyResponse(data)
-    success.value = `Evidence attached to ${jobLevel}.`
+    success.value = 'Attachement uploaded for the whole headcount agreement.'
   } catch (caught) {
     error.value = errorMessage(caught, 'Unable to upload evidence. Your saved draft is retained.')
   } finally {
@@ -514,7 +527,9 @@ async function downloadEvidence(item) {
     anchor.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch {
-    error.value = 'Unable to download this evidence file. Please try again.'
+    error.value = caught?.response?.status === 404
+      ? 'This attachment is unavailable. The original file may be missing from storage; upload it again or contact an administrator.'
+      : 'Unable to download this attachment. Please try again.'
   }
 }
 
@@ -574,6 +589,12 @@ h1 { font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp
 .metric-card__top > span { color: #677d8e; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
 .metric-card__value { margin-top: 15px; font-size: clamp(25px, 2.3vw, 34px); font-weight: 700; line-height: 1.15; letter-spacing: -.035em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .metric-card__value > span { font-size: 10px; color: #8595a1; margin-left: 7px; font-weight: 400; letter-spacing: 0; }
+.metric-card__manual { display: flex; align-items: center; }
+.metric-card__manual input { min-width: 0; width: 100%; padding: 3px 8px; border: 1px solid #c8dce7; border-radius: 6px; background: #fff; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
+.metric-card__manual input:focus { outline: 2px solid #42b0d5; outline-offset: 2px; }
+.metric-card__manual input:disabled { background: #f4f7f9; color: #6c8090; }
+.migratable-confirm { display: flex; align-items: flex-start; gap: 6px; margin-top: 12px; font-size: 11px; line-height: 1.5; color: #526c80; }
+.migratable-confirm input { margin: 2px 0 0; flex-shrink: 0; accent-color: #227fa4; }
 .metric-card p { margin: 8px 0 0; color: var(--scope-muted); font-size: 11px; line-height: 1.6; }
 .metric-card--teal { border-color: #b7dcd5; background: #f9fdfb; }
 .metric-card--teal .metric-card__value, .metric-card--teal mc-icon { color: var(--scope-teal); }
@@ -590,7 +611,7 @@ h2 { margin: 0; font-size: 17px; line-height: 1.35; letter-spacing: -.02em; font
 .agreement-intro > span { white-space: nowrap; font-size: 10px; }
 .table-scroll { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
-.agreement-table { min-width: 1050px; }
+.agreement-table { min-width: 540px; }
 .agreement-table thead { background: #f4f7fa; border-top: 1px solid #edf1f4; border-bottom: 1px solid var(--scope-line); }
 .agreement-table thead th { padding: 13px 18px; font-size: 11px; color: #526c80; font-weight: 600; white-space: nowrap; }
 .agreement-table thead th > span { display: block; font-size: 10px; font-weight: 400; color: #8796a3; margin-top: 4px; }
@@ -599,7 +620,6 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 .agreement-table tbody th { width: 145px; }
 .job-level { display: block; font-weight: 600; font-size: 13px; white-space: nowrap; }
 .cell-caption { display: block; font-size: 10px; color: #81929f; margin-top: 5px; font-weight: 400; line-height: 1.5; }
-.locked-caption { font-size: 9px; }
 .number-input { box-sizing: border-box; width: 104px; max-width: 100%; height: 36px; border: 1px solid #dce5ec; border-radius: 6px; padding: 6px 10px; background: #fff; font-family: inherit; font-size: 12px; color: var(--scope-navy); font-variant-numeric: tabular-nums; transition: border-color .15s, box-shadow .15s; }
 .number-input--final { font-weight: 600; background: #fbfdff; }
 .number-input::placeholder { color: #afbbc5; }
@@ -608,8 +628,11 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 .variance { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: #7a8e9d; }
 .variance--negative { color: #bb5757; }
 .variance--positive { color: #287cab; }
-.evidence-heading { width: 24%; }
-.evidence-cell { min-width: 190px; }
+.scope-attachments { padding: 20px 24px; border-bottom: 1px solid var(--scope-line); }
+.scope-attachments__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.scope-attachments h3 { margin: 0; font-size: 13px; }
+.scope-attachments .section-description { margin: 6px 0 0; }
+.scope-attachments .file-link span { max-width: min(600px, 70vw); }
 .evidence-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 5px; }
 .file-link { display: flex; align-items: center; gap: 7px; border: 0; background: none; padding: 0; color: #227fa4; cursor: pointer; font-family: inherit; font-size: 11px; width: 100%; text-align: left; }
 .file-link span { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

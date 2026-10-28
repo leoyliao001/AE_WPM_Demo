@@ -49,6 +49,10 @@ def source_data(project):
         ],
     }
     intake = {field: getattr(project, field) for field in INTAKE_FIELDS}
+    # Keep untouched historical source fingerprints stable until a manual value is saved.
+    if statement and statement.migratable_fte is not None:
+        scope["migratableFte"] = str(statement.migratable_fte)
+        scope["migratableFteConfirmed"] = statement.migratable_fte_confirmed
     return intake, scope
 
 

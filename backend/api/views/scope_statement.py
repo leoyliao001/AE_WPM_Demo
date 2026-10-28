@@ -59,12 +59,11 @@ def _get_project(project_id):
         return None
 
 
-def _statement_for_project(project):
-    return (
-        ScopeStatement.objects.filter(project=project)
-        .prefetch_related("lines__evidence")
-        .first()
-    )
+def _statement_for_project(project, *, for_update=False):
+    statements = ScopeStatement.objects.filter(project=project)
+    if for_update:
+        statements = statements.select_for_update()
+    return statements.prefetch_related("lines__evidence", "attachments").first()
 
 
 def _number(value, label, *, allow_none=False, whole=False):
@@ -125,10 +124,18 @@ def _serialize_statement(project, statement, email):
         "waves": statement.waves if statement else [],
         "ambitionFte": str(statement.ambition_fte) if statement and statement.ambition_fte is not None else str(project.fte_number or "0"),
         "finalProjectFte": statement.final_project_fte if statement else None,
+        "migratableFte": str(statement.migratable_fte) if statement and statement.migratable_fte is not None else None,
+        "migratableFteConfirmed": statement.migratable_fte_confirmed if statement else False,
         "submittedAt": statement.submitted_at.isoformat() if statement and statement.submitted_at else None,
         "submittedBy": statement.submitted_by if statement else "",
         "auditLog": statement.audit_log if statement else [],
         "lines": items,
+        "pageLocked": any(line.locked_at for line in lines.values()),
+        "attachments": [
+            {"id": item.id, "name": item.file_name, "size": item.file_size,
+             "uploadedBy": item.uploaded_by, "uploadedAt": item.uploaded_at.isoformat()}
+            for item in (statement.attachments.all() if statement else [])
+        ],
     }
 
 
@@ -145,10 +152,13 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
     {"key": "revision", "label": "Revision"},
     {"key": "ambition_fte", "label": "Ambition FTE"},
     {"key": "final_project_fte", "label": "Final Project FTE"},
+    {"key": "migratable_fte", "label": "Migratable FTE (manual)"},
+    {"key": "migratable_fte_confirmed", "label": "Migratable FTE Confirmed"},
     {"key": "submitted_at", "label": "Submitted At"},
     {"key": "submitted_by", "label": "Submitted By"},
     {"key": "updated_at", "label": "Last Updated"},
     {"key": "audit_log", "label": "Audit Log"},
+    {"key": "attachments", "label": "Attachement"},
     *[
             {
                 "key": f"{level.lower()}_{field}",
@@ -162,7 +172,6 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
             ("final_fte", "Final FTE"),
             ("locked_at", "Locked At"),
             ("locked_by", "Locked By"),
-            ("evidence", "Evidence"),
         )
     ],
 ]
@@ -173,7 +182,7 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
 def list_scope_statement_database(_request):
     statements = (
         ScopeStatement.objects.select_related("project")
-        .prefetch_related("lines__evidence")
+        .prefetch_related("lines__evidence", "attachments")
         .order_by("project__migration_request_id")
     )
     rows = []
@@ -195,10 +204,17 @@ def list_scope_statement_database(_request):
             "revision": statement.revision,
             "ambition_fte": str(statement.ambition_fte) if statement.ambition_fte is not None else str(project.fte_number or "0"),
             "final_project_fte": statement.final_project_fte,
+            "migratable_fte": str(statement.migratable_fte) if statement.migratable_fte is not None else "",
+            "migratable_fte_confirmed": statement.migratable_fte_confirmed,
             "submitted_at": statement.submitted_at.isoformat() if statement.submitted_at else "",
             "submitted_by": statement.submitted_by,
             "updated_at": statement.updated_at.isoformat(),
             "audit_log": json.dumps(statement.audit_log or [], ensure_ascii=False),
+            "attachments": json.dumps([
+                {"name": item.file_name, "size": item.file_size,
+                 "uploadedBy": item.uploaded_by, "uploadedAt": item.uploaded_at.isoformat()}
+                for item in statement.attachments.all()
+            ], ensure_ascii=False),
         }
         for job_level in JOB_LEVELS:
             prefix = job_level.lower()
@@ -252,7 +268,7 @@ def save_scope_statement_database(request):
                     migration_request_id = str(item.get("migration_request_id") or "").strip()
                     if not migration_request_id:
                         raise ValueError("Migration Request ID is required for a new row.")
-                    project = MigrationIntakeSubmission.objects.filter(
+                    project = MigrationIntakeSubmission.objects.select_for_update().filter(
                         migration_request_id__iexact=migration_request_id
                     ).first()
                     if project is None:
@@ -264,6 +280,8 @@ def save_scope_statement_database(request):
 
                 if statement.status == "submitted":
                     raise ValueError("Submitted Scope Statements are frozen.")
+                if statement.lines.filter(locked_at__isnull=False).exists():
+                    raise ValueError("Scope Statement is locked. Unlock the page before editing.")
 
                 scope_text = item.get("scope_text", statement.scope_text)
                 if not isinstance(scope_text, str):
@@ -350,7 +368,7 @@ def delete_scope_statement_database(request):
     for record_id in removed_ids:
         try:
             statement = ScopeStatement.objects.get(pk=int(record_id))
-            evidence = list(ScopeStatementEvidence.objects.filter(line__statement=statement))
+            evidence = list(statement.attachments.all())
             statement.delete()
             for item in evidence:
                 if item.file and item.file.name:
@@ -418,11 +436,16 @@ def save_scope_statement(request, project_id):
     except ValueError as exc:
         return Response({"error": str(exc)}, status=400)
     with transaction.atomic():
-        statement = _statement_for_project(project)
+        MigrationIntakeSubmission.objects.select_for_update().get(pk=project.pk)
+        statement = _statement_for_project(project, for_update=True)
         if statement is None:
+            if action != "save":
+                return Response({"error": "Save a draft and upload an attachment before locking or submitting."}, status=409)
             statement = ScopeStatement.objects.create(project=project, revision=0)
             for level in JOB_LEVELS:
                 ScopeStatementLine.objects.create(statement=statement, job_level=level)
+        if "revision" in payload and payload["revision"] != statement.revision:
+            return Response({"error": "Scope Statement changed. Reload before saving."}, status=409)
 
         if action == "revise":
             reason = payload.get("reason", "")
@@ -441,61 +464,90 @@ def save_scope_statement(request, project_id):
         if statement.status == "submitted":
             return Response({"error": "Submitted Scope Statement is frozen. Reopen for revision first."}, status=status.HTTP_409_CONFLICT)
 
+        all_lines = list(statement.lines.all())
+        page_locked = any(line.locked_at for line in all_lines)
+        if action == "unlock":
+            if not page_locked:
+                return Response({"error": "Scope Statement is already unlocked."}, status=409)
+            for line in all_lines:
+                line.locked_at = None
+                line.locked_by = ""
+                line.save(update_fields=["locked_at", "locked_by"])
+            statement.revision += 1
+            statement.audit_log = [*statement.audit_log, {
+                "action": "unlock", "by": email, "at": timezone.now().isoformat(),
+                "scope": "page",
+            }]
+            statement.save()
+            return Response(_serialize_statement(project, _statement_for_project(project), email))
+        if page_locked and action != "submit":
+            return Response({"error": "Scope Statement is locked. Unlock the page before editing."}, status=409)
+
         scope_text = payload.get("scopeText", statement.scope_text)
         if not isinstance(scope_text, str):
             return Response({"error": "Scope text must be a string."}, status=status.HTTP_400_BAD_REQUEST)
-        statement.scope_text = scope_text[:2000]
-        _apply_scope_extensions(statement, payload)
+        if page_locked:
+            expected = {
+                "scopeText": statement.scope_text, "outOfScope": statement.out_of_scope,
+                "assumptions": statement.assumptions, "waves": statement.waves,
+            }
+            if "migratableFte" in payload or "migratableFteConfirmed" in payload:
+                return Response({"error": "Unlock the page before changing Migratable FTE."}, status=409)
+            if any(key in payload and payload[key] != value for key, value in expected.items()) or payload.get("lines"):
+                return Response({"error": "Unlock the page before changing submitted values."}, status=409)
+        else:
+            statement.scope_text = scope_text[:2000]
+            _apply_scope_extensions(statement, payload)
+            try:
+                _apply_migratable_fte(statement, payload)
+            except ValueError as exc:
+                return Response({"error": str(exc)}, status=400)
 
         lines_payload = payload.get("lines")
+        changed_lines = []
         if isinstance(lines_payload, list):
+            seen = set()
             for row in lines_payload:
-                if not isinstance(row, dict):
-                    continue
+                if not isinstance(row, dict) or row.get("jobLevel") not in JOB_LEVELS or row["jobLevel"] in seen:
+                    return Response({"error": "Each line must specify a unique valid job level."}, status=400)
                 job_level = row.get("jobLevel")
-                if job_level not in JOB_LEVELS:
-                    continue
-                line = statement.lines.get(job_level=job_level)
+                seen.add(job_level)
+                line = next(line for line in all_lines if line.job_level == job_level)
                 try:
                     line.agreed_fte = _number(row.get("agreedFte"), f"{job_level} agreed FTE", allow_none=True)
                     line.not_agreed_fte = _number(row.get("notAgreedFte"), f"{job_level} exception FTE", allow_none=True)
                     line.final_fte = _number(row.get("finalFte"), f"{job_level} final FTE", allow_none=True, whole=True)
                 except ValueError as exc:
                     return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-                if line.locked_at:
-                    return Response({"error": f"{job_level} is locked. Unlock it before changes."}, status=status.HTTP_409_CONFLICT)
-                line.save()
+                changed_lines.append(line)
+        elif lines_payload is not None:
+            return Response({"error": "Lines must be a list."}, status=400)
 
         if action == "lock":
-            job_level = payload.get("jobLevel")
-            if job_level not in JOB_LEVELS:
-                return Response({"error": "Choose a valid job level to lock."}, status=status.HTTP_400_BAD_REQUEST)
-            line = statement.lines.get(job_level=job_level)
-            if line.locked_at:
-                return Response({"error": f"{job_level} is already locked."}, status=status.HTTP_409_CONFLICT)
-            if line.evidence.count() == 0:
-                return Response({"error": f"Attach evidence before locking {job_level}."}, status=status.HTTP_400_BAD_REQUEST)
-            if line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None:
-                return Response({"error": f"Complete all values for {job_level} before locking."}, status=status.HTTP_400_BAD_REQUEST)
-            line.locked_at = timezone.now()
-            line.locked_by = email
-            line.save()
-        elif action == "unlock":
-            job_level = payload.get("jobLevel")
-            if job_level not in JOB_LEVELS:
-                return Response({"error": "Choose a valid job level to unlock."}, status=status.HTTP_400_BAD_REQUEST)
-            line = statement.lines.get(job_level=job_level)
-            if not line.locked_at:
-                return Response({"error": f"{job_level} is not locked."}, status=status.HTTP_409_CONFLICT)
-            line.locked_at = None
-            line.locked_by = ""
-            line.save()
+            if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
+                return Response({"error": "Manually confirm Migratable FTE before locking the page."}, status=400)
+            if not statement.attachments.exists():
+                return Response({"error": "Upload an attachment before locking the page."}, status=400)
+            if len(all_lines) != 3 or not statement.scope_text.strip() or any(
+                line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None
+                for line in all_lines
+            ):
+                return Response({"error": "Complete Scope text and all job-level values before locking the page."}, status=400)
+            total = sum(line.final_fte for line in all_lines)
+            if statement.waves and sum(wave["fte"] for wave in statement.waves) != total:
+                return Response({"error": "Migration wave FTE must equal the final project FTE."}, status=400)
+            now = timezone.now()
+            for line in all_lines:
+                line.locked_at = now
+                line.locked_by = email
+            changed_lines = all_lines
         elif action == "submit":
+            if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
+                return Response({"error": "Unlock the page and manually confirm Migratable FTE before submitting."}, status=400)
             if not statement.scope_text.strip():
                 return Response({"error": "High-level scope statement is required before submitting."}, status=status.HTTP_400_BAD_REQUEST)
-            all_lines = list(statement.lines.all())
-            if len(all_lines) != 3 or any(line.locked_at is None or line.evidence.count() == 0 for line in all_lines):
-                return Response({"error": "Lock all job levels with evidence before submitting."}, status=status.HTTP_400_BAD_REQUEST)
+            if len(all_lines) != 3 or any(line.locked_at is None for line in all_lines) or not statement.attachments.exists():
+                return Response({"error": "Lock the whole page with an attachment before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             statement.ambition_fte = Decimal(str(project.fte_number or 0))
             statement.final_project_fte = sum(int(line.final_fte or 0) for line in all_lines)
             if statement.waves and sum(wave["fte"] for wave in statement.waves) != statement.final_project_fte:
@@ -505,17 +557,38 @@ def save_scope_statement(request, project_id):
             statement.review_required = False
             statement.submitted_at = timezone.now()
             statement.submitted_by = email
+        for line in changed_lines:
+            line.save()
         statement.revision += 1
         statement.audit_log.append({
             "action": action,
             "by": email,
             "at": timezone.now().isoformat(),
-            "jobLevel": payload.get("jobLevel") or None,
+            "scope": "page",
+            "migratableFte": str(statement.migratable_fte) if statement.migratable_fte is not None else None,
+            "migratableFteConfirmed": statement.migratable_fte_confirmed,
         })
         statement.save()
         statement = _statement_for_project(project)
 
         return Response(_serialize_statement(project, statement, email))
+
+
+def _apply_migratable_fte(statement, payload):
+    if "migratableFte" in payload:
+        value = _number(payload["migratableFte"], "Migratable FTE", allow_none=True)
+        if value is not None and value.as_tuple().exponent < -4:
+            raise ValueError("Migratable FTE supports at most four decimal places.")
+        if value != statement.migratable_fte:
+            statement.migratable_fte_confirmed = False
+        statement.migratable_fte = value
+    if "migratableFteConfirmed" in payload:
+        confirmed = payload["migratableFteConfirmed"]
+        if not isinstance(confirmed, bool):
+            raise ValueError("Migratable FTE confirmation must be true or false.")
+        if confirmed and statement.migratable_fte is None:
+            raise ValueError("Enter Migratable FTE before confirming.")
+        statement.migratable_fte_confirmed = confirmed
 
 
 def _apply_scope_extensions(statement, payload):
@@ -552,7 +625,7 @@ def _apply_scope_extensions(statement, payload):
 
 @api_view(["POST"])
 @parser_classes([MultiPartParser, FormParser])
-def upload_scope_evidence(request, project_id, job_level):
+def upload_scope_evidence(request, project_id, job_level=None):
     project = _get_project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -563,7 +636,7 @@ def upload_scope_evidence(request, project_id, job_level):
     if not _has_scope_statement_access(project, email):
         return _scope_statement_access_denied()
 
-    if job_level not in JOB_LEVELS:
+    if job_level is not None and job_level not in JOB_LEVELS:
         return Response({"error": "Unknown job level."}, status=status.HTTP_404_NOT_FOUND)
 
     uploaded = request.FILES.get("file")
@@ -576,18 +649,20 @@ def upload_scope_evidence(request, project_id, job_level):
         return Response({"error": "Evidence file must be between 1 byte and 20 MB."}, status=status.HTTP_400_BAD_REQUEST)
 
     with transaction.atomic():
-        statement = _statement_for_project(project)
+        MigrationIntakeSubmission.objects.select_for_update().get(pk=project.pk)
+        statement = _statement_for_project(project, for_update=True)
         if statement is None:
             statement = ScopeStatement.objects.create(project=project)
             for level in JOB_LEVELS:
                 ScopeStatementLine.objects.create(statement=statement, job_level=level)
-        line = statement.lines.get(job_level=job_level)
-        if line.locked_at:
-            return Response({"error": "Unlock this job level before attaching evidence."}, status=status.HTTP_409_CONFLICT)
+        if "revision" in request.data and str(statement.revision) != str(request.data["revision"]):
+            return Response({"error": "Scope Statement changed. Reload before uploading."}, status=409)
+        if statement.status == "submitted" or statement.lines.filter(locked_at__isnull=False).exists():
+            return Response({"error": "Unlock the Scope Statement before uploading attachments."}, status=409)
 
         storage_name = f"{uuid4().hex}{suffix}"
         file_entry = ScopeStatementEvidence(
-            line=line,
+            statement=statement,
             file_name=uploaded.name,
             file_size=uploaded.size,
             uploaded_by=email,
@@ -596,10 +671,9 @@ def upload_scope_evidence(request, project_id, job_level):
         file_entry.save()
         statement.revision += 1
         statement.audit_log.append({
-            "action": "attach_evidence",
+            "action": "attach_attachment",
             "by": email,
             "at": timezone.now().isoformat(),
-            "jobLevel": job_level,
             "file": uploaded.name,
         })
         statement.save()
@@ -622,7 +696,7 @@ def download_scope_evidence(request, project_id, evidence_id):
     try:
         evidence = ScopeStatementEvidence.objects.get(
             pk=evidence_id,
-            line__statement__project=project,
+            statement__project=project,
         )
     except ScopeStatementEvidence.DoesNotExist:
         return Response({"error": "Evidence not found."}, status=status.HTTP_404_NOT_FOUND)
