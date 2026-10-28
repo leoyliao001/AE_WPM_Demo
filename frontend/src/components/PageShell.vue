@@ -19,7 +19,7 @@
             />
           </router-link>
 
-          <div class="header-main">
+          <div v-if="showHeading" class="header-main">
             <mc-tag v-if="tag" :appearance="tagAppearance" fit="small" :label="tag" />
             <h1 class="page-title">{{ title }}</h1>
             <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
@@ -48,6 +48,7 @@ defineProps({
   backTo: { type: String, default: '/' },
   backLabel: { type: String, default: 'Back to Welcome' },
   showHeader: { type: Boolean, default: true },
+  showHeading: { type: Boolean, default: true },
   fullWidth: { type: Boolean, default: false }
 })
 </script>

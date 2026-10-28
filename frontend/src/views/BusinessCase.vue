@@ -1,6 +1,5 @@
 <template>
-  <PageShell title="Business Case" :show-header="false" class="bc-page bc-workspace" full-width>
-    <nav class="bc-breadcrumb bc-no-print" aria-label="Breadcrumb"><router-link :to="backTo">← Toll Gates</router-link><span>/</span><span>Initiate</span><span>/</span><strong>Business Case</strong></nav>
+  <PageShell title="Business Case" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" class="bc-page bc-workspace" full-width>
     <p v-if="loading" role="status">Loading Business Case…</p>
     <mc-notification v-if="error" appearance="error" fit="medium" heading="Unable to complete this action" :body="error" role="alert" />
     <mc-notification v-if="success" appearance="success" fit="medium" :body="success" role="status" />

@@ -1,12 +1,6 @@
 <template>
-  <PageShell title="Stakeholder Registration" :show-header="false" full-width class="stakeholder-shell">
+  <PageShell title="Stakeholder Registration" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" full-width class="stakeholder-shell">
     <div class="stakeholder-page">
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <router-link :to="backTo">Toll Gates</router-link><span>/</span>
-        <span>{{ registration?.projectName || 'Project' }}</span><span>/</span>
-        <strong>Stakeholder Registration</strong>
-      </nav>
-
       <div v-if="loading" class="state-message" role="status">Loading stakeholder registry…</div>
       <div v-else-if="error && !registration" class="state-message state-message--error" role="alert">
         <h1>Unable to load Stakeholder Registration</h1><p>{{ error }}</p>
@@ -28,6 +22,50 @@
             </div>
           </div>
           <div class="header-actions">
+            <PermissionsRulesHelp title="Stakeholder Registration">
+              <section>
+                <h3>Who can view and edit?</h3>
+                <ul>
+                  <li>The project's original Migration Intake Requestor: <strong>{{ registration.requestor }}</strong>.</li>
+                  <li>Users granted <strong>Stakeholder Registration</strong> access in Project Attributes &gt; Access Control.</li>
+                  <li><strong>Super Admins</strong> have access to every project and may assign all stakeholder roles. They must still unlock locked roles before making changes.</li>
+                  <li>You must be signed in. Appearing in the Project Team or holding an assigner role does not by itself grant page access; non-admin assigners also need to be the Requestor or have Stakeholder Registration access.</li>
+                </ul>
+              </section>
+              <section>
+                <h3>Project Team and manual assignment</h3>
+                <ol>
+                  <li>Open <strong>Project Team</strong> or <strong>+ Add person</strong>. Add a full name and valid, unique email. People are added manually; there is no automatic role population.</li>
+                  <li>Open a stakeholder role and select people from this project's Project Team. Respect the role's <strong>One focal</strong> or <strong>Multiple people</strong> setting.</li>
+                  <li>Select <strong>Save draft</strong> to persist changes. Adding people or changing selections locally is not a database save.</li>
+                </ol>
+                <p>A project supports up to 100 Project Team members. Unlock a person's assigned roles before removing them from the roster.</p>
+              </section>
+              <section>
+                <h3>Who may change restricted assignments?</h3>
+                <p>For editors who are not Super Admins, these additional rules apply to assigned people, notes and applicability:</p>
+                <ul>
+                  <li v-for="role in allRoles.filter((item) => item.assignmentRule)" :key="role.code">
+                    <strong>{{ role.label }}</strong>: assigned by <strong>{{ role.assignmentRule }}</strong>.
+                    Your current permission: <strong>{{ registration.assignmentPermissions?.[role.code] ? 'Allowed' : 'Not allowed' }}</strong>.
+                  </li>
+                  <li>The assigning person's signed-in email must match a Project Team member already assigned and <strong>locked</strong> in the designated assigner role. Save and lock that role first.</li>
+                  <li>Other roles can be assigned by any authorised page editor. The original Requestor is not exempt from restricted-role rules unless they are also a Super Admin or a designated locked assigner.</li>
+                </ul>
+              </section>
+              <section>
+                <h3>Lock, unlock and complete</h3>
+                <ul>
+                  <li>Use <strong>Save and lock</strong> to save a role and confirm it. Once locked, its people, notes and applicability cannot change until <strong>Unlock</strong> is selected.</li>
+                  <li>Any authorised page editor can lock or unlock a saved role. Unlocking does not grant permission to change a restricted assignment; its designated-assigner rule still applies.</li>
+                  <li>All required roles must contain at least one person; required roles cannot be marked <strong>Not applicable</strong>. Optional roles may be marked Not applicable.</li>
+                  <li>For each applicable MSP, enter a unique MSP name and select exactly one Project Team focal.</li>
+                  <li><strong>Lock all</strong> requires all required roles to be filled. It locks populated roles and roles explicitly marked Not applicable; empty optional roles may remain open.</li>
+                  <li>This register has no separate submit or revision-reason step. The dashboard shows <strong>Secured</strong> when the register is saved and all required roles are filled and locked. Unlocking a required role makes it incomplete again.</li>
+                  <li>Save, lock and unlock actions record who acted and when in the audit log. Stakeholder registration is not itself a Business Case approval; formal approval permissions and stages remain separate.</li>
+                </ul>
+              </section>
+            </PermissionsRulesHelp>
             <span v-if="error" class="feedback feedback--error" role="alert">{{ error }}</span>
             <span v-if="success" class="feedback feedback--success" role="status">{{ success }}</span>
             <button class="button button--outline" type="button" :disabled="Boolean(busy)" @click="exportRegistry">{{ busy === 'export' ? 'Exporting…' : 'Export' }}</button>
@@ -71,7 +109,7 @@
           <div class="legend-row">
             <span><i class="legend-dot legend-dot--manual" /> Manual assignment</span>
             <span><i class="legend-dot legend-dot--locked" /> Locked and confirmed</span>
-            <small>Required roles must be filled and locked before Business Case submission.</small>
+            <small>Fill and lock required roles to secure this artefact on the dashboard.</small>
           </div>
 
           <div class="role-groups">
@@ -224,6 +262,7 @@ import axios from 'axios'
 import { writeFile } from 'xlsx'
 import { buildStakeholderWorkbook } from '../utils/stakeholderRegistrationExport.js'
 import PageShell from '../components/PageShell.vue'
+import PermissionsRulesHelp from '../components/PermissionsRulesHelp.vue'
 import '@maersk-global/mds-components-core/mc-icon'
 
 const route = useRoute()
@@ -518,7 +557,6 @@ watch(projectId, loadData, { immediate: true })
   width: 100%;
 }
 
-.breadcrumb,
 .project-meta,
 .header-actions,
 .registry-heading,
@@ -537,9 +575,7 @@ watch(projectId, loadData, { immediate: true })
   display: flex;
 }
 
-.breadcrumb { color: #788895; flex-wrap: wrap; font-size: 12px; gap: 9px; }
-.breadcrumb a,.text-button { color: var(--blue); text-decoration: none; }
-.breadcrumb strong { color: var(--ink); }
+.text-button { color: var(--blue); text-decoration: none; }
 .project-header,.registry-panel,.support-panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; }
 .project-header { align-items: center; display: flex; gap: 18px; justify-content: space-between; padding: 15px 19px; }
 .project-heading { min-width: 0; }
@@ -1137,18 +1173,6 @@ watch(projectId, loadData, { immediate: true })
   gap: 18px;
   max-width: 1540px;
   padding: 12px 10px 40px;
-}
-
-.breadcrumb {
-  color: #75859a;
-  font-size: 12px;
-  gap: 11px;
-  padding: 0 2px;
-}
-
-.breadcrumb a {
-  color: #2478ce;
-  font-weight: 600;
 }
 
 .project-header {
