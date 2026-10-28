@@ -167,7 +167,7 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
             }
         for level in JOB_LEVELS
         for field, label in (
-            ("agreed_fte", "Agreed FTE"),
+            ("agreed_fte", "Migratable FTE (suggested/manual)"),
             ("not_agreed_fte", "Not Agreed FTE"),
             ("final_fte", "Final FTE"),
             ("locked_at", "Locked At"),

@@ -107,7 +107,7 @@
                 <input v-model="migratableFte" aria-label="Migratable FTE" type="number" min="0" max="99999999.9999" step="0.0001" :disabled="!canEdit || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
               </div>
               <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEdit || isBusy || !validNumber(migratableFte)" />I confirm this Migratable FTE</label>
-              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · JL total: {{ totalDisplay('agreedFte') }}</p>
+              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Suggested from JL total: {{ totalDisplay('agreedFte') }}</p>
             </article>
             <article class="metric-card metric-card--teal">
               <div class="metric-card__top"><span>Locked final FTE</span><mc-icon icon="mi-shield" size="18" /></div>
@@ -174,7 +174,7 @@
               <thead>
                 <tr>
                   <th scope="col">Job level</th>
-                  <th scope="col">Agreed to migrate <span>Manual input · FTE</span></th>
+                  <th scope="col">Migratable FTE <span>User input · FTE</span></th>
                   <th scope="col">Final agreement <span>Whole numbers · FTE</span></th>
                   <th scope="col">Variance <span>Final − agreed</span></th>
                 </tr>
@@ -214,7 +214,7 @@
           </div>
           <footer class="agreement-note">
             <mc-icon icon="mi-file" size="16" />
-            <span>Agreed and exception figures are entered manually, not synced from Opportunity Assessment. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
+            <span>Migratable FTE and exception figures are entered manually. The JL total is only a suggested starting value; review or change it, then confirm Migratable FTE. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
           </footer>
           <p v-if="aboveAgreed" class="agreement-warning">Final FTE exceeds the agreed figure for {{ aboveAgreed }}. Review the variance before submitting.</p>
         </section>
