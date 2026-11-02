@@ -1,4 +1,4 @@
-.pa-page { --pa-ink: #143247; --pa-muted: #607989; --pa-line: #dfe7ec; color: var(--pa-ink); padding: 8px 8px 32px; max-width: 1680px; margin: auto; }
+.pa-page { --pa-ink: #143247; --pa-muted: #607989; --pa-line: #dfe7ec; color: var(--pa-ink); padding: 8px 8px 32px; width: 100%; max-width: none; margin: 0; }
 .pa-hero { padding: 28px; border: 1px solid var(--pa-line); border-top: 4px solid #42b0d5; border-radius: 12px; background: linear-gradient(110deg, #f3f9fc, #fff 70%); }
 .pa-heading, .pa-section-heading, .pa-toolbar, .pa-actions, .pa-project-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .pa-heading, .pa-section-heading { justify-content: space-between; }
@@ -30,6 +30,30 @@
 .pa-table th { background: #f3f7f9; color: #526d7f; font-size: 11px; font-weight: 600; white-space: nowrap; padding: 13px 10px; }
 .pa-table td { border-bottom: 1px solid #e8eef2; padding: 11px 10px; vertical-align: middle; }
 .pa-table input:not([type="checkbox"]), .pa-table select { min-width: 135px; width: 100%; }
+.pa-resource-table { table-layout: fixed; min-width: 1580px; }
+.pa-resource-table th, .pa-resource-table td { height: 58px; }
+.pa-resource-table td > input:not([type="checkbox"]), .pa-resource-table td > mc-select { display: block; width: 100%; min-width: 0; height: 36px; }
+.pa-resource-table td > mc-select { --mc-select-width: 100%; }
+.pa-resource-table .pa-column--select { width: 42px; }
+.pa-resource-table .pa-column--site { width: 132px; }
+.pa-resource-table .pa-column--hiringType { width: 150px; }
+.pa-resource-table .pa-column--language { width: 140px; }
+.pa-resource-table .pa-column--pidCreationDate,
+.pa-resource-table .pa-column--releaseDate,
+.pa-resource-table .pa-column--tentativeDoj,
+.pa-resource-table .pa-column--actualDoj { width: 148px; }
+.pa-resource-table .pa-column--gscPid,
+.pa-resource-table .pa-column--requisitionId,
+.pa-resource-table .pa-column--apmmId,
+.pa-resource-table .pa-column--areaPid,
+.pa-resource-table .pa-column--areaApmmId { width: 158px; }
+.pa-resource-table .pa-column--deletedPid { width: 176px; }
+.pa-resource-table .pa-column--hiringStatus { width: 150px; }
+.pa-resource-table .pa-column--remarks { width: 230px; }
+.pa-resource-table .pa-column--region { width: 90px; }
+.pa-resource-table .pa-column--area { width: 120px; }
+.pa-resource-table .pa-column--country { width: 140px; }
+.pa-resource-table .pa-column--action { width: 90px; }
 .pa-table input[type="number"] { min-width: 90px; width: 100px; }
 .pa-page input:not([type="checkbox"]):not([type="file"]), .pa-page select, .pa-page textarea { font: inherit; font-size: 13px; color: var(--pa-ink); padding: 9px 10px; border: 1px solid #cedce4; border-radius: 6px; background: #fff; box-sizing: border-box; }
 .pa-page textarea { width: 100%; resize: vertical; }

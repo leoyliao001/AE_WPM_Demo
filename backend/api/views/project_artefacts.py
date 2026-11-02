@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from api.models import AccessEnablement, ApprovalWorkflow, BusinessCase, MigrationIntakeSubmission, ProjectResources, StakeholderRegistration
 from api.permissions.attributes_access import build_access_snapshot, get_request_email, normalize_email
-from api.services.business_case import online_case_is_approved
+from api.services.business_case import approval_progress, build_business_case, case_status, online_case_is_approved
 from api.services.project_artefacts import (
     AREA_FIELDS, BARRIER_TYPES, EXECUTION_FIELDS, HIRING_STATUSES, HIRING_TYPES,
     HR_FIELDS, IT_ITEMS, LANGUAGES, SYSTEM_CATALOGUE, access_summary, date_value,
@@ -20,6 +20,17 @@ from api.services.project_artefacts import (
 
 def _serialize(project, record, kind, email):
     source = scope_source(project)
+    business_case = BusinessCase.objects.filter(project=project).first()
+    business_case_source = {"locked": False, "status": "not_started", "population": None}
+    if business_case:
+        _, business_case_scope, _, fingerprint = build_business_case(project, business_case)
+        business_case_status = case_status(business_case, fingerprint, approval_progress(project))
+        locked = business_case_status in {"submitted", "approved"}
+        business_case_source = {
+            "locked": locked,
+            "status": business_case_status,
+            "population": sum(line["finalFte"] or 0 for line in business_case_scope["lines"]) if locked else None,
+        }
     permissions = project_permissions(project, email, kind)
     changed = bool(record and record.source_version != source["version"])
     result = {
@@ -28,6 +39,7 @@ def _serialize(project, record, kind, email):
         "region": project.region, "areas": project.areas, "countries": project.countries,
         "products": project.products,
         "sites": (project.default_location_strategies or []) + (project.custom_location_strategies or []),
+        "businessCase": business_case_source,
         "source": source, "sourceChanged": changed, "permissions": permissions,
         "saved": record is not None, "revision": record.revision if record else 0,
         "updatedAt": record.updated_at.isoformat() if record else "",
@@ -82,7 +94,7 @@ def _resource_rows(payload, record, permissions, action, email):
             value = row.get(field, "")
             normalized[field] = date_value(value, field) if field.endswith("Date") or field.endswith("Doj") else text(value, field)
         if normalized["hiringType"] not in HIRING_TYPES:
-            raise ValueError("Choose External, IJP or Efficiency for each resource.")
+            raise ValueError("Choose Efficiency, Backfill, External or IJP for each resource.")
         if normalized["language"] and normalized["language"] not in LANGUAGES:
             raise ValueError("Choose a language from the catalogue.")
         if normalized["hiringStatus"] not in HIRING_STATUSES + ["Not Applicable"]:
@@ -316,7 +328,7 @@ def resource_projects(request):
             if any(normalize_email(person.get("email")) == email for person in registration.team_members)
         ]
         projects = projects.filter(Q(requestor__iexact=email) | Q(pk__in=member_projects))
-    online = {case.project_id: case for case in BusinessCase.objects.only("project_id", "status", "review_required")}
+    online = {case.project_id: case for case in BusinessCase.objects.select_related("project")}
     from api.views.approval_cycle import _progress
     legacy_progress = {
         workflow.migration_request_id: _progress(workflow)
@@ -326,8 +338,14 @@ def resource_projects(request):
     for project in projects.order_by("-id"):
         source = scope_source(project)
         case = online.get(project.pk)
+        business_case = {"locked": False, "status": "not_started", "population": None}
         if case:
-            approved = case.status == "submitted" and not case.review_required and bool(online_case_is_approved(project))
+            _, business_case_scope, _, fingerprint = build_business_case(project, case)
+            business_case_status = case_status(case, fingerprint, approval_progress(project))
+            business_case["locked"] = business_case_status in {"submitted", "approved"}
+            business_case["status"] = business_case_status
+            business_case["population"] = sum(line["finalFte"] or 0 for line in business_case_scope["lines"]) if business_case["locked"] else None
+            approved = business_case["status"] == "approved"
         else:
             progress = legacy_progress.get(project.migration_request_id)
             approved = bool(project.business_case_submission_date and progress and progress["step"] > progress["seqLen"] and progress["completed"])
@@ -335,15 +353,16 @@ def resource_projects(request):
             resource = project.resources
         except ProjectResources.DoesNotExist:
             resource = None
-        population = source["population"]
+        population = business_case["population"]
         rows.append({
             "projectId": project.pk, "projectName": project.project_name,
             "migrationRequestId": project.migration_request_id, "products": project.products,
             "region": project.region, "areas": project.areas,
             "sites": (project.default_location_strategies or []) + (project.custom_location_strategies or []),
             "approvedFte": population if approved else None,
-            "pipelineFte": population if not approved else None,
-            "approvalStatus": "Approved" if approved else "Pipeline",
+            "pipelineFte": population if business_case["locked"] and not approved else None,
+            "approvalStatus": "Approved" if approved else "Pipeline" if business_case["locked"] else "Not locked",
+            "businessCase": business_case,
             "saved": bool(resource),
             "status": ("confirmed" if resource.source_version == source["version"] else "needs_review")
                       if resource and resource.status == "confirmed" else "draft" if resource else "not_started",

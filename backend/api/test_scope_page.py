@@ -64,10 +64,12 @@ class ScopePageTests(TestCase):
         self.assertTrue(all(line["lockedAt"] for line in response.data["lines"]))
         self.assertEqual(len({line["lockedAt"] for line in response.data["lines"]}), 1)
 
-    def test_lock_requires_attachment_and_all_values_without_partial_writes(self):
-        self.assertEqual(self.save(self.payload("lock")).status_code, 400)
-        self.assertTrue(all(line.final_fte is None for line in self.statement.lines.all()))
-        self.upload()
+    def test_lock_does_not_require_attachment_and_validates_all_values(self):
+        response = self.save(self.payload("lock"))
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["pageLocked"])
+        self.assertFalse(ScopeStatementEvidence.objects.exists())
+        self.assertEqual(self.save({"action": "unlock"}).status_code, 200)
         payload = self.payload("lock")
         payload["lines"][2]["finalFte"] = None
         self.assertEqual(self.save(payload).status_code, 400)

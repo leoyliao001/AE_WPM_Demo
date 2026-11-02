@@ -16,18 +16,16 @@
             </div>
           </div>
           <div class="pa-project-meta"><strong>{{ record.projectName }}</strong><span>{{ record.migrationRequestId }}</span><span>{{ record.products.join(', ') || 'No product' }} / {{ record.region }}</span><span>{{ dirty ? 'Unsaved changes' : record.updatedAt ? `Last saved ${dateTime(record.updatedAt)}` : 'Not yet saved' }}</span></div>
+          <div class="pa-tabs" role="tablist" aria-label="Resource views"><button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" @click="tab = item.id">{{ item.label }}</button></div>
           <div class="pa-metrics">
-            <article class="pa-metric"><span>Scope capacity</span><strong>{{ record.source.population ?? '—' }} <small>FTE</small></strong><small>Locked final Scope FTE</small></article>
-            <article class="pa-metric"><span>Resource positions</span><strong>{{ record.rows.length }}</strong><small>One row per project FTE</small></article>
-            <article class="pa-metric"><span>Onboarding completed</span><strong>{{ onboarded }}</strong><small>Actual DOJ and APMM ID recorded</small></article>
-            <article class="pa-metric" :class="{ 'pa-metric--risk': atRisk }"><span>At risk</span><strong>{{ atRisk }}</strong><small>Across all hiring positions</small></article>
-            <article class="pa-metric"><span>Area PIDs submitted</span><strong>{{ areaSubmitted }} / {{ record.rows.length }}</strong><small>Submitted Area records are read-only</small></article>
+            <article v-for="metric in metrics" :key="metric.label" class="pa-metric" :class="{ 'pa-metric--risk': metric.risk && metric.value > 0 }">
+              <span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.note }}</small>
+            </article>
           </div>
         </header>
         <div v-if="!record.source.ready" class="pa-feedback">Complete and submit Scope before confirming Resources. Draft positions can be prepared now. <router-link class="pa-link" :to="`/migration-dashboard/${projectId}/scope-statement`">Open Scope</router-link></div>
         <div v-if="record.sourceChanged" class="pa-feedback">Scope changed since the last save. Reconcile resource positions with the current locked FTE before confirming.</div>
         <div v-if="record.frozen" class="pa-feedback">Confirmed resources are frozen. Reopen with a reason before making changes.</div>
-        <div class="pa-tabs" role="tablist" aria-label="Resource views"><button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" @click="tab = item.id">{{ item.label }}</button></div>
         <section class="pa-panel">
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
@@ -39,7 +37,7 @@
           </div>
           <p v-if="tab === 'execution'">Maintain GSC site, hiring type, language and PID details here. Hiring and onboarding fields sync from HR / TAA. For Efficiency, Actual DOJ means the date the FTE is onboarded onto this project.</p>
           <p v-else-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
-          <p v-else>HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
+              <p v-else>HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
           <p class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
           <div class="pa-toolbar">
             <input v-model="query" type="search" placeholder="Search positions, PID, APMM ID..." aria-label="Search resources" />
@@ -47,19 +45,19 @@
             <select v-model="statusFilter" aria-label="Filter hiring status"><option value="">All statuses</option><option v-for="status in [...record.hiringStatuses, 'Not Applicable']" :key="status">{{ status }}</option></select>
             <button class="pa-text-button" @click="resetFilters">Reset filters</button>
           </div>
-          <div class="pa-scroll"><table class="pa-table">
-            <thead><tr><th><input type="checkbox" aria-label="Select visible resource rows" :checked="visibleRows.length > 0 && visibleRows.every(row => selected.includes(row.id))" @change="selectAll($event.target.checked)" /></th><th v-for="column in columns" :key="column.key">{{ column.label }}</th><th>Action</th></tr></thead>
+          <div class="pa-scroll"><table class="pa-table pa-resource-table">
+            <thead><tr><th class="pa-column--select"><input type="checkbox" aria-label="Select visible resource rows" :checked="visibleRows.length > 0 && visibleRows.every(row => selected.includes(row.id))" @change="selectAll($event.target.checked)" /></th><th v-for="column in columns" :key="column.key" :class="`pa-column--${column.key}`">{{ column.label }}</th><th class="pa-column--action">Action</th></tr></thead>
             <tbody><tr v-for="row in visibleRows" :key="row.id">
-              <td><input v-model="selected" type="checkbox" :value="row.id" :aria-label="`Select position ${row.gscPid || row.id}`" /></td>
-              <td v-for="column in columns" :key="column.key">
-                <select v-if="column.options && cellEditable(row, column.key)" v-model="row[column.key]" :aria-label="column.label" @change="column.key === 'hiringType' && changeHiringType(row)">
-                  <option value="">Select</option><option v-for="option in column.options" :key="option">{{ option }}</option>
-                </select>
+              <td class="pa-column--select"><input v-model="selected" type="checkbox" :value="row.id" :aria-label="`Select position ${row.gscPid || row.id}`" /></td>
+              <td v-for="column in columns" :key="column.key" :class="`pa-column--${column.key}`">
+                <mc-select v-if="column.options && cellEditable(row, column.key)" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
+                  <mc-option value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :value="option">{{ option }}</mc-option>
+                </mc-select>
                 <input v-else-if="cellEditable(row, column.key)" v-model="row[column.key]" :type="column.date ? 'date' : 'text'" :aria-label="column.label" maxlength="500" />
                 <span v-else-if="column.key === 'hiringStatus'" class="pa-status" :class="{ 'pa-status--at_risk': row.hiringStatus === 'At Risk', 'pa-status--confirmed': row.hiringStatus === 'Onboarded' }">{{ row.hiringStatus }}</span>
                 <span v-else>{{ row[column.key] || '—' }}</span>
               </td>
-              <td><span v-if="tab === 'area'" class="pa-status">{{ row.areaLockedAt ? 'Submitted' : 'Draft' }}</span><button v-else-if="tab === 'execution'" class="pa-text-button" :disabled="!canEdit || !!row.areaLockedAt" @click="removeRow(row)">Remove</button><span v-else>Synced to Execution</span></td>
+              <td class="pa-column--action"><span v-if="tab === 'area'" class="pa-status">{{ row.areaLockedAt ? 'Submitted' : 'Draft' }}</span><button v-else-if="tab === 'execution'" class="pa-text-button" :disabled="!canEdit || !!row.areaLockedAt" @click="removeRow(row)">Remove</button><span v-else>Synced to Execution</span></td>
             </tr><tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : 'No positions yet. Add a position or import the Execution sheet from an exported workbook.' }}</td></tr></tbody>
           </table></div>
           <div class="pa-section-heading" style="margin-top: 18px"><span class="pa-note">{{ visibleRows.length }} visible · {{ selected.length }} selected · {{ record.rows.length }} total</span><a v-if="selected.length" class="pa-link" :href="reminderLink">Compose reminder for selected positions</a></div>
@@ -79,6 +77,8 @@ import PageShell from '../components/PageShell.vue'
 import { useProjectArtefact } from '../composables/useProjectArtefact.js'
 import { exportArtefact } from '../utils/projectArtefactExport.js'
 import '@maersk-global/mds-components-core/mc-button'
+import '@maersk-global/mds-components-core/mc-select'
+import '@maersk-global/mds-components-core/mc-option'
 import '../styles/projectArtefacts.css'
 
 const { record, projectId, backTo, loading, busy, error, success, dirty, editable, load, save } = useProjectArtefact('resources')
@@ -94,9 +94,76 @@ const fileInput = ref(null)
 const canEdit = computed(() => editable.value && record.value.permissions.edit)
 const canEditArea = computed(() => editable.value && record.value.permissions.area)
 const sites = computed(() => [...new Set([...(record.value?.sites || []), ...(record.value?.rows || []).map(row => row.site)].filter(Boolean))])
-const onboarded = computed(() => record.value?.rows.filter(row => row.actualDoj && row.apmmId).length || 0)
-const atRisk = computed(() => record.value?.rows.filter(row => row.hiringStatus === 'At Risk').length || 0)
-const areaSubmitted = computed(() => record.value?.rows.filter(row => row.areaLockedAt).length || 0)
+const resourceRows = computed(() => record.value?.rows || [])
+const executionRows = computed(() => resourceRows.value)
+const areaRows = computed(() => resourceRows.value)
+const hrRows = computed(() => resourceRows.value.filter(row => row.hiringType !== 'Efficiency'))
+const approvedFtes = computed(() => record.value?.businessCase?.locked ? record.value.businessCase.population : null)
+const countRows = (rows, predicate) => rows.filter(predicate).length
+const onboarded = rows => countRows(rows, row => row.actualDoj && row.apmmId)
+const atRisk = rows => countRows(rows, row => row.hiringStatus === 'At Risk')
+const metricCards = {
+  execution: () => [
+    {
+      label: 'Approved FTEs',
+      value: approvedFtes.value ?? '—',
+      note: approvedFtes.value != null ? 'FTEs in the approved Business Case' : 'Available after Business Case approval',
+    },
+    {
+      label: 'Efficiency/Backfill',
+      value: `${countRows(executionRows.value, row => row.hiringType === 'Efficiency')} / ${countRows(executionRows.value, row => row.hiringType === 'Backfill')}`,
+      note: 'Efficiency / Backfill positions',
+    },
+    { label: 'Onboarding Completed', value: onboarded(executionRows.value), note: 'Actual DOJ and APMM ID recorded' },
+    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'HR / TAA positions with hiring status At Risk', risk: true },
+    {
+      label: 'Area PIDs Received',
+      value: `${countRows(areaRows.value, row => row.areaPid && row.areaApmmId && row.releaseDate)} / ${approvedFtes.value ?? '—'}`,
+      note: 'Area PID, Area APMM ID and Release Date received',
+    },
+  ],
+  area: () => [
+    {
+      label: 'Area PIDs Received',
+      value: `${countRows(areaRows.value, row => row.areaPid)} / ${areaRows.value.length}`,
+      note: 'Positions with an Area PID',
+    },
+    {
+      label: 'Area APMM IDs Received',
+      value: `${countRows(areaRows.value, row => row.areaApmmId)} / ${areaRows.value.length}`,
+      note: 'Positions with an Area APMM ID',
+    },
+    {
+      label: 'Release Dates Received',
+      value: `${countRows(areaRows.value, row => row.releaseDate)} / ${areaRows.value.length}`,
+      note: 'Positions with a release date',
+    },
+    {
+      label: 'Area Details Submitted',
+      value: `${countRows(areaRows.value, row => row.areaLockedAt)} / ${areaRows.value.length}`,
+      note: 'Submitted Area records are read-only',
+    },
+  ],
+  hr: () => [
+    {
+      label: 'Hiring Required',
+      value: `${countRows(executionRows.value, row => row.hiringType === 'External' || row.hiringType === 'IJP')} / ${record.value?.source?.population ?? '—'}`,
+      note: 'External and IJP positions / confirmed Scope FTE',
+    },
+    {
+      label: 'Efficiency/Backfill FTEs',
+      value: countRows(executionRows.value, row => row.hiringType === 'Efficiency'),
+      note: 'Execution positions with Hiring Type Efficiency',
+    },
+    {
+      label: 'Onboarding Completed',
+      value: `${countRows(hrRows.value, row => row.hiringStatus === 'Onboarded')} / ${countRows(executionRows.value, row => row.hiringType === 'External' || row.hiringType === 'IJP')}`,
+      note: 'Onboarded / External and IJP positions',
+    },
+    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Positions with hiring status At Risk', risk: true },
+  ],
+}
+const metrics = computed(() => (metricCards[tab.value] || metricCards.execution)())
 const baseColumns = computed(() => [
   { key: 'site', label: 'GSC Site', options: [...new Set([...record.value.siteOptions, ...sites.value])] }, { key: 'hiringType', label: 'Hiring Type', options: record.value.hiringTypes },
   { key: 'language', label: 'Language', options: record.value.languages }, { key: 'pidCreationDate', label: 'PID Creation Date', date: true },
@@ -121,11 +188,18 @@ const ready = computed(() => record.value?.source.ready && record.value.rows.len
     (row.hiringType === 'Efficiency' ? row.deletedPid : row.hiringStatus === 'Onboarded' && row.requisitionId)))
 const reminderLink = computed(() => `mailto:${encodeURIComponent(record.value?.requestor || '')}?subject=${encodeURIComponent(`Resource update: ${record.value?.migrationRequestId}`)}&body=${encodeURIComponent(`Please review these ${selected.value.length} resource positions:\n${record.value?.rows.filter(row => selected.value.includes(row.id)).map(row => `${row.gscPid || row.id} - ${row.site} - ${row.hiringType}`).join('\n')}\n${location.href}`)}`)
 const dateTime = value => new Date(value).toLocaleString('en-GB')
+function selectCellOption(row, key, event) {
+  const value = event.detail?.value ?? event.currentTarget.value
+  if (row[key] === value) return
+  row[key] = value
+  if (key === 'hiringType') changeHiringType(row)
+}
 function cellEditable(row, key) {
   if (tab.value === 'area') return canEditArea.value && !row.areaLockedAt
   if (!canEdit.value) return false
   if (tab.value === 'hr') return hrColumns.value.some(column => column.key === key)
-  return baseColumns.value.some(column => column.key === key) || (row.hiringType === 'Efficiency' && ['deletedPid', 'actualDoj', 'apmmId'].includes(key))
+  return baseColumns.value.some(column => column.key === key) || key === 'requisitionId' ||
+    (row.hiringType === 'Efficiency' && ['deletedPid', 'actualDoj', 'apmmId'].includes(key))
 }
 function newRow() {
   return Object.fromEntries([

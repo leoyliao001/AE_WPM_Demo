@@ -526,8 +526,6 @@ def save_scope_statement(request, project_id):
         if action == "lock":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
                 return Response({"error": "Manually confirm Migratable FTE before locking the page."}, status=400)
-            if not statement.attachments.exists():
-                return Response({"error": "Upload an attachment before locking the page."}, status=400)
             if len(all_lines) != 3 or not statement.scope_text.strip() or any(
                 line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None
                 for line in all_lines
@@ -546,8 +544,8 @@ def save_scope_statement(request, project_id):
                 return Response({"error": "Unlock the page and manually confirm Migratable FTE before submitting."}, status=400)
             if not statement.scope_text.strip():
                 return Response({"error": "High-level scope statement is required before submitting."}, status=status.HTTP_400_BAD_REQUEST)
-            if len(all_lines) != 3 or any(line.locked_at is None for line in all_lines) or not statement.attachments.exists():
-                return Response({"error": "Lock the whole page with an attachment before submitting."}, status=status.HTTP_400_BAD_REQUEST)
+            if len(all_lines) != 3 or any(line.locked_at is None for line in all_lines):
+                return Response({"error": "Lock the whole page before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             statement.ambition_fte = Decimal(str(project.fte_number or 0))
             statement.final_project_fte = sum(int(line.final_fte or 0) for line in all_lines)
             if statement.waves and sum(wave["fte"] for wave in statement.waves) != statement.final_project_fte:

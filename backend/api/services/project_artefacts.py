@@ -22,7 +22,7 @@ IT_ITEMS = [
     {"id": "mfa", "label": "MFA token / authenticator"},
 ]
 BARRIER_TYPES = ["Licensing", "Permissions", "Hardware", "Network", "Security", "Other"]
-HIRING_TYPES = ["External", "IJP", "Efficiency"]
+HIRING_TYPES = ["Efficiency", "Backfill", "External", "IJP"]
 HIRING_STATUSES = ["Pending", "In Progress", "At Risk", "Onboarded"]
 LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Danish", "Dutch", "Other"]
 EXECUTION_FIELDS = ["site", "hiringType", "language", "pidCreationDate", "gscPid", "deletedPid"]

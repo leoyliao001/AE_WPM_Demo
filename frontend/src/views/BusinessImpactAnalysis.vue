@@ -244,7 +244,7 @@ function exportData() {
 </script>
 
 <style scoped>
-.bia-page { max-width: 1540px; }
+.bia-page { width: 100%; max-width: none; margin: 0; }
 .bia-hero { border-top-color: #1d7f91; background: linear-gradient(115deg, #f1f8f9, #fff 75%); }
 .bia-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 26px; border-top: 1px solid #dfe7ec; padding-top: 22px; gap: 20px; }
 .bia-overview > div { border-right: 1px solid #dfe7ec; padding-right: 16px; }

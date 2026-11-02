@@ -57,14 +57,14 @@
                     <ol>
                       <li>For each of <strong>JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
                       <li>Enter and explicitly confirm the independent <strong>Migratable FTE</strong> total. It is initially prefilled from the agreed JL total; changing its value clears confirmation.</li>
-                      <li>Upload at least one shared file in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
+                      <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
                       <li>The single <strong>Lock / Unlock</strong> control applies to the whole page, including FTE, scope text, assumptions, migration waves and uploads. Downloads remain available while locked.</li>
                     </ol>
                   </section>
                   <section>
                     <h3>Submit and downstream effects</h3>
                     <ul>
-                      <li>Submission requires non-empty scope text (maximum 2,000 characters), manually confirmed Migratable FTE, a shared attachment and the whole page locked.</li>
+                      <li>Submission requires non-empty scope text (maximum 2,000 characters), manually confirmed Migratable FTE and the whole page locked.</li>
                       <li>Business Case and Charter read the manual Migratable FTE total. Financial calculations and final delivery commitments continue to use Final FTE by job level.</li>
                       <li>Final project FTE is the sum of the three final FTE values; Intake ambition is retained as the baseline, not a required matching total.</li>
                       <li>Waves are optional. If provided, each needs a name, valid date and non-negative whole-number FTE; the wave FTE total must equal final project FTE.</li>
@@ -286,7 +286,7 @@
             <span class="readiness-icon" :class="{ 'readiness-icon--complete': !statement.reviewRequired && (ready || isSubmitted) }"><mc-icon :icon="!statement.reviewRequired && (ready || isSubmitted) ? 'mi-check' : 'mi-shield'" size="22" /></span>
             <div>
               <strong>{{ statement.reviewRequired ? 'Scope review required' : isSubmitted ? 'Scope commitment secured' : ready ? 'Ready to submit' : 'Build your scope commitment' }}</strong>
-              <p>{{ statement.reviewRequired ? 'Review changed Intake sources and resubmit Scope to restore Business Case readiness.' : isSubmitted ? 'Final project FTE is recorded. This statement is frozen.' : 'Confirm Migratable FTE, complete Scope text, all FTE values and an attachment, then lock the whole page to submit.' }}</p>
+              <p>{{ statement.reviewRequired ? 'Review changed Intake sources and resubmit Scope to restore Business Case readiness.' : isSubmitted ? 'Final project FTE is recorded. This statement is frozen.' : 'Confirm Migratable FTE, complete Scope text and all FTE values, then lock the whole page to submit.' }}</p>
             </div>
           </div>
           <div class="readiness-steps" aria-label="Submission requirements">
@@ -391,7 +391,7 @@ function exceptionPercentage(value) {
 }
 
 const canLockPage = computed(() => completeField('agreedFte') && completeField('notAgreedFte') &&
-  allFinalEntered.value && evidenceCount.value > 0 && Boolean(scopeText.value.trim()) &&
+  allFinalEntered.value && Boolean(scopeText.value.trim()) &&
   validNumber(migratableFte.value) && migratableFteConfirmed.value)
 
 function formatDate(value) {
@@ -588,7 +588,7 @@ watch(projectId, loadData, { immediate: true })
 }
 .scope-page mc-icon { color: inherit; }
 .scope-page :deep(.page-content) { padding: 28px 32px 64px; }
-.scope-workspace { width: 100%; max-width: 1520px; margin: 0 auto; }
+.scope-workspace { width: 100%; max-width: none; margin: 0; }
 .scope-hero { border: 1px solid var(--scope-line); background: #f1f5f8; border-radius: 16px; padding: 28px; margin-bottom: 26px; }
 .scope-hero__top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
 .eyebrow { color: #658195; font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; margin: 0 0 8px; }

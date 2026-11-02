@@ -10,9 +10,10 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from api.models import (
-    AccessEnablement, MigrationIntakeSubmission, ProjectAttributesAccess,
+    AccessEnablement, BusinessCase, MigrationIntakeSubmission, ProjectAttributesAccess,
     ProjectResources, ScopeStatement, ScopeStatementLine, StakeholderRegistration,
 )
+from api.services.business_case import build_business_case
 from api.services.project_artefacts import IT_ITEMS
 
 
@@ -157,6 +158,10 @@ class ProjectArtefactTests(TestCase):
         self.assertEqual(self.post("resources", "submit_area").status_code, 200)
         self.assertEqual(self.post("resources", "submit").status_code, 200)
 
+    def test_backfill_is_a_valid_hiring_type(self):
+        response = self.post("resources", rows=[{**self.resource(), "hiringType": "Backfill"}])
+        self.assertEqual(response.status_code, 200, response.data)
+
     def test_resource_validation_is_atomic_and_scope_required(self):
         self.assertEqual(self.post("resources", rows=[self.resource()]).status_code, 200)
         for row in ({**self.resource(), "actualDoj": "bad"}, {**self.resource(), "hiringType": "invalid"},
@@ -243,10 +248,16 @@ class ProjectArtefactTests(TestCase):
         self.client.credentials(HTTP_X_USER_EMAIL="local.dev@localhost")
         self.assertEqual(self.post("access-enablement", itItems=[{"id": item["id"], "qtyConfirmed": 2} for item in IT_ITEMS]).status_code, 400)
 
-    def test_landing_only_shows_accessible_projects_and_never_uses_sample_capacity(self):
+    def test_landing_only_shows_locked_business_case_capacity(self):
         response = self.client.get("/api/migration-dashboard/resources/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)
+        self.assertIsNone(response.data["rows"][0]["pipelineFte"])
+        self.assertEqual(response.data["rows"][0]["approvalStatus"], "Not locked")
+        record = BusinessCase.objects.create(project=self.project, status="submitted")
+        record.source_fingerprint = build_business_case(self.project, record)[3]
+        record.save(update_fields=["source_fingerprint"])
+        response = self.client.get("/api/migration-dashboard/resources/")
         self.assertEqual(response.data["rows"][0]["pipelineFte"], 1)
         self.scope.status = "draft"
         self.scope.save()
