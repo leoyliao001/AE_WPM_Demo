@@ -13,15 +13,6 @@
               Start a migration <span aria-hidden="true">&#8594;</span>
             </button>
           </div>
-          <div class="hero-highlights" aria-label="WPM Pulse benefits">
-            <div v-for="highlight in heroHighlights" :key="highlight.title" class="hero-highlight">
-              <span class="hero-highlight__icon" aria-hidden="true"><mc-icon :icon="highlight.icon" size="18" /></span>
-              <span>
-                <strong>{{ highlight.title }}</strong>
-                <small>{{ highlight.description }}</small>
-              </span>
-            </div>
-          </div>
         </div>
         <div class="hero-image" role="img" aria-label="Colleagues collaborating around a table" />
       </section>
@@ -155,13 +146,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => exploreResizeObserver?.disconnect())
 
-const heroHighlights = [
-  { icon: 'mi-shield-check', title: 'Govern', description: 'Toll gates, approvals & audit-ready evidence' },
-  { icon: 'mi-arrow-right', title: 'Execute', description: 'One standard lifecycle for every migration' },
-  { icon: 'mi-users', title: 'Engage', description: 'Business, MSPs & partners connected' },
-  { icon: 'mi-chart-bars-vertical', title: 'Measure', description: 'Portfolio insight & value realised' }
-]
-
 const exploreCards = [
   {
     kicker: 'Track your migrations',
@@ -250,16 +234,15 @@ const go = (route) => router.push(route)
 
 .welcome-scroll { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto; padding-bottom: 0; }
 .hero-section, .hub-section { margin: 0; width: 100%; }
-.hero-section { background: linear-gradient(120deg, #eaf6fa 0%, #f8fcfd 50%, #edf7fa 100%); border-bottom: 1px solid var(--line); display: grid; flex-shrink: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: clamp(290px, 33vh, 350px); }
-.hero-copy { align-self: center; background: transparent; min-width: 0; padding: 16px clamp(24px, 2vw, 32px) 16px 24px; }
+.hero-section { background: linear-gradient(120deg, #eaf6fa 0%, #f8fcfd 50%, #edf7fa 100%); border-bottom: 1px solid var(--line); display: grid; flex-shrink: 0; grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); min-height: clamp(290px, 33vh, 350px); }
+.hero-copy { align-self: center; background: transparent; min-width: 0; padding: 32px; }
 .eyebrow, .card-kicker { color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: .14em; margin: 0; text-transform: uppercase; }
-.hero-title { color: var(--navy); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 0 0 12px; }
-.hero-title { position: relative; top: -20px; }
+.hero-title { color: var(--navy); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: 40px; font-weight: 700; letter-spacing: 0; line-height: 1.15; margin: 0 0 28px; }
 .hero-title span { color: inherit; }
 .eyebrow span { color: var(--cyan); }
-.hero-slogan { color: var(--blue); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp(18px, 2vw, 24px); font-weight: 700; letter-spacing: -.025em; line-height: 1.08; margin: 0 0 13px 12px; white-space: nowrap; }
-.hero-description { color: #60758a; font-size: 15px; line-height: 1.55; margin: 0; max-width: 430px; }
-.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.hero-slogan { color: var(--blue); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 0; line-height: 1.4; margin: 0 0 24px; text-wrap: balance; }
+.hero-description { color: #60758a; font-size: 15px; line-height: 1.55; margin: 0; max-width: 460px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
 .button { border: 1px solid var(--navy); border-radius: 3px; cursor: pointer; font: 700 12px 'Maersk Text', sans-serif; padding: 11px 16px; transition: transform .2s ease, box-shadow .2s ease; }
 .button:hover { box-shadow: 0 5px 12px rgba(11, 43, 75, .16); transform: translateY(-2px); }
 .button--primary { background: var(--navy); color: #fff; }
@@ -316,11 +299,11 @@ const go = (route) => router.push(route)
 @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 821px) {
   .hero-section { min-height: calc(clamp(290px, 33vh, 350px) + 50px); }
-  .hero-copy { padding-top: 37px; padding-bottom: 37px; }
-  .hero-title { font-size: clamp(28px, 3vw, 34px); margin-bottom: 8px; }
-  .hero-slogan { font-size: 20px; margin-bottom: 8px; }
-  .hero-description { font-size: 13px; line-height: 1.35; }
-  .hero-actions { margin-top: 10px; }
+  .hero-copy { padding-top: 32px; padding-bottom: 32px; }
+  .hero-title { font-size: 40px; margin-bottom: 28px; }
+  .hero-slogan { font-size: 22px; margin-bottom: 24px; }
+  .hero-description { font-size: 15px; line-height: 1.55; }
+  .hero-actions { margin-top: 22px; }
   .hero-highlights { gap: 10px; margin-top: 14px; }
   .hero-highlight { gap: 4px; }
   .hero-highlight__icon { height: 28px; width: 28px; }
@@ -337,15 +320,15 @@ const go = (route) => router.push(route)
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
 @media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
 @media (max-width: 820px) { .hub-principles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 821px) and (max-width: 1100px) { .hero-slogan { font-size: clamp(14px, 1.7vw, 18px); } }
-@media (max-width: 520px) { .hero-title { font-size: 26px; } .hero-slogan { font-size: clamp(11px, 3.4vw, 18px); margin-left: 0; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
+@media (min-width: 821px) and (max-width: 1100px) { .hero-title { font-size: 32px; } .hero-slogan { font-size: 18px; } }
+@media (max-width: 520px) { .hero-title { font-size: 28px; } .hero-slogan { font-size: 18px; margin-left: 0; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
 @media (min-width: 821px) and (max-height: 850px) {
   .hero-section { min-height: 280px; }
-  .hero-copy { padding: 35px 20px 35px 24px; }
-  .hero-title { font-size: 30px; line-height: 1.05; margin-bottom: 6px; }
-  .hero-slogan { font-size: 16px; line-height: 1.02; margin-bottom: 7px; }
-  .hero-description { font-size: 13px; line-height: 1.35; }
-  .hero-actions { margin-top: 8px; }
+  .hero-copy { padding: 28px 24px; }
+  .hero-title { font-size: 34px; line-height: 1.15; margin-bottom: 24px; }
+  .hero-slogan { font-size: 20px; line-height: 1.4; margin-bottom: 20px; }
+  .hero-description { font-size: 14px; line-height: 1.5; }
+  .hero-actions { margin-top: 18px; }
   .button { padding: 8px 12px; }
   .hero-highlights { gap: 8px; margin-top: 10px; }
   .hero-highlight { gap: 4px; }
@@ -377,11 +360,11 @@ const go = (route) => router.push(route)
 }
 @media (min-width: 821px) and (max-height: 700px) {
   .hero-section { min-height: 240px; }
-  .hero-copy { padding-top: 31px; padding-bottom: 31px; }
-  .hero-title { font-size: 26px; margin-bottom: 4px; }
-  .hero-slogan { font-size: 14px; line-height: 1; margin-bottom: 5px; }
-  .hero-description { font-size: 11px; line-height: 1.25; }
-  .hero-actions { margin-top: 5px; }
+  .hero-copy { padding-top: 24px; padding-bottom: 24px; }
+  .hero-title { font-size: 32px; margin-bottom: 20px; }
+  .hero-slogan { font-size: 18px; line-height: 1.35; margin-bottom: 16px; }
+  .hero-description { font-size: 13px; line-height: 1.45; }
+  .hero-actions { margin-top: 16px; }
   .button { padding: 6px 10px; }
   .hero-highlights { gap: 6px; margin-top: 7px; }
   .hero-highlight { gap: 2px; }
