@@ -425,24 +425,25 @@ import '@maersk-global/mds-components-core/mc-option'
 const router = useRouter()
 const route = useRoute()
 
-// /project-dashboard = current user's projects; /migration-dashboard = all projects
+const projectScope = ref('mine')
 const isMyProjectsView = computed(() => route.name === 'ProjectDashboard')
+const isPersonalScope = computed(() => isMyProjectsView.value && projectScope.value !== 'all')
 const pageTitle = computed(() =>
-  isMyProjectsView.value ? 'My Projects' : 'Migration Dashboard'
+  isMyProjectsView.value ? (isPersonalScope.value ? 'My Projects' : 'All Projects') : 'Migration Dashboard'
 )
 const pageSubtitle = computed(() =>
-  isMyProjectsView.value
+  isPersonalScope.value
     ? 'Only projects you submitted — open a project to track migration progress.'
     : 'Review submitted migration intake requests — overview of all projects and drill-down into progress.'
 )
 const pageTag = computed(() =>
-  isMyProjectsView.value ? 'My Projects' : 'Migration Dashboard'
+  isMyProjectsView.value ? (isPersonalScope.value ? 'My Projects' : 'All Projects') : 'Migration Dashboard'
 )
 const emptyHeading = computed(() =>
-  isMyProjectsView.value ? 'No projects under your account yet' : 'No submitted projects yet'
+  isPersonalScope.value ? 'No projects under your account yet' : 'No submitted projects yet'
 )
 const emptyBody = computed(() =>
-  isMyProjectsView.value
+  isPersonalScope.value
     ? 'Projects you submit via the migration intake form will appear here.'
     : 'Submit a migration intake form to see projects appear here.'
 )
@@ -1458,6 +1459,7 @@ const loadProjects = async () => {
 
     const params = isMyProjectsView.value ? { mine: 1 } : undefined
     const { data } = await axios.get('/api/migration-dashboard/projects/', { params })
+    projectScope.value = data.scope === 'all' ? 'all' : 'mine'
     projects.value = data.rows ?? []
     summary.value = data.summary ?? summary.value
   } catch (error) {
