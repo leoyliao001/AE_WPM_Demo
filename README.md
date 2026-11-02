@@ -4,6 +4,16 @@ A full-stack Migration Portal demo with a separated frontend and backend: Vue 3 
 
 ---
 
+## Opportunity Assessment task scoping
+
+The assessment page reuses `refer doc/WPM_Pulse_OA_Task_Scoping.html`, including its complete 1,670-task catalogue and both scoping methods. Keep that file in the deployed repository: Vite bundles the UI, and the backend reads its catalogue to validate immutable task taxonomy. Restart the backend and rebuild the frontend together when changing the template.
+
+Apply migration `0056_opportunity_assessment_scope` before deploying the new page. `opportunity_assessment_scope` stores both method datasets, the active method and a revision per project. Saving also synchronizes the active method into `opportunity_assessment`; the other method remains in the project snapshot to avoid double counting in downstream consumers. New row fields, including country, migration decision and exception, are retained in `scope_details`. Existing task rows and their legacy details are retained on first load.
+
+Save and Reload use the authenticated project `opportunity-assessment/task-scope/` API, not browser local storage. Access remains restricted to the intake requestor and Super Admin. Stale revisions are rejected instead of silently overwriting another edit. CSV import/export uses the supplied template format and locks uploads to the project's migration request ID.
+
+FTE follows the supplied template: `volume * monthly frequency * minutes per unit / 60 / 140`. The 140 productive hours per month is the template's current assumption; confirm it before adopting a different organization-wide FTE standard.
+
 ## Prerequisites (Windows)
 
 This guide targets **Windows** with **Command Prompt (CMD)**. Install the following before you start:

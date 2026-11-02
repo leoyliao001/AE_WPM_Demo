@@ -60,7 +60,7 @@ OA_FIELD_LABELS = {
     "migratable_to_gsc": "Migratable to GSC as per service catalogue",
     "fte_calculation": "FTE Calculation",
 }
-OA_SKIP_FIELDS = frozenset({"id", "created_at", "updated_at"})
+OA_SKIP_FIELDS = frozenset({"id", "created_at", "updated_at", "scope_details"})
 
 
 def _all_fields():

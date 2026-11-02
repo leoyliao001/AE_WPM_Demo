@@ -371,6 +371,7 @@ class OpportunityAssessment(models.Model):
     task_found_in_service_catalog = models.CharField(max_length=255, blank=True, default="")
     migratable_to_gsc = models.CharField(max_length=255, blank=True, default="")
     fte_calculation = models.CharField(max_length=64, blank=True, default="")
+    scope_details = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -383,6 +384,17 @@ class OpportunityAssessment(models.Model):
     
     def __str__(self):
         return f"{self.migration_request_id} — {self.task_name or self.l4 or self.id}"
+
+
+class OpportunityAssessmentScope(models.Model):
+    project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="task_scope")
+    state = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "opportunity_assessment_scope"
 
 
 class ApprovalInput(models.Model):

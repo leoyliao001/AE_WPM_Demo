@@ -1,4 +1,5 @@
 from django.urls import path
+from api.views.opportunity_task_scope import opportunity_task_scope
 from api.views.business_impact_analysis import business_impact_analysis
 from api.views.project_artefacts import project_artefact, resource_projects
 from api.views.business_case import (
@@ -42,6 +43,7 @@ from api.views.stakeholder_registration import (
 )
 
 urlpatterns = [
+    path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),
     path("projects/<int:project_id>/business-impact-analysis/", business_impact_analysis, name="business-impact-analysis"),
     path("resources/", resource_projects, name="resource-projects"),
     path("projects/<int:project_id>/resources/", project_artefact, {"kind": "resources"}, name="project-resources"),
