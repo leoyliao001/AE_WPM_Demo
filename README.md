@@ -102,13 +102,42 @@ python manage.py loaddata scripts\api_data_dump.json
 > Production does not use SQLite at all; the **AE_WPM** service runs against
 > MSSQL (see **Port policy**).
 >
-> On the server (MSSQL), after pulling code that includes new migration files,
-> run:
->
-> ```cmd
-> cd /d "c:\fcous\AE WPM Demo\backend"
-> python manage.py migrate --database=default
-> ```
+### 1c. Sync the pulled changes to SQL Server
+
+Production does not use `backend/db.sqlite3`. After pulling a revision that
+contains new Django migration files, run the migration against SQL Server from
+an elevated PowerShell session on the deployment server. The production
+service uses the repository virtual environment at `E:\AE_WPM_Demo\.venv`.
+
+```powershell
+Set-Location E:\AE_WPM_Demo\backend
+
+# Confirm the database connection and see what will be applied.
+& E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py showmigrations api
+& E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py migrate api --plan
+
+# Apply pending migrations to the configured SQL Server database.
+& E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py migrate api --verbosity 1
+
+# Verify the application and confirm that no migrations remain pending.
+& E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py check
+& E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py showmigrations api
+& E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py migrate api --plan
+```
+
+The SQL Server target is configured through the server `.env` file and/or
+service environment variables, including `DJANGO_DB_NAME`, `DJANGO_DB_HOST`,
+`DJANGO_DB_DRIVER`, and `DJANGO_DB_EXTRA_PARAMS`. Do not replace these with
+the local SQLite database or commit secrets to the repository. The account
+running the command must have the same SQL Server permissions as the `AE_WPM`
+service, which normally uses Windows Trusted Connection.
+
+If the migration command reports a historical migration-record or schema
+inconsistency, inspect the database before making manual changes. The
+repository helper [`repair_and_migrate_mssql.py`](backend/scripts/repair_and_migrate_mssql.py)
+is for that specific recovery case; it is not the normal release command.
+Never delete migration records or alter production data to force a migration
+without an approved database backup and DBA-reviewed recovery plan.
 
 ### 2. Frontend — install dependencies
 

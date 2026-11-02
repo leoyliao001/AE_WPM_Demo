@@ -2,7 +2,7 @@
 Migration dashboard API views.
 
 Frontend pages: /migration-dashboard, /migration-dashboard/:id
-Also used by /project-dashboard with ?mine=1 (current user's projects only).
+Also used by /project-dashboard with ?mine=1 (personal scope unless access administrator).
 """
 
 import logging
@@ -16,7 +16,7 @@ from django.http import FileResponse, Http404
 from django.utils import timezone
 
 from api.models import ApprovalWorkflow, MigrationIntakeSubmission
-from api.permissions.attributes_access import get_request_email, normalize_email
+from api.permissions.attributes_access import can_access_table, get_request_email, normalize_email
 from api.services.migration_dashboard import (
     build_dashboard_summary,
     serialize_business_case_file,
@@ -40,18 +40,22 @@ def list_projects(request):
     """GET /api/migration-dashboard/projects/ — submitted migration intake overview.
 
     Query params:
-      mine=1 — only projects whose requestor matches the signed-in SSO email
+    mine=1 — current user's projects, or all projects for Access Control administrators
     """
     qs = MigrationIntakeSubmission.objects.all()
+    mine_only = _wants_mine_only(request)
 
-    if _wants_mine_only(request):
+    if mine_only:
         email = get_request_email(request)
         if not email:
             return Response(
                 {"error": "Sign in required. Missing SSO email."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        qs = qs.filter(requestor__iexact=normalize_email(email))
+        if can_access_table(email, "access_control"):
+            mine_only = False
+        else:
+            qs = qs.filter(requestor__iexact=normalize_email(email))
 
     submissions = list(qs)
     rows = [serialize_project_overview(item) for item in submissions]
@@ -59,6 +63,7 @@ def list_projects(request):
     return Response(
         {
             "count": len(rows),
+            "scope": "mine" if mine_only else "all",
             "summary": build_dashboard_summary(submissions),
             "rows": rows,
         }

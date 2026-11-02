@@ -42,6 +42,13 @@
       </mc-notification>
       <p v-if="!editable" class="bc-note">This record is read-only. Submitted records stay locked until an authorised revision is opened.</p>
       <p v-if="dirty" class="bc-note bc-no-print">Save / refresh your changes before Complete / submit. The displayed financial result is the last server calculation.</p>
+      <mc-notification v-if="submissionBlockers.length" appearance="warning" fit="medium" :heading="readOnlySubmitted ? 'Business Case already submitted' : 'Cannot submit yet'" role="alert">
+        <p v-if="readOnlySubmitted">This Business Case has already been submitted and is read-only.</p>
+        <p v-else>Complete the following items before using Complete / submit:</p>
+        <ul class="bc-submit-blockers">
+          <li v-for="blocker in submissionBlockers" :key="blocker">{{ blocker }}</li>
+        </ul>
+      </mc-notification>
 
       <section class="bc-section" :class="{ 'bc-section--editing': editIntake }" aria-labelledby="bc-overview">
         <div class="bc-section-heading">
@@ -177,6 +184,49 @@ const editable = computed(() => !!record.value?.canEdit)
 const dirty = computed(() => ownedDirty.value || (editIntake.value && JSON.stringify(intakeDraft.value) !== intakeBaseline.value) || !!revisionReason.value.trim())
 const { canLeave } = useUnsavedChanges(dirty, blocked)
 const backTo = computed(() => `/toll-gates?project=${route.query.project || route.params.id}`)
+const readOnlySubmitted = computed(() => !!record.value && !editable.value && ['submitted', 'approved', 'needs_review'].includes(record.value.status))
+const submissionBlockers = computed(() => {
+  const current = record.value
+  if (!current) return []
+
+  const blockers = []
+  const intake = current.intake || {}
+  const scope = current.scope || {}
+  const financials = current.financials || {}
+  const destinations = intake.location_strategy_custom === 'Y'
+    ? intake.custom_location_strategies
+    : intake.default_location_strategies
+  const sourceCountries = Array.isArray(intake.countries) ? intake.countries : []
+  const destinationSites = Array.isArray(destinations) ? destinations : []
+
+  if (readOnlySubmitted.value) {
+    blockers.push('An authorised user must open a revision before this Business Case can be edited or submitted again.')
+    return blockers
+  }
+  if (!editable.value) blockers.push('You do not have permission to submit this Business Case.')
+  if (current.sourceChanged || current.reviewRequired || scope.reviewRequired) {
+    blockers.push('Review and save the changed Intake and Scope source data before submitting.')
+  }
+  if (dirty.value) blockers.push('Save the current Business Case changes first.')
+  if (sourceCountries.length !== 1) {
+    blockers.push(`Select exactly one source country (currently ${sourceCountries.length || 'none'} selected).`)
+  }
+  if (destinationSites.length !== 1) {
+    blockers.push(`Select exactly one destination site (currently ${destinationSites.length || 'none'} selected).`)
+  }
+  if (!intake.business_owner) blockers.push('Provide a Business owner in Project overview.')
+  if (!intake.target_start_date) blockers.push('Provide a Target start date in Project overview.')
+  if (!intake.target_end_date) blockers.push('Provide a Target end date in Project overview.')
+  if (!scope.finalProjectFte && scope.finalProjectFte !== 0) blockers.push('Complete and lock the final FTE in Scope.')
+  if (!financials.ready) blockers.push('Refresh the financial calculation after completing the source data above.')
+  ;(financials.errors || []).forEach((message) => blockers.push(message))
+  detailFields.filter((field) => field.required).forEach((field) => {
+    if (!String(details.value[field.key] || '').trim()) blockers.push(`Provide ${field.label}.`)
+  })
+  if (!current.canSubmit && !blockers.length) blockers.push('Save / refresh the sources and resolve the remaining submission requirements.')
+
+  return [...new Set(blockers)]
+})
 const intakeFields = [
   { key: 'project_name', label: 'Project name' }, { key: 'migration_type', label: 'Migration type' },
   { key: 'function_name', label: 'Function' }, { key: 'products', label: 'Products', list: true },

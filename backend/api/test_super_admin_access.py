@@ -42,6 +42,52 @@ class SuperAdminAccessTests(TestCase):
         self.assertEqual(response.data["created_count"], 1)
         self.assertEqual(response.data["error_count"], 0)
 
+    def test_project_dashboard_visibility_follows_access_control_permission(self):
+        ProjectAttributesAccess.objects.create(
+            email="access-admin@example.com", access_control=True,
+        )
+        ProjectAttributesAccess.objects.create(
+            email="maintainer@example.com", migration_intake=True,
+        )
+        for email, expected_ids in (
+            (self.admin, [self.project.pk]),
+            ("access-admin@example.com", [self.project.pk]),
+            ("maintainer@example.com", []),
+            ("OWNER@EXAMPLE.COM", [self.project.pk]),
+            ("other@example.com", []),
+        ):
+            with self.subTest(email=email):
+                self.client.credentials(HTTP_X_USER_EMAIL=email)
+                response = self.client.get("/api/migration-dashboard/projects/", {"mine": 1})
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertEqual([row["id"] for row in response.data["rows"]], expected_ids)
+                self.assertEqual(response.data["count"], len(expected_ids))
+                self.assertEqual(response.data["summary"]["totalProjects"], len(expected_ids))
+                self.assertEqual(
+                    response.data["scope"],
+                    "all" if email in (self.admin, "access-admin@example.com") else "mine",
+                )
+
+    def test_project_dashboard_requires_sign_in_for_personal_scope(self):
+        self.client.credentials()
+        response = self.client.get("/api/migration-dashboard/projects/", {"mine": 1})
+        self.assertEqual(response.status_code, 401, response.data)
+
+    def test_revoking_access_control_restores_personal_project_scope(self):
+        access = ProjectAttributesAccess.objects.create(
+            email="access-admin@example.com", access_control=True,
+        )
+        self.client.credentials(HTTP_X_USER_EMAIL=access.email)
+        response = self.client.get("/api/migration-dashboard/projects/", {"mine": 1})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["count"], 1)
+        access.access_control = False
+        access.save(update_fields=["access_control"])
+        response = self.client.get("/api/migration-dashboard/projects/", {"mine": 1})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["rows"], [])
+        self.assertEqual(response.data["scope"], "mine")
+
     def test_non_super_admin_cannot_manage_another_requestors_assessment(self):
         ProjectAttributesAccess.objects.create(
             email="maintainer@example.com", migration_intake=True, access_control=True,

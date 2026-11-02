@@ -551,8 +551,8 @@ watch(projectId, loadData, { immediate: true })
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin: 0 auto;
-  max-width: 1500px;
+  margin: 0;
+  max-width: none;
   padding: 8px 10px 32px;
   width: 100%;
 }

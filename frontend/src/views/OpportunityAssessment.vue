@@ -607,9 +607,9 @@ const YN_OPTIONS = ['Y', 'N']
 
 /** Width / readOnly only — column order & labels come from the API (model order). */
 const COLUMN_META = {
-  migration_request_id: { width: 180, readOnly: true },
+  migration_request_id: { width: 221, readOnly: true },
   product: { width: 140, readOnly: true },
-  owner: { width: 90 },
+  owner: { width: 127 },
   location: { width: 140 },
   l1: { width: 200, readOnly: true },
   l2: { width: 180, readOnly: true },
@@ -617,22 +617,22 @@ const COLUMN_META = {
   l4: { width: 220 },
   task_name: { width: 160 },
   task_description: { width: 220 },
-  upstream: { width: 180 },
-  downstream: { width: 180 },
-  risks_related: { width: 180 },
-  complexity: { width: 120 },
-  sop_iop_exists: { width: 120 },
-  training_time_needed: { width: 140 },
-  recommended_handoff_duration: { width: 160 },
-  task_frequency: { width: 140 },
-  unit_of_measure: { width: 120 },
-  volume_monthly: { width: 110 },
-  task_time_per_unit_min: { width: 140 },
+  upstream: { width: 279 },
+  downstream: { width: 301 },
+  risks_related: { width: 299 },
+  complexity: { width: 287 },
+  sop_iop_exists: { width: 189 },
+  training_time_needed: { width: 219 },
+  recommended_handoff_duration: { width: 300 },
+  task_frequency: { width: 218 },
+  unit_of_measure: { width: 184 },
+  volume_monthly: { width: 202 },
+  task_time_per_unit_min: { width: 243 },
   area: { width: 140 },
   gsc_site: { width: 160 },
-  task_found_in_service_catalog: { width: 220, readOnly: true },
-  migratable_to_gsc: { width: 240, readOnly: true },
-  fte_calculation: { width: 110, readOnly: true }
+  task_found_in_service_catalog: { width: 439, readOnly: true },
+  migratable_to_gsc: { width: 349, readOnly: true },
+  fte_calculation: { width: 175, readOnly: true }
 }
 
 const tableColumns = shallowRef([])
@@ -1142,6 +1142,10 @@ function makeValidator(prop) {
   }
 }
 
+function getHeaderMinWidth(label) {
+  return Math.ceil(String(label || '').length * 6.5 + 24)
+}
+
 function applyCascadeFill(hot, visualRow, physicalRow, changedProp) {
   const data = { ...(hot.getSourceDataAtRow(physicalRow) || emptyRow()) }
   const updates = []
@@ -1172,13 +1176,15 @@ function applyCascadeFill(hot, visualRow, physicalRow, changedProp) {
 function buildColumns() {
   const storedWidths = loadColumnWidths(COLUMN_WIDTH_STORAGE_ID)
   return tableColumns.value.map((col) => {
-    const width = resolveColumnWidth(col.width, col.key, storedWidths)
+    const minWidth = getHeaderMinWidth(col.label)
+    const width = Math.max(resolveColumnWidth(col.width, col.key, storedWidths), minWidth)
+    const widthProps = { width, minWidth }
     if (LOCKED_LEVEL_SET.has(col.key) || (col.readOnly && col.key !== 'fte_calculation')) {
       return {
         data: col.key,
         type: 'text',
         readOnly: true,
-        width
+        ...widthProps
       }
     }
 
@@ -1192,7 +1198,7 @@ function buildColumns() {
         filter: false,
         visibleRows: 12,
         trimDropdown: false,
-        width
+        ...widthProps
       }
     }
 
@@ -1206,7 +1212,7 @@ function buildColumns() {
         filter: false,
         visibleRows: 12,
         trimDropdown: false,
-        width
+        ...widthProps
       }
     }
 
@@ -1221,7 +1227,7 @@ function buildColumns() {
         trimDropdown: false,
         source: makeDropdownSource(col.key),
         validator: makeValidator(col.key),
-        width
+        ...widthProps
       }
     }
 
@@ -1236,7 +1242,7 @@ function buildColumns() {
         trimDropdown: false,
         source: YN_OPTIONS,
         readOnly: !!col.readOnly,
-        width
+        ...widthProps
       }
     }
 
@@ -1244,7 +1250,7 @@ function buildColumns() {
       data: col.key,
       type: 'text',
       readOnly: !!col.readOnly,
-      width
+      ...widthProps
     }
   })
 }
@@ -1318,6 +1324,7 @@ function initHot(rows) {
     rowHeaders: false,
     height: tableHeight,
     width: '100%',
+    columnHeaderHeight: 32,
     stretchH: 'none',
     autoWrapRow: false,
     autoWrapCol: false,
@@ -1773,7 +1780,6 @@ async function loadData() {
       initHot(data.rows || [])
     } else {
       destroyHot()
-      openSetupDialog('create')
     }
   } catch (e) {
     console.error(e)
@@ -2192,6 +2198,12 @@ onBeforeUnmount(() => {
 
 :deep(.handsontable) {
   font-size: 11px;
+}
+
+:deep(.handsontable thead th .colHeader) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 </style>
 
