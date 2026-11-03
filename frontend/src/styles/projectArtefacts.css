@@ -11,7 +11,8 @@
 .pa-status--at_risk, .pa-status--needs_review { color: #a3322b; background: #fff0ed; }
 .pa-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-top: 24px; }
 .pa-metric { background: #fff; padding: 18px; border: 1px solid var(--pa-line); border-radius: 8px; min-width: 0; }
-.pa-metric > span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--pa-muted); }
+.pa-metric > .pa-metric-label { display: flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--pa-muted); }
+.pa-metric-info { color: var(--pa-muted); cursor: help; flex: 0 0 auto; }
 .pa-metric strong { display: block; font-size: 29px; font-variant-numeric: tabular-nums; margin: 10px 0 5px; }
 .pa-metric small { font-size: 11px; color: var(--pa-muted); }
 .pa-metric--risk { background: #fff7f5; border-color: #efc7c1; color: #b03c32; }

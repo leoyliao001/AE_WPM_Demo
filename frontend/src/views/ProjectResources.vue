@@ -19,7 +19,7 @@
           <div class="pa-tabs" role="tablist" aria-label="Resource views"><button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" @click="tab = item.id">{{ item.label }}</button></div>
           <div class="pa-metrics">
             <article v-for="metric in metrics" :key="metric.label" class="pa-metric" :class="{ 'pa-metric--risk': metric.risk && metric.value > 0 }">
-              <span>{{ metric.label }}</span><strong>{{ metric.value }}</strong><small>{{ metric.note }}</small>
+              <span class="pa-metric-label">{{ metric.label }}<mc-icon class="pa-metric-info" icon="mi-information" size="14" :title="metric.note" :aria-label="metric.note" role="img" /></span><strong>{{ metric.value }}</strong>
             </article>
           </div>
         </header>
@@ -77,6 +77,7 @@ import PageShell from '../components/PageShell.vue'
 import { useProjectArtefact } from '../composables/useProjectArtefact.js'
 import { exportArtefact } from '../utils/projectArtefactExport.js'
 import '@maersk-global/mds-components-core/mc-button'
+import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
 import '../styles/projectArtefacts.css'
@@ -107,45 +108,45 @@ const metricCards = {
     {
       label: 'Approved FTEs',
       value: approvedFtes.value ?? '—',
-      note: approvedFtes.value != null ? 'FTEs in the approved Business Case' : 'Available after Business Case approval',
+      note: approvedFtes.value != null ? 'Population from the locked Business Case' : 'Locked Business Case population',
     },
     {
       label: 'Efficiency/Backfill',
       value: `${countRows(executionRows.value, row => row.hiringType === 'Efficiency')} / ${countRows(executionRows.value, row => row.hiringType === 'Backfill')}`,
-      note: 'Efficiency / Backfill positions',
+      note: 'Execution rows counted by Hiring Type: Efficiency / Backfill',
     },
-    { label: 'Onboarding Completed', value: onboarded(executionRows.value), note: 'Actual DOJ and APMM ID recorded' },
-    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'HR / TAA positions with hiring status At Risk', risk: true },
+    { label: 'Onboarding Completed', value: onboarded(executionRows.value), note: 'Execution rows with both Actual DOJ and APMM ID filled' },
+    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Non-Efficiency rows with Hiring Status set to At Risk', risk: true },
     {
       label: 'Area PIDs Received',
       value: `${countRows(areaRows.value, row => row.areaPid && row.areaApmmId && row.releaseDate)} / ${approvedFtes.value ?? '—'}`,
-      note: 'Area PID, Area APMM ID and Release Date received',
+      note: 'Rows with Area PID, Area APMM ID and Release Date filled / locked Business Case population',
     },
   ],
   area: () => [
     {
-      label: 'Area Details Completed',
+      label: 'Area PIDs Received',
       value: `${countRows(areaRows.value, row => areaColumns.every(column => String(row[column.key] ?? '').trim()))} / ${approvedFtes.value ?? '—'}`,
-      note: 'Rows with every Area field completed / Approved FTEs',
+      note: 'Rows with all 6 Area fields filled / locked Business Case population',
     },
   ],
   hr: () => [
     {
       label: 'Hiring Required',
       value: `${countRows(executionRows.value, row => row.hiringType === 'External' || row.hiringType === 'IJP')} / ${record.value?.source?.population ?? '—'}`,
-      note: 'External and IJP positions / confirmed Scope FTE',
+      note: 'Execution rows with Hiring Type External or IJP / confirmed Scope population',
     },
     {
       label: 'Efficiency/Backfill FTEs',
       value: countRows(executionRows.value, row => row.hiringType === 'Efficiency'),
-      note: 'Execution positions with Hiring Type Efficiency',
+      note: 'Execution rows counted with Hiring Type set to Efficiency',
     },
     {
       label: 'Onboarding Completed',
       value: `${countRows(hrRows.value, row => row.hiringStatus === 'Onboarded')} / ${countRows(executionRows.value, row => row.hiringType === 'External' || row.hiringType === 'IJP')}`,
-      note: 'Onboarded / External and IJP positions',
+      note: 'Non-Efficiency rows with Hiring Status Onboarded / Execution rows with Hiring Type External or IJP',
     },
-    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Positions with hiring status At Risk', risk: true },
+    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Non-Efficiency rows with Hiring Status set to At Risk', risk: true },
   ],
 }
 const metrics = computed(() => (metricCards[tab.value] || metricCards.execution)())
