@@ -158,7 +158,7 @@ const exploreCards = [
   },
   {
     kicker: 'Dashboards and insight',
-    title: 'Portfolio & Insights',
+    title: 'Leadership Hub',
     description: 'Enterprise view of migrations, FTE volumes, risks, compliance and value.',
     tags: ['Portfolio health', 'Site capacity', 'Benefits'],
     actions: [{ label: 'Open Dashboards', route: '/migration-dashboard' }],
@@ -166,41 +166,14 @@ const exploreCards = [
     image: '/aefc68e4-4be4-4ebf-a3b1-38b9915c8db7.webp'
   },
   {
-    kicker: 'Governance & approvals',
-    title: 'Approval & Toll Gates',
-    description: 'Submit, review and approve decisions with full, audit-ready evidence.',
-    tags: ['ELT approvals', 'Toll gates', 'Decision log'],
-    actions: [{ label: 'My Approval', route: '/toll-gates' }],
-    icon: 'mi-shield-check',
-    image: '/sea_bridge.png'
-  },
-  {
     kicker: 'Your delivery network',
-    title: 'Success Partners',
+    title: 'Migration Success Partners Hub',
     description: 'Your HR, Finance, Tech, Legal, TA and MSP focal points in one network.',
     tags: ['Focal points', 'RASCI', 'Forums'],
     actions: [{ label: 'Find a Partner', route: '/migration-chatbot' }],
     icon: 'mi-users',
     image: '/Collaboration.png'
   },
-  {
-    kicker: 'GSC locations and guardrails',
-    title: 'Location Strategy',
-    description: 'Place work in the right GSC site using principles, tenets and guardrails.',
-    tags: ['Principles', 'Tenets', 'Red lines', 'Exceptions'],
-    actions: [{ label: 'Explore Strategy', route: '/gsc-site-mapping?from=welcome' }],
-    icon: 'mi-map',
-    image: '/c05f31e9-c833-4481-8bfa-754f8317ebcf.webp'
-  },
-  {
-    kicker: 'Standards & resources',
-    title: 'Playbook & Toolkit',
-    description: 'The enterprise standard: lifecycle, artefacts, tasks and templates.',
-    tags: ['Playbook', 'Artefacts', 'Templates', 'Glossary'],
-    actions: [{ label: 'Open Playbook', route: '' }],
-    icon: 'mi-file-arrows-square',
-    image: '/ocean-freight-shipping.jpeg'
-  }
 ]
 
 const hubPrinciples = [
@@ -262,7 +235,7 @@ const go = (route) => router.push(route)
 .section-heading h2 { color: var(--navy); font-size: 23px; letter-spacing: -.01em; margin: 3px 0 0; }
 .section-note { color: var(--muted); font-size: 14px; justify-self: end; line-height: 1.5; margin: 0; max-width: 470px; text-align: right; }
 .explore-carousel { flex: 0 0 auto; margin-bottom: 10px; min-width: 0; padding: 0 44px; position: relative; }
-.explore-grid { display: grid; gap: 12px; grid-auto-columns: 340px; grid-auto-flow: column; grid-template-columns: none; grid-template-rows: minmax(290px, auto); overflow-x: auto; overscroll-behavior-inline: contain; padding: 4px 0 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
+.explore-grid { display: grid; gap: 12px; grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(290px, auto); overflow-x: auto; overscroll-behavior-inline: contain; padding: 4px 0 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
 .explore-grid::-webkit-scrollbar { display: none; }
 .explore-nav { align-items: center; background: #fff; border: 1px solid #d6e3e9; border-radius: 50%; color: var(--blue); cursor: pointer; display: flex; font: 28px/1 'Maersk Text', sans-serif; height: 32px; justify-content: center; padding: 0; position: absolute; top: 50%; transform: translateY(-50%); width: 32px; }
 .explore-nav--previous { left: 6px; }
@@ -318,7 +291,7 @@ const go = (route) => router.push(route)
   .card-actions { align-self: stretch; }
 }
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
-@media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
+@media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-auto-flow: column; grid-template-columns: none; grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
 @media (max-width: 820px) { .hub-principles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 821px) and (max-width: 1100px) { .hero-title { font-size: 32px; } .hero-slogan { font-size: 18px; } }
 @media (max-width: 520px) { .hero-title { font-size: 28px; } .hero-slogan { font-size: 18px; margin-left: 0; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }

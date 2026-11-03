@@ -383,6 +383,10 @@
             />
           </div>
           <div v-else class="table-shell">
+            <div class="table-guidance" role="note">
+              <mc-icon icon="mi-info-circle" size="18" aria-hidden="true" />
+              <p><strong>Open a project:</strong> click any row to view details and track progress.</p>
+            </div>
             <MigrationProjectsTable
               :rows="tableRows"
               :initial-page-size="6"
@@ -1304,7 +1308,7 @@ const onBreakdownSelect = (key) => {
 }
 
 const openProject = (id) => {
-  router.push({ path: '/toll-gates', query: { project: String(id) } })
+  router.push({ path: '/toll-gates', query: { project: String(id), from: 'project-dashboard' } })
 }
 
 const createDetailRows = () =>
@@ -2179,6 +2183,32 @@ watch(isMyProjectsView, () => {
   margin: 0;
   padding: 16px 0;
   text-align: center;
+}
+
+.table-guidance {
+  align-items: center;
+  background: #eaf5fa;
+  border-bottom: 1px solid var(--dash-border);
+  color: #27455a;
+  display: flex;
+  font-size: 13px;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 14px;
+}
+
+.table-guidance mc-icon {
+  color: #007aa3;
+  flex: 0 0 auto;
+}
+
+.table-guidance p {
+  margin: 0;
+}
+
+.table-guidance strong {
+  color: #005b7a;
+  font-weight: 700;
 }
 
 .table-shell {

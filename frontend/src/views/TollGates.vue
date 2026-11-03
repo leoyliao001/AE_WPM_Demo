@@ -3,7 +3,8 @@
     class="toll-gates-page-shell"
     title="Toll Gates"
     subtitle="Migration lifecycle grouped into the five PMI process groups — Initiating through Closing."
-    back-to="/"
+    :back-to="backTo"
+    :back-label="backLabel"
     full-width
   >
     <div class="project-picker">
@@ -268,6 +269,8 @@ import '@maersk-global/mds-components-core/mc-button'
 
 const route = useRoute()
 const router = useRouter()
+const backTo = computed(() => route.query.from === 'project-dashboard' ? '/project-dashboard' : '/')
+const backLabel = computed(() => route.query.from === 'project-dashboard' ? 'Back to Projects' : 'Back to Welcome')
 
 const projects = ref([])
 const loadingProjects = ref(false)
