@@ -1,6 +1,6 @@
 <template>
   <PageShell title="Resources" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" full-width>
-    <div class="pa-page">
+    <div class="pa-page pa-resources-page">
       <div v-if="loading" class="pa-panel" role="status">Loading project resources...</div>
       <div v-if="error" class="pa-feedback pa-feedback--error" role="alert">{{ error }} <button v-if="!record" class="pa-text-button" @click="load">Retry</button></div>
       <div v-if="success" class="pa-feedback pa-feedback--success" role="status">{{ success }}</div>
