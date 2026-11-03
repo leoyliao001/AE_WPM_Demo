@@ -124,24 +124,9 @@ const metricCards = {
   ],
   area: () => [
     {
-      label: 'Area PIDs Received',
-      value: `${countRows(areaRows.value, row => row.areaPid)} / ${areaRows.value.length}`,
-      note: 'Positions with an Area PID',
-    },
-    {
-      label: 'Area APMM IDs Received',
-      value: `${countRows(areaRows.value, row => row.areaApmmId)} / ${areaRows.value.length}`,
-      note: 'Positions with an Area APMM ID',
-    },
-    {
-      label: 'Release Dates Received',
-      value: `${countRows(areaRows.value, row => row.releaseDate)} / ${areaRows.value.length}`,
-      note: 'Positions with a release date',
-    },
-    {
-      label: 'Area Details Submitted',
-      value: `${countRows(areaRows.value, row => row.areaLockedAt)} / ${areaRows.value.length}`,
-      note: 'Submitted Area records are read-only',
+      label: 'Area Details Completed',
+      value: `${countRows(areaRows.value, row => areaColumns.every(column => String(row[column.key] ?? '').trim()))} / ${approvedFtes.value ?? '—'}`,
+      note: 'Rows with every Area field completed / Approved FTEs',
     },
   ],
   hr: () => [
