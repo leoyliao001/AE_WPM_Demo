@@ -27,21 +27,12 @@
         </div>
 
         <div class="explore-carousel">
-          <button
-            type="button"
-            class="explore-nav explore-nav--previous"
-            aria-label="Scroll hub cards left"
-            aria-controls="explore-cards"
-            :disabled="!exploreScroll.canScrollLeft"
-            @click="scrollExploreCards(-1)"
-          >
-            <span aria-hidden="true">&#8249;</span>
-          </button>
-        <div id="explore-cards" ref="exploreGrid" class="explore-grid" @scroll="updateExploreScroll">
+        <div class="explore-grid">
           <article
             v-for="(card, index) in exploreCards"
             :key="card.title"
             class="explore-card"
+            :class="`explore-card--${card.layout}`"
             :style="{ '--card-delay': `${index * 70}ms` }"
           >
             <div class="explore-card__visual">
@@ -78,16 +69,6 @@
             </div>
           </article>
         </div>
-          <button
-            type="button"
-            class="explore-nav explore-nav--next"
-            aria-label="Scroll hub cards right"
-            aria-controls="explore-cards"
-            :disabled="!exploreScroll.canScrollRight"
-            @click="scrollExploreCards(1)"
-          >
-            <span aria-hidden="true">&#8250;</span>
-          </button>
         </div>
 
         <div class="hub-principles" aria-label="WPM Pulse benefits">
@@ -108,67 +89,37 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-icon'
 
 const router = useRouter()
-const exploreGrid = ref(null)
-const exploreScroll = ref({ canScrollLeft: false, canScrollRight: false })
-let exploreResizeObserver
-
-const updateExploreScroll = () => {
-  const grid = exploreGrid.value
-  if (!grid) return
-  const maxScroll = Math.max(0, grid.scrollWidth - grid.clientWidth)
-  exploreScroll.value = {
-    canScrollLeft: grid.scrollLeft > 1,
-    canScrollRight: grid.scrollLeft < maxScroll - 1
-  }
-}
-
-const scrollExploreCards = (direction) => {
-  const grid = exploreGrid.value
-  if (!grid) return
-  const card = grid.querySelector('.explore-card')
-  const gap = parseFloat(getComputedStyle(grid).columnGap) || 0
-  grid.scrollBy({
-    left: direction * ((card?.getBoundingClientRect().width ?? grid.clientWidth) + gap),
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
-  })
-}
-
-onMounted(() => {
-  updateExploreScroll()
-  exploreResizeObserver = new ResizeObserver(updateExploreScroll)
-  if (exploreGrid.value) exploreResizeObserver.observe(exploreGrid.value)
-})
-
-onBeforeUnmount(() => exploreResizeObserver?.disconnect())
 
 const exploreCards = [
   {
-    kicker: 'Track your migrations',
-    title: 'Migration Hub',
-    description: 'Create, plan and track migrations through every phase and toll gate.',
-    tags: ['Intake', 'Project plan', 'RAID', 'Readiness'],
-    actions: [{ label: 'My migrations', route: '/project-dashboard' }],
-    icon: 'mi-file-arrows-square',
-    image: '/port-twilight.webp'
-  },
-  {
-    kicker: 'Dashboards and insight',
+    layout: 'leadership',
+    kicker: 'Leadership & stakeholders',
     title: 'Leadership Hub',
-    description: 'Enterprise view of migrations, FTE volumes, risks, compliance and value.',
+    description: 'Executive dashboards to track portfolio health, migration progress, risks and KPIs in one view.',
     tags: ['Portfolio health', 'Site capacity', 'Benefits'],
     actions: [{ label: 'Open Dashboards', route: '/migration-dashboard' }],
     icon: 'mi-chart-bars-vertical',
     image: '/aefc68e4-4be4-4ebf-a3b1-38b9915c8db7.webp'
   },
   {
-    kicker: 'Your delivery network',
+    layout: 'migration',
+    kicker: 'Active migration teams',
+    title: 'Migration Hub',
+    description: 'Workspace for teams running an active migration: plans, tasks, trackers and status.',
+    tags: ['Intake', 'Project plan', 'RAID', 'Readiness'],
+    actions: [{ label: 'My migrations', route: '/project-dashboard' }],
+    icon: 'mi-file-arrows-square',
+    image: '/port-twilight.webp'
+  },
+  {
+    layout: 'partners',
+    kicker: 'MSP workspace',
     title: 'Migration Success Partners Hub',
-    description: 'Your HR, Finance, Tech, Legal, TA and MSP focal points in one network.',
+    description: 'Workspace for MSPs to guide, support and follow up on the migrations they partner on.',
     tags: ['Focal points', 'RASCI', 'Forums'],
     actions: [{ label: 'Find a Partner', route: '/migration-chatbot' }],
     icon: 'mi-users',
@@ -237,12 +188,6 @@ const go = (route) => router.push(route)
 .explore-carousel { flex: 0 0 auto; margin-bottom: 10px; min-width: 0; padding: 0 44px; position: relative; }
 .explore-grid { display: grid; gap: 12px; grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(290px, auto); overflow-x: auto; overscroll-behavior-inline: contain; padding: 4px 0 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
 .explore-grid::-webkit-scrollbar { display: none; }
-.explore-nav { align-items: center; background: #fff; border: 1px solid #d6e3e9; border-radius: 50%; color: var(--blue); cursor: pointer; display: flex; font: 28px/1 'Maersk Text', sans-serif; height: 32px; justify-content: center; padding: 0; position: absolute; top: 50%; transform: translateY(-50%); width: 32px; }
-.explore-nav--previous { left: 6px; }
-.explore-nav--next { right: 6px; }
-.explore-nav:hover:not(:disabled) { background: #eaf5fa; border-color: #a8d2e0; }
-.explore-nav:disabled { cursor: default; opacity: .35; }
-.explore-nav:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .explore-card { animation: reveal .55s ease both; animation-delay: var(--card-delay); background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 5px 14px rgba(18, 50, 75, .05); display: flex; flex-direction: column; overflow: hidden; scroll-snap-align: start; transition: box-shadow .2s ease, transform .2s ease; }
 .explore-card:hover { box-shadow: 0 12px 24px rgba(18, 50, 75, .14); transform: translateY(-3px); }
 .explore-card__visual { position: relative; }
@@ -271,6 +216,9 @@ const go = (route) => router.push(route)
 .hub-principle p { color: #60758a; font-size: 10px; line-height: 1.35; margin: 0; }
 @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 821px) {
+  .explore-card--leadership { grid-area: 1 / 1 / 3 / 2; }
+  .explore-card--migration { grid-area: 1 / 2 / 2 / 3; }
+  .explore-card--partners { grid-area: 2 / 2 / 3 / 3; }
   .hero-section { min-height: calc(clamp(290px, 33vh, 350px) + 50px); }
   .hero-copy { padding-top: 32px; padding-bottom: 32px; }
   .hero-title { font-size: 40px; margin-bottom: 28px; }
@@ -283,12 +231,25 @@ const go = (route) => router.push(route)
   .hero-highlight small { font-size: 10px; line-height: 1.3; margin-top: 2px; }
   .hub-section { display: flex; flex: 1 0 auto; flex-direction: column; justify-content: flex-start; min-height: 0; padding-bottom: 0; }
   .section-heading { margin-bottom: 10px; }
-  .explore-grid { flex: 0 0 auto; grid-template-rows: minmax(290px, auto); }
+  .explore-grid { flex: 0 0 auto; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); grid-template-rows: repeat(2, minmax(118px, 1fr)); height: clamp(250px, 31vh, 310px); }
   .hub-principles { margin-top: auto; margin-bottom: 24px; }
-  .explore-card { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-  .explore-card__image { flex: 0 0 116px; }
-  .explore-card__body { display: flex; flex: 1; flex-direction: column; min-height: 0; }
-  .card-actions { align-self: stretch; }
+  .explore-card { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
+  .explore-card__visual { inset: 0; position: absolute; }
+  .explore-card__image { height: 100%; inset: 0; position: absolute; width: 100%; }
+  .explore-card__icon, .card-tags { display: none; }
+  .explore-card__body { background: #fff; clip-path: polygon(0 0, 100% 0, 82% 100%, 0 100%); display: flex; flex: 1; flex-direction: column; justify-content: center; min-height: 0; padding: 16px 22% 16px 22px; position: relative; width: 76%; }
+  .explore-card--leadership .explore-card__body { padding-left: 26px; width: 68%; }
+  .explore-card--migration .explore-card__body, .explore-card--partners .explore-card__body { padding: 10px 24% 10px 18px; width: 78%; }
+  .explore-card .card-kicker { font-size: 9px; letter-spacing: .1em; }
+  .explore-card h3 { font-size: 17px; line-height: 1.2; margin: 3px 0 5px; }
+  .explore-card--leadership h3 { font-size: 27px; line-height: 1.12; }
+  .explore-card p:not(.card-kicker) { font-size: 12px; line-height: 1.42; min-height: 0; }
+  .explore-card--leadership p:not(.card-kicker) { font-size: 13px; line-height: 1.45; }
+  .card-actions { align-self: flex-start; border: 0; margin-top: 9px; padding: 0; }
+  .card-link { background: var(--navy); border-radius: 999px; color: #fff; flex: 0 0 auto; justify-content: center; min-height: 34px; padding: 0 18px; }
+  .card-link span { display: none; }
+  .card-link:hover { background: var(--blue); color: #fff; }
+  .explore-card--migration .card-link, .explore-card--partners .card-link { min-height: 30px; }
 }
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
 @media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-auto-flow: column; grid-template-columns: none; grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
@@ -317,8 +278,10 @@ const go = (route) => router.push(route)
   .explore-card__icon { height: 32px; width: 32px; }
   .explore-card__body { padding: 8px 12px 7px; }
   .card-kicker { font-size: 8px; }
-  .explore-card h3 { font-size: 13px; margin: 4px 0; }
-  .explore-card p:not(.card-kicker) { font-size: 10px; line-height: 1.3; min-height: 26px; }
+  .explore-card h3 { font-size: 14px; line-height: 1.2; margin: 3px 0 4px; }
+  .explore-card--leadership h3 { font-size: 23px; }
+  .explore-card--partners h3 { font-size: 13px; }
+  .explore-card p:not(.card-kicker) { font-size: 10px; line-height: 1.35; min-height: 0; }
   .card-tags { gap: 3px; margin: 4px 0 5px; }
   .card-tags li { font-size: 8px; padding: 1px 6px; }
   .card-actions { padding-top: 3px; }
@@ -354,8 +317,10 @@ const go = (route) => router.push(route)
   .explore-card__icon { height: 28px; width: 28px; }
   .explore-card__body { padding: 6px 9px 5px; }
   .card-kicker { font-size: 7px; }
-  .explore-card h3 { font-size: 11px; margin: 3px 0; }
-  .explore-card p:not(.card-kicker) { font-size: 9px; line-height: 1.2; min-height: 22px; }
+  .explore-card h3 { font-size: 12px; line-height: 1.2; margin: 3px 0; }
+  .explore-card--leadership h3 { font-size: 21px; }
+  .explore-card--partners h3 { font-size: 12px; }
+  .explore-card p:not(.card-kicker) { font-size: 9px; line-height: 1.25; min-height: 0; }
   .card-tags { gap: 2px; margin: 3px 0 4px; }
   .card-tags li { font-size: 7px; padding: 1px 4px; }
   .card-actions { padding-top: 2px; }

@@ -57,6 +57,16 @@
           No matching projects.
         </div>
       </div>
+      <div class="project-picker__quick-access" aria-label="Initiate shortcuts">
+        <button
+          type="button"
+          class="project-picker__shortcut project-picker__shortcut--primary"
+          :disabled="!canNavigate('gantt', 'tile')"
+          @click="goToStep('gantt', 'tile')"
+        >
+          Gantt
+        </button>
+      </div>
       <span v-if="loadingProject" class="project-picker__hint">Loading progress…</span>
       <span v-else-if="projectError" class="project-picker__hint project-picker__hint--error">{{ projectError }}</span>
       <span v-else-if="!selectedProjectId" class="project-picker__hint">
@@ -1911,6 +1921,59 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
+.project-picker__quick-access {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-left: auto;
+}
+
+.project-picker__shortcut {
+  align-items: center;
+  background: linear-gradient(180deg, #fff, #f8fbff);
+  border: 1px solid #d7e3ef;
+  border-radius: 999px;
+  color: #29445d;
+  cursor: pointer;
+  display: inline-flex;
+  font: 700 10px 'Maersk Text', sans-serif;
+  min-height: 23px;
+  padding: 0 9px;
+  box-shadow: 0 1px 2px rgba(11, 43, 75, .06);
+  transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+  white-space: nowrap;
+}
+
+.project-picker__shortcut:hover:not(:disabled) {
+  background: #eef6fb;
+  border-color: #b7d9e8;
+  color: #006da8;
+  box-shadow: 0 3px 8px rgba(11, 43, 75, .1);
+  transform: translateY(-1px);
+}
+
+.project-picker__shortcut--primary {
+  background: #42b0d5;
+  border: 0;
+  color: #fff;
+}
+
+.project-picker__shortcut--primary:hover:not(:disabled) {
+  background: #269fc6;
+  color: #fff;
+}
+
+.project-picker__shortcut:focus-visible {
+  outline: 2px solid rgba(0, 119, 184, .45);
+  outline-offset: 2px;
+}
+
+.project-picker__shortcut:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
 .quick-cards {
   gap: 18px;
   margin-bottom: 24px;
@@ -2084,6 +2147,10 @@ onBeforeUnmount(() => {
   .project-picker__combobox {
     min-width: 0;
     width: 100%;
+  }
+
+  .project-picker__quick-access {
+    margin-left: 0;
   }
 }
 </style>
