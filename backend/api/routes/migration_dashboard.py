@@ -1,6 +1,11 @@
 from django.urls import path
 from api.views.opportunity_task_scope import opportunity_task_scope
 from api.views.business_impact_analysis import business_impact_analysis
+from api.views.people_consultation_compliance import (
+    download_people_consultation_evidence,
+    people_consultation_compliance,
+    people_consultation_evidence,
+)
 from api.views.project_artefacts import project_artefact, resource_projects
 from api.views.business_case import (
     get_business_case, save_business_case, list_business_cases, delete_business_case,
@@ -45,6 +50,21 @@ from api.views.stakeholder_registration import (
 urlpatterns = [
     path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),
     path("projects/<int:project_id>/business-impact-analysis/", business_impact_analysis, name="business-impact-analysis"),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/",
+        people_consultation_compliance,
+        name="people-consultation-compliance",
+    ),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/evidence/",
+        people_consultation_evidence,
+        name="people-consultation-evidence",
+    ),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/evidence/<int:evidence_id>/",
+        download_people_consultation_evidence,
+        name="people-consultation-evidence-download",
+    ),
     path("resources/", resource_projects, name="resource-projects"),
     path("projects/<int:project_id>/resources/", project_artefact, {"kind": "resources"}, name="project-resources"),
     path("projects/<int:project_id>/access-enablement/", project_artefact, {"kind": "access_enablement"}, name="access-enablement"),
