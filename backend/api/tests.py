@@ -279,11 +279,22 @@ class StakeholderRegistrationTests(TestCase):
 
 	def test_catalog_includes_manual_gsc_leaders_and_empty_project_roster(self):
 		response = self.client.get(self.url, **self.headers)
-		roles = [role for group in response.data["groups"] for role in group["roles"]]
+		groups = {group["id"]: group["roles"] for group in response.data["groups"]}
+		roles = [role for group_roles in groups.values() for role in group_roles]
 
 		self.assertEqual(response.status_code, 200)
 		self.assertFalse(response.data["saved"])
 		self.assertIn("gsc_leaders", {role["code"] for role in roles})
+		self.assertNotIn("fpo", {role["code"] for role in groups["area"]})
+		self.assertIn("fpo", {role["code"] for role in groups["project_team"]})
+		cencx = next(role for role in groups["project_team"] if role["code"] == "cencx")
+		self.assertFalse(cencx["required"])
+		self.assertFalse(cencx["multiple"])
+		execution_management = next(
+			role for role in groups["area"] if role["code"] == "execution_management"
+		)
+		self.assertFalse(execution_management["required"])
+		self.assertFalse(execution_management["multiple"])
 		self.assertTrue(all(role.get("source", "manual") == "manual" for role in roles))
 		self.assertEqual(response.data["teamMembers"], [])
 

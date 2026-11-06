@@ -1,9 +1,6 @@
 import copy
-import json
 import re
-from functools import lru_cache
 
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -11,15 +8,17 @@ from rest_framework.response import Response
 
 from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope
 from api.permissions.attributes_access import get_request_email
+from api.services.opportunity_catalogue import load_opportunity_catalogue
 from api.views.opportunity_assessment import _build_setup_context, _deny_unless_requestor, _get_project, _parse_number
 
 
 FIELD_MAP = {
     "p": "product", "loc": "location", "l1": "l1", "l2": "l2", "l3": "l3", "l4": "l4",
-    "task": "task_name", "desc": "task_description", "mig": "migratable_to_gsc",
+    "task": "task_name", "desc": "task_description", "system": "system", "mig": "migratable_to_gsc",
     "cx": "complexity", "sop": "sop_iop_exists", "freq": "task_frequency",
     "uom": "unit_of_measure", "vol": "volume_monthly", "tpu": "task_time_per_unit_min",
 }
+NOT_IN_CATALOG = "Not in Service Catalog"
 FREQUENCIES = {"Daily": 21, "Weekly": 4.33, "Monthly": 1, "Quarterly": 1 / 3, "Yearly": 1 / 12, "Ad hoc": 1}
 LEGACY_FIELDS = ("upstream", "downstream", "risks_related", "training_time_needed", "recommended_handoff_duration")
 OPTIONS = {
@@ -29,15 +28,13 @@ OPTIONS = {
 }
 
 
-@lru_cache(maxsize=1)
 def _catalogue():
-    source = (settings.BASE_DIR.parent / "refer doc" / "WPM_Pulse_OA_Task_Scoping.html").read_text(encoding="utf-8")
-    return json.JSONDecoder().raw_decode(source.split("const CAT=", 1)[1])[0]
+    return load_opportunity_catalogue()
 
 
-def _initial_state(project):
+def _initial_state(project, catalogue=None):
     tasks = []
-    catalogue = _catalogue()
+    catalogue = catalogue if catalogue is not None else _catalogue()
     refs = {tuple(item[:5]): index for index, item in enumerate(catalogue)}
     for item in OpportunityAssessment.objects.filter(migration_request_id=project.migration_request_id):
         row = {key: getattr(item, field) for key, field in FIELD_MAP.items()}
@@ -49,13 +46,13 @@ def _initial_state(project):
     return {"cat": None, "task": tasks, "seq": 1, "mode": "task" if tasks else ""}
 
 
-def _validate_state(raw, project):
+def _validate_state(raw, project, catalogue=None):
     if not isinstance(raw, dict) or raw.get("mode", "") not in ("", "cat", "task"):
         raise ValueError("Invalid scoping method.")
     state = copy.deepcopy(raw)
     if not isinstance(state.get("seq"), int) or isinstance(state["seq"], bool) or state["seq"] < 1:
         raise ValueError("Invalid task sequence.")
-    catalogue = _catalogue()
+    catalogue = catalogue if catalogue is not None else _catalogue()
     countries = set(project.countries or [])
     for method in ("cat", "task"):
         rows = state.get(method)
@@ -84,7 +81,7 @@ def _validate_state(raw, project):
                 refs.add(ref)
                 item = catalogue[ref]
                 row.update(dict(zip(("p", "l1", "l2", "l3", "l4", "dir", "mig"), item[:7])))
-            elif not row.get("legacy_id"):
+            elif not row.get("legacy_id") and row.get("l1") != NOT_IN_CATALOG:
                 raise ValueError("Task must reference the service catalogue.")
             for key, field in FIELD_MAP.items():
                 value = row.get(key, "")
@@ -94,6 +91,8 @@ def _validate_state(raw, project):
                 max_length = OpportunityAssessment._meta.get_field(field).max_length
                 if max_length and len(row[key]) > max_length:
                     raise ValueError(f"{field} exceeds {max_length} characters.")
+            if row["l1"] == NOT_IN_CATALOG and (ref is not None or row["l2"] != NOT_IN_CATALOG or row["l3"] != NOT_IN_CATALOG):
+                raise ValueError("Non-catalogue tasks must use Not in Service Catalog for L1, L2, and L3.")
             for key, choices in OPTIONS.items():
                 if row.get(key, "") not in choices:
                     raise ValueError(f"Invalid {key} value.")
@@ -158,11 +157,12 @@ def opportunity_task_scope(request, project_id):
     if denied is not None:
         return denied
     setup = _build_setup_context(project)
+    catalogue = _catalogue()
     if request.method == "POST":
         if request.data.get("migration_request_id") != project.migration_request_id:
             return Response({"error": "migration_request_id does not match this project."}, status=400)
         try:
-            state = _validate_state(request.data.get("state"), project)
+            state = _validate_state(request.data.get("state"), project, catalogue)
         except (ValueError, TypeError) as error:
             return Response({"error": str(error)}, status=400)
         with transaction.atomic():
@@ -177,10 +177,10 @@ def opportunity_task_scope(request, project_id):
             scope.save()
     else:
         scope = OpportunityAssessmentScope.objects.filter(project=project).first()
-        state = scope.state if scope else _initial_state(project)
+        state = scope.state if scope else _initial_state(project, catalogue)
     return Response({
         "migration_request_id": project.migration_request_id,
-        "state": state, "revision": scope.revision if scope else 0,
+        "state": state, "revision": scope.revision if scope else 0, "catalogue": catalogue,
         "intake": {"region": project.region, "area": ", ".join(project.areas or []),
                    "product": ", ".join(project.products or []), "products": project.products or [],
                    "catalogue_products": [re.sub(r"^General\s+", "", product, flags=re.IGNORECASE).strip() for product in (project.products or [])],

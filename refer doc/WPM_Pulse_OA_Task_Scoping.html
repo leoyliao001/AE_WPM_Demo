@@ -166,6 +166,7 @@ const COLS=[
  {k:"l4",h:"L4",t:"l4",g:"Process taxonomy",w:300},
  {k:"task",h:"Task Name",t:"text",g:"Task details",w:230},
  {k:"desc",h:"Task Description",t:"text",g:"Task details",w:260},
+ {k:"system",h:"System",t:"text",g:"Task details",w:180},
  {k:"mig",h:"Migratable to GSC as per service catalogue",t:"auto",g:"Service catalogue",w:150},
  {k:"cx",h:"Complexity (Low, Medium, High)",t:"sel",o:["Low","Medium","High"],g:"Readiness",w:120},
  {k:"sop",h:"SOP/IOP Exists?",t:"sel",o:["Y","N"],g:"Readiness",w:95},
@@ -182,7 +183,7 @@ const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"
 const opt=(a,ph)=>(ph!==undefined?`<option value="">${ph}</option>`:"")+a.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
 const uniq=a=>[...new Set(a)].filter(Boolean).sort((x,y)=>x.localeCompare(y,undefined,{numeric:true}));
 function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),2600)}
-function rowFromCat(i){const c=CAT[i];return{ref:i,ctry:"All",loc:DEFAULT_LOC,p:c[0],l1:c[1],l2:c[2],l3:c[3],l4:c[4],dir:c[5],mig:c[6],task:c[8]||"",desc:"",mgsc:"",exc:"",cx:"",sop:"",freq:"",uom:"",vol:"",tpu:c[7]||""}}
+function rowFromCat(i){const c=CAT[i];return{ref:i,ctry:"All",loc:DEFAULT_LOC,p:c[0],l1:c[1],l2:c[2],l3:c[3],l4:c[4],dir:c[5],mig:c[6],task:c[8]||"",desc:"",system:"",mgsc:"",exc:"",cx:"",sop:"",freq:"",uom:"",vol:"",tpu:c[7]||""}}
 function fte(r){const v=parseFloat(r.vol),m=parseFloat(r.tpu),f=PER_MONTH[r.freq];return v>0&&m>0&&f?v*f*m/60/PRODUCTIVE_HRS:null}
 
 /* state: two separate datasets, one per method */
@@ -207,19 +208,22 @@ function setMode(m){
 
 /* ---------- Add Tasks (task level) ---------- */
 const catBy=(f)=>CAT.map((c,i)=>i).filter(i=>f(CAT[i]));
+const NOT_IN_CATALOG="Not in Service Catalog";
+function l1Options(product){return uniq(CAT.filter(c=>c[0]===product).map(c=>c[1]))}
 function bFill(){
   const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value;
-  $("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;
+  $("bL1").innerHTML=opt(p?[...l1Options(p),NOT_IN_CATALOG]:[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;
 }
-function onBP(){const p=$("bP").value;$("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;if(p&&$("bL1").options.length===2){$("bL1").selectedIndex=1}onBL1()}
-function onBL1(){const p=$("bP").value,l1=$("bL1").value,a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
-function onBL2(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,a=l2?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1&&c[2]===l2).map(c=>c[3])):[];$("bL3").innerHTML=opt(a,l2?"Select L3":"Select L2 first");$("bL3").disabled=!l2;$("h3").textContent=l2?a.length+" options":"";bPreview()}
+function onBP(){const p=$("bP").value,a=l1Options(p);$("bL1").innerHTML=opt(p?[...a,NOT_IN_CATALOG]:[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;if(p&&a.length===1){$("bL1").value=a[0]}onBL1()}
+function onBL1(){const p=$("bP").value,l1=$("bL1").value;if(l1===NOT_IN_CATALOG){$("bL2").innerHTML=opt([NOT_IN_CATALOG]);$("bL2").value=NOT_IN_CATALOG;$("bL2").disabled=true;$("h2").textContent="1 option";onBL2();return}const a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
+function onBL2(){const p=$("bP").value,l1=$("bL1").value;if(l1===NOT_IN_CATALOG){$("bL3").innerHTML=opt([NOT_IN_CATALOG]);$("bL3").value=NOT_IN_CATALOG;$("bL3").disabled=true;$("h3").textContent="1 option";bPreview();return}const l2=$("bL2").value,a=l2?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1&&c[2]===l2).map(c=>c[3])):[];$("bL3").innerHTML=opt(a,l2?"Select L3":"Select L2 first");$("bL3").disabled=!l2;$("h3").textContent=l2?a.length+" options":"";bPreview()}
 function pending(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,l3=$("bL3").value;if(!(p&&l1&&l2&&l3))return null;
+  if(l1===NOT_IN_CATALOG)return{notInCatalog:true,p,l3,idx:[],fresh:S.task.some(r=>r.p===p&&r.l1===NOT_IN_CATALOG)?[]:[true]};
   const idx=catBy(c=>c[0]===p&&c[1]===l1&&c[2]===l2&&c[3]===l3),have=new Set(S.task.map(r=>r.ref));return{l3,idx,fresh:idx.filter(i=>!have.has(i))}}
 function bPreview(){const x=pending();$("bAdd").disabled=!x||!x.fresh.length;
-  $("preview").innerHTML=!x?"Select L1, L2 and L3.":!x.fresh.length?`<span class="warn">All ${x.idx.length} L4 tasks under ${esc(x.l3)} are already in the grid.</span>`:`Will add <b>${x.fresh.length} L4 task${x.fresh.length>1?"s":""}</b> under <b>${esc(x.l3)}</b>.${x.fresh.length<x.idx.length?` <span class="warn">${x.idx.length-x.fresh.length} already in the grid will be skipped.</span>`:""}`}
-function addRows(){const x=pending();if(!x)return;const add=x.fresh.map(i=>({id:"t"+(S.seq++),...rowFromCat(i),ctry:bCtryVal}));S.task=S.task.concat(add);
-  clearFilters(false);applied.l3=x.l3;syncFilterUI();setDirty(true);page=1;render();bPreview();toast(`${add.length} L4 task${add.length>1?"s":""} added – showing ${x.l3}`)}
+  $("preview").innerHTML=!x?"Select L1, L2 and L3.":x.notInCatalog?x.fresh.length?`Will add one task row under <b>${esc(x.l3)}</b>.`:`<span class="warn">A Not in Service Catalog row for this product is already in the grid.</span>`:!x.fresh.length?`<span class="warn">All ${x.idx.length} L4 tasks under ${esc(x.l3)} are already in the grid.</span>`:`Will add <b>${x.fresh.length} L4 task${x.fresh.length>1?"s":""}</b> under <b>${esc(x.l3)}</b>.${x.fresh.length<x.idx.length?` <span class="warn">${x.idx.length-x.fresh.length} already in the grid will be skipped.</span>`:""}`}
+function addRows(){const x=pending();if(!x)return;const add=x.notInCatalog?[{id:"t"+(S.seq++),ref:null,ctry:bCtryVal,loc:DEFAULT_LOC,p:x.p,l1:NOT_IN_CATALOG,l2:NOT_IN_CATALOG,l3:NOT_IN_CATALOG,l4:"",dir:"",mig:"",task:"",desc:"",system:"",mgsc:"",exc:"",cx:"",sop:"",freq:"",uom:"",vol:"",tpu:""}]:x.fresh.map(i=>({id:"t"+(S.seq++),...rowFromCat(i),ctry:bCtryVal}));S.task=S.task.concat(add);
+  clearFilters(false);applied.l3=x.l3;syncFilterUI();setDirty(true);page=1;render();bPreview();toast(`${add.length} task${add.length>1?"s":""} added – showing ${x.l3}`)}
 
 /* ---------- filters (apply on View) ---------- */
 const FK=[["fL1","l1"],["fL2","l2"],["fL3","l3"],["fL4","l4"]];

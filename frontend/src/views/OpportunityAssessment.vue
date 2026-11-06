@@ -37,6 +37,7 @@ function buildDocument(data) {
   let source = scopeTemplate
     .replace(/<header class="top">[\s\S]*?<\/header>/, '')
     .replace('<script>', `<script>window.OA_CONFIG=${config};`)
+    .replace(/const CAT=[^\r\n]*;\r?\n/, 'const CAT=window.OA_CONFIG.catalogue;\n')
     .replace(/const MIGRATION_ID=.*?;/, 'const MIGRATION_ID=window.OA_CONFIG.migration_request_id;')
     .replace(/const INTAKE=.*?;\r?\n/, 'const INTAKE=window.OA_CONFIG.intake;\n')
     .replace(/const LOCATIONS=.*?;[^\r\n]*/, 'const LOCATIONS=window.OA_CONFIG.locations,DEFAULT_LOC=window.OA_CONFIG.default_location;')

@@ -1,7 +1,8 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope
+from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope, ServiceCatalogue
+from api.services.opportunity_catalogue import OPPORTUNITY_CATALOGUE_NAME
 from api.views.opportunity_task_scope import _catalogue
 
 
@@ -13,6 +14,16 @@ class OpportunityTaskScopeTests(TestCase):
             region="APA", areas=["SEA"], countries=["Singapore", "Malaysia"],
             function_name="CX", products=["LCL"], proposed_scope="Test", fte_number="1",
         )
+        ServiceCatalogue.objects.create(
+            catalogue=OPPORTUNITY_CATALOGUE_NAME, product="LCL", l1="OtC", l2="Job Costing",
+            l3="Job Costing - General", l4="Manage booking", direction="Import",
+            current_ownership="GSC", average_handle_time="2", task_name="Task one",
+        )
+        ServiceCatalogue.objects.create(
+            catalogue=OPPORTUNITY_CATALOGUE_NAME, product="LCL", l1="OtC", l2="Order Management",
+            l3="Manage Order", l4="Cancel order", direction="Export",
+            current_ownership="Area", average_handle_time="5", task_name="Task two",
+        )
         self.client = APIClient()
         self.client.credentials(HTTP_X_USER_EMAIL=self.project.requestor)
         self.url = f"/api/migration-dashboard/projects/{self.project.pk}/opportunity-assessment/task-scope/"
@@ -21,7 +32,7 @@ class OpportunityTaskScopeTests(TestCase):
         item = _catalogue()[ref]
         return {"id": row_id, "ref": ref, "ctry": "Singapore; Malaysia", "loc": "Manila",
                 "p": item[0], "l1": item[1], "l2": item[2], "l3": item[3], "l4": item[4],
-                "task": "Task", "desc": "Details", "cx": "High", "sop": "Y", "freq": "Daily",
+                "task": "Task", "desc": "Details", "system": "SAP ECC", "cx": "High", "sop": "Y", "freq": "Daily",
                 "uom": "Cases", "vol": "400", "tpu": "2", "mgsc": "Yes", "exc": "Language Barrier"}
 
     def save(self, state, revision=0, **extra):
@@ -34,10 +45,14 @@ class OpportunityTaskScopeTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         row = OpportunityAssessment.objects.get()
         self.assertEqual(row.fte_calculation, "2.0000")
+        self.assertEqual(row.system, "SAP ECC")
         self.assertEqual(row.scope_details["exc"], "Language Barrier")
         self.assertEqual(row.scope_details["ctry"], "Singapore; Malaysia")
         loaded = self.client.get(self.url).data
+        self.assertEqual(len(loaded["catalogue"]), 2)
+        self.assertEqual(loaded["catalogue"][0][5:9], ["Import", "GSC", "2", "Task one"])
         self.assertEqual(loaded["state"]["task"][0]["desc"], "Details")
+        self.assertEqual(loaded["state"]["task"][0]["system"], "SAP ECC")
         self.assertEqual(len(loaded["state"]["cat"]), 1)
         loaded["state"]["mode"] = "cat"
         response = self.save(loaded["state"], revision=1)
@@ -76,6 +91,24 @@ class OpportunityTaskScopeTests(TestCase):
         state["task"][0]["ctry"] = "Denmark"
         self.assertEqual(self.save(state).status_code, 400)
         state["task"] = [self.row(), self.row()]
+        self.assertEqual(self.save(state).status_code, 400)
+
+    def test_not_in_service_catalog_row_round_trips_and_syncs(self):
+        label = "Not in Service Catalog"
+        row = {**self.row(), "id": "custom1", "ref": None, "p": "LCL", "l1": label, "l2": label,
+               "l3": label, "l4": "", "task": "Custom task"}
+        state = {"cat": None, "task": [row], "seq": 2, "mode": "task"}
+        response = self.save(state)
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = OpportunityAssessment.objects.get()
+        self.assertEqual((saved.l1, saved.l2, saved.l3), (label, label, label))
+        loaded = self.client.get(self.url).data["state"]["task"][0]
+        self.assertEqual((loaded["l1"], loaded["l2"], loaded["l3"]), (label, label, label))
+
+    def test_not_in_service_catalog_requires_matching_l2_l3(self):
+        label = "Not in Service Catalog"
+        row = {**self.row(), "ref": None, "l1": label, "l2": "Other", "l3": label}
+        state = {"cat": None, "task": [row], "seq": 2, "mode": "task"}
         self.assertEqual(self.save(state).status_code, 400)
 
     def test_stale_save_cannot_overwrite_and_delete_is_persisted(self):
