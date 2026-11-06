@@ -24,7 +24,7 @@ def opportunity_fte_totals(project):
     if mode in (None, ""):
         rows = []
     elif isinstance(mode, str) and mode in {"cat", "task"}:
-        rows = state.get(mode, [])
+        rows = state.get(mode)
     else:
         raise ValueError("Saved Opportunity Assessment mode is invalid.")
     if not isinstance(rows, list):
