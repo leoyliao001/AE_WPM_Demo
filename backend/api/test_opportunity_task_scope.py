@@ -91,6 +91,37 @@ class OpportunityTaskScopeTests(TestCase):
         self.assertEqual(self.save(response.data["state"], revision=1).status_code, 200)
         self.assertEqual(OpportunityAssessment.objects.count(), len(_catalogue()))
 
+    def test_complete_catalogue_accepts_custom_not_in_catalogue_row(self):
+        label = "Not in Service Catalog"
+        catalogue_row = self.row(0, "c0")
+        custom_row = {
+            **self.row(0, "custom1"),
+            "id": "custom1",
+            "ref": None,
+            "l1": label,
+            "l2": label,
+            "l3": label,
+            "l4": "",
+            "dir": "",
+            "mig": "",
+            "task": "Custom task",
+            "vol": "10",
+            "tpu": "2",
+            "mgsc": "No",
+        }
+        state = {"cat": [catalogue_row, custom_row], "task": [], "seq": 2, "mode": "cat"}
+
+        response = self.save(state)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(OpportunityAssessment.objects.count(), 2)
+        saved = OpportunityAssessment.objects.get(task_name="Custom task")
+        self.assertEqual(saved.fte_calculation, "0.0500")
+        self.assertEqual(saved.scope_details["method"], "cat")
+        self.assertEqual((saved.scope_details["l1"], saved.scope_details["l2"], saved.scope_details["l3"]),
+                         (label, label, label))
+        self.assertEqual(response.data["state"]["cat"][1]["l1"], label)
+
     def test_intake_product_alias_preserves_display_name(self):
         self.project.products = ["General LCL"]
         self.project.save()
