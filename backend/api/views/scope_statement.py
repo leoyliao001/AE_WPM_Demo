@@ -128,7 +128,6 @@ def _serialize_statement(project, statement, email):
         "opportunityMigratableFte": str(opportunity_totals["migratable"]),
         "opportunityExceptionFte": str(opportunity_totals["exception"]),
         "opportunityUnclassifiedFte": str(opportunity_totals["unclassified"]),
-        "opportunityExceptionRows": opportunity_totals["exception_rows"],
         "opportunityAssessmentAvailable": opportunity_totals["available"],
         "opportunityAssessmentRevision": opportunity_totals["revision"],
         "submittedAt": statement.submitted_at.isoformat() if statement and statement.submitted_at else None,

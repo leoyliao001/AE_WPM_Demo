@@ -10,7 +10,6 @@ def opportunity_fte_totals(project):
         "migratable": Decimal("0"),
         "exception": Decimal("0"),
         "unclassified": Decimal("0"),
-        "exception_rows": [],
         "available": assessment is not None,
         "revision": assessment.revision if assessment else 0,
     }
@@ -52,22 +51,6 @@ def opportunity_fte_totals(project):
             totals["migratable"] += fte
         elif classification == "No":
             totals["exception"] += fte
-            task_name = next((
-                row[key].strip()
-                for key in ("task", "task_name", "l4", "l3")
-                if isinstance(row.get(key), str) and row[key].strip()
-            ), f"Opportunity Assessment task {index + 1}")
-            task_description = next((
-                row[key].strip()
-                for key in ("desc", "task_description")
-                if isinstance(row.get(key), str) and row[key].strip()
-            ), "")
-            totals["exception_rows"].append({
-                "id": str(row.get("id") or f"oa-task-{index + 1}"),
-                "taskName": task_name,
-                "taskDescription": task_description,
-                "fte": str(fte),
-            })
         elif classification in ("", None):
             totals["unclassified"] += fte
 

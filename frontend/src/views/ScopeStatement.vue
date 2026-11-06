@@ -56,7 +56,7 @@
                     <h3>FTE agreement and evidence rules</h3>
                     <ol>
                       <li>For each of <strong>JL2, JL3 and JL4</strong>, enter only the <strong>Final Agreement FTE</strong>. Values must be non-negative whole numbers.</li>
-                      <li><strong>Migratable FTE</strong> and exception rows are calculated from saved Opportunity Assessment tasks marked Yes and No respectively. Tasks without a Yes/No selection are excluded from both totals.</li>
+                      <li><strong>Migratable FTE</strong> and the single <strong>Exceptions total</strong> are calculated from saved Opportunity Assessment tasks marked Yes and No respectively. Tasks without a Yes/No selection are excluded from both totals.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
                       <li>The single <strong>Lock / Unlock</strong> control applies to the whole page, including FTE, scope text, assumptions, migration waves and uploads. Downloads remain available while locked.</li>
                     </ol>
@@ -205,7 +205,7 @@
           </div>
           <footer class="agreement-note">
             <mc-icon icon="mi-file" size="16" />
-            <span>Migratable FTE and exception rows are read from saved Opportunity Assessment tasks. Only Final Agreement FTE is entered manually by job level. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
+            <span>Migratable FTE and the Exceptions total are read from saved Opportunity Assessment tasks. Only Final Agreement FTE is entered manually by job level. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
           </footer>
         </section>
 
@@ -213,30 +213,17 @@
           <section class="detail-card exception-card" aria-labelledby="exceptions-title">
             <header class="detail-heading">
               <div><p class="eyebrow">Scope reconciliation</p><h2 id="exceptions-title">Exceptions to migration</h2></div>
-              <span class="count-badge">{{ formatNumber(opportunityExceptionFte) }} <small>FTE</small></span>
             </header>
-            <p class="section-description">One row for each saved Opportunity Assessment task marked Migratable to GSC = No.</p>
+            <p class="section-description">Saved Opportunity Assessment activities marked No are combined into one exception total, without a job-level breakdown.</p>
             <table class="exception-table">
-              <thead><tr><th scope="col">Activity</th><th scope="col">Exception · FTE</th><th scope="col">% of ambition</th></tr></thead>
+              <thead><tr><th scope="col">Exception source</th><th scope="col">Total FTE</th></tr></thead>
               <tbody>
-                <tr v-for="(row, index) in opportunityExceptionRows" :key="row.id || index">
-                  <th scope="row">
-                    <span class="job-level">{{ row.taskName }}</span>
-                    <span v-if="row.taskDescription" class="cell-caption">{{ row.taskDescription }}</span>
-                  </th>
-                  <td>{{ formatNumber(Number(row.fte || 0)) }}</td>
-                  <td>{{ exceptionPercentage(row.fte) }}</td>
+                <tr>
+                  <th scope="row">Opportunity Assessment exceptions marked No</th>
+                  <td>{{ formatNumber(opportunityExceptionFte) }}</td>
                 </tr>
-                <tr v-if="!opportunityExceptionRows.length"><td colspan="3">No Opportunity Assessment tasks are marked No.</td></tr>
               </tbody>
             </table>
-            <div class="reconciliation">
-              <mc-icon icon="mi-chart-pie" size="18" />
-              <div>
-                <strong>{{ opportunityExceptionRows.length }} task{{ opportunityExceptionRows.length === 1 ? '' : 's' }} marked No</strong>
-                <span>OA Yes {{ formatNumber(opportunityMigratableFte) }} FTE · OA No {{ formatNumber(opportunityExceptionFte) }} FTE · Intake ambition {{ formatNumber(ambition) }} FTE</span>
-              </div>
-            </div>
             <router-link class="text-action oa-link" :to="{ path: `/migration-dashboard/${projectId}/opportunity-assessment`, query: { from: 'toll-gates', project: projectId } }">View Opportunity Assessment <span aria-hidden="true">↗</span></router-link>
           </section>
 
@@ -326,7 +313,6 @@ const canEdit = computed(() => canManage.value && !pageLocked.value)
 const ambition = computed(() => Number(statement.value?.ambitionFte || 0))
 const opportunityMigratableFte = computed(() => Number(statement.value?.opportunityMigratableFte || 0))
 const opportunityExceptionFte = computed(() => Number(statement.value?.opportunityExceptionFte || 0))
-const opportunityExceptionRows = computed(() => statement.value?.opportunityExceptionRows || [])
 const lockedCount = computed(() => lines.value.filter((line) => line.lockedAt).length)
 const attachments = computed(() => statement.value?.attachments || [])
 const evidenceCount = computed(() => attachments.value.length)
@@ -358,10 +344,6 @@ function formatNumber(value) {
 
 function totalDisplay(key) {
   return completeField(key) ? formatNumber(sumField(key)) : '—'
-}
-
-function exceptionPercentage(value) {
-  return validNumber(value) && ambition.value > 0 ? `${(Number(value) / ambition.value * 100).toFixed(1)}%` : '—'
 }
 
 const canLockPage = computed(() => allFinalEntered.value && Boolean(scopeText.value.trim()))
