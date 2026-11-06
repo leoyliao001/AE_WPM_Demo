@@ -39,8 +39,8 @@ class OpportunityTaskScopeTests(TestCase):
         return self.client.post(self.url, {"migration_request_id": self.project.migration_request_id,
                                          "state": state, "revision": revision, **extra}, format="json")
 
-    def test_round_trip_both_modes_and_sync_active_rows(self):
-        state = {"cat": [self.row(0, "c0")], "task": [self.row(1)], "seq": 2, "mode": "task"}
+    def test_switching_methods_requires_confirmation_and_syncs_active_rows(self):
+        state = {"cat": None, "task": [self.row(1)], "seq": 2, "mode": "task"}
         response = self.save(state)
         self.assertEqual(response.status_code, 200, response.data)
         row = OpportunityAssessment.objects.get()
@@ -53,13 +53,25 @@ class OpportunityTaskScopeTests(TestCase):
         self.assertEqual(loaded["catalogue"][0][5:9], ["Import", "GSC", "2", "Task one"])
         self.assertEqual(loaded["state"]["task"][0]["desc"], "Details")
         self.assertEqual(loaded["state"]["task"][0]["system"], "SAP ECC")
-        self.assertEqual(len(loaded["state"]["cat"]), 1)
+        self.assertIsNone(loaded["state"]["cat"])
+        loaded["state"]["cat"] = [self.row(0, "c0")]
         loaded["state"]["mode"] = "cat"
         response = self.save(loaded["state"], revision=1)
+        self.assertEqual(response.status_code, 409)
+        response = self.save(loaded["state"], revision=1, method_switch_confirmed=True)
+        self.assertEqual(response.status_code, 400)
+        loaded["state"]["task"] = []
+        response = self.save(loaded["state"], revision=1, method_switch_confirmed=True)
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(OpportunityAssessment.objects.count(), 1)
         self.assertEqual(OpportunityAssessment.objects.get().scope_details["method"], "cat")
-        self.assertEqual(len(response.data["state"]["task"]), 1)
+        self.assertEqual(response.data["state"]["task"], [])
+
+    def test_initial_save_rejects_rows_from_both_methods(self):
+        state = {"cat": [self.row(0, "c0")], "task": [self.row(1)], "seq": 2, "mode": "task"}
+        self.assertEqual(self.save(state).status_code, 400)
+        self.assertFalse(OpportunityAssessmentScope.objects.exists())
+        self.assertFalse(OpportunityAssessment.objects.exists())
 
     def test_invalid_upload_is_atomic_and_wrong_project_is_rejected(self):
         state = {"cat": None, "task": [self.row()], "seq": 2, "mode": "task"}
@@ -132,11 +144,12 @@ class OpportunityTaskScopeTests(TestCase):
         self.assertEqual(self.save(state).status_code, 200)
         self.assertEqual(OpportunityAssessment.objects.get().task_name, "Existing task")
         state["cat"] = [self.row(0, "c0")]
+        state["task"] = []
         state["mode"] = "cat"
-        self.assertEqual(self.save(state, revision=1).status_code, 200)
-        state["mode"] = "task"
-        self.assertEqual(self.save(state, revision=2).status_code, 200)
-        self.assertEqual(OpportunityAssessment.objects.get().upstream, "Original upstream")
+        self.assertEqual(self.save(state, revision=1).status_code, 409)
+        self.assertEqual(self.save(state, revision=1, method_switch_confirmed=True).status_code, 200)
+        self.assertEqual(OpportunityAssessment.objects.get().scope_details["method"], "cat")
+        self.assertEqual(self.client.get(self.url).data["state"]["task"], [])
 
     def test_access_control_and_project_isolation(self):
         self.client.credentials(HTTP_X_USER_EMAIL="other@example.com")

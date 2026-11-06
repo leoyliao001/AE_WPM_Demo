@@ -109,6 +109,8 @@ def _validate_state(raw, project, catalogue=None):
             row["fte"] = f"{volume * minutes * factor / 60 / 140:.4f}" if volume and minutes and factor else ""
     if state.get("mode") == "cat" and state.get("cat") is None:
         raise ValueError("Catalogue data is missing.")
+    if not state.get("mode") and any(state.get(method) for method in ("cat", "task")):
+        raise ValueError("Select a scoping method before adding scope rows.")
     return state
 
 
@@ -167,12 +169,41 @@ def opportunity_task_scope(request, project_id):
             return Response({"error": str(error)}, status=400)
         with transaction.atomic():
             MigrationIntakeSubmission.objects.select_for_update().get(pk=project.pk)
-            scope, _created = OpportunityAssessmentScope.objects.get_or_create(project=project)
-            if request.data.get("revision") != scope.revision:
+            scope = OpportunityAssessmentScope.objects.select_for_update().filter(project=project).first()
+            revision = scope.revision if scope else 0
+            if request.data.get("revision") != revision:
                 return Response({"error": "This assessment was changed by another user. Reload before saving."}, status=409)
+            previous_state = scope.state if scope and scope.state else _initial_state(project, catalogue)
+            previous_mode = previous_state.get("mode", "")
+            saved_rows_exist = any(previous_state.get(method) for method in ("cat", "task"))
+            saved_rows_exist = saved_rows_exist or OpportunityAssessment.objects.filter(
+                migration_request_id=project.migration_request_id
+            ).exists()
+            inactive_method = "task" if state.get("mode") == "cat" else "cat"
+            inactive_rows = state.get(inactive_method)
+            if state.get("mode") and state.get("mode") != previous_mode and saved_rows_exist:
+                if request.data.get("method_switch_confirmed") is not True:
+                    return Response(
+                        {"error": "Changing the scoping method requires confirmation. Reload and confirm the switch."},
+                        status=409,
+                    )
+                if inactive_rows:
+                    return Response(
+                        {"error": "Clear the previous method's scope data before switching methods."},
+                        status=400,
+                    )
+            elif inactive_rows:
+                previous_inactive_rows = previous_state.get(inactive_method)
+                if inactive_rows != previous_inactive_rows:
+                    return Response(
+                        {"error": "Only one scoping method can contain scope data. Confirm a method switch to change methods."},
+                        status=400,
+                    )
             _sync_rows(project, state, setup)
+            if scope is None:
+                scope = OpportunityAssessmentScope(project=project)
             scope.state = state
-            scope.revision += 1
+            scope.revision = revision + 1
             scope.updated_by = get_request_email(request)
             scope.save()
     else:

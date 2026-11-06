@@ -24,6 +24,7 @@ from api.permissions.attributes_access import (
     normalize_email,
     require_attributes_access,
 )
+from api.services.opportunity_fte import opportunity_fte_totals
 
 JOB_LEVELS = ("JL2", "JL3", "JL4")
 MAX_EVIDENCE_BYTES = 20 * 1024 * 1024
@@ -86,13 +87,12 @@ def _number(value, label, *, allow_none=False, whole=False):
 
 def _serialize_statement(project, statement, email):
     lines = {line.job_level: line for line in (statement.lines.all() if statement else [])}
+    opportunity_totals = opportunity_fte_totals(project)
     items = []
     for job_level in JOB_LEVELS:
         line = lines.get(job_level)
         items.append({
             "jobLevel": job_level,
-            "agreedFte": str(line.agreed_fte) if line and line.agreed_fte is not None else None,
-            "notAgreedFte": str(line.not_agreed_fte) if line and line.not_agreed_fte is not None else None,
             "finalFte": line.final_fte if line else None,
             "lockedAt": line.locked_at.isoformat() if line and line.locked_at else None,
             "lockedBy": line.locked_by if line else "",
@@ -124,8 +124,13 @@ def _serialize_statement(project, statement, email):
         "waves": statement.waves if statement else [],
         "ambitionFte": str(statement.ambition_fte) if statement and statement.ambition_fte is not None else str(project.fte_number or "0"),
         "finalProjectFte": statement.final_project_fte if statement else None,
-        "migratableFte": str(statement.migratable_fte) if statement and statement.migratable_fte is not None else None,
-        "migratableFteConfirmed": statement.migratable_fte_confirmed if statement else False,
+        "opportunityAssessedFte": str(opportunity_totals["assessed"]),
+        "opportunityMigratableFte": str(opportunity_totals["migratable"]),
+        "opportunityExceptionFte": str(opportunity_totals["exception"]),
+        "opportunityUnclassifiedFte": str(opportunity_totals["unclassified"]),
+        "opportunityExceptionRows": opportunity_totals["exception_rows"],
+        "opportunityAssessmentAvailable": opportunity_totals["available"],
+        "opportunityAssessmentRevision": opportunity_totals["revision"],
         "submittedAt": statement.submitted_at.isoformat() if statement and statement.submitted_at else None,
         "submittedBy": statement.submitted_by if statement else "",
         "auditLog": statement.audit_log if statement else [],
@@ -152,8 +157,8 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
     {"key": "revision", "label": "Revision"},
     {"key": "ambition_fte", "label": "Ambition FTE"},
     {"key": "final_project_fte", "label": "Final Project FTE"},
-    {"key": "migratable_fte", "label": "Migratable FTE (manual)"},
-    {"key": "migratable_fte_confirmed", "label": "Migratable FTE Confirmed"},
+    {"key": "migratable_fte", "label": "Migratable FTE (legacy)"},
+    {"key": "migratable_fte_confirmed", "label": "Migratable FTE Confirmed (legacy)"},
     {"key": "submitted_at", "label": "Submitted At"},
     {"key": "submitted_by", "label": "Submitted By"},
     {"key": "updated_at", "label": "Last Updated"},
@@ -163,12 +168,12 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
             {
                 "key": f"{level.lower()}_{field}",
                 "label": f"{level} {label}",
-                "editable": field in {"agreed_fte", "not_agreed_fte", "final_fte"},
+                "editable": field == "final_fte",
             }
         for level in JOB_LEVELS
         for field, label in (
-            ("agreed_fte", "Migratable FTE (suggested/manual)"),
-            ("not_agreed_fte", "Not Agreed FTE"),
+            ("agreed_fte", "Migratable FTE (legacy)"),
+            ("not_agreed_fte", "Not Agreed FTE (legacy)"),
             ("final_fte", "Final FTE"),
             ("locked_at", "Locked At"),
             ("locked_by", "Locked By"),
@@ -300,16 +305,6 @@ def save_scope_statement_database(request):
                         job_level=job_level,
                     )
                     values = {
-                        "agreed_fte": _number(
-                            item.get(f"{prefix}_agreed_fte", line.agreed_fte),
-                            f"{job_level} agreed FTE",
-                            allow_none=True,
-                        ),
-                        "not_agreed_fte": _number(
-                            item.get(f"{prefix}_not_agreed_fte", line.not_agreed_fte),
-                            f"{job_level} exception FTE",
-                            allow_none=True,
-                        ),
                         "final_fte": _number(
                             item.get(f"{prefix}_final_fte", line.final_fte),
                             f"{job_level} final FTE",
@@ -430,6 +425,8 @@ def save_scope_statement(request, project_id):
     action = (payload.get("action") or "save").strip().lower()
     if action not in {"save", "lock", "unlock", "submit", "revise"}:
         return Response({"error": "Unsupported action."}, status=status.HTTP_400_BAD_REQUEST)
+    if "migratableFte" in payload or "migratableFteConfirmed" in payload:
+        return Response({"error": "Migratable FTE is calculated from Opportunity Assessment and cannot be entered manually."}, status=400)
 
     try:
         _apply_scope_extensions(ScopeStatement(), payload)
@@ -498,10 +495,6 @@ def save_scope_statement(request, project_id):
         else:
             statement.scope_text = scope_text[:2000]
             _apply_scope_extensions(statement, payload)
-            try:
-                _apply_migratable_fte(statement, payload)
-            except ValueError as exc:
-                return Response({"error": str(exc)}, status=400)
 
         lines_payload = payload.get("lines")
         changed_lines = []
@@ -510,12 +503,12 @@ def save_scope_statement(request, project_id):
             for row in lines_payload:
                 if not isinstance(row, dict) or row.get("jobLevel") not in JOB_LEVELS or row["jobLevel"] in seen:
                     return Response({"error": "Each line must specify a unique valid job level."}, status=400)
+                if "agreedFte" in row or "notAgreedFte" in row:
+                    return Response({"error": "Only Final Agreement FTE is entered manually by job level."}, status=400)
                 job_level = row.get("jobLevel")
                 seen.add(job_level)
                 line = next(line for line in all_lines if line.job_level == job_level)
                 try:
-                    line.agreed_fte = _number(row.get("agreedFte"), f"{job_level} agreed FTE", allow_none=True)
-                    line.not_agreed_fte = _number(row.get("notAgreedFte"), f"{job_level} exception FTE", allow_none=True)
                     line.final_fte = _number(row.get("finalFte"), f"{job_level} final FTE", allow_none=True, whole=True)
                 except ValueError as exc:
                     return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -524,13 +517,11 @@ def save_scope_statement(request, project_id):
             return Response({"error": "Lines must be a list."}, status=400)
 
         if action == "lock":
-            if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
-                return Response({"error": "Manually confirm Migratable FTE before locking the page."}, status=400)
             if len(all_lines) != 3 or not statement.scope_text.strip() or any(
-                line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None
+                line.final_fte is None
                 for line in all_lines
             ):
-                return Response({"error": "Complete Scope text and all job-level values before locking the page."}, status=400)
+                return Response({"error": "Complete Scope text and Final Agreement FTE for every job level before locking the page."}, status=400)
             total = sum(line.final_fte for line in all_lines)
             if statement.waves and sum(wave["fte"] for wave in statement.waves) != total:
                 return Response({"error": "Migration wave FTE must equal the final project FTE."}, status=400)
@@ -540,8 +531,6 @@ def save_scope_statement(request, project_id):
                 line.locked_by = email
             changed_lines = all_lines
         elif action == "submit":
-            if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
-                return Response({"error": "Unlock the page and manually confirm Migratable FTE before submitting."}, status=400)
             if not statement.scope_text.strip():
                 return Response({"error": "High-level scope statement is required before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             if len(all_lines) != 3 or any(line.locked_at is None for line in all_lines):
@@ -563,31 +552,11 @@ def save_scope_statement(request, project_id):
             "by": email,
             "at": timezone.now().isoformat(),
             "scope": "page",
-            "migratableFte": str(statement.migratable_fte) if statement.migratable_fte is not None else None,
-            "migratableFteConfirmed": statement.migratable_fte_confirmed,
         })
         statement.save()
         statement = _statement_for_project(project)
 
         return Response(_serialize_statement(project, statement, email))
-
-
-def _apply_migratable_fte(statement, payload):
-    if "migratableFte" in payload:
-        value = _number(payload["migratableFte"], "Migratable FTE", allow_none=True)
-        if value is not None and value.as_tuple().exponent < -4:
-            raise ValueError("Migratable FTE supports at most four decimal places.")
-        if value != statement.migratable_fte:
-            statement.migratable_fte_confirmed = False
-        statement.migratable_fte = value
-    if "migratableFteConfirmed" in payload:
-        confirmed = payload["migratableFteConfirmed"]
-        if not isinstance(confirmed, bool):
-            raise ValueError("Migratable FTE confirmation must be true or false.")
-        if confirmed and statement.migratable_fte is None:
-            raise ValueError("Enter Migratable FTE before confirming.")
-        statement.migratable_fte_confirmed = confirmed
-
 
 def _apply_scope_extensions(statement, payload):
     for key, field in (("outOfScope", "out_of_scope"), ("assumptions", "assumptions")):

@@ -21,6 +21,8 @@ h1{font-size:18px;margin:0}
 .method{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .mcard{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px 16px;border:1.5px solid var(--l);border-radius:10px;background:#fff;cursor:pointer;transition:.15s}
 .mcard:hover{border-color:#8cc4e3;background:#f7fbfe}
+.mcard.switch-required{opacity:.72}
+.method-lock{margin:-5px 0 14px;padding:8px 12px;border:1px solid #f5c58c;background:#fff8ee;border-radius:6px;color:#7a4b00;font-size:12px}
 .mcard.on{border-color:var(--b);background:#eaf4fb;box-shadow:0 0 0 3px rgba(0,115,171,.12)}
 .mnum{flex:none;width:30px;height:30px;border-radius:50%;background:#e1effa;color:var(--bd);display:grid;place-items:center;font-weight:800}
 .mcard.on .mnum{background:var(--b);color:#fff}
@@ -97,6 +99,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
     <span class="mnum">2</span><span class="mbody"><b>Add at Task level</b>
     <span>Use when the tasks and FTE are already known and only need to be documented. Add just the relevant L3 processes – their L4 tasks are pulled in automatically.</span></span><span class="mtick">✓</span></button>
 </div>
+<div id="methodLock" class="method-lock hidden" role="status"></div>
 
 <div id="empty" class="placeholder">Select one of the two scoping methods above to start.</div>
 
@@ -194,18 +197,31 @@ let applied={p:"",l1:"",l2:"",l3:"",l4:"",mig:""};
 function load(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x){S=x;S.task=S.task||[];return}}catch(e){}S={cat:null,task:[],seq:1}}
 function ensureCat(){if(!S.cat){S.cat=CAT.map((c,i)=>({id:"c"+i,...rowFromCat(i)}))}}
 function rows(){return mode==="cat"?S.cat:S.task}
-function setDirty(v){dirty=v;$("save").disabled=!v;$("dirty").innerHTML=v?'<span class="dirty">● Unsaved changes</span>':""}
+function setDirty(v){dirty=v;$("save").disabled=!v;$("dirty").innerHTML=v?'<span class="dirty">● Unsaved changes</span>':"";updateMethodGuard()}
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
 
 /* ---------- method selector ---------- */
+let methodSwitchConfirmed=false;
+let hasSavedAssessment=false;
+function updateMethodGuard(){
+  const count=(Array.isArray(S.cat)?S.cat.length:0)+(Array.isArray(S.task)?S.task.length:0),locked=Boolean(mode&&count);
+  const notice=$("methodLock");
+  notice.classList.toggle("hidden",!locked);
+  notice.textContent=locked?`Scoping method locked: ${count} scope row(s) exist. To change methods, select the other option and confirm; existing scope data will be cleared.`:"";
+  document.querySelectorAll(".mcard").forEach(card=>{
+    const switching=locked&&card.dataset.mode!==mode;
+    card.classList.toggle("switch-required",switching);
+    card.title=switching?"Changing methods will clear existing scope data.":card.querySelector("b").textContent;
+  });
+}
 function setMode(m){
   mode=m;sel.clear();page=1;
   $("empty").classList.toggle("hidden",!!m);$("work").classList.toggle("hidden",!m);
   $("builder").classList.toggle("hidden",m!=="task");
   $("delBtn").classList.toggle("hidden",m!=="task");
-  if(!m)return;
+  if(!m){updateMethodGuard();return}
   if(m==="cat")ensureCat();
-  clearFilters(false);render();
+  clearFilters(false);render();updateMethodGuard();
 }
 
 /* ---------- Add Tasks (task level) ---------- */
@@ -334,7 +350,19 @@ $("bCtry").onclick=e=>openPicker(e.currentTarget,bCtryVal,v=>{bCtryVal=v;$("bCtr
 $("bulkCtry").onclick=e=>openPicker(e.currentTarget,bulkCtryVal,v=>{bulkCtryVal=v;$("bulkCtry").textContent=ctryLabel(v)});
 document.querySelector(".grid").addEventListener("scroll",closePicker);
 $("idChip").textContent=MIGRATION_ID;$("idCode").textContent=MIGRATION_ID;
-document.querySelectorAll(".mcard").forEach(c=>c.onclick=()=>{document.querySelectorAll(".mcard").forEach(x=>{const on=x===c;x.classList.toggle("on",on);x.setAttribute("aria-checked",on)});setMode(c.dataset.mode)});
+document.querySelectorAll(".mcard").forEach(c=>c.onclick=()=>{
+  const next=c.dataset.mode;if(next===mode)return;
+  const existing=(Array.isArray(S.cat)?S.cat.length:0)+(Array.isArray(S.task)?S.task.length:0);
+  const needsConfirmation=existing>0||hasSavedAssessment;
+  const warning=hasSavedAssessment
+    ?`This assessment has already been saved. Switching methods will clear the previously saved scope data when you save this change. This cannot be undone. Continue?`
+    :`Switch to "${c.querySelector("b").textContent}"? This will clear ${existing} unsaved scope row(s).`;
+  if(needsConfirmation&&!confirm(warning))return;
+  if(existing){S.cat=null;S.task=[]}
+  if(needsConfirmation)methodSwitchConfirmed=true;
+  document.querySelectorAll(".mcard").forEach(x=>{const on=x===c;x.classList.toggle("on",on);x.setAttribute("aria-checked",on)});
+  setMode(next)
+});
 $("bP").innerHTML=opt([INTAKE.product]);
 $("bL1").onchange=onBL1;$("bL2").onchange=onBL2;$("bL3").onchange=bPreview;$("bAdd").onclick=addRows;
 FK.forEach(([id])=>$(id).onchange=()=>{const i=FK.findIndex(x=>x[0]===id);FK.slice(i+1).forEach(([n])=>$(n).value="");buildFilters()});

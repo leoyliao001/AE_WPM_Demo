@@ -73,10 +73,10 @@ class ScopePageTests(TestCase):
         OpportunityAssessmentScope.objects.create(project=self.project, state={
             "mode": "task",
             "task": [
-                {"mgsc": "No", "exc": "", "fte": "1.2500"},
-                {"mgsc": "Yes", "exc": "Legal Issues", "fte": "4.0000"},
-                {"mgsc": "", "exc": "Language Barrier", "fte": "0.7500"},
-                {"mgsc": "No", "exc": "Already in GSC", "fte": ""},
+                {"mgsc": "No", "exc": "", "fte": "1.2500", "task": "Exception task one"},
+                {"mgsc": "Yes", "exc": "Legal Issues", "fte": "4.0000", "task": "Migratable task"},
+                {"mgsc": "", "exc": "Language Barrier", "fte": "0.7500", "task": "Unclassified task"},
+                {"mgsc": "No", "exc": "Already in GSC", "fte": "", "task": "Exception task two"},
             ],
         })
 
@@ -87,6 +87,20 @@ class ScopePageTests(TestCase):
         self.assertEqual(response.data["opportunityMigratableFte"], "4.0000")
         self.assertEqual(response.data["opportunityExceptionFte"], "1.2500")
         self.assertEqual(response.data["opportunityUnclassifiedFte"], "0.7500")
+        self.assertEqual(response.data["opportunityExceptionRows"], [
+            {
+                "id": "oa-task-1",
+                "taskName": "Exception task one",
+                "taskDescription": "",
+                "fte": "1.2500",
+            },
+            {
+                "id": "oa-task-4",
+                "taskName": "Exception task two",
+                "taskDescription": "",
+                "fte": "0",
+            },
+        ])
 
     def test_opportunity_totals_default_to_zero_without_assessment(self):
         response = self.client.get(self.url)
@@ -96,6 +110,7 @@ class ScopePageTests(TestCase):
         self.assertEqual(response.data["opportunityMigratableFte"], "0")
         self.assertEqual(response.data["opportunityExceptionFte"], "0")
         self.assertEqual(response.data["opportunityUnclassifiedFte"], "0")
+        self.assertEqual(response.data["opportunityExceptionRows"], [])
 
     def test_lock_does_not_require_attachment_and_validates_all_values(self):
         response = self.save(self.payload("lock"))
