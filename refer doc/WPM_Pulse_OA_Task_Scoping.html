@@ -106,8 +106,10 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
     <div class="tile"><div class="lbl">L3 processes</div><div class="val" id="t2">0</div><div class="cap">Distinct L3</div></div>
     <div class="tile"><div class="lbl">Blueprint GSC</div><div class="val" id="t3">0</div><div class="cap">From Service Catalogue</div></div>
     <div class="tile"><div class="lbl">Blueprint Area</div><div class="val" id="t4">0</div><div class="cap">From Service Catalogue</div></div>
-    <div class="tile"><div class="lbl">Migratable FTE (Calculated)</div><div class="val" id="t6">0.00</div></div>
-    <div class="tile"><div class="lbl">Exceptions FTE (Calculated)</div><div class="val" id="t7">0.00</div><div class="cap">FTE on tasks with an exception</div></div>
+    <div class="tile"><div class="lbl">Opportunity Assessment FTE</div><div class="val" id="t5">0.00</div><div class="cap">All calculated task FTE</div></div>
+    <div class="tile"><div class="lbl">Migratable FTE · Yes</div><div class="val" id="t6">0.00</div><div class="cap">Migratable to GSC = Yes</div></div>
+    <div class="tile"><div class="lbl">Exception FTE · No</div><div class="val" id="t7">0.00</div><div class="cap">Migratable to GSC = No</div></div>
+    <div class="tile"><div class="lbl">Unclassified FTE</div><div class="val" id="t8">0.00</div><div class="cap">No Yes/No selection</div></div>
   </section>
 
   <section class="builder hidden" id="builder">
@@ -267,12 +269,12 @@ function render(){
   $("rowChip").textContent=rows().length+" rows";tiles(v);
 }
 function onEdit(e){const el=e.target,r=rows().find(x=>x.id===el.dataset.id);r[el.dataset.k]=el.value;
-  if(el.dataset.k==="exc")tiles(view());if(["vol","tpu","freq"].includes(el.dataset.k)){const x=fte(r);el.closest("tr").querySelector("td.calc").textContent=x==null?"–":x.toFixed(2);tiles(view())}setDirty(true)}
-function tiles(v){let t=0,ex=0;v.forEach(r=>{const x=fte(r);if(x!=null){t+=x;if(r.exc)ex+=x}});
+  if(el.dataset.k==="mgsc")tiles(view());if(["vol","tpu","freq"].includes(el.dataset.k)){const x=fte(r);el.closest("tr").querySelector("td.calc").textContent=x==null?"–":x.toFixed(2);tiles(view())}setDirty(true)}
+function tiles(v){let t=0,mig=0,ex=0,pending=0;rows().forEach(r=>{const x=fte(r);if(x!=null){t+=x;if(r.mgsc==="Yes")mig+=x;else if(r.mgsc==="No")ex+=x;else pending+=x}});
   $("t1").textContent=v.length;$("t1c").textContent=v.length===rows().length?"All rows":`Filtered from ${rows().length}`;
   $("t2").textContent=new Set(v.map(r=>r.p+"|"+r.l2+"|"+r.l3)).size;
   $("t3").textContent=v.filter(r=>r.mig==="GSC").length;$("t4").textContent=v.filter(r=>r.mig==="Area").length;
-  $("t6").textContent=t.toFixed(2);$("t7").textContent=ex.toFixed(2)}
+  $("t5").textContent=t.toFixed(2);$("t6").textContent=mig.toFixed(2);$("t7").textContent=ex.toFixed(2);$("t8").textContent=pending.toFixed(2)}
 
 /* ---------- country picker (All or multiple) ---------- */
 const splitC=v=>!v||v==="All"?COUNTRIES.slice():v.split(";").map(s=>s.trim()).filter(Boolean);

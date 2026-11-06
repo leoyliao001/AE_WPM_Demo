@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation, localcontext
 
 from api.models import ApprovalWorkflow, BusinessCase, BusinessCaseCostRate, ScopeStatement
+from api.services.opportunity_fte import opportunity_fte_totals
 
 INTAKE_FIELDS = (
     "project_name", "migration_type", "function_name", "products", "countries",
@@ -48,11 +49,16 @@ def source_data(project):
             for line in (statement.lines.all() if statement else [])
         ],
     }
+    opportunity_totals = opportunity_fte_totals(project)
+    scope.update({
+        "opportunityAssessedFte": str(opportunity_totals["assessed"]),
+        "opportunityMigratableFte": str(opportunity_totals["migratable"]),
+        "opportunityExceptionFte": str(opportunity_totals["exception"]),
+        "opportunityUnclassifiedFte": str(opportunity_totals["unclassified"]),
+        "opportunityAssessmentAvailable": opportunity_totals["available"],
+        "opportunityAssessmentRevision": opportunity_totals["revision"],
+    })
     intake = {field: getattr(project, field) for field in INTAKE_FIELDS}
-    # Keep untouched historical source fingerprints stable until a manual value is saved.
-    if statement and statement.migratable_fte is not None:
-        scope["migratableFte"] = str(statement.migratable_fte)
-        scope["migratableFteConfirmed"] = statement.migratable_fte_confirmed
     return intake, scope
 
 
