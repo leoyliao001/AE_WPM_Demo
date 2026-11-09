@@ -5,13 +5,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from api.models import (
-    MigrationIntakeSubmission,
-    OpportunityAssessmentScope,
-    ScopeStatement,
-    ScopeStatementEvidence,
-    ScopeStatementLine,
-)
+from api.models import MigrationIntakeSubmission, ScopeStatement, ScopeStatementEvidence, ScopeStatementLine
 
 
 class ScopePageTests(TestCase):
@@ -35,10 +29,11 @@ class ScopePageTests(TestCase):
     def payload(self, action="save"):
         return {
             "action": action, "scopeText": "Transfer support operations.",
+            "migratableFte": "6", "migratableFteConfirmed": True,
             "outOfScope": "Sales", "assumptions": "Systems remain available",
             "waves": [{"name": "First wave", "date": "2027-01-01", "fte": 6}],
             "lines": [
-                {"jobLevel": level, "finalFte": 2}
+                {"jobLevel": level, "agreedFte": 2, "notAgreedFte": 0, "finalFte": 2}
                 for level in ("JL2", "JL3", "JL4")
             ],
         }
@@ -69,36 +64,6 @@ class ScopePageTests(TestCase):
         self.assertTrue(all(line["lockedAt"] for line in response.data["lines"]))
         self.assertEqual(len({line["lockedAt"] for line in response.data["lines"]}), 1)
 
-    def test_opportunity_totals_use_yes_no_classification_and_exclude_exception_type(self):
-        OpportunityAssessmentScope.objects.create(project=self.project, state={
-            "mode": "task",
-            "task": [
-                {"mgsc": "No", "exc": "", "fte": "1.2500", "task": "Exception task one"},
-                {"mgsc": "Yes", "exc": "Legal Issues", "fte": "4.0000", "task": "Migratable task"},
-                {"mgsc": "", "exc": "Language Barrier", "fte": "0.7500", "task": "Unclassified task"},
-                {"mgsc": "No", "exc": "Already in GSC", "fte": "", "task": "Exception task two"},
-            ],
-        })
-
-        response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["opportunityAssessedFte"], "6.0000")
-        self.assertEqual(response.data["opportunityMigratableFte"], "4.0000")
-        self.assertEqual(response.data["opportunityExceptionFte"], "1.2500")
-        self.assertEqual(response.data["opportunityUnclassifiedFte"], "0.7500")
-        self.assertNotIn("opportunityExceptionRows", response.data)
-
-    def test_opportunity_totals_default_to_zero_without_assessment(self):
-        response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["opportunityAssessedFte"], "0")
-        self.assertEqual(response.data["opportunityMigratableFte"], "0")
-        self.assertEqual(response.data["opportunityExceptionFte"], "0")
-        self.assertEqual(response.data["opportunityUnclassifiedFte"], "0")
-        self.assertNotIn("opportunityExceptionRows", response.data)
-
     def test_lock_does_not_require_attachment_and_validates_all_values(self):
         response = self.save(self.payload("lock"))
         self.assertEqual(response.status_code, 200, response.data)
@@ -125,53 +90,62 @@ class ScopePageTests(TestCase):
         self.assertIn("missing from storage", str(response.data["detail"]))
         self.assertTrue(ScopeStatementEvidence.objects.filter(pk=item.pk).exists())
 
-    def test_final_agreement_is_the_only_manual_fte_and_downstream_uses_oa_totals(self):
-        OpportunityAssessmentScope.objects.create(project=self.project, state={
-            "mode": "task",
-            "task": [
-                {"mgsc": "Yes", "fte": "9.5000"},
-                {"mgsc": "No", "fte": "1.2500"},
-            ],
-        })
-        self.assertEqual(self.save(self.payload("lock")).status_code, 200)
+    def test_manual_value_is_independent_and_confirmation_is_required(self):
+        self.upload()
+        payload = self.payload("lock")
+        payload["migratableFte"] = "9.5"
+        payload["migratableFteConfirmed"] = False
+        response = self.save(payload)
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn("confirm", response.data["error"])
+        self.statement.refresh_from_db()
+        self.assertIsNone(self.statement.migratable_fte)
+        payload["migratableFteConfirmed"] = True
+        response = self.save(payload)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["migratableFte"], "9.5000")
+        self.assertTrue(response.data["migratableFteConfirmed"])
         self.assertEqual(self.save({"action": "submit"}).status_code, 200)
         from api.services.business_case import source_data
         from api.services.project_charter import build_charter_sources
         scope = source_data(self.project)[1]
-        self.assertEqual(scope["opportunityMigratableFte"], "9.5000")
-        self.assertEqual(scope["opportunityExceptionFte"], "1.2500")
+        self.assertEqual(scope["migratableFte"], "9.5000")
         self.assertEqual(scope["finalProjectFte"], 6)
+        self.assertTrue(scope["migratableFteConfirmed"])
         sources = build_charter_sources(self.project)[0]
         fact = next(fact for fact in sources["facts"] if fact["label"].startswith("Migratable FTE"))
         self.assertEqual(fact["value"], "9.5000")
 
-    def test_manual_migratable_and_job_level_agreed_values_are_rejected(self):
-        response = self.save({**self.payload(), "migratableFte": "9.5"})
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("calculated", response.data["error"])
-        payload = self.payload()
-        payload["lines"][0]["agreedFte"] = 1
-        response = self.save(payload)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("Final Agreement", response.data["error"])
+    def test_manual_value_changes_clear_confirmation_and_jl_changes_do_not_override_it(self):
+        self.assertEqual(self.save(self.payload()).status_code, 200)
+        response = self.save({"migratableFte": "8.25"})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["migratableFteConfirmed"])
+        self.assertEqual(response.data["migratableFte"], "8.2500")
+        response = self.save({"lines": [{"jobLevel": "JL2", "agreedFte": 50, "notAgreedFte": 0, "finalFte": 2}]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["migratableFte"], "8.2500")
+        response = self.save({"migratableFteConfirmed": True})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["migratableFteConfirmed"])
 
-    def test_invalid_final_agreement_values_are_rejected_without_partial_saves(self):
-        for value in (-1, True, "NaN", "Infinity", "0.5", "100000000"):
-            payload = self.payload()
-            payload["lines"][0]["finalFte"] = value
-            response = self.save(payload)
+    def test_invalid_manual_values_are_rejected_without_partial_saves(self):
+        for value in (-1, True, "NaN", "Infinity", "0.00001", "100000000"):
+            response = self.save({**self.payload(), "migratableFte": value})
             self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(self.save({"migratableFteConfirmed": "true"}).status_code, 400)
+        self.assertEqual(self.save({"migratableFteConfirmed": True}).status_code, 400)
         self.statement.refresh_from_db()
         self.assertIsNone(self.statement.migratable_fte)
         self.assertFalse(self.statement.migratable_fte_confirmed)
         self.assertEqual(self.statement.scope_text, "")
 
-    def test_legacy_manual_values_are_not_exposed_as_current_scope_inputs(self):
+    def test_legacy_value_is_not_silently_confirmed_or_exposed_as_manual_downstream(self):
         from api.services.business_case import source_data
         self.statement.lines.update(agreed_fte=2)
         response = self.client.get(self.url)
-        self.assertNotIn("migratableFte", response.data)
-        self.assertNotIn("agreedFte", response.data["lines"][0])
+        self.assertIsNone(response.data["migratableFte"])
+        self.assertFalse(response.data["migratableFteConfirmed"])
         self.assertNotIn("migratableFte", source_data(self.project)[1])
 
     def test_page_lock_blocks_narrative_fte_upload_and_admin_updates(self):

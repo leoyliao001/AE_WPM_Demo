@@ -7,8 +7,7 @@ from rest_framework.test import APIClient
 
 from api.models import (
     ApprovalInput, ApprovalWorkflow, BusinessCase, BusinessCaseCostRate,
-    MigrationIntakeSubmission, OpportunityAssessmentScope, ProjectAttributesAccess,
-    ScopeStatement, ScopeStatementLine,
+    MigrationIntakeSubmission, ProjectAttributesAccess, ScopeStatement, ScopeStatementLine,
 )
 
 
@@ -62,32 +61,29 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertFalse(BusinessCase.objects.exists())
         self.assertEqual(response.data["savedSnapshot"], {})
 
-    def test_opportunity_fte_flows_to_snapshot_and_changes_require_review(self):
+    def test_manual_migratable_fte_flows_to_snapshot_without_changing_cost_basis(self):
         self.rates()
         baseline_response = self.save()
         self.assertEqual(baseline_response.status_code, 200, baseline_response.data)
         baseline = baseline_response.data
-        self.assertEqual(baseline["scope"]["opportunityMigratableFte"], "0")
-        self.assertEqual(baseline["scope"]["finalProjectFte"], 98)
-        submitted = self.save(action="submit")
-        self.assertEqual(submitted.status_code, 200, submitted.data)
-        snapshot = deepcopy(submitted.data["savedSnapshot"])
-        OpportunityAssessmentScope.objects.create(project=self.project, revision=1, state={
-            "mode": "task",
-            "task": [
-                {"mgsc": "Yes", "fte": "123.5000"},
-                {"mgsc": "No", "fte": "2.0000"},
-                {"mgsc": "", "fte": "1.0000"},
-            ],
-        })
+        self.scope.migratable_fte = "123.5"
+        self.scope.migratable_fte_confirmed = True
+        self.scope.save()
+        response = self.save(action="submit")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["scope"]["migratableFte"], "123.5000")
+        self.assertTrue(response.data["scope"]["migratableFteConfirmed"])
+        self.assertEqual(response.data["scope"]["finalProjectFte"], 98)
+        self.assertEqual(response.data["financials"]["metrics"], baseline["financials"]["metrics"])
+        snapshot = deepcopy(response.data["savedSnapshot"])
+        self.assertEqual(snapshot["scope"]["migratableFte"], "123.5000")
+        self.scope.migratable_fte = "124"
+        self.scope.save()
         record = BusinessCase.objects.get()
         self.assertTrue(record.review_required)
         self.assertEqual(record.saved_snapshot, snapshot)
         current = self.client.get(self.url).data
-        self.assertEqual(current["scope"]["opportunityMigratableFte"], "123.5000")
-        self.assertEqual(current["scope"]["opportunityExceptionFte"], "2.0000")
-        self.assertEqual(current["scope"]["opportunityUnclassifiedFte"], "1.0000")
-        self.assertTrue(current["scope"]["reviewRequired"])
+        self.assertEqual(current["scope"]["migratableFte"], "124.0000")
         self.assertEqual(current["status"], "needs_review")
 
     def test_complete_snapshot_is_persisted_and_sources_do_not_overwrite_it(self):

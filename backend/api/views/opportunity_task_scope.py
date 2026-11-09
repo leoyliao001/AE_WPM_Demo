@@ -1,6 +1,9 @@
 import copy
+import json
 import re
+from functools import lru_cache
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -8,17 +11,15 @@ from rest_framework.response import Response
 
 from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope
 from api.permissions.attributes_access import get_request_email
-from api.services.opportunity_catalogue import load_opportunity_catalogue
 from api.views.opportunity_assessment import _build_setup_context, _deny_unless_requestor, _get_project, _parse_number
 
 
 FIELD_MAP = {
     "p": "product", "loc": "location", "l1": "l1", "l2": "l2", "l3": "l3", "l4": "l4",
-    "task": "task_name", "desc": "task_description", "system": "system", "mig": "migratable_to_gsc",
+    "task": "task_name", "desc": "task_description", "mig": "migratable_to_gsc",
     "cx": "complexity", "sop": "sop_iop_exists", "freq": "task_frequency",
     "uom": "unit_of_measure", "vol": "volume_monthly", "tpu": "task_time_per_unit_min",
 }
-NOT_IN_CATALOG = "Not in Service Catalog"
 FREQUENCIES = {"Daily": 21, "Weekly": 4.33, "Monthly": 1, "Quarterly": 1 / 3, "Yearly": 1 / 12, "Ad hoc": 1}
 LEGACY_FIELDS = ("upstream", "downstream", "risks_related", "training_time_needed", "recommended_handoff_duration")
 OPTIONS = {
@@ -28,13 +29,15 @@ OPTIONS = {
 }
 
 
+@lru_cache(maxsize=1)
 def _catalogue():
-    return load_opportunity_catalogue()
+    source = (settings.BASE_DIR.parent / "refer doc" / "WPM_Pulse_OA_Task_Scoping.html").read_text(encoding="utf-8")
+    return json.JSONDecoder().raw_decode(source.split("const CAT=", 1)[1])[0]
 
 
-def _initial_state(project, catalogue=None):
+def _initial_state(project):
     tasks = []
-    catalogue = catalogue if catalogue is not None else _catalogue()
+    catalogue = _catalogue()
     refs = {tuple(item[:5]): index for index, item in enumerate(catalogue)}
     for item in OpportunityAssessment.objects.filter(migration_request_id=project.migration_request_id):
         row = {key: getattr(item, field) for key, field in FIELD_MAP.items()}
@@ -46,13 +49,13 @@ def _initial_state(project, catalogue=None):
     return {"cat": None, "task": tasks, "seq": 1, "mode": "task" if tasks else ""}
 
 
-def _validate_state(raw, project, catalogue=None):
+def _validate_state(raw, project):
     if not isinstance(raw, dict) or raw.get("mode", "") not in ("", "cat", "task"):
         raise ValueError("Invalid scoping method.")
     state = copy.deepcopy(raw)
     if not isinstance(state.get("seq"), int) or isinstance(state["seq"], bool) or state["seq"] < 1:
         raise ValueError("Invalid task sequence.")
-    catalogue = catalogue if catalogue is not None else _catalogue()
+    catalogue = _catalogue()
     countries = set(project.countries or [])
     for method in ("cat", "task"):
         rows = state.get(method)
@@ -81,7 +84,7 @@ def _validate_state(raw, project, catalogue=None):
                 refs.add(ref)
                 item = catalogue[ref]
                 row.update(dict(zip(("p", "l1", "l2", "l3", "l4", "dir", "mig"), item[:7])))
-            elif not row.get("legacy_id") and row.get("l1") != NOT_IN_CATALOG:
+            elif not row.get("legacy_id"):
                 raise ValueError("Task must reference the service catalogue.")
             for key, field in FIELD_MAP.items():
                 value = row.get(key, "")
@@ -91,8 +94,6 @@ def _validate_state(raw, project, catalogue=None):
                 max_length = OpportunityAssessment._meta.get_field(field).max_length
                 if max_length and len(row[key]) > max_length:
                     raise ValueError(f"{field} exceeds {max_length} characters.")
-            if row["l1"] == NOT_IN_CATALOG and (ref is not None or row["l2"] != NOT_IN_CATALOG or row["l3"] != NOT_IN_CATALOG):
-                raise ValueError("Non-catalogue tasks must use Not in Service Catalog for L1, L2, and L3.")
             for key, choices in OPTIONS.items():
                 if row.get(key, "") not in choices:
                     raise ValueError(f"Invalid {key} value.")
@@ -109,8 +110,6 @@ def _validate_state(raw, project, catalogue=None):
             row["fte"] = f"{volume * minutes * factor / 60 / 140:.4f}" if volume and minutes and factor else ""
     if state.get("mode") == "cat" and state.get("cat") is None:
         raise ValueError("Catalogue data is missing.")
-    if not state.get("mode") and any(state.get(method) for method in ("cat", "task")):
-        raise ValueError("Select a scoping method before adding scope rows.")
     return state
 
 
@@ -159,59 +158,29 @@ def opportunity_task_scope(request, project_id):
     if denied is not None:
         return denied
     setup = _build_setup_context(project)
-    catalogue = _catalogue()
     if request.method == "POST":
         if request.data.get("migration_request_id") != project.migration_request_id:
             return Response({"error": "migration_request_id does not match this project."}, status=400)
         try:
-            state = _validate_state(request.data.get("state"), project, catalogue)
+            state = _validate_state(request.data.get("state"), project)
         except (ValueError, TypeError) as error:
             return Response({"error": str(error)}, status=400)
         with transaction.atomic():
             MigrationIntakeSubmission.objects.select_for_update().get(pk=project.pk)
-            scope = OpportunityAssessmentScope.objects.select_for_update().filter(project=project).first()
-            revision = scope.revision if scope else 0
-            if request.data.get("revision") != revision:
+            scope, _created = OpportunityAssessmentScope.objects.get_or_create(project=project)
+            if request.data.get("revision") != scope.revision:
                 return Response({"error": "This assessment was changed by another user. Reload before saving."}, status=409)
-            previous_state = scope.state if scope and scope.state else _initial_state(project, catalogue)
-            previous_mode = previous_state.get("mode", "")
-            saved_rows_exist = any(previous_state.get(method) for method in ("cat", "task"))
-            saved_rows_exist = saved_rows_exist or OpportunityAssessment.objects.filter(
-                migration_request_id=project.migration_request_id
-            ).exists()
-            inactive_method = "task" if state.get("mode") == "cat" else "cat"
-            inactive_rows = state.get(inactive_method)
-            if state.get("mode") and state.get("mode") != previous_mode and saved_rows_exist:
-                if request.data.get("method_switch_confirmed") is not True:
-                    return Response(
-                        {"error": "Changing the scoping method requires confirmation. Reload and confirm the switch."},
-                        status=409,
-                    )
-                if inactive_rows:
-                    return Response(
-                        {"error": "Clear the previous method's scope data before switching methods."},
-                        status=400,
-                    )
-            elif inactive_rows:
-                previous_inactive_rows = previous_state.get(inactive_method)
-                if inactive_rows != previous_inactive_rows:
-                    return Response(
-                        {"error": "Only one scoping method can contain scope data. Confirm a method switch to change methods."},
-                        status=400,
-                    )
             _sync_rows(project, state, setup)
-            if scope is None:
-                scope = OpportunityAssessmentScope(project=project)
             scope.state = state
-            scope.revision = revision + 1
+            scope.revision += 1
             scope.updated_by = get_request_email(request)
             scope.save()
     else:
         scope = OpportunityAssessmentScope.objects.filter(project=project).first()
-        state = scope.state if scope else _initial_state(project, catalogue)
+        state = scope.state if scope else _initial_state(project)
     return Response({
         "migration_request_id": project.migration_request_id,
-        "state": state, "revision": scope.revision if scope else 0, "catalogue": catalogue,
+        "state": state, "revision": scope.revision if scope else 0,
         "intake": {"region": project.region, "area": ", ".join(project.areas or []),
                    "product": ", ".join(project.products or []), "products": project.products or [],
                    "catalogue_products": [re.sub(r"^General\s+", "", product, flags=re.IGNORECASE).strip() for product in (project.products or [])],

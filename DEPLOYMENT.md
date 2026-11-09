@@ -14,7 +14,7 @@ service environment variables, and logs outside Git.
 | Backend | Windows service `AE_WPM` (NSSM -> Waitress -> Django) | Bound only to `127.0.0.1:8000` |
 | Backend working directory | Django project directory | `E:\AE_WPM_Demo\backend` |
 | Python virtual environment | Dedicated production venv | `E:\wpm_env` |
-| Database | SQL Server via `mssql-django` and ODBC | `SCRBAEXDEFRM259`, database `WPM` |
+| Database | SQL Server via `mssql-django` and ODBC | `SCRBAEXDEFRM218`, database `WPM Project` |
 
 Current server names include `wpmpulse.crb.apmoller.net` (primary, TLS
 certificate CN), `wpmworkflow.crb.apmoller.net`, `SCRBAEXDEFRM217.crb.apmoller.net`,
@@ -169,16 +169,6 @@ compatible.
 	Set-Location E:\AE_WPM_Demo\backend
 	E:\wpm_env\Scripts\python.exe manage.py migrate --database=default
 	```
-
-	On the first deployment of the database-backed Opportunity Assessment
-	catalogue, import the current rows into Admin's Service Catalogue table:
-
-	```powershell
-	E:\wpm_env\Scripts\python.exe manage.py sync_opportunity_catalogue
-	```
-
-	The command preserves existing catalogue rows and is safe to rerun after the
-	full Opportunity Assessment catalogue has been imported.
 
 6. Install frontend dependencies only when lock/package files changed, then
 	build the SPA:

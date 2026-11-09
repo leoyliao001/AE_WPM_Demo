@@ -87,15 +87,15 @@
           <router-link class="bc-no-print" :to="{ name: 'ScopeStatement', params: { id: record.projectId }, query: { from: 'toll-gates', project: record.projectId } }">Maintain Scope at source ↗</router-link>
         </div>
         <p class="bc-note">Read-only source: Scope Statement · {{ record.scope?.reviewRequired ? 'Review required' : record.scope?.status || 'Not available' }} · Revision {{ record.scope?.revision ?? '—' }}</p>
-        <mc-notification v-if="record.scope?.reviewRequired" appearance="warning" fit="medium" heading="Scope review required" body="Upstream Intake or Opportunity Assessment data has changed. Reopen Scope for revision, review the updated sources and resubmit it before Business Case financials or submission can proceed." role="alert" />
+        <mc-notification v-if="record.scope?.reviewRequired" appearance="warning" fit="medium" heading="Scope review required" body="Intake source data has changed. Reopen Scope for revision, review the updated sources and resubmit it before Business Case financials or submission can proceed." role="alert" />
         <div class="bc-scope-grid">
           <article><h3>In scope</h3><p class="bc-source-text">{{ record.scope?.scopeText || 'Not provided' }}</p></article>
           <article><h3>Out of scope</h3><p class="bc-source-text">{{ record.scope?.outOfScope || 'Not provided' }}</p></article>
           <article><h3>Assumptions</h3><p class="bc-source-text">{{ record.scope?.assumptions || 'Not provided' }}</p></article>
         </div>
         <div class="bc-capacity"><span>Final project headcount</span><strong>{{ record.scope?.finalProjectFte ?? '—' }} <small>FTE</small></strong><span>Owned and locked in Scope</span></div>
-        <div class="bc-capacity"><span>OA Migratable FTE</span><strong>{{ record.scope?.opportunityAssessmentAvailable ? record.scope.opportunityMigratableFte : '—' }} <small>FTE</small></strong><span>{{ record.scope?.opportunityAssessmentAvailable ? 'Opportunity Assessment tasks marked Yes' : 'No saved Opportunity Assessment' }}</span></div>
-        <p class="bc-note">OA Migratable FTE is calculated from tasks marked Yes. Financial calculations continue to use locked Final Agreement FTE by job level.</p>
+        <div class="bc-capacity"><span>Migratable FTE</span><strong>{{ record.scope?.migratableFteConfirmed ? record.scope.migratableFte : '—' }} <small>FTE</small></strong><span>{{ record.scope?.migratableFteConfirmed ? 'Manually confirmed in Scope' : 'Manual confirmation pending in Scope' }}</span></div>
+        <p class="bc-note">Migratable FTE is an independently confirmed Scope total. Financial calculations continue to use locked Final FTE by job level.</p>
         <div class="bc-plan-grid">
         <div class="bc-scroll"><table><caption>Locked Scope headcount</caption><thead><tr><th>Job level</th><th>Final FTE</th><th>Locked at</th></tr></thead>
           <tbody><tr v-for="line in record.scope?.lines || []" :key="line.jobLevel"><th>{{ line.jobLevel }}</th><td>{{ line.finalFte ?? '—' }}</td><td>{{ line.lockedAt ? date(line.lockedAt) : 'Not locked' }}</td></tr></tbody>

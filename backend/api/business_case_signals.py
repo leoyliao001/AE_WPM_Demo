@@ -2,14 +2,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from api.models import (
-    BusinessCase,
-    BusinessCaseCostRate,
-    MigrationIntakeSubmission,
-    OpportunityAssessmentScope,
-    ScopeStatement,
-    ScopeStatementLine,
-)
+from api.models import BusinessCase, BusinessCaseCostRate, MigrationIntakeSubmission, ScopeStatement, ScopeStatementLine
 from api.services.business_case import INTAKE_FIELDS, build_business_case
 
 
@@ -17,16 +10,14 @@ from api.services.business_case import INTAKE_FIELDS, build_business_case
 @receiver(pre_save, sender=ScopeStatement)
 @receiver(pre_save, sender=ScopeStatementLine)
 @receiver(pre_save, sender=BusinessCaseCostRate)
-@receiver(pre_save, sender=OpportunityAssessmentScope)
 def capture_source_change(sender, instance, raw=False, **kwargs):
     if raw:
         return
     fields = {
         MigrationIntakeSubmission: INTAKE_FIELDS,
-        ScopeStatement: ("scope_text", "out_of_scope", "assumptions", "waves", "status", "final_project_fte", "review_required"),
+        ScopeStatement: ("scope_text", "out_of_scope", "assumptions", "waves", "status", "final_project_fte", "review_required", "migratable_fte", "migratable_fte_confirmed"),
         ScopeStatementLine: ("final_fte", "locked_at"),
         BusinessCaseCostRate: ("location", "job_level", "annual_cost", "currency", "usd_rate", "year", "version"),
-        OpportunityAssessmentScope: ("state", "revision"),
     }[sender]
     previous = sender.objects.filter(pk=instance.pk).values(*fields).first() if instance.pk else None
     instance._business_case_source_changes = {
@@ -40,11 +31,9 @@ def capture_source_change(sender, instance, raw=False, **kwargs):
 @receiver(post_save, sender=ScopeStatement)
 @receiver(post_save, sender=ScopeStatementLine)
 @receiver(post_save, sender=BusinessCaseCostRate)
-@receiver(post_save, sender=OpportunityAssessmentScope)
 @receiver(post_delete, sender=ScopeStatement)
 @receiver(post_delete, sender=ScopeStatementLine)
 @receiver(post_delete, sender=BusinessCaseCostRate)
-@receiver(post_delete, sender=OpportunityAssessmentScope)
 def flag_changed_business_cases(sender, instance, raw=False, **kwargs):
     if raw or (kwargs.get("signal") is not post_delete and getattr(instance, "_business_case_source_changed", True) is False):
         return
@@ -74,23 +63,6 @@ def flag_changed_business_cases(sender, instance, raw=False, **kwargs):
         cases = cases.filter(project_id=instance.project_id)
     elif sender is ScopeStatementLine:
         cases = cases.filter(project__scope_statement__pk=instance.statement_id)
-    elif sender is OpportunityAssessmentScope:
-        statement = ScopeStatement.objects.filter(
-            project_id=instance.project_id, status="submitted", review_required=False,
-        ).first()
-        if statement:
-            at = timezone.now()
-            ScopeStatement.objects.filter(pk=statement.pk).update(
-                review_required=True,
-                revision=statement.revision + 1,
-                updated_at=at,
-                audit_log=[*statement.audit_log, {
-                    "action": "opportunity_assessment_changed",
-                    "at": at.isoformat(),
-                    "reason": "Opportunity Assessment task scope changed. Review and resubmit Scope.",
-                }],
-            )
-        cases = cases.filter(project_id=instance.project_id)
     for record in cases:
         fingerprint = build_business_case(record.project, record)[3]
         if record.source_fingerprint == fingerprint:

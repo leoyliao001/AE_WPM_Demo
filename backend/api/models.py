@@ -159,38 +159,6 @@ class BusinessImpactAnalysis(models.Model):
         db_table = "business_impact_analysis"
 
 
-class PeopleConsultationCompliance(models.Model):
-    project = models.OneToOneField(
-        MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="people_consultation_compliance"
-    )
-    items = models.JSONField(default=list)
-    status = models.CharField(max_length=16, default="draft")
-    version = models.PositiveIntegerField(default=0)
-    revision = models.PositiveIntegerField(default=0)
-    audit_log = models.JSONField(default=list)
-    updated_by = models.CharField(max_length=254, blank=True, default="")
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "people_consultation_compliance"
-
-
-class PeopleConsultationEvidence(models.Model):
-    project = models.ForeignKey(
-        MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="people_consultation_evidence"
-    )
-    item_id = models.CharField(max_length=80)
-    file = models.FileField(upload_to="people-consultation/%Y/%m/")
-    original_name = models.CharField(max_length=255)
-    size = models.PositiveIntegerField(default=0)
-    uploaded_by = models.CharField(max_length=254, blank=True, default="")
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "people_consultation_evidence"
-        ordering = ["uploaded_at", "id"]
-
-
 class ScopeStatementLine(models.Model):
     statement = models.ForeignKey(
         ScopeStatement,
@@ -387,7 +355,6 @@ class OpportunityAssessment(models.Model):
     l4 = models.CharField(max_length=255, blank=True, default="")
     task_name = models.CharField(max_length=255, blank=True, default="")
     task_description = models.TextField(blank=True, default="")
-    system = models.TextField(blank=True, default="")
     upstream = models.TextField(blank=True, default="")
     downstream = models.TextField(blank=True, default="")
     risks_related = models.TextField(blank=True, default="")
@@ -512,10 +479,7 @@ class ServiceCatalogue(models.Model):
     l2 = models.CharField(max_length=128, blank=True, default="")
     l3 = models.CharField(max_length=128, blank=True, default="")
     l4 = models.CharField(max_length=255, blank=True, default="")
-    direction = models.CharField(max_length=16, blank=True, default="")
     current_ownership = models.CharField(max_length=64, blank=True, default="")
-    average_handle_time = models.CharField(max_length=64, blank=True, default="")
-    task_name = models.CharField(max_length=255, blank=True, default="")
     customer = models.CharField(max_length=128, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
