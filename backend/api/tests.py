@@ -76,7 +76,7 @@ class ScopeStatementAccessTests(TestCase):
 		ScopeStatementLine.objects.create(
 			statement=statement,
 			job_level="JL2",
-			agreed_fte="2.5",
+			final_fte="2",
 		)
 
 		response = self.client.get(
@@ -88,7 +88,7 @@ class ScopeStatementAccessTests(TestCase):
 		self.assertEqual(response.data["count"], 1)
 		self.assertEqual(response.data["rows"][0]["project_name"], "Scope access test")
 		self.assertEqual(response.data["rows"][0]["scope_text"], "Transfer support operations")
-		self.assertEqual(response.data["rows"][0]["jl2_agreed_fte"], "2.5000")
+		self.assertEqual(response.data["rows"][0]["jl2_final_fte"], 2)
 
 	def test_scope_statement_database_requires_scope_statement_access(self):
 		response = self.client.get(
@@ -124,8 +124,6 @@ class ScopeStatementAccessTests(TestCase):
 			"uniqueData": [{
 				"migration_request_id": self.project.migration_request_id,
 				"scope_text": "Initial scope",
-				"jl2_agreed_fte": "2.5",
-				"jl2_not_agreed_fte": "0.5",
 				"jl2_final_fte": "2",
 			}],
 		}
@@ -143,7 +141,7 @@ class ScopeStatementAccessTests(TestCase):
 		payload["uniqueData"][0].update({
 			"statement_id": statement.id,
 			"scope_text": "Updated scope",
-			"jl2_agreed_fte": "2.75",
+			"jl2_final_fte": "3",
 		})
 		update_response = self.client.post(
 			url,
@@ -154,7 +152,7 @@ class ScopeStatementAccessTests(TestCase):
 		statement.refresh_from_db()
 		self.assertEqual(update_response.data["updated_count"], 1)
 		self.assertEqual(statement.scope_text, "Updated scope")
-		self.assertEqual(statement.lines.get(job_level="JL2").agreed_fte, 2.75)
+		self.assertEqual(statement.lines.get(job_level="JL2").final_fte, 3)
 
 		delete_response = self.client.delete(
 			"/api/migration-dashboard/scope-statements/data/delete/",
@@ -174,14 +172,14 @@ class ScopeStatementAccessTests(TestCase):
 		line = ScopeStatementLine.objects.create(
 			statement=statement,
 			job_level="JL2",
-			agreed_fte="2",
+			final_fte="2",
 			locked_at=timezone.now(),
 		)
 		response = self.client.post(
 			"/api/migration-dashboard/scope-statements/data/",
 			{"uniqueData": [{
 				"statement_id": statement.id,
-				"jl2_agreed_fte": "1",
+				"jl2_final_fte": "1",
 			}]},
 			format="json",
 			HTTP_X_USER_EMAIL="admin@example.com",
@@ -189,7 +187,7 @@ class ScopeStatementAccessTests(TestCase):
 
 		line.refresh_from_db()
 		self.assertEqual(response.data["error_count"], 1)
-		self.assertEqual(line.agreed_fte, 2)
+		self.assertEqual(line.final_fte, 2)
 
 
 class ScopeStatementAccessControlTests(TestCase):
@@ -279,11 +277,22 @@ class StakeholderRegistrationTests(TestCase):
 
 	def test_catalog_includes_manual_gsc_leaders_and_empty_project_roster(self):
 		response = self.client.get(self.url, **self.headers)
-		roles = [role for group in response.data["groups"] for role in group["roles"]]
+		groups = {group["id"]: group["roles"] for group in response.data["groups"]}
+		roles = [role for group_roles in groups.values() for role in group_roles]
 
 		self.assertEqual(response.status_code, 200)
 		self.assertFalse(response.data["saved"])
 		self.assertIn("gsc_leaders", {role["code"] for role in roles})
+		self.assertNotIn("fpo", {role["code"] for role in groups["area"]})
+		self.assertIn("fpo", {role["code"] for role in groups["project_team"]})
+		cencx = next(role for role in groups["project_team"] if role["code"] == "cencx")
+		self.assertFalse(cencx["required"])
+		self.assertFalse(cencx["multiple"])
+		execution_management = next(
+			role for role in groups["area"] if role["code"] == "execution_management"
+		)
+		self.assertFalse(execution_management["required"])
+		self.assertFalse(execution_management["multiple"])
 		self.assertTrue(all(role.get("source", "manual") == "manual" for role in roles))
 		self.assertEqual(response.data["teamMembers"], [])
 

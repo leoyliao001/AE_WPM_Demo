@@ -37,6 +37,7 @@ function buildDocument(data) {
   let source = scopeTemplate
     .replace(/<header class="top">[\s\S]*?<\/header>/, '')
     .replace('<script>', `<script>window.OA_CONFIG=${config};`)
+    .replace(/const CAT=[^\r\n]*;\r?\n/, 'const CAT=window.OA_CONFIG.catalogue;\n')
     .replace(/const MIGRATION_ID=.*?;/, 'const MIGRATION_ID=window.OA_CONFIG.migration_request_id;')
     .replace(/const INTAKE=.*?;\r?\n/, 'const INTAKE=window.OA_CONFIG.intake;\n')
     .replace(/const LOCATIONS=.*?;[^\r\n]*/, 'const LOCATIONS=window.OA_CONFIG.locations,DEFAULT_LOC=window.OA_CONFIG.default_location;')
@@ -50,6 +51,7 @@ function buildDocument(data) {
     .replace('$("reload").onclick=()=>{if(dirty&&!confirm("Discard unsaved changes?"))return;load();setDirty(false);if(mode)setMode(mode)};', '')
   const integration = `
 const HOST_ORIGIN=parent.location.origin,requests=new Map();let requestSeq=0;
+hasSavedAssessment=Number.isInteger(window.OA_CONFIG.revision)&&window.OA_CONFIG.revision>0;
 function requestParent(action,payload){return new Promise((resolve,reject)=>{const id=++requestSeq;requests.set(id,{resolve,reject});parent.postMessage({type:"oa-scope-request",id,action,payload},HOST_ORIGIN)})}
 addEventListener("message",event=>{if(event.source!==parent||event.origin!==HOST_ORIGIN||event.data?.type!=="oa-scope-response")return;const pending=requests.get(event.data.id);if(!pending)return;requests.delete(event.data.id);event.data.error?pending.reject(new Error(event.data.error)):pending.resolve(event.data.data)});
 const originalSetDirty=setDirty;
@@ -60,7 +62,7 @@ $("backBtn").onclick=()=>requestParent("back").catch(error=>toast(error.message)
 if(S.mode){setMode(S.mode);document.querySelectorAll(".mcard").forEach(button=>{const on=button.dataset.mode===S.mode;button.classList.toggle("on",on);button.setAttribute("aria-checked",String(on))})}
 const originalSetMode=setMode;
 setMode=function(value){originalSetMode(value);S.mode=value;setDirty(true)};
-$("save").onclick=async()=>{if(!dirty)return;document.body.inert=true;try{S.mode=mode;const result=await requestParent("save",{migration_request_id:MIGRATION_ID,state:S});S=result.state;setDirty(false);render();toast("Saved to database")}catch(error){toast(error.message)}finally{document.body.inert=false}};
+$("save").onclick=async()=>{if(!dirty)return;document.body.inert=true;try{S.mode=mode;const result=await requestParent("save",{migration_request_id:MIGRATION_ID,state:S,method_switch_confirmed:methodSwitchConfirmed});S=result.state;hasSavedAssessment=true;methodSwitchConfirmed=false;setDirty(false);render();toast("Saved to database")}catch(error){toast(error.message)}finally{document.body.inert=false}};
 $("reload").onclick=async()=>{if(dirty&&!confirm("Discard unsaved changes?"))return;document.body.inert=true;try{await requestParent("reload")}catch(error){document.body.inert=false;toast(error.message)}};
 document.querySelectorAll(".mcard").forEach(button=>{button.setAttribute("aria-label",button.querySelector("b").textContent)});
 document.querySelectorAll(".f select").forEach(select=>{const label=select.closest(".f").querySelector("label");if(label)select.setAttribute("aria-label",label.textContent.replace("*","").trim())});

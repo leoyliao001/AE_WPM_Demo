@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from api.models import ApprovalWorkflow, ProjectGanttPlan, ScopeStatement, StakeholderRegistration
+from api.services.opportunity_fte import opportunity_fte_totals
 from api.views.project_gantt import merge_gantt_tasks_with_template
 
 LEADERSHIP_ROLES = (
@@ -145,13 +146,20 @@ def build_charter_sources(project):
             {"label": "All four sign-off roles locked in Stakeholder Registration", "complete": all(item["people"] for item in signatories), "source": "stakeholder-registration"},
         ],
     }
-    if scope and scope.migratable_fte is not None:
-        sources["scope"]["migratableFte"] = str(scope.migratable_fte)
-        sources["scope"]["migratableFteConfirmed"] = scope.migratable_fte_confirmed
+    opportunity_totals = opportunity_fte_totals(project)
+    sources["scope"].update({
+        "opportunityAssessedFte": str(opportunity_totals["assessed"]),
+        "opportunityMigratableFte": str(opportunity_totals["migratable"]),
+        "opportunityExceptionFte": str(opportunity_totals["exception"]),
+        "opportunityUnclassifiedFte": str(opportunity_totals["unclassified"]),
+        "opportunityAssessmentAvailable": opportunity_totals["available"],
+        "opportunityAssessmentRevision": opportunity_totals["revision"],
+    })
+    if opportunity_totals["available"]:
         sources["facts"].append({
-            "label": "Migratable FTE (manually confirmed)",
-            "value": str(scope.migratable_fte) if scope.migratable_fte_confirmed else None,
-            "source": "Scope Statement" if scope.migratable_fte_confirmed else "Scope Statement - confirmation pending",
+            "label": "Migratable FTE (Opportunity Assessment · Yes)",
+            "value": str(opportunity_totals["migratable"]),
+            "source": "Opportunity Assessment",
         })
     fingerprint = hashlib.sha256(json.dumps(sources, sort_keys=True).encode()).hexdigest()
     return sources, fingerprint

@@ -55,8 +55,8 @@
                   <section>
                     <h3>FTE agreement and evidence rules</h3>
                     <ol>
-                      <li>For each of <strong>JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
-                      <li>Enter and explicitly confirm the independent <strong>Migratable FTE</strong> total. It is initially prefilled from the agreed JL total; changing its value clears confirmation.</li>
+                      <li>For each of <strong>JL2, JL3 and JL4</strong>, enter only the <strong>Final Agreement FTE</strong>. Values must be non-negative whole numbers.</li>
+                      <li><strong>Migratable FTE</strong> and the single <strong>Exceptions total</strong> are calculated from saved Opportunity Assessment tasks marked Yes and No respectively. Tasks without a Yes/No selection are excluded from both totals.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
                       <li>The single <strong>Lock / Unlock</strong> control applies to the whole page, including FTE, scope text, assumptions, migration waves and uploads. Downloads remain available while locked.</li>
                     </ol>
@@ -64,8 +64,8 @@
                   <section>
                     <h3>Submit and downstream effects</h3>
                     <ul>
-                      <li>Submission requires non-empty scope text (maximum 2,000 characters), manually confirmed Migratable FTE and the whole page locked.</li>
-                      <li>Business Case and Charter read the manual Migratable FTE total. Financial calculations and final delivery commitments continue to use Final FTE by job level.</li>
+                      <li>Submission requires non-empty scope text (maximum 2,000 characters), Final Agreement FTE for every job level and the whole page locked.</li>
+                      <li>Business Case and Charter read the Opportunity Assessment Migratable FTE total. Financial calculations and final delivery commitments use Final Agreement FTE by job level.</li>
                       <li>Final project FTE is the sum of the three final FTE values; Intake ambition is retained as the baseline, not a required matching total.</li>
                       <li>Waves are optional. If provided, each needs a name, valid date and non-negative whole-number FTE; the wave FTE total must equal final project FTE.</li>
                       <li>Authorised editors can submit Scope; this is not limited to the Requestor. Submitted Scope without a review flag is shown as <strong>Secured</strong> on the Artefact Delivery Dashboard.</li>
@@ -103,21 +103,18 @@
             </article>
             <article class="metric-card">
               <div class="metric-card__top"><span>Migratable FTE</span><mc-icon icon="mi-check" size="18" /></div>
-              <div class="metric-card__value metric-card__manual">
-                <input v-model="migratableFte" aria-label="Migratable FTE" type="number" min="0" max="99999999.9999" step="0.0001" :disabled="!canEdit || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
-              </div>
-              <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEdit || isBusy || !validNumber(migratableFte)" />I confirm this Migratable FTE</label>
-              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Suggested from JL total: {{ totalDisplay('agreedFte') }}</p>
+              <div class="metric-card__value">{{ formatNumber(opportunityMigratableFte) }}<span>FTE</span></div>
+              <p>Opportunity Assessment tasks marked Yes</p>
             </article>
             <article class="metric-card metric-card--teal">
               <div class="metric-card__top"><span>Locked final FTE</span><mc-icon icon="mi-shield" size="18" /></div>
-              <div class="metric-card__value">{{ formatNumber(lockedTotal) }}<span>FTE</span></div>
+              <div class="metric-card__value">{{ formatNumber(finalTotal) }}<span>FTE</span></div>
               <p>{{ pageLocked ? 'Page locked for editing' : 'Page open for editing' }}</p>
             </article>
             <article class="metric-card">
-              <div class="metric-card__top"><span>Not agreed</span><mc-icon icon="mi-file" size="18" /></div>
-              <div class="metric-card__value">{{ totalDisplay('notAgreedFte') }}<span>FTE</span></div>
-              <p>Exceptions retained in scope review</p>
+              <div class="metric-card__top"><span>Exceptions (not agreed)</span><mc-icon icon="mi-file" size="18" /></div>
+              <div class="metric-card__value">{{ formatNumber(opportunityExceptionFte) }}<span>FTE</span></div>
+              <p>Opportunity Assessment tasks marked No</p>
             </article>
             <article class="metric-card">
               <div class="metric-card__top"><span>Final vs. ambition</span><mc-icon icon="mi-chart-pie" size="18" /></div>
@@ -174,25 +171,19 @@
               <thead>
                 <tr>
                   <th scope="col">Job level</th>
-                  <th scope="col">Migratable FTE <span>User input · FTE</span></th>
                   <th scope="col">Final agreement <span>Whole numbers · FTE</span></th>
-                  <th scope="col">Variance <span>Final − agreed</span></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="line in lines" :key="line.jobLevel" :class="{ 'agreement-row--locked': line.lockedAt }">
                   <th scope="row"><span class="job-level">Job level {{ line.jobLevel.slice(2) }}</span><span class="cell-caption">{{ line.jobLevel }}</span></th>
-                  <td><input v-model="line.agreedFte" :aria-label="`${line.jobLevel} agreed FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999.9999" step="0.0001" placeholder="0" class="number-input" /></td>
                   <td><input v-model="line.finalFte" :aria-label="`${line.jobLevel} final FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999" step="1" placeholder="0" class="number-input number-input--final" /></td>
-                  <td><span class="variance" :class="{ 'variance--negative': variance(line) < 0, 'variance--positive': variance(line) > 0 }">{{ varianceText(line) }}</span></td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr>
                   <th scope="row">Total FTE</th>
-                  <td>{{ totalDisplay('agreedFte') }}</td>
                   <td>{{ totalDisplay('finalFte') }}</td>
-                  <td><span class="variance" :class="{ 'variance--negative': totalVariance < 0 }">{{ totalVariance === null ? '—' : signedNumber(totalVariance) }}</span></td>
                 </tr>
               </tfoot>
             </table>
@@ -214,35 +205,25 @@
           </div>
           <footer class="agreement-note">
             <mc-icon icon="mi-file" size="16" />
-            <span>Migratable FTE and exception figures are entered manually. The JL total is only a suggested starting value; review or change it, then confirm Migratable FTE. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
+            <span>Migratable FTE and the Exceptions total are read from saved Opportunity Assessment tasks. Only Final Agreement FTE is entered manually by job level. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
           </footer>
-          <p v-if="aboveAgreed" class="agreement-warning">Final FTE exceeds the agreed figure for {{ aboveAgreed }}. Review the variance before submitting.</p>
         </section>
 
         <div class="details-grid">
           <section class="detail-card exception-card" aria-labelledby="exceptions-title">
             <header class="detail-heading">
               <div><p class="eyebrow">Scope reconciliation</p><h2 id="exceptions-title">Exceptions to migration</h2></div>
-              <span class="count-badge">{{ totalDisplay('notAgreedFte') }} <small>FTE</small></span>
             </header>
-            <p class="section-description">Record the capacity not agreed for migration.</p>
+            <p class="section-description">Saved Opportunity Assessment activities marked No are combined into one exception total, without a job-level breakdown.</p>
             <table class="exception-table">
-              <thead><tr><th scope="col">Job level</th><th scope="col">Not agreed · FTE</th><th scope="col">% of ambition</th></tr></thead>
+              <thead><tr><th scope="col">Exception source</th><th scope="col">Total FTE</th></tr></thead>
               <tbody>
-                <tr v-for="line in lines" :key="line.jobLevel">
-                  <th scope="row">Job level {{ line.jobLevel.slice(2) }}</th>
-                  <td><input v-model="line.notAgreedFte" :aria-label="`${line.jobLevel} exception FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999.9999" step="0.0001" placeholder="0" class="number-input" /></td>
-                  <td>{{ exceptionPercentage(line.notAgreedFte) }}</td>
+                <tr>
+                  <th scope="row">Opportunity Assessment exceptions marked No</th>
+                  <td>{{ formatNumber(opportunityExceptionFte) }}</td>
                 </tr>
               </tbody>
             </table>
-            <div class="reconciliation" :class="{ 'reconciliation--balanced': reconciled, 'reconciliation--gap': reconciliationGap !== null && !reconciled }">
-              <mc-icon :icon="reconciled ? 'mi-check' : 'mi-chart-pie'" size="18" />
-              <div>
-                <strong>{{ reconciled ? 'Ambition fully reconciled' : reconciliationGap === null ? 'Complete the headcount picture' : `${formatNumber(Math.abs(reconciliationGap))} FTE ${reconciliationGap > 0 ? 'above' : 'below'} ambition` }}</strong>
-                <span>{{ reconciliationGap === null ? 'Enter Migratable FTE and exception figures for all job levels.' : `${formatNumber(migratableFte)} migratable + ${formatNumber(exceptionTotal)} exceptions / ${formatNumber(ambition)} ambition` }}</span>
-              </div>
-            </div>
             <router-link class="text-action oa-link" :to="{ path: `/migration-dashboard/${projectId}/opportunity-assessment`, query: { from: 'toll-gates', project: projectId } }">View Opportunity Assessment <span aria-hidden="true">↗</span></router-link>
           </section>
 
@@ -290,7 +271,6 @@
             </div>
           </div>
           <div class="readiness-steps" aria-label="Submission requirements">
-            <span :class="{ 'readiness-step--done': migratableFteConfirmed }"><span>{{ migratableFteConfirmed ? '✓' : '○' }}</span>Migratable FTE</span>
             <span v-for="line in lines" :key="line.jobLevel" :class="{ 'readiness-step--done': line.lockedAt }"><span>{{ line.lockedAt ? '✓' : '○' }}</span>{{ line.jobLevel }}</span>
             <span :class="{ 'readiness-step--done': scopeText.trim() }"><span>{{ scopeText.trim() ? '✓' : '○' }}</span>Scope text</span>
           </div>
@@ -316,8 +296,6 @@ const backTo = computed(() => `/toll-gates?project=${projectId.value}`)
 const statement = ref(null)
 const lines = ref([])
 const scopeText = ref('')
-const migratableFte = ref('')
-const migratableFteConfirmed = ref(false)
 const outOfScope = ref('')
 const assumptions = ref('')
 const waves = ref([])
@@ -333,22 +311,17 @@ const canManage = computed(() => Boolean(statement.value?.canEdit) && !isSubmitt
 const pageLocked = computed(() => Boolean(statement.value?.pageLocked))
 const canEdit = computed(() => canManage.value && !pageLocked.value)
 const ambition = computed(() => Number(statement.value?.ambitionFte || 0))
+const opportunityMigratableFte = computed(() => Number(statement.value?.opportunityMigratableFte || 0))
+const opportunityExceptionFte = computed(() => Number(statement.value?.opportunityExceptionFte || 0))
 const lockedCount = computed(() => lines.value.filter((line) => line.lockedAt).length)
-const lockedTotal = computed(() => lines.value.filter((line) => line.lockedAt).reduce((sum, line) => sum + Number(line.finalFte), 0))
 const attachments = computed(() => statement.value?.attachments || [])
 const evidenceCount = computed(() => attachments.value.length)
-const agreedTotal = computed(() => sumField('agreedFte'))
-const exceptionTotal = computed(() => sumField('notAgreedFte'))
 const finalTotal = computed(() => sumField('finalFte'))
 const allFinalEntered = computed(() => completeField('finalFte'))
 const coverage = computed(() => allFinalEntered.value && ambition.value > 0 ? Math.round(finalTotal.value / ambition.value * 100) : null)
-const totalVariance = computed(() => completeField('agreedFte') && allFinalEntered.value ? finalTotal.value - agreedTotal.value : null)
-const reconciliationGap = computed(() => validNumber(migratableFte.value) && completeField('notAgreedFte') ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
-const reconciled = computed(() => reconciliationGap.value !== null && Math.abs(reconciliationGap.value) < 0.00005)
-const ready = computed(() => lockedCount.value === 3 && Boolean(scopeText.value.trim()) && migratableFteConfirmed.value)
+const ready = computed(() => lockedCount.value === 3 && Boolean(scopeText.value.trim()))
 const statusKey = computed(() => statement.value?.reviewRequired ? 'draft' : isSubmitted.value ? 'submitted' : ready.value ? 'ready' : 'draft')
 const statusLabel = computed(() => statement.value?.reviewRequired ? 'Review required' : isSubmitted.value ? 'Submitted' : ready.value ? 'Ready to submit' : 'Draft')
-const aboveAgreed = computed(() => lines.value.filter((line) => variance(line) > 0).map((line) => line.jobLevel).join(', '))
 const dirty = computed(() => Boolean(statement.value) && (snapshot() !== savedSnapshot.value || !!revisionReason.value.trim()))
 useUnsavedChanges(dirty, computed(() => isBusy.value || loading.value))
 
@@ -373,33 +346,14 @@ function totalDisplay(key) {
   return completeField(key) ? formatNumber(sumField(key)) : '—'
 }
 
-function signedNumber(value) {
-  return `${value > 0 ? '+' : ''}${formatNumber(value)}`
-}
-
-function variance(line) {
-  return validNumber(line.finalFte, true) && validNumber(line.agreedFte) ? Number(line.finalFte) - Number(line.agreedFte) : null
-}
-
-function varianceText(line) {
-  const value = variance(line)
-  return value === null ? '—' : signedNumber(value)
-}
-
-function exceptionPercentage(value) {
-  return validNumber(value) && ambition.value > 0 ? `${(Number(value) / ambition.value * 100).toFixed(1)}%` : '—'
-}
-
-const canLockPage = computed(() => completeField('agreedFte') && completeField('notAgreedFte') &&
-  allFinalEntered.value && Boolean(scopeText.value.trim()) &&
-  validNumber(migratableFte.value) && migratableFteConfirmed.value)
+const canLockPage = computed(() => allFinalEntered.value && Boolean(scopeText.value.trim()))
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : ''
 }
 
 function snapshot() {
-  return JSON.stringify({ text: scopeText.value, migratableFte: migratableFte.value, migratableFteConfirmed: migratableFteConfirmed.value, outOfScope: outOfScope.value, assumptions: assumptions.value, waves: waves.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
+  return JSON.stringify({ text: scopeText.value, outOfScope: outOfScope.value, assumptions: assumptions.value, waves: waves.value, lines: lines.value.map((line) => [line.jobLevel, line.finalFte]) })
 }
 
 function applyResponse(data) {
@@ -410,12 +364,8 @@ function applyResponse(data) {
   waves.value = (data.waves || []).map(wave => ({ name: wave.name, date: wave.date, fte: wave.fte }))
   lines.value = data.lines.map((line) => ({
     ...line,
-    agreedFte: line.agreedFte === null ? '' : Number(line.agreedFte),
-    notAgreedFte: line.notAgreedFte === null ? '' : Number(line.notAgreedFte),
     finalFte: line.finalFte === null ? '' : line.finalFte
   }))
-  migratableFte.value = data.migratableFte ?? (completeField('agreedFte') ? sumField('agreedFte') : '')
-  migratableFteConfirmed.value = Boolean(data.migratableFteConfirmed)
   savedSnapshot.value = snapshot()
 }
 
@@ -467,10 +417,6 @@ async function persist(action, extra = {}) {
     applyResponse(data)
     return true
   }
-  if (migratableFte.value !== '' && !validNumber(migratableFte.value)) {
-    error.value = 'Enter a non-negative Migratable FTE within the permitted range.'
-    return false
-  }
   if (waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
       Number.isNaN(Date.parse(wave.date)) || new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
       !validNumber(wave.fte, true))) {
@@ -478,25 +424,19 @@ async function persist(action, extra = {}) {
     return false
   }
   const editableLines = lines.value.filter((line) => !line.lockedAt)
-  if (editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
-    line[key] !== '' && !validNumber(line[key], key === 'finalFte')
-  ))) {
-    error.value = 'Enter non-negative FTE values. Final FTE must be a whole number.'
+  if (editableLines.some((line) => line.finalFte !== '' && !validNumber(line.finalFte, true))) {
+    error.value = 'Enter non-negative whole-number Final Agreement FTE values.'
     return false
   }
   const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
     action,
     revision: statement.value.revision,
-    migratableFte: migratableFte.value === '' ? null : migratableFte.value,
-    migratableFteConfirmed: migratableFteConfirmed.value,
     scopeText: scopeText.value,
     outOfScope: outOfScope.value,
     assumptions: assumptions.value,
     waves: waves.value.map(wave => ({ name: wave.name.trim(), date: wave.date, fte: Number(wave.fte) })),
     lines: editableLines.map((line) => ({
       jobLevel: line.jobLevel,
-      agreedFte: line.agreedFte === '' ? null : line.agreedFte,
-      notAgreedFte: line.notAgreedFte === '' ? null : line.notAgreedFte,
       finalFte: line.finalFte === '' ? null : line.finalFte
     })),
     ...extra

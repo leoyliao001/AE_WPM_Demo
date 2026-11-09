@@ -26,6 +26,32 @@
           <span v-else-if="error" class="meta-pill meta-pill--error">{{ error }}</span>
         </div>
         <div class="toolbar-right">
+          <input
+            ref="excelInput"
+            class="excel-input"
+            type="file"
+            accept=".xlsx,.xls"
+            @change="handleExcelUpload"
+          />
+          <mc-button
+            appearance="neutral"
+            variant="outlined"
+            fit="small"
+            label="Export Excel"
+            icon="mi-download"
+            :disabled="loading || saving || deleting || uploading || !hotReady"
+            @click="exportExcel"
+          />
+          <mc-button
+            appearance="neutral"
+            variant="outlined"
+            fit="small"
+            label="Upload Excel"
+            icon="mi-upload"
+            :disabled="loading || saving || deleting || uploading || pendingCount > 0"
+            :title="pendingCount ? 'Save or reload pending changes before uploading.' : 'Upload Excel rows to add or update records.'"
+            @click="openExcelPicker"
+          />
           <span v-if="pendingCount" class="meta-pill meta-pill--pending">
             {{ pendingCount }} pending
           </span>
@@ -44,7 +70,7 @@
             fit="small"
             label="Reload"
             icon="mi-arrow-clockwise"
-            :disabled="loading || saving || deleting"
+            :disabled="loading || saving || deleting || uploading"
             @click="loadData"
           />
         </div>
@@ -97,6 +123,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import axios from 'axios'
 import Handsontable from 'handsontable'
+import * as XLSX from 'xlsx'
 import 'handsontable/styles/handsontable.min.css'
 import 'handsontable/styles/ht-theme-horizon.min.css'
 import '@maersk-global/mds-components-core/mc-button'
@@ -117,7 +144,10 @@ const ALL_COLUMNS = [
   { key: 'l2', label: 'L2: Process Capability', width: 180 },
   { key: 'l3', label: 'L3: Processes', width: 160 },
   { key: 'l4', label: 'L4: Activities', width: 320 },
+  { key: 'direction', label: 'Direction', width: 110 },
   { key: 'current_ownership', label: 'Current Ownership', width: 140 },
+  { key: 'average_handle_time', label: 'AHT (min)', width: 110 },
+  { key: 'task_name', label: 'Default Task Name', width: 260 },
   { key: 'customer', label: 'Customer', width: 140 }
 ]
 
@@ -125,11 +155,13 @@ const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
 const COLUMN_WIDTH_STORAGE_ID = 'service-catalogue'
 
 const hotContainer = ref(null)
+const excelInput = ref(null)
 const hotInstance = shallowRef(null)
 const hotReady = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
+const uploading = ref(false)
 const error = ref('')
 const rowCount = ref(0)
 const allChanges = ref([])
@@ -180,6 +212,139 @@ function trackChangedRow(hot, visualRow) {
   })
   next.push(snapshot)
   allChanges.value = next
+}
+
+function exportExcel() {
+  const rows = (hotInstance.value?.getSourceData() || []).filter((row) => !isBlankRow(row))
+  if (!rows.length) {
+    alert('There are no rows to export.')
+    return
+  }
+
+  const headers = ['ID', ...ALL_COLUMNS.map((column) => column.label)]
+  const values = rows.map((row) => [row.id ?? '', ...ALL_KEYS.map((key) => row[key] ?? '')])
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...values])
+  worksheet['!autofilter'] = {
+    ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: values.length, c: headers.length - 1 } })
+  }
+  worksheet['!cols'] = [{ wch: 10 }, ...ALL_COLUMNS.map((column) => ({ wch: Math.max(14, Math.min(42, Math.round(column.width / 7))) }))]
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Service Catalogue')
+  XLSX.writeFile(workbook, `service-catalogue-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
+function openExcelPicker() {
+  if (pendingCount.value > 0) {
+    alert('Save or reload pending changes before uploading Excel.')
+    return
+  }
+  excelInput.value?.click()
+}
+
+async function handleExcelUpload(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (pendingCount.value > 0) {
+    alert('Save or reload pending changes before uploading Excel.')
+    return
+  }
+  if (file.size === 0 || file.size > 20 * 1024 * 1024) {
+    alert('Choose a non-empty Excel file no larger than 20 MB.')
+    return
+  }
+
+  uploading.value = true
+  error.value = ''
+  try {
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+    if (!firstSheet) throw new Error('The workbook does not contain a worksheet.')
+
+    const [headerRow = [], ...dataRows] = XLSX.utils.sheet_to_json(firstSheet, {
+      header: 1,
+      defval: '',
+      raw: false,
+      blankrows: false
+    })
+    const headerToKey = new Map(ALL_COLUMNS.flatMap((column) => [
+      [column.key.toLowerCase(), column.key],
+      [column.label.toLowerCase(), column.key]
+    ]))
+    const indexes = new Map()
+    let idIndex = -1
+    headerRow.forEach((value, index) => {
+      const header = String(value ?? '').trim().toLowerCase()
+      if (header === 'id') {
+        if (idIndex !== -1) throw new Error('The workbook contains duplicate ID columns.')
+        idIndex = index
+        return
+      }
+      const key = headerToKey.get(header)
+      if (!key) return
+      if (indexes.has(key)) throw new Error(`The workbook contains duplicate columns for ${key}.`)
+      indexes.set(key, index)
+    })
+    if (!indexes.size) throw new Error('No supported Service Catalogue columns were found in the first worksheet.')
+
+    const existingRows = hotInstance.value?.getSourceData() || []
+    const existingById = new Map(existingRows
+      .filter((row) => row.id != null && row.id !== '')
+      .map((row) => [String(row.id), row]))
+    const seenIds = new Set()
+    const uniqueData = []
+    let createCount = 0
+    let updateCount = 0
+
+    dataRows.forEach((cells, index) => {
+      const hasData = [...indexes.values()].some((columnIndex) => String(cells[columnIndex] ?? '').trim())
+      const idValue = idIndex === -1 ? '' : String(cells[idIndex] ?? '').trim()
+      if (!hasData && !idValue) return
+
+      let existing = null
+      let id = null
+      if (idValue) {
+        if (!/^\d+$/.test(idValue)) throw new Error(`Invalid ID on worksheet row ${index + 2}.`)
+        if (seenIds.has(idValue)) throw new Error(`Duplicate ID ${idValue} on worksheet row ${index + 2}.`)
+        seenIds.add(idValue)
+        existing = existingById.get(idValue)
+        if (!existing) throw new Error(`ID ${idValue} on worksheet row ${index + 2} is not in the current table.`)
+        id = existing.id
+      }
+
+      const record = { id, ...Object.fromEntries(ALL_KEYS.map((key) => [key, existing?.[key] ?? ''])) }
+      indexes.forEach((columnIndex, key) => {
+        record[key] = String(cells[columnIndex] ?? '').replace(/\r\n/g, '\n').trim()
+      })
+      if (ALL_KEYS.every((key) => !String(record[key] ?? '').trim())) return
+      uniqueData.push(record)
+      if (id == null) createCount += 1
+      else updateCount += 1
+    })
+
+    if (!uniqueData.length) throw new Error('No non-empty data rows were found in the workbook.')
+    const confirmed = confirm(
+      `Upload ${uniqueData.length} rows now? ${updateCount} will be updated and ${createCount} created. ` +
+      'Rows not included in the workbook will remain unchanged.'
+    )
+    if (!confirmed) return
+
+    const { data } = await axios.post('/api/service-catalogue/data/', { uniqueData })
+    await loadData()
+    if (data.error_count) {
+      const firstErrors = (data.errors || []).slice(0, 5).map((item) => item.error).join('\n')
+      alert(`Upload partially completed: ${data.created_count || 0} created, ${data.updated_count || 0} updated, ${data.error_count} errors.${firstErrors ? `\n${firstErrors}` : ''}`)
+    } else {
+      alert(`Upload complete: ${data.created_count || 0} created, ${data.updated_count || 0} updated.`)
+    }
+  } catch (failure) {
+    const responseData = failure?.response?.data
+    const rowErrors = (responseData?.errors || []).slice(0, 5).map((item) => item.error).join('\n')
+    error.value = responseData?.error || rowErrors || failure.message || 'Excel upload failed.'
+    alert(`Excel upload failed: ${error.value}`)
+  } finally {
+    uploading.value = false
+  }
 }
 
 function buildColumns() {
@@ -509,6 +674,10 @@ onBeforeUnmount(() => {
   min-height: 0;
   padding: 10px 12px 12px;
   width: 100%;
+}
+
+.excel-input {
+  display: none;
 }
 
 .sc-toolbar {

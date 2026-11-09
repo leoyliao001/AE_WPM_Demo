@@ -15,7 +15,10 @@ ALL_FIELDS = [
     ("l2", "L2: Process Capability"),
     ("l3", "L3: Processes"),
     ("l4", "L4: Activities"),
+    ("direction", "Direction"),
     ("current_ownership", "Current Ownership"),
+    ("average_handle_time", "AHT (min)"),
+    ("task_name", "Default Task Name"),
     ("customer", "Customer"),
 ]
 
@@ -29,7 +32,10 @@ def _serialize_row(item: ServiceCatalogue) -> dict:
         "l2": item.l2,
         "l3": item.l3,
         "l4": item.l4,
+        "direction": item.direction,
         "current_ownership": item.current_ownership,
+        "average_handle_time": item.average_handle_time,
+        "task_name": item.task_name,
         "customer": item.customer,
     }
 

@@ -21,6 +21,8 @@ h1{font-size:18px;margin:0}
 .method{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .mcard{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px 16px;border:1.5px solid var(--l);border-radius:10px;background:#fff;cursor:pointer;transition:.15s}
 .mcard:hover{border-color:#8cc4e3;background:#f7fbfe}
+.mcard.switch-required{opacity:.72}
+.method-lock{margin:-5px 0 14px;padding:8px 12px;border:1px solid #f5c58c;background:#fff8ee;border-radius:6px;color:#7a4b00;font-size:12px}
 .mcard.on{border-color:var(--b);background:#eaf4fb;box-shadow:0 0 0 3px rgba(0,115,171,.12)}
 .mnum{flex:none;width:30px;height:30px;border-radius:50%;background:#e1effa;color:var(--bd);display:grid;place-items:center;font-weight:800}
 .mcard.on .mnum{background:var(--b);color:#fff}
@@ -97,6 +99,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
     <span class="mnum">2</span><span class="mbody"><b>Add at Task level</b>
     <span>Use when the tasks and FTE are already known and only need to be documented. Add just the relevant L3 processes – their L4 tasks are pulled in automatically.</span></span><span class="mtick">✓</span></button>
 </div>
+<div id="methodLock" class="method-lock hidden" role="status"></div>
 
 <div id="empty" class="placeholder">Select one of the two scoping methods above to start.</div>
 
@@ -106,8 +109,10 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
     <div class="tile"><div class="lbl">L3 processes</div><div class="val" id="t2">0</div><div class="cap">Distinct L3</div></div>
     <div class="tile"><div class="lbl">Blueprint GSC</div><div class="val" id="t3">0</div><div class="cap">From Service Catalogue</div></div>
     <div class="tile"><div class="lbl">Blueprint Area</div><div class="val" id="t4">0</div><div class="cap">From Service Catalogue</div></div>
-    <div class="tile"><div class="lbl">Migratable FTE (Calculated)</div><div class="val" id="t6">0.00</div></div>
-    <div class="tile"><div class="lbl">Exceptions FTE (Calculated)</div><div class="val" id="t7">0.00</div><div class="cap">FTE on tasks with an exception</div></div>
+    <div class="tile"><div class="lbl">Opportunity Assessment FTE</div><div class="val" id="t5">0.00</div><div class="cap">All calculated task FTE</div></div>
+    <div class="tile"><div class="lbl">Migratable FTE · Yes</div><div class="val" id="t6">0.00</div><div class="cap">Migratable to GSC = Yes</div></div>
+    <div class="tile"><div class="lbl">Exception FTE · No</div><div class="val" id="t7">0.00</div><div class="cap">Migratable to GSC = No</div></div>
+    <div class="tile"><div class="lbl">Unclassified FTE</div><div class="val" id="t8">0.00</div><div class="cap">No Yes/No selection</div></div>
   </section>
 
   <section class="builder hidden" id="builder">
@@ -166,6 +171,7 @@ const COLS=[
  {k:"l4",h:"L4",t:"l4",g:"Process taxonomy",w:300},
  {k:"task",h:"Task Name",t:"text",g:"Task details",w:230},
  {k:"desc",h:"Task Description",t:"text",g:"Task details",w:260},
+ {k:"system",h:"System",t:"text",g:"Task details",w:180},
  {k:"mig",h:"Migratable to GSC as per service catalogue",t:"auto",g:"Service catalogue",w:150},
  {k:"cx",h:"Complexity (Low, Medium, High)",t:"sel",o:["Low","Medium","High"],g:"Readiness",w:120},
  {k:"sop",h:"SOP/IOP Exists?",t:"sel",o:["Y","N"],g:"Readiness",w:95},
@@ -182,7 +188,7 @@ const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"
 const opt=(a,ph)=>(ph!==undefined?`<option value="">${ph}</option>`:"")+a.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
 const uniq=a=>[...new Set(a)].filter(Boolean).sort((x,y)=>x.localeCompare(y,undefined,{numeric:true}));
 function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),2600)}
-function rowFromCat(i){const c=CAT[i];return{ref:i,ctry:"All",loc:DEFAULT_LOC,p:c[0],l1:c[1],l2:c[2],l3:c[3],l4:c[4],dir:c[5],mig:c[6],task:c[8]||"",desc:"",mgsc:"",exc:"",cx:"",sop:"",freq:"",uom:"",vol:"",tpu:c[7]||""}}
+function rowFromCat(i){const c=CAT[i];return{ref:i,ctry:"All",loc:DEFAULT_LOC,p:c[0],l1:c[1],l2:c[2],l3:c[3],l4:c[4],dir:c[5],mig:c[6],task:c[8]||"",desc:"",system:"",mgsc:"",exc:"",cx:"",sop:"",freq:"",uom:"",vol:"",tpu:c[7]||""}}
 function fte(r){const v=parseFloat(r.vol),m=parseFloat(r.tpu),f=PER_MONTH[r.freq];return v>0&&m>0&&f?v*f*m/60/PRODUCTIVE_HRS:null}
 
 /* state: two separate datasets, one per method */
@@ -191,42 +197,66 @@ let applied={p:"",l1:"",l2:"",l3:"",l4:"",mig:""};
 function load(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x){S=x;S.task=S.task||[];return}}catch(e){}S={cat:null,task:[],seq:1}}
 function ensureCat(){if(!S.cat){S.cat=CAT.map((c,i)=>({id:"c"+i,...rowFromCat(i)}))}}
 function rows(){return mode==="cat"?S.cat:S.task}
-function setDirty(v){dirty=v;$("save").disabled=!v;$("dirty").innerHTML=v?'<span class="dirty">● Unsaved changes</span>':""}
+function setDirty(v){dirty=v;$("save").disabled=!v;$("dirty").innerHTML=v?'<span class="dirty">● Unsaved changes</span>':"";updateMethodGuard()}
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
 
 /* ---------- method selector ---------- */
+let methodSwitchConfirmed=false;
+let hasSavedAssessment=false;
+function updateMethodGuard(){
+  const count=(Array.isArray(S.cat)?S.cat.length:0)+(Array.isArray(S.task)?S.task.length:0),locked=Boolean(mode&&count);
+  const notice=$("methodLock");
+  notice.classList.toggle("hidden",!locked);
+  notice.textContent=locked?`Scoping method locked: ${count} scope row(s) exist. To change methods, select the other option and confirm; existing scope data will be cleared.`:"";
+  document.querySelectorAll(".mcard").forEach(card=>{
+    const switching=locked&&card.dataset.mode!==mode;
+    card.classList.toggle("switch-required",switching);
+    card.title=switching?"Changing methods will clear existing scope data.":card.querySelector("b").textContent;
+  });
+}
 function setMode(m){
   mode=m;sel.clear();page=1;
   $("empty").classList.toggle("hidden",!!m);$("work").classList.toggle("hidden",!m);
-  $("builder").classList.toggle("hidden",m!=="task");
-  $("delBtn").classList.toggle("hidden",m!=="task");
-  if(!m)return;
+  $("builder").classList.toggle("hidden",!m);
+  $("delBtn").classList.add("hidden");
+  if(!m){updateMethodGuard();return}
   if(m==="cat")ensureCat();
-  clearFilters(false);render();
+  document.querySelector("#builder .bhead b").textContent=m==="cat"?"Add a task not in the service catalogue":"Add Tasks";
+  document.querySelector("#builder .bhead small").textContent=m==="cat"
+    ?"The complete catalogue is already listed. Select Not in Service Catalog to add an additional task."
+    :"Select up to L3 and click Add to grid – every L4 task under that L3 is added automatically.";
+  onBP();
+  clearFilters(false);render();updateMethodGuard();
 }
 
 /* ---------- Add Tasks (task level) ---------- */
 const catBy=(f)=>CAT.map((c,i)=>i).filter(i=>f(CAT[i]));
+const NOT_IN_CATALOG="Not in Service Catalog";
+function l1Options(product){return uniq(CAT.filter(c=>c[0]===product).map(c=>c[1]))}
 function bFill(){
   const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value;
-  $("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;
+  $("bL1").innerHTML=opt(p?[...l1Options(p),NOT_IN_CATALOG]:[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;
 }
-function onBP(){const p=$("bP").value;$("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;if(p&&$("bL1").options.length===2){$("bL1").selectedIndex=1}onBL1()}
-function onBL1(){const p=$("bP").value,l1=$("bL1").value,a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
-function onBL2(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,a=l2?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1&&c[2]===l2).map(c=>c[3])):[];$("bL3").innerHTML=opt(a,l2?"Select L3":"Select L2 first");$("bL3").disabled=!l2;$("h3").textContent=l2?a.length+" options":"";bPreview()}
+function onBP(){const p=$("bP").value,a=mode==="cat"?[NOT_IN_CATALOG]:[...l1Options(p),NOT_IN_CATALOG];$("bL1").innerHTML=opt(p?a:[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;if(mode==="task"&&p&&a.length===1){$("bL1").value=a[0]}onBL1()}
+function onBL1(){const p=$("bP").value,l1=$("bL1").value;if(l1===NOT_IN_CATALOG){$("bL2").innerHTML=opt([NOT_IN_CATALOG]);$("bL2").value=NOT_IN_CATALOG;$("bL2").disabled=true;$("h2").textContent="1 option";onBL2();return}const a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
+function onBL2(){const p=$("bP").value,l1=$("bL1").value;if(l1===NOT_IN_CATALOG){$("bL3").innerHTML=opt([NOT_IN_CATALOG]);$("bL3").value=NOT_IN_CATALOG;$("bL3").disabled=true;$("h3").textContent="1 option";bPreview();return}const l2=$("bL2").value,a=l2?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1&&c[2]===l2).map(c=>c[3])):[];$("bL3").innerHTML=opt(a,l2?"Select L3":"Select L2 first");$("bL3").disabled=!l2;$("h3").textContent=l2?a.length+" options":"";bPreview()}
 function pending(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,l3=$("bL3").value;if(!(p&&l1&&l2&&l3))return null;
-  const idx=catBy(c=>c[0]===p&&c[1]===l1&&c[2]===l2&&c[3]===l3),have=new Set(S.task.map(r=>r.ref));return{l3,idx,fresh:idx.filter(i=>!have.has(i))}}
+  const activeRows=rows()||[];
+  if(l1===NOT_IN_CATALOG)return{notInCatalog:true,p,l3,idx:[],fresh:activeRows.some(r=>r.p===p&&r.l1===NOT_IN_CATALOG)?[]:[true]};
+  if(mode==="cat")return{l3,idx:[],fresh:[]};
+  const idx=catBy(c=>c[0]===p&&c[1]===l1&&c[2]===l2&&c[3]===l3),have=new Set(activeRows.map(r=>r.ref));return{l3,idx,fresh:idx.filter(i=>!have.has(i))}}
 function bPreview(){const x=pending();$("bAdd").disabled=!x||!x.fresh.length;
-  $("preview").innerHTML=!x?"Select L1, L2 and L3.":!x.fresh.length?`<span class="warn">All ${x.idx.length} L4 tasks under ${esc(x.l3)} are already in the grid.</span>`:`Will add <b>${x.fresh.length} L4 task${x.fresh.length>1?"s":""}</b> under <b>${esc(x.l3)}</b>.${x.fresh.length<x.idx.length?` <span class="warn">${x.idx.length-x.fresh.length} already in the grid will be skipped.</span>`:""}`}
-function addRows(){const x=pending();if(!x)return;const add=x.fresh.map(i=>({id:"t"+(S.seq++),...rowFromCat(i),ctry:bCtryVal}));S.task=S.task.concat(add);
-  clearFilters(false);applied.l3=x.l3;syncFilterUI();setDirty(true);page=1;render();bPreview();toast(`${add.length} L4 task${add.length>1?"s":""} added – showing ${x.l3}`)}
+  $("preview").innerHTML=!x?"Select L1, L2 and L3.":x.notInCatalog?x.fresh.length?(mode==="cat"?"Will add one custom task row to the complete catalogue.":`Will add one task row under <b>${esc(x.l3)}</b>.`):`<span class="warn">A Not in Service Catalog row for this product is already in the grid.</span>`:mode==="cat"?`<span class="warn">All catalogue tasks are already in the grid.</span>`:!x.fresh.length?`<span class="warn">All ${x.idx.length} L4 tasks under ${esc(x.l3)} are already in the grid.</span>`:`Will add <b>${x.fresh.length} L4 task${x.fresh.length>1?"s":""}</b> under <b>${esc(x.l3)}</b>.${x.fresh.length<x.idx.length?` <span class="warn">${x.idx.length-x.fresh.length} already in the grid will be skipped.</span>`:""}`}
+function addRows(){const x=pending();if(!x)return;const add=x.notInCatalog?[{id:(mode==="cat"?"x":"t")+(S.seq++),ref:null,ctry:bCtryVal,loc:DEFAULT_LOC,p:x.p,l1:NOT_IN_CATALOG,l2:NOT_IN_CATALOG,l3:NOT_IN_CATALOG,l4:"",dir:"",mig:"",task:"",desc:"",system:"",mgsc:"",exc:"",cx:"",sop:"",freq:"",uom:"",vol:"",tpu:""}]:x.fresh.map(i=>({id:"t"+(S.seq++),...rowFromCat(i),ctry:bCtryVal}));
+  S[mode]=S[mode].concat(add);
+  clearFilters(false);if(x.notInCatalog)applied.l1=applied.l2=applied.l3=x.l3;else applied.l3=x.l3;syncFilterUI();setDirty(true);page=1;render();bPreview();toast(`${add.length} task${add.length>1?"s":""} added – showing ${x.l3}`)}
 
 /* ---------- filters (apply on View) ---------- */
 const FK=[["fL1","l1"],["fL2","l2"],["fL3","l3"],["fL4","l4"]];
 function buildFilters(){
   const keep={};FK.forEach(([id])=>keep[id]=$(id).value);
   let base=rows()||[];
-  FK.forEach(([id,k])=>{$(id).innerHTML=opt(uniq(base.map(r=>r[k])),"All");if([...$(id).options].some(o=>o.value===keep[id]))$(id).value=keep[id];else $(id).value="";if($(id).value)base=base.filter(r=>r[k]===$(id).value)});
+  FK.forEach(([id,k])=>{let options=uniq(base.map(r=>r[k]));if(k==="l1"||k==="l2"||k==="l3")options=uniq([...options,NOT_IN_CATALOG]);if(k==="l2"&&$("fL1").value===NOT_IN_CATALOG)options=[NOT_IN_CATALOG];if(k==="l3"&&$("fL1").value===NOT_IN_CATALOG&&$("fL2").value===NOT_IN_CATALOG)options=[NOT_IN_CATALOG];$(id).innerHTML=opt(options,"All");if([...$(id).options].some(o=>o.value===keep[id]))$(id).value=keep[id];else $(id).value="";if($(id).value)base=base.filter(r=>r[k]===$(id).value)});
 }
 function syncFilterUI(){FK.forEach(([id,k])=>{buildFilters();$(id).value=applied[k]||""});buildFilters();$("fMig").value=applied.mig}
 function clearFilters(doRender=true){applied={p:"",l1:"",l2:"",l3:"",l4:"",mig:""};FK.forEach(([id])=>$(id).value="");$("fMig").value="";buildFilters();page=1;if(doRender)render()}
@@ -256,6 +286,8 @@ function render(){
   $("tbody").querySelectorAll("[data-k]").forEach(el=>{el.onchange=onEdit;if(el.type==="number")el.oninput=onEdit});
   $("tbody").querySelectorAll(".ctry").forEach(b=>b.onclick=()=>{const r=byId.get(b.dataset.id);openPicker(b,r.ctry,v=>{r.ctry=v;b.textContent=ctryLabel(v);b.title=ctryFull(v);setDirty(true)})});
   $("tbody").querySelectorAll(".pick").forEach(cb=>cb.onchange=()=>{cb.checked?sel.add(cb.dataset.id):sel.delete(cb.dataset.id);render()});
+  const deletable=rows().filter(r=>sel.has(r.id)&&(mode!=="cat"||r.ref==null));
+  $("delBtn").classList.toggle("hidden",!deletable.length);
   $("all").checked=v.length>0&&v.every(r=>sel.has(r.id));
   $("selbar").classList.toggle("show",sel.size>0);$("selN").textContent=sel.size+" selected";
   $("count").textContent=`Showing ${v.length?(page-1)*PAGE+1:0}–${Math.min(page*PAGE,v.length)} of ${v.length} rows${v.length!==rows().length?` (filtered from ${rows().length})`:""}`;
@@ -263,12 +295,12 @@ function render(){
   $("rowChip").textContent=rows().length+" rows";tiles(v);
 }
 function onEdit(e){const el=e.target,r=rows().find(x=>x.id===el.dataset.id);r[el.dataset.k]=el.value;
-  if(el.dataset.k==="exc")tiles(view());if(["vol","tpu","freq"].includes(el.dataset.k)){const x=fte(r);el.closest("tr").querySelector("td.calc").textContent=x==null?"–":x.toFixed(2);tiles(view())}setDirty(true)}
-function tiles(v){let t=0,ex=0;v.forEach(r=>{const x=fte(r);if(x!=null){t+=x;if(r.exc)ex+=x}});
+  if(el.dataset.k==="mgsc")tiles(view());if(["vol","tpu","freq"].includes(el.dataset.k)){const x=fte(r);el.closest("tr").querySelector("td.calc").textContent=x==null?"–":x.toFixed(2);tiles(view())}setDirty(true)}
+function tiles(v){let t=0,mig=0,ex=0,pending=0;rows().forEach(r=>{const x=fte(r);if(x!=null){t+=x;if(r.mgsc==="Yes")mig+=x;else if(r.mgsc==="No")ex+=x;else pending+=x}});
   $("t1").textContent=v.length;$("t1c").textContent=v.length===rows().length?"All rows":`Filtered from ${rows().length}`;
   $("t2").textContent=new Set(v.map(r=>r.p+"|"+r.l2+"|"+r.l3)).size;
   $("t3").textContent=v.filter(r=>r.mig==="GSC").length;$("t4").textContent=v.filter(r=>r.mig==="Area").length;
-  $("t6").textContent=t.toFixed(2);$("t7").textContent=ex.toFixed(2)}
+  $("t5").textContent=t.toFixed(2);$("t6").textContent=mig.toFixed(2);$("t7").textContent=ex.toFixed(2);$("t8").textContent=pending.toFixed(2)}
 
 /* ---------- country picker (All or multiple) ---------- */
 const splitC=v=>!v||v==="All"?COUNTRIES.slice():v.split(";").map(s=>s.trim()).filter(Boolean);
@@ -296,7 +328,7 @@ const BULK=COLS.filter(c=>c.t==="sel");
 $("bulkField").innerHTML='<option value="ctry">Country</option>'+BULK.map(c=>`<option value="${c.k}">${esc(c.h.replace(/ \(.*\)$/,""))}</option>`).join("");
 const fillBulk=()=>{const k=$("bulkField").value;$("bulkVal").classList.toggle("hidden",k==="ctry");$("bulkCtry").classList.toggle("hidden",k!=="ctry");if(k!=="ctry")$("bulkVal").innerHTML=opt(BULK.find(c=>c.k===k).o)};fillBulk();$("bulkField").onchange=fillBulk;
 $("bulkApply").onclick=()=>{const k=$("bulkField").value,v=k==="ctry"?bulkCtryVal:$("bulkVal").value;rows().forEach(r=>{if(sel.has(r.id))r[k]=v});setDirty(true);render();toast(`Updated ${sel.size} rows`)};
-$("delBtn").onclick=()=>{if(!confirm(`Delete ${sel.size} selected row(s)?`))return;const n=sel.size;S.task=S.task.filter(r=>!sel.has(r.id));sel.clear();setDirty(true);render();bPreview();toast(n+" rows deleted")};
+$("delBtn").onclick=()=>{const deletable=rows().filter(r=>sel.has(r.id)&&(mode!=="cat"||r.ref==null));if(!deletable.length)return;const ids=new Set(deletable.map(r=>r.id)),message=mode==="cat"?`Delete ${deletable.length} custom task row(s)? Complete Catalogue rows will be kept.`:`Delete ${deletable.length} selected row(s)?`;if(!confirm(message))return;S[mode]=S[mode].filter(r=>!ids.has(r.id));sel.clear();setDirty(true);render();bPreview();toast(`${deletable.length} rows deleted`)};
 $("clearSel").onclick=()=>{sel.clear();render()};
 
 /* ---------- export / import ---------- */
@@ -328,7 +360,19 @@ $("bCtry").onclick=e=>openPicker(e.currentTarget,bCtryVal,v=>{bCtryVal=v;$("bCtr
 $("bulkCtry").onclick=e=>openPicker(e.currentTarget,bulkCtryVal,v=>{bulkCtryVal=v;$("bulkCtry").textContent=ctryLabel(v)});
 document.querySelector(".grid").addEventListener("scroll",closePicker);
 $("idChip").textContent=MIGRATION_ID;$("idCode").textContent=MIGRATION_ID;
-document.querySelectorAll(".mcard").forEach(c=>c.onclick=()=>{document.querySelectorAll(".mcard").forEach(x=>{const on=x===c;x.classList.toggle("on",on);x.setAttribute("aria-checked",on)});setMode(c.dataset.mode)});
+document.querySelectorAll(".mcard").forEach(c=>c.onclick=()=>{
+  const next=c.dataset.mode;if(next===mode)return;
+  const existing=(Array.isArray(S.cat)?S.cat.length:0)+(Array.isArray(S.task)?S.task.length:0);
+  const needsConfirmation=existing>0||hasSavedAssessment;
+  const warning=hasSavedAssessment
+    ?`This assessment has already been saved. Switching methods will clear the previously saved scope data when you save this change. This cannot be undone. Continue?`
+    :`Switch to "${c.querySelector("b").textContent}"? This will clear ${existing} unsaved scope row(s).`;
+  if(needsConfirmation&&!confirm(warning))return;
+  if(existing){S.cat=null;S.task=[]}
+  if(needsConfirmation)methodSwitchConfirmed=true;
+  document.querySelectorAll(".mcard").forEach(x=>{const on=x===c;x.classList.toggle("on",on);x.setAttribute("aria-checked",on)});
+  setMode(next)
+});
 $("bP").innerHTML=opt([INTAKE.product]);
 $("bL1").onchange=onBL1;$("bL2").onchange=onBL2;$("bL3").onchange=bPreview;$("bAdd").onclick=addRows;
 FK.forEach(([id])=>$(id).onchange=()=>{const i=FK.findIndex(x=>x[0]===id);FK.slice(i+1).forEach(([n])=>$(n).value="");buildFilters()});
