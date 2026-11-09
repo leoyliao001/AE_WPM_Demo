@@ -353,16 +353,43 @@ def resource_projects(request):
             resource = project.resources
         except ProjectResources.DoesNotExist:
             resource = None
+        resource_rows = resource.rows if resource else []
+        hiring_status_counts = {status: 0 for status in HIRING_STATUSES + ["Not Applicable"]}
+        pid_creation_months = {}
+        tentative_doj_months = {}
+        for resource_row in resource_rows:
+            hiring_status = resource_row.get("hiringStatus")
+            if hiring_status in hiring_status_counts:
+                hiring_status_counts[hiring_status] += 1
+            for field, counts in (("pidCreationDate", pid_creation_months), ("tentativeDoj", tentative_doj_months)):
+                value = resource_row.get(field, "")
+                if isinstance(value, str) and len(value) >= 7 and value[4:5] == "-":
+                    month = value[:7]
+                    counts[month] = counts.get(month, 0) + 1
         population = business_case["population"]
         rows.append({
             "projectId": project.pk, "projectName": project.project_name,
             "migrationRequestId": project.migration_request_id, "products": project.products,
             "region": project.region, "areas": project.areas,
             "sites": (project.default_location_strategies or []) + (project.custom_location_strategies or []),
+            "targetStartDate": project.target_start_date,
+            "targetEndDate": project.target_end_date,
             "approvedFte": population if approved else None,
             "pipelineFte": population if business_case["locked"] and not approved else None,
             "approvalStatus": "Approved" if approved else "Pipeline" if business_case["locked"] else "Not locked",
             "businessCase": business_case,
+            "resourceSummary": {
+                "total": len(resource_rows),
+                "hiringStatusCounts": hiring_status_counts,
+                "pidCreated": sum(bool(row.get("gscPid")) for row in resource_rows),
+                "requisitionsRaised": sum(bool(row.get("requisitionId")) for row in resource_rows),
+                "onboarded": sum(
+                    row.get("hiringStatus") == "Onboarded" and bool(row.get("actualDoj")) and bool(row.get("apmmId"))
+                    for row in resource_rows
+                ),
+                "pidCreationMonths": pid_creation_months,
+                "tentativeDojMonths": tentative_doj_months,
+            },
             "saved": bool(resource),
             "status": ("confirmed" if resource.source_version == source["version"] else "needs_review")
                       if resource and resource.status == "confirmed" else "draft" if resource else "not_started",

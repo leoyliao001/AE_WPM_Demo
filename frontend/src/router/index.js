@@ -35,6 +35,9 @@ import Resources from '../views/Resources.vue'
 import ProjectResources from '../views/ProjectResources.vue'
 import AccessEnablement from '../views/AccessEnablement.vue'
 import BusinessImpactAnalysis from '../views/BusinessImpactAnalysis.vue'
+import MigrationSuccessPartnersHub from '../views/MigrationSuccessPartnersHub.vue'
+import LearningCapabilityReadiness from '../views/LearningCapabilityReadiness.vue'
+import TaaPartnerView from '../views/TaaPartnerView.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -61,6 +64,9 @@ const ATTRIBUTE_ROUTE_KEYS = {
 }
 
 const routes = [
+  { path: '/migration-success-partners', name: 'MigrationSuccessPartnersHub', component: MigrationSuccessPartnersHub },
+  { path: '/migration-success-partners/learning-development', name: 'LearningCapabilityReadiness', component: LearningCapabilityReadiness },
+  { path: '/migration-success-partners/talent-acquisition', name: 'TaaPartnerView', component: TaaPartnerView },
   { path: '/migration-dashboard/:id/business-impact-analysis', name: 'BusinessImpactAnalysis', component: BusinessImpactAnalysis },
   { path: '/resources', name: 'Resources', component: Resources },
   { path: '/migration-dashboard/:id/resources', name: 'ProjectResources', component: ProjectResources },

@@ -266,6 +266,28 @@ class ProjectArtefactTests(TestCase):
         self.client.credentials(HTTP_X_USER_EMAIL="outsider@example.com")
         self.assertEqual(self.client.get("/api/migration-dashboard/resources/").data["count"], 0)
 
+    def test_resource_landing_returns_safe_project_date_and_hiring_aggregates(self):
+        self.project.target_start_date = "2026-11-01"
+        self.project.target_end_date = "2027-02-01"
+        self.project.save(update_fields=["target_start_date", "target_end_date"])
+        ProjectResources.objects.create(project=self.project, rows=[self.resource()])
+
+        response = self.client.get("/api/migration-dashboard/resources/")
+
+        self.assertEqual(response.status_code, 200)
+        row = response.data["rows"][0]
+        self.assertEqual(row["targetStartDate"], "2026-11-01")
+        self.assertEqual(row["targetEndDate"], "2027-02-01")
+        self.assertEqual(row["resourceSummary"]["hiringStatusCounts"]["Onboarded"], 1)
+        self.assertEqual(row["resourceSummary"]["pidCreated"], 1)
+        self.assertEqual(row["resourceSummary"]["requisitionsRaised"], 1)
+        self.assertEqual(row["resourceSummary"]["onboarded"], 1)
+        self.assertEqual(row["resourceSummary"]["pidCreationMonths"], {"2026-01": 1})
+        self.assertEqual(row["resourceSummary"]["tentativeDojMonths"], {"2027-01": 1})
+        self.assertNotIn("apmmId", row["resourceSummary"])
+        self.assertNotIn("actualDoj", row["resourceSummary"])
+        self.assertNotIn("remarks", row["resourceSummary"])
+
     def test_resource_landing_batches_non_approved_project_queries(self):
         for index in range(20):
             MigrationIntakeSubmission.objects.create(

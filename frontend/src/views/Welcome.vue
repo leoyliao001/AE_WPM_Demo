@@ -121,7 +121,7 @@ const exploreCards = [
     title: 'Migration Success Partners Hub',
     description: 'Workspace for MSPs to guide, support and follow up on the migrations they partner on.',
     tags: ['Focal points', 'RASCI', 'Forums'],
-    actions: [{ label: 'Find a Partner', route: '/migration-chatbot' }],
+    actions: [{ label: 'Find a Partner', route: '/migration-success-partners' }],
     icon: 'mi-users',
     image: '/Collaboration.png'
   },
