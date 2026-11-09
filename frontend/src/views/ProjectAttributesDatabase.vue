@@ -267,6 +267,16 @@ const allTables = [
     accent: '#176b87',
     route: '/stakeholder-registrations-database',
     actionLabel: 'View Registrations'
+  },
+  {
+    id: 'user-name-list',
+    tableKey: 'user_name_list',
+    title: 'User Name List',
+    description: 'Search directory names and email addresses, then maintain matching records online.',
+    icon: 'mi-users',
+    accent: '#0F766E',
+    route: '/user-name-list',
+    actionLabel: 'Maintain User Name List'
   }
 ]
 

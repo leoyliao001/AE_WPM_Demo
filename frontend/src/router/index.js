@@ -13,6 +13,7 @@ import MigrationIntakeSubmissions from '../views/MigrationIntakeSubmissions.vue'
 import ApprovalWorkflow from '../views/ApprovalWorkflow.vue'
 import ApprovalInput from '../views/ApprovalInput.vue'
 import ProjectAttributesDatabase from '../views/ProjectAttributesDatabase.vue'
+import UserNameList from '../views/UserNameList.vue'
 import AttributesAccessControl from '../views/AttributesAccessControl.vue'
 import OpportunityAssessment from '../views/OpportunityAssessment.vue'
 import ProjectGantt from '../views/ProjectGantt.vue'
@@ -60,7 +61,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/stakeholder-registrations-database': 'stakeholder_registration',
   '/project-charters-database': 'project_charter',
   '/business-cases-database': 'business_case',
-  '/cost-rates-database': 'cost_rates'
+  '/cost-rates-database': 'cost_rates',
+  '/user-name-list': 'user_name_list'
 }
 
 const routes = [
@@ -73,6 +75,7 @@ const routes = [
   { path: '/migration-dashboard/:id/access-enablement', name: 'AccessEnablement', component: AccessEnablement },
   { path: '/business-cases-database', name: 'BusinessCasesDatabase', component: BusinessCasesDatabase },
   { path: '/cost-rates-database', name: 'CostRatesDatabase', component: CostRatesDatabase },
+  { path: '/user-name-list', name: 'UserNameList', component: UserNameList },
   { path: '/migration-dashboard/:id/project-charter', name: 'ProjectCharter', component: ProjectCharter },
   { path: '/project-charters-database', name: 'ProjectChartersDatabase', component: ProjectChartersDatabase },
   { path: '/', name: 'Welcome', component: Welcome },

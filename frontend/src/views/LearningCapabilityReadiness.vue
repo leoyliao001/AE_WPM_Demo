@@ -22,10 +22,20 @@
           <h2>Project Target Window <small>{{ timelineProjects.length }} projects with dates</small></h2>
           <div class="timeline">
             <div class="timeline-axis"><span></span><span v-for="month in timelineMonths" :key="month.key">{{ month.label }}</span></div>
-            <div v-for="project in timelineProjects" :key="project.id" class="timeline-row">
-              <span class="timeline-name" :title="project.name">{{ project.name }}</span>
-              <span class="timeline-track"><i v-if="project.start && project.go" class="timeline-bar timeline-bar--foundation" :style="barStyle(project.start, project.go)" /><i v-if="project.go" class="timeline-marker" :style="markerStyle(project.go)" /></span>
-            </div>
+            <details v-for="siteGroup in timelineGroups" :key="siteGroup.name" class="timeline-site-group">
+              <summary class="timeline-group-summary timeline-site-summary">
+                <strong>{{ siteGroup.name }}</strong><small>{{ siteGroup.projectCount }} projects</small>
+              </summary>
+              <details v-for="productGroup in siteGroup.products" :key="productGroup.name" class="timeline-product-group">
+                <summary class="timeline-group-summary timeline-product-summary">
+                  <span>{{ productGroup.name }}</span><small>{{ productGroup.projects.length }}</small>
+                </summary>
+                <div v-for="project in productGroup.projects" :key="project.id" class="timeline-row">
+                  <span class="timeline-name" :title="project.name">{{ project.name }}</span>
+                  <span class="timeline-track"><i v-if="project.start && project.go" class="timeline-bar timeline-bar--foundation" :style="barStyle(project.start, project.go)" /><i v-if="project.go" class="timeline-marker" :style="markerStyle(project.go)" /></span>
+                </div>
+              </details>
+            </details>
             <p v-if="!timelineProjects.length" class="chart-empty">No project target dates available.</p>
           </div>
           <div class="legend"><span><i class="legend-foundation" />Project target window</span><span><i class="legend-go-live" />Target end date</span></div>
@@ -98,6 +108,33 @@ const pipelineFtes = computed(() => filteredProjects.value.reduce((sum, project)
 const regionsInView = computed(() => new Set(filteredProjects.value.map((project) => project.region)).size)
 const activeMigrations = computed(() => filteredProjects.value.filter(project => ['Approved', 'Pipeline'].includes(project.approvalStatus)).length)
 const timelineProjects = computed(() => filteredProjects.value.filter(project => project.start || project.go))
+const timelineGroups = computed(() => {
+  const siteGroups = new Map()
+  for (const project of timelineProjects.value) {
+    const sites = groupValues(project.sites, 'Unassigned GSC Site')
+    const projectProducts = groupValues(project.products, 'Unassigned Product')
+    for (const site of sites) {
+      if (!siteGroups.has(site)) siteGroups.set(site, new Map())
+      const productGroups = siteGroups.get(site)
+      for (const product of projectProducts) {
+        if (!productGroups.has(product)) productGroups.set(product, [])
+        productGroups.get(product).push(project)
+      }
+    }
+  }
+  return [...siteGroups.entries()]
+    .sort(([first], [second]) => first.localeCompare(second, undefined, { sensitivity: 'base' }))
+    .map(([name, productGroups]) => {
+      const products = [...productGroups.entries()]
+        .sort(([first], [second]) => first.localeCompare(second, undefined, { sensitivity: 'base' }))
+        .map(([productName, groupProjects]) => ({ name: productName, projects: groupProjects }))
+      return {
+        name,
+        products,
+        projectCount: new Set(products.flatMap(group => group.projects.map(project => project.id))).size
+      }
+    })
+})
 const upcomingTargetEnds = computed(() => filteredProjects.value.filter(project => {
   if (project.approvalStatus !== 'Approved' || !project.targetEndDate) return false
   const date = new Date(`${project.targetEndDate}T00:00:00`)
@@ -126,6 +163,10 @@ const timelineEnd = new Date(today.getFullYear(), today.getMonth() + 4, 1)
 function projectStatus(project) {
   const label = project.approvalStatus
   return { label, key: label.toLowerCase().replace(' ', '-') }
+}
+function groupValues(values, fallback) {
+  const uniqueValues = [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))]
+  return uniqueValues.length ? uniqueValues : [fallback]
 }
 function datePosition(value) {
   if (!value) return 0
@@ -210,6 +251,7 @@ onMounted(loadProjects)
 .timeline { min-width: 350px; }.timeline-axis, .timeline-row { display: grid; grid-template-columns: minmax(110px, 1.3fr) repeat(6, minmax(0, 1fr)); }
 .timeline-axis { border-bottom: 1px solid #dfe5eb; color: var(--muted); font-size: 8px; padding-bottom: 4px; }.timeline-axis span:not(:first-child) { border-left: 1px solid #edf0f3; padding-left: 4px; }
 .timeline-row { align-items: center; height: 20px; }.timeline-name { font-size: 8px; overflow: hidden; padding-right: 5px; text-overflow: ellipsis; white-space: nowrap; }
+.timeline-site-group { border-bottom: 1px solid #e8edf1; }.timeline-group-summary { align-items: center; cursor: pointer; display: flex; gap: 7px; list-style: none; min-height: 25px; }.timeline-group-summary::-webkit-details-marker { display: none; }.timeline-group-summary::before { border-bottom: 4px solid transparent; border-left: 5px solid #667085; border-top: 4px solid transparent; content: ''; transition: transform .15s ease; }.timeline-group-summary:hover { color: #0073ab; }.timeline-group-summary small { color: var(--muted); font-size: 8px; font-weight: 400; }.timeline-site-summary { font-size: 9px; }.timeline-site-group[open] > .timeline-site-summary::before, .timeline-product-group[open] > .timeline-product-summary::before { transform: rotate(90deg); }.timeline-product-group { margin-left: 13px; }.timeline-product-summary { border-top: 1px solid #f0f2f4; font-size: 8px; min-height: 23px; }.timeline-product-group .timeline-row { margin-left: 12px; }
 .timeline-track { border-left: 1px solid #edf0f3; height: 100%; position: relative; }.timeline-track::after { border-bottom: 1px dashed #edf0f3; content: ''; left: 0; position: absolute; right: 0; top: 50%; }
 .timeline-bar { border-radius: 4px; height: 8px; position: absolute; top: 6px; z-index: 1; }.timeline-bar--foundation { background: #7c3aed; }.timeline-bar--transfer { background: #42b0d5; }.timeline-marker { background: #0b2a4a; height: 9px; position: absolute; top: 5px; transform: translateX(-50%) rotate(45deg); width: 9px; z-index: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: 7px 12px; margin-top: 7px; }.legend span { align-items: center; color: var(--muted); display: inline-flex; font-size: 8px; gap: 4px; }.legend i { border-radius: 2px; display: inline-block; height: 7px; width: 7px; }.legend-foundation { background: #7c3aed; }.legend-transfer { background: #42b0d5; }.legend-go-live { background: #0b2a4a; transform: rotate(45deg); }

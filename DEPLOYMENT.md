@@ -1,7 +1,8 @@
 # AE WPM Apache Production Deployment Guide
 
-This is the production deployment reference for AE WPM on Windows. It records
-the configuration verified on 2026-08-26. Keep server-local certificates,
+This is the production deployment reference for AE WPM on Windows. The general
+configuration was reviewed on 2026-08-26; the production virtualenv and SQL
+Server target were re-verified on 2026-11-09. Keep server-local certificates,
 service environment variables, and logs outside Git.
 
 ## 1. Production topology
@@ -13,8 +14,8 @@ service environment variables, and logs outside Git.
 | API reverse proxy | Apache `mod_proxy_http` | `/api` -> `http://127.0.0.1:8000/api` |
 | Backend | Windows service `AE_WPM` (NSSM -> Waitress -> Django) | Bound only to `127.0.0.1:8000` |
 | Backend working directory | Django project directory | `E:\AE_WPM_Demo\backend` |
-| Python virtual environment | Dedicated production venv | `E:\wpm_env` |
-| Database | SQL Server via `mssql-django` and ODBC | `SCRBAEXDEFRM218`, database `WPM Project` |
+| Python virtual environment | Production service venv | `E:\AE_WPM_Demo\.venv` |
+| Database | SQL Server via `mssql-django` and ODBC | `SCRBAEXDEFRM259`, database `WPM` |
 
 Current server names include `wpmpulse.crb.apmoller.net` (primary, TLS
 certificate CN), `wpmworkflow.crb.apmoller.net`, `SCRBAEXDEFRM217.crb.apmoller.net`,
@@ -86,7 +87,7 @@ Apache logs are in `C:\Apache24\logs`; the relevant production logs are
 `AE_WPM` is an automatic NSSM service. Its process should be equivalent to:
 
 ```powershell
-E:\wpm_env\Scripts\python.exe -m waitress `
+E:\AE_WPM_Demo\.venv\Scripts\python.exe -m waitress `
   --listen=127.0.0.1:8000 config.wsgi:application
 ```
 
@@ -118,8 +119,10 @@ Production environment values are:
 | `DJANGO_SECRET_KEY` | Unique high-entropy secret |
 | `DJANGO_ALLOWED_HOSTS` | Exact production DNS names/IPs; do not use `*` |
 | `DJANGO_CORS_ORIGINS` | Exact HTTPS application origin(s) only |
-| `DJANGO_DB_ENGINE` | `mssql` |
-| `DJANGO_DB_NAME`, `DJANGO_DB_HOST`, `DJANGO_DB_DRIVER` | Production SQL Server connection values |
+| `DJANGO_DB_ENGINE` | SQL Server (`mssql`, or `config.sql_server` when domain authentication is configured) |
+| `DJANGO_DB_NAME` | `WPM` |
+| `DJANGO_DB_HOST` | `SCRBAEXDEFRM259` |
+| `DJANGO_DB_DRIVER` | `ODBC Driver 18 for SQL Server` |
 | `DJANGO_SENDGRID_API_KEY` | SendGrid secret stored in `.env`, service environment, or an approved secret store |
 | `DJANGO_CA_BUNDLE` | Absolute path to the corporate TLS-inspection CA bundle used for SendGrid HTTPS |
 | `DJANGO_DEFAULT_FROM_EMAIL`, `DJANGO_MIGRATION_INTAKE_NOTIFY_TO` | Approved sender and recipients |
@@ -159,7 +162,7 @@ compatible.
 	`requirements.txt` changed:
 
 	```powershell
-	E:\wpm_env\Scripts\python.exe -m pip install -r E:\AE_WPM_Demo\requirements.txt waitress
+	E:\AE_WPM_Demo\.venv\Scripts\python.exe -m pip install -r E:\AE_WPM_Demo\requirements.txt waitress
 	```
 
 5. Apply Django migrations against MSSQL. Run them in the production service
@@ -167,8 +170,14 @@ compatible.
 
 	```powershell
 	Set-Location E:\AE_WPM_Demo\backend
-	E:\wpm_env\Scripts\python.exe manage.py migrate --database=default
+	E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py migrate --database=default
+	E:\AE_WPM_Demo\.venv\Scripts\python.exe manage.py import_user_name_list `
+	  --source "E:\AE_WPM_Demo\refer doc\exportGroupMembers_2026-11-9.csv"
 	```
+
+	The user-name-list import is a one-time seed operation. It preserves rows
+	with blank email addresses and refuses to run when `user_name_list` already
+	contains records, preventing accidental duplicate imports.
 
 6. Install frontend dependencies only when lock/package files changed, then
 	build the SPA:

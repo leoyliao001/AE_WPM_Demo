@@ -655,6 +655,7 @@ class ProjectAttributesAccess(models.Model):
     resources = models.BooleanField(default=False)
     access_enablement = models.BooleanField(default=False)
     business_impact_analysis = models.BooleanField(default=False)
+    user_name_list = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -665,6 +666,18 @@ class ProjectAttributesAccess(models.Model):
     def __str__(self):
         role = "super_admin" if self.is_super_admin else "user"
         return f"{self.email} ({role})"
+
+
+class UserNameList(models.Model):
+    display_name = models.CharField(max_length=255, db_index=True)
+    mail = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        db_table = "user_name_list"
+        ordering = ["display_name", "id"]
+
+    def __str__(self):
+        return f"{self.display_name} <{self.mail}>"
 
 
 class ApprovalWorkflow(models.Model):

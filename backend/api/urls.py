@@ -22,4 +22,5 @@ urlpatterns = [
     path("bpm-rofo/", include("api.routes.bpm_rofo")),
     path("bpm-actual/", include("api.routes.bpm_actual")),
     path("executive-summary-notes/", include("api.routes.executive_summary_notes")),
+    path("user-name-list/", include("api.routes.user_name_list")),
 ]
