@@ -476,3 +476,49 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertTrue(row["businessCaseBlocked"])
         self.assertFalse(row["completed"])
         self.assertFalse(row["actionable"])
+
+    @patch("api.views.approval_cycle._notify_next_approvers")
+    def test_approval_queue_scopes_personal_requests_and_protects_all_history(self, notify):
+        unrelated = MigrationIntakeSubmission.objects.get(pk=self.project.pk)
+        unrelated.pk = None
+        unrelated.migration_request_id = "BC-UNRELATED-TEST"
+        unrelated.requestor = "stranger@example.com"
+        unrelated.function_name = "Backoffice"
+        unrelated.save()
+
+        ApprovalInput.objects.create(
+            activity_function="Ocean", product="Documentation", area_head="approver@example.com",
+            pmo="approver@example.com",
+        )
+        ApprovalWorkflow.objects.create(
+            migration_request_id=self.project.migration_request_id,
+            area_head_status="approved",
+            area_head_approved_by="approver@example.com",
+        )
+
+        response = self.client.get("/api/approval-cycle/queue/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["migration_request_id"] for row in response.data["rows"]], [self.project.migration_request_id])
+        self.assertTrue(response.data["rows"][0]["submittedByMe"])
+        self.assertEqual(self.client.get("/api/approval-cycle/queue/?scope=all").status_code, 403)
+
+        self.client.credentials(HTTP_X_USER_EMAIL="approver@example.com")
+        response = self.client.get("/api/approval-cycle/queue/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["rows"]), 1)
+        self.assertTrue(response.data["rows"][0]["approvedByMe"])
+        self.assertFalse(response.data["rows"][0]["submittedByMe"])
+        response = self.client.post("/api/approval-cycle/decision/", {
+            "migration_request_id": self.project.migration_request_id,
+            "role": "pmo",
+            "action": "approved",
+        }, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["row"]["approvedByMe"])
+
+        ProjectAttributesAccess.objects.create(email="admin@example.com", is_super_admin=True)
+        self.client.credentials(HTTP_X_USER_EMAIL="admin@example.com")
+        response = self.client.get("/api/approval-cycle/queue/?scope=all")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["scope"], "all")
+        self.assertEqual(response.data["count"], 2)
