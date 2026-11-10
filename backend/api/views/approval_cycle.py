@@ -27,6 +27,7 @@ from api.permissions.approval_access import (
     recipients_for_role,
     roles_for,
 )
+from api.permissions.attributes_access import is_super_admin, normalize_email
 from api.services.approval_notifications import (
     send_next_stage_notification,
     send_return_notification,
@@ -150,7 +151,9 @@ def _join_list(values) -> list:
     return [str(v).strip() for v in values if str(v or "").strip()] if isinstance(values, list) else []
 
 
-def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: dict, my_roles: set, approval_rows) -> dict:
+def _serialize_row(
+    submission: MigrationIntakeSubmission, workflow, progress: dict, my_roles: set, approval_rows, email: str
+) -> dict:
     from api.models import BusinessCase
     from api.services.business_case import build_business_case, case_status
     record = BusinessCase.objects.filter(project=submission).first()
@@ -189,6 +192,13 @@ def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: di
         "completed": progress["completed"] and not blocked,
         "businessCaseStatus": online_status,
         "businessCaseBlocked": blocked,
+        "submittedByMe": normalize_email(submission.requestor) == normalize_email(email),
+        "approvedByMe": any(
+            (getattr(workflow, ROLE_FIELD_MAP[role]["status"], "") or "") == "approved"
+            and normalize_email(getattr(workflow, ROLE_FIELD_MAP[role]["approver"], "") or "")
+            == normalize_email(email)
+            for role in ALL_ROLES
+        ),
         "myRoles": sorted(my_roles),
         "actionable": not blocked and _is_actionable(progress, my_roles),
         "responsibleApprovers": {
@@ -209,12 +219,18 @@ def _serialize_row(submission: MigrationIntakeSubmission, workflow, progress: di
 
 @api_view(["GET"])
 def list_approval_queue(request):
-    """Requests from migration intake, merged with live approval progress."""
+    """Return the signed-in user's requests, or all history for Super Admins."""
     email = get_request_email(request)
     if not email:
         return Response(
             {"error": "Sign in required. Missing SSO email."}, status=status.HTTP_401_UNAUTHORIZED
         )
+
+    scope = str(request.query_params.get("scope") or "mine").strip().lower()
+    if scope not in {"mine", "all"}:
+        return Response({"error": "scope must be 'mine' or 'all'."}, status=status.HTTP_400_BAD_REQUEST)
+    if scope == "all" and not is_super_admin(email):
+        return Response({"error": "Super Admin access is required to view all approval history."}, status=status.HTTP_403_FORBIDDEN)
 
     approval_rows = load_approval_input_rows()
     workflows = {w.migration_request_id: w for w in ApprovalWorkflow.objects.all()}
@@ -224,9 +240,30 @@ def list_approval_queue(request):
         workflow = workflows.get(submission.migration_request_id) or _EmptyWorkflow()
         progress = _progress(workflow)
         my_roles = roles_for(email, submission.function_name, submission.products, approval_rows)
-        rows.append(_serialize_row(submission, workflow, progress, my_roles, approval_rows))
+        decisions = {
+            role: {
+                "status": getattr(workflow, ROLE_FIELD_MAP[role]["status"], "") or "",
+                "approvedBy": getattr(workflow, ROLE_FIELD_MAP[role]["approver"], "") or "",
+            }
+            for role in ALL_ROLES
+        }
+        submitted_by_me = normalize_email(submission.requestor) == normalize_email(email)
+        approved_by_me = any(
+            decision["status"] == "approved"
+            and normalize_email(decision["approvedBy"]) == normalize_email(email)
+            for decision in decisions.values()
+        )
+        acted_by_me = any(
+            normalize_email(decision["approvedBy"]) == normalize_email(email)
+            for decision in decisions.values()
+        )
+        if scope == "mine" and not (submitted_by_me or my_roles or acted_by_me):
+            continue
 
-    return Response({"email": email, "count": len(rows), "rows": rows})
+        row = _serialize_row(submission, workflow, progress, my_roles, approval_rows, email)
+        rows.append(row)
+
+    return Response({"email": email, "scope": scope, "count": len(rows), "rows": rows})
 
 
 @api_view(["POST"])
@@ -321,6 +358,6 @@ def submit_approval_decision(request):
         {
             "status": "success",
             "migration_request_id": migration_request_id,
-            "row": _serialize_row(submission, workflow, updated_progress, my_roles, approval_rows),
+            "row": _serialize_row(submission, workflow, updated_progress, my_roles, approval_rows, email),
         }
     )

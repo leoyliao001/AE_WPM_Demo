@@ -16,7 +16,7 @@
 
         <h1 id="ac-inbox-title" class="ac-title">Approvals</h1>
         <p class="ac-subtitle">
-          {{ waitingCount }} requests waiting on you · {{ breachingCount }} breaching SLA
+          {{ queueSummary }}
           <span v-if="loading" class="ac-state">· loading intake data…</span>
           <span v-else-if="loadError" class="ac-state ac-state-warn">· {{ loadError }}</span>
         </p>
@@ -173,8 +173,8 @@
           </div>
 
           <div class="ac-table-foot">
-            <span>Showing {{ visibleRows.length }} of {{ filteredRows.length }}</span>
-            <template v-if="visibleCount < filteredRows.length">
+            <span>Showing {{ visibleRows.length }} of {{ tabFilteredRows.length }}</span>
+            <template v-if="visibleCount < tabFilteredRows.length">
               <span aria-hidden="true">·</span>
               <button class="ac-link-btn" type="button" @click="visibleCount += 4">Load more</button>
             </template>
@@ -515,6 +515,7 @@ const tollGatesBackTo = computed(() =>
   route.query.project ? `/toll-gates?project=${route.query.project}` : '/toll-gates'
 )
 
+const isAdminHistory = computed(() => route.query.scope === 'all')
 const view = ref('inbox')
 const loading = ref(false)
 const loadError = ref('')
@@ -531,10 +532,10 @@ const parallelComment = ref({ elt: '', gscHead: '' })
 const decisionMessage = ref('')
 
 const tabs = computed(() => [
-  { key: 'waiting', label: 'Waiting on me', count: waitingCount.value },
-  { key: 'delegated', label: 'Delegated to me', count: delegatedCount.value },
-  { key: 'submitted', label: 'Submitted by me', count: submittedCount.value },
-  { key: 'completed', label: 'Completed', count: null }
+  { key: 'waiting', label: 'Waiting on me', count: isAdminHistory.value ? null : waitingCount.value },
+  { key: 'delegated', label: 'Delegated to me', count: isAdminHistory.value ? null : delegatedCount.value },
+  { key: 'submitted', label: 'Submitted by me', count: isAdminHistory.value ? null : submittedCount.value },
+  { key: 'completed', label: 'Completed', count: isAdminHistory.value ? null : completedCount.value }
 ])
 
 const typeOptions = ['All types', '1:1 Migration', 'Co-location', 'New business']
@@ -789,6 +790,8 @@ const toRow = (r) => {
     parallel: { elt: r.parallel?.elt || 'pending', gscHead: r.parallel?.gscHead || 'pending' },
     completed: !!r.completed && !r.businessCaseBlocked,
     myRoles: r.myRoles || [],
+    submittedByMe: !!r.submittedByMe,
+    approvedByMe: !!r.approvedByMe,
     actionable: !!r.actionable && !r.businessCaseBlocked,
     waiting: '',
     waitingDetail: '',
@@ -839,10 +842,12 @@ async function loadQueue() {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await axios.get('/api/approval-cycle/queue/')
+    const scope = isAdminHistory.value ? 'all' : 'mine'
+    const { data } = await axios.get(`/api/approval-cycle/queue/?scope=${scope}`)
     myEmail.value = data?.email || ''
     const mapped = (data?.rows || []).filter((r) => r.migration_request_id).map(toRow)
     rows.value = mapped
+    activeTab.value = 'waiting'
     detail.value = mapped[0] || null
   } catch (e) {
     loadError.value = e?.response?.data?.error || 'Unable to load approval requests.'
@@ -866,18 +871,45 @@ const filteredRows = computed(() => {
   })
 })
 
-const waitingCount = computed(() => rows.value.length)
-const breachingCount = computed(() => rows.value.filter((r) => r.slaBreached).length)
-const delegatedCount = computed(() => rows.value.filter((r) => isParallelPhase(r)).length)
-const submittedCount = computed(() => rows.value.filter((r) => r.step <= 2).length)
+const waitingRows = computed(() => rows.value.filter((row) => row.actionable && !row.completed))
+const delegatedRows = computed(() => rows.value.filter((row) => row.myRoles.length > 0 || row.approvedByMe))
+const submittedRows = computed(() => rows.value.filter((row) => row.submittedByMe))
+const completedRows = computed(() => rows.value.filter(
+  (row) => row.completed && (row.submittedByMe || row.approvedByMe)
+))
 
-const visibleRows = computed(() => filteredRows.value.slice(0, visibleCount.value))
+const waitingCount = computed(() => waitingRows.value.length)
+const breachingCount = computed(() => rows.value.filter((r) => r.slaBreached).length)
+const delegatedCount = computed(() => delegatedRows.value.length)
+const submittedCount = computed(() => submittedRows.value.length)
+const completedCount = computed(() => completedRows.value.length)
+const queueSummary = computed(() => isAdminHistory.value
+  ? `${rows.value.length} requests in approval history`
+  : `${waitingCount.value} requests waiting on you · ${breachingCount.value} breaching SLA`)
+
+const tabFilteredRows = computed(() => {
+  if (isAdminHistory.value) return filteredRows.value
+  if (activeTab.value === 'waiting') return filteredRows.value.filter((row) => row.actionable && !row.completed)
+  if (activeTab.value === 'delegated') return filteredRows.value.filter((row) => row.myRoles.length > 0 || row.approvedByMe)
+  if (activeTab.value === 'submitted') return filteredRows.value.filter((row) => row.submittedByMe)
+  if (activeTab.value === 'completed') {
+    return filteredRows.value.filter((row) => row.completed && (row.submittedByMe || row.approvedByMe))
+  }
+  return []
+})
+
+const visibleRows = computed(() => tabFilteredRows.value.slice(0, visibleCount.value))
 
 const allVisibleSelected = computed(
   () => visibleRows.value.length > 0 && visibleRows.value.every((r) => selected.value.has(r.id))
 )
 
 onMounted(loadQueue)
+
+watch(() => route.query.scope, () => {
+  activeTab.value = 'waiting'
+  loadQueue()
+})
 
 watch([search, typeFilter, areaFilter, budgetFilter, activeTab], () => {
   visibleCount.value = 4

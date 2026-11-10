@@ -7,16 +7,56 @@
       <router-link slot="link" class="home-link" to="/" aria-label="Home" />
 
       <nav slot="actions" class="app-nav" aria-label="Main navigation">
-        <router-link
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-link"
-          :class="{ 'nav-link--active': isActive(item) }"
-        >
-          <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
-          <span>{{ item.label }}</span>
-        </router-link>
+        <template v-for="item in navItems" :key="item.to">
+          <div
+            v-if="item.label === 'Admin'"
+            class="nav-admin"
+          >
+            <button
+              v-if="isSuperAdmin"
+              class="nav-link nav-admin__trigger"
+              :class="{ 'nav-link--active': isActive(item) }"
+              type="button"
+              aria-haspopup="menu"
+              :aria-expanded="adminMenuOpen"
+              @click="toggleAdminMenu"
+              @keydown.esc="closeAdminMenu"
+            >
+              <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
+              <span>{{ item.label }}</span>
+            </button>
+            <router-link
+              v-else
+              :to="item.to"
+              class="nav-link"
+              :class="{ 'nav-link--active': isActive(item) }"
+            >
+              <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
+              <span>{{ item.label }}</span>
+            </router-link>
+            <nav v-if="isSuperAdmin && adminMenuOpen" class="admin-menu" aria-label="Admin menu" role="menu">
+              <router-link
+                v-for="adminItem in adminMenuItems"
+                :key="adminItem.to"
+                :to="adminItem.to"
+                class="admin-menu__item"
+                role="menuitem"
+                @click="closeAdminMenu"
+              >
+                {{ adminItem.label }}
+              </router-link>
+            </nav>
+          </div>
+          <router-link
+            v-else
+            :to="item.to"
+            class="nav-link"
+            :class="{ 'nav-link--active': isActive(item) }"
+          >
+            <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
+            <span>{{ item.label }}</span>
+          </router-link>
+        </template>
       </nav>
     </mc-top-bar>
     <div class="app-user-panel" aria-live="polite">
@@ -26,10 +66,30 @@
       >Signing in...</span>
       <div
         v-else-if="azureAuthState.user"
-        class="user-badge"
+        class="user-menu"
         :title="azureAuthState.user.name || azureAuthState.user.username"
       >
-        <span class="user-badge__name">{{ azureAuthState.user.username || azureAuthState.user.name }}</span>
+        <button
+          class="user-badge user-menu__trigger"
+          type="button"
+          aria-label="Open personal approvals menu"
+          aria-haspopup="menu"
+          :aria-expanded="userMenuOpen"
+          @click="toggleUserMenu"
+          @keydown.esc="closeUserMenu"
+        >
+          <span class="user-badge__name">{{ azureAuthState.user.username || azureAuthState.user.name }}</span>
+        </button>
+        <nav v-if="userMenuOpen" class="admin-menu" aria-label="Personal menu" role="menu">
+          <router-link
+            to="/approval-cycle"
+            class="admin-menu__item"
+            role="menuitem"
+            @click="closeUserMenu"
+          >
+            Approval Cycle
+          </router-link>
+        </nav>
       </div>
       <span
         v-else-if="azureAuthState.error"
@@ -42,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-top-bar'
 import '@maersk-global/mds-components-core/mc-icon'
@@ -50,7 +110,14 @@ import { azureAuthState } from '../auth/azureAuth.js'
 import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 
 const route = useRoute()
-const hasDatabaseAccess = ref(false)
+const isSuperAdmin = ref(false)
+const adminMenuOpen = ref(false)
+const userMenuOpen = ref(false)
+
+const adminMenuItems = [
+  { label: 'Project Attributes Database', to: '/project-attributes' },
+  { label: 'Approval Cycle', to: { path: '/approval-cycle', query: { scope: 'all' } } }
+]
 
 const baseNavItems = [
   { label: 'Welcome', to: '/', icon: 'mi-house' },
@@ -84,14 +151,38 @@ const databaseNavItem = {
 }
 
 const navItems = computed(() => {
-  if (!hasDatabaseAccess.value) return baseNavItems
+  if (!isSuperAdmin.value) return baseNavItems
   return [...baseNavItems, databaseNavItem]
 })
 
 const refreshSuperAdmin = async () => {
   const access = await fetchMyAttributesAccess({ force: true })
-  const tables = access?.tables || {}
-  hasDatabaseAccess.value = !!access?.is_super_admin || Object.values(tables).some(Boolean)
+  isSuperAdmin.value = !!access?.is_super_admin
+}
+
+const toggleAdminMenu = () => {
+  if (isSuperAdmin.value) adminMenuOpen.value = !adminMenuOpen.value
+}
+
+const closeAdminMenu = () => {
+  adminMenuOpen.value = false
+}
+
+const toggleUserMenu = () => {
+  userMenuOpen.value = !userMenuOpen.value
+}
+
+const closeUserMenu = () => {
+  userMenuOpen.value = false
+}
+
+const closeAdminMenuOnOutsideClick = (event) => {
+  if (!event.target.closest('.nav-admin')) closeAdminMenu()
+  if (!event.target.closest('.user-menu')) closeUserMenu()
+}
+
+const closeAdminMenuOnEscape = (event) => {
+  if (event.key === 'Escape') closeAdminMenu()
 }
 
 const isActive = (item) => {
@@ -106,7 +197,15 @@ const isActive = (item) => {
   return route.path === item.to || route.path.startsWith(`${item.to}/`)
 }
 
-onMounted(refreshSuperAdmin)
+onMounted(() => {
+  refreshSuperAdmin()
+  document.addEventListener('click', closeAdminMenuOnOutsideClick)
+  document.addEventListener('keydown', closeAdminMenuOnEscape)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', closeAdminMenuOnOutsideClick)
+  document.removeEventListener('keydown', closeAdminMenuOnEscape)
+})
 watch(
   () => azureAuthState.user?.username || azureAuthState.user?.name || azureAuthState.status,
   () => {
@@ -173,6 +272,101 @@ watch(
   gap: 8px;
   max-width: 280px;
   padding: 6px 12px;
+}
+
+.user-menu {
+  pointer-events: auto;
+  position: relative;
+}
+
+.user-menu__trigger {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 4px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  gap: 8px;
+  padding: 6px 8px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.user-menu__trigger:hover,
+.user-menu__trigger:focus-visible {
+  background: #f3f6f7;
+  color: var(--mds_brand_appearance_primary_default_link-color, #0077b8);
+  outline: none;
+}
+
+.user-menu__trigger::after {
+  border-bottom: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  content: '';
+  flex: 0 0 6px;
+  height: 6px;
+  transform: translateY(-2px) rotate(45deg);
+  width: 6px;
+}
+
+.user-menu__trigger .user-badge__name {
+  font-weight: 500;
+}
+
+.nav-admin {
+  align-items: center;
+  display: inline-flex;
+  position: relative;
+}
+
+.nav-admin__trigger {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.nav-admin__trigger::after {
+  border-bottom: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  content: '';
+  height: 6px;
+  margin-left: 2px;
+  transform: translateY(-2px) rotate(45deg);
+  width: 6px;
+}
+
+.admin-menu {
+  background: var(--mds_brand_appearance_neutral_default_background-color, #fff);
+  border: 1px solid var(--mds_brand_appearance_neutral_weak_border-color, #d9dee3);
+  border-radius: 2px;
+  box-shadow: 0 4px 14px rgb(20 20 20 / 12%);
+  min-width: 220px;
+  padding: 4px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 1001;
+}
+
+.admin-menu__item {
+  border-left: 2px solid transparent;
+  border-radius: 2px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  display: block;
+  font-size: 13px;
+  padding: 9px 12px;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.admin-menu__item:hover,
+.admin-menu__item:focus-visible {
+  background: #f3f6f7;
+  border-left-color: var(--mds_brand_appearance_primary_default_link-color, #0077b8);
+  color: var(--mds_brand_appearance_primary_default_link-color, #0077b8);
+  outline: none;
 }
 
 .user-badge__name {
