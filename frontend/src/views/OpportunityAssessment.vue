@@ -34,10 +34,12 @@ const backTo = computed(() => route.query.from === 'toll-gates'
 
 function buildDocument(data) {
   const config = JSON.stringify(data).replace(/</g, '\\u003c')
+  const catalogueAdditions = JSON.stringify(data.catalogue_additions || []).replace(/</g, '\\u003c')
   let source = scopeTemplate
     .replace(/<header class="top">[\s\S]*?<\/header>/, '')
     .replace('<script>', `<script>window.OA_CONFIG=${config};`)
     .replace(/const MIGRATION_ID=.*?;/, 'const MIGRATION_ID=window.OA_CONFIG.migration_request_id;')
+    .replace(/const CAT=([^\r\n]*);/, (_match, catalogue) => `const CAT=${catalogue}.concat(${catalogueAdditions});`)
     .replace(/const INTAKE=.*?;\r?\n/, 'const INTAKE=window.OA_CONFIG.intake;\n')
     .replace(/const LOCATIONS=.*?;[^\r\n]*/, 'const LOCATIONS=window.OA_CONFIG.locations,DEFAULT_LOC=window.OA_CONFIG.default_location;')
     .replace(/function load\(\)\{[^\r\n]*/, 'function load(){S=JSON.parse(JSON.stringify(window.OA_CONFIG.state));S.task=S.task||[]}')
@@ -52,15 +54,25 @@ function buildDocument(data) {
 const HOST_ORIGIN=parent.location.origin,requests=new Map();let requestSeq=0;
 function requestParent(action,payload){return new Promise((resolve,reject)=>{const id=++requestSeq;requests.set(id,{resolve,reject});parent.postMessage({type:"oa-scope-request",id,action,payload},HOST_ORIGIN)})}
 addEventListener("message",event=>{if(event.source!==parent||event.origin!==HOST_ORIGIN||event.data?.type!=="oa-scope-response")return;const pending=requests.get(event.data.id);if(!pending)return;requests.delete(event.data.id);event.data.error?pending.reject(new Error(event.data.error)):pending.resolve(event.data.data)});
+function hierarchyKey(row){return [row.product??row.p,row.l1,row.l2,row.l3,row.l4].map(value=>String(value||"").trim().toLowerCase()).join("|")}
+let pendingCatalogueRows=[];
+function queueCatalogueAcknowledgement(rows){pendingCatalogueRows.push(...(rows||[]))}
+function addCatalogueEntries(entries){const known=new Set(CAT.map(row=>row.slice(0,5).map(value=>String(value||"").trim().toLowerCase()).join("|")));let changed=false;(entries||[]).forEach(row=>{const key=hierarchyKey({product:row[0],l1:row[1],l2:row[2],l3:row[3],l4:row[4]});if(!known.has(key)){CAT.push(row);known.add(key);changed=true}});if(changed){if(mode==="cat"){ensureCat();buildFilters();render()}else if(mode==="task"){const selected=$("bL1").value;onBP();if(selected)$("bL1").value=selected;onBL1()}}}
+async function refreshCatalogueRequests(){try{const data=await requestParent("fpo-catalogue-refresh");catalogueRequests=data.catalogue_requests||[];addCatalogueEntries(data.catalogue_additions);renderCatalogueReminders();return catalogueRequests}catch(error){toast(error.message||"Unable to refresh FPO request status.");return catalogueRequests}}
+async function acknowledgeCatalogueRows(rows){await refreshCatalogueRequests();const candidates=rows||[];for(const item of [...catalogueRequests]){if(item.status!=="approved"||!candidates.some(row=>hierarchyKey(row)===hierarchyKey(item)))continue;try{await requestParent("fpo-catalogue-acknowledge",{request_id:item.id,product:item.product,l1:item.l1,l2:item.l2,l3:item.l3,l4:item.l4});catalogueRequests=catalogueRequests.filter(request=>request.id!==item.id)}catch(error){toast(error.message||"Unable to update the approved catalogue request.")}}renderCatalogueReminders()}
 const originalSetDirty=setDirty;
 setDirty=function(value){originalSetDirty(value);parent.postMessage({type:"oa-scope-dirty",dirty:value},HOST_ORIGIN)};
+renderCatalogueReminders();
+$("fpoCancel").onclick=closeFpoRequest;
+$("fpoRequestModal").addEventListener("click",event=>{if(event.target.id==="fpoRequestModal")closeFpoRequest()});
+$("fpoRequestForm").addEventListener("submit",async event=>{event.preventDefault();const button=$("fpoSubmit");button.disabled=true;try{const payload={product:$("fpoProduct").value,l1:$("fpoL1").value.trim(),l2:$("fpoL2").value.trim(),l3:$("fpoL3").value.trim(),l4:$("fpoL4").value.trim()};const created=await requestParent("fpo-catalogue-request",payload);catalogueRequests.unshift({id:created.id,...payload,status:created.status,decision_comment:"",created_at:new Date().toISOString()});renderCatalogueReminders();closeFpoRequest();toast("FPO approval request submitted")}catch(error){toast(error?.response?.data?.error||error.message||"Unable to submit the FPO request.")}finally{button.disabled=false}});
 if(INTAKE.products.length>1){$("productField").hidden=false;document.querySelector(".bbody").classList.add("multi-product")}
 $("bP").onchange=onBP;
 $("backBtn").onclick=()=>requestParent("back").catch(error=>toast(error.message));
 if(S.mode){setMode(S.mode);document.querySelectorAll(".mcard").forEach(button=>{const on=button.dataset.mode===S.mode;button.classList.toggle("on",on);button.setAttribute("aria-checked",String(on))})}
 const originalSetMode=setMode;
 setMode=function(value){originalSetMode(value);S.mode=value;setDirty(true)};
-$("save").onclick=async()=>{if(!dirty)return;document.body.inert=true;try{S.mode=mode;const result=await requestParent("save",{migration_request_id:MIGRATION_ID,state:S});S=result.state;setDirty(false);render();toast("Saved to database")}catch(error){toast(error.message)}finally{document.body.inert=false}};
+$("save").onclick=async()=>{if(!dirty)return;document.body.inert=true;try{S.mode=mode;const result=await requestParent("save",{migration_request_id:MIGRATION_ID,state:S});S=result.state;setDirty(false);render();const queued=pendingCatalogueRows;pendingCatalogueRows=[];await acknowledgeCatalogueRows(queued);toast("Saved to database")}catch(error){toast(error.message)}finally{document.body.inert=false}};
 $("reload").onclick=async()=>{if(dirty&&!confirm("Discard unsaved changes?"))return;document.body.inert=true;try{await requestParent("reload")}catch(error){document.body.inert=false;toast(error.message)}};
 document.querySelectorAll(".mcard").forEach(button=>{button.setAttribute("aria-label",button.querySelector("b").textContent)});
 document.querySelectorAll(".f select").forEach(select=>{const label=select.closest(".f").querySelector("label");if(label)select.setAttribute("aria-label",label.textContent.replace("*","").trim())});
@@ -112,6 +124,22 @@ async function onMessage(event) {
       saving.value = true
       const response = await axios.post(endpoint.value, { ...message.payload, revision })
       revision = response.data.revision
+      data = response.data
+    } else if (message.action === 'fpo-catalogue-request') {
+      const response = await axios.post(
+        `/api/migration-dashboard/projects/${route.params.id}/opportunity-assessment/catalogue-requests/`,
+        message.payload
+      )
+      data = response.data
+    } else if (message.action === 'fpo-catalogue-refresh') {
+      const response = await axios.get(endpoint.value)
+      data = { catalogue_requests: response.data.catalogue_requests || [], catalogue_additions: response.data.catalogue_additions || [] }
+    } else if (message.action === 'fpo-catalogue-acknowledge') {
+      const { request_id, ...payload } = message.payload
+      const response = await axios.post(
+        `/api/migration-dashboard/projects/${route.params.id}/opportunity-assessment/catalogue-requests/${request_id}/acknowledge/`,
+        payload
+      )
       data = response.data
     } else if (message.action === 'reload') {
       await loadAssessment()

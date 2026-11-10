@@ -65,6 +65,9 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
 .foot{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-top:1px solid var(--l);z-index:5}
 .dirty{color:var(--warn);font-weight:600}
 .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0b2a4a;color:#fff;padding:10px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:20}.toast.show{opacity:1}
+.catalogue-reminder{margin:0 0 14px;padding:13px 16px;border:1px solid #d89c20;border-left:6px solid #b77900;border-radius:6px;background:#fff8e6;color:#513900}.catalogue-reminder strong{display:block;margin-bottom:4px}.catalogue-reminder p{margin:4px 0}.catalogue-reminder .request-path{font-weight:600;overflow-wrap:anywhere}
+.fpo-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(13,30,45,.56)}.fpo-dialog{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 18px 50px rgba(0,0,0,.25);padding:22px}.fpo-dialog h2{margin:0 0 6px;font-size:20px}.fpo-dialog p{margin:0 0 16px;color:#52606d}.fpo-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fpo-fields label{display:block;margin-bottom:5px;font-weight:600}.fpo-fields input,.fpo-fields select{box-sizing:border-box;width:100%;height:38px;border:1px solid #aeb8c2;border-radius:5px;padding:0 9px;background:#fff}.fpo-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.fpo-approver{padding:9px 11px;border-left:3px solid #0073ab;border-radius:4px;background:#edf5fa;color:#344054!important;font-weight:600}
 .hidden{display:none!important}
 .ctx{padding:9px 14px;border:1px solid var(--l);border-radius:8px;background:#fbfcfd;align-items:center}.ctx .src{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;background:#e1effa;color:var(--bd);font-weight:600}
 .ctry,.fbtn{width:100%;height:32px;border:0;background:transparent;text-align:left;padding:0 22px 0 8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}
@@ -99,6 +102,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
 </div>
 
 <div id="empty" class="placeholder">Select one of the two scoping methods above to start.</div>
+<div id="catalogueReminder" class="catalogue-reminder hidden" role="status" aria-live="polite"></div>
 
 <div id="work" class="hidden">
   <section class="tiles">
@@ -144,6 +148,23 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
 </main>
 <footer class="foot"><span id="dirty"></span><span class="spacer"></span><button class="btn" id="reload">↻ Reload</button><button class="btn pri" id="save" disabled>Save</button></footer>
 <div class="toast" id="toast"></div>
+<div class="fpo-backdrop hidden" id="fpoRequestModal">
+  <section class="fpo-dialog" role="dialog" aria-modal="true" aria-labelledby="fpoDialogTitle">
+    <h2 id="fpoDialogTitle">Request a Service Catalogue entry</h2>
+    <p>The proposed L1–L4 hierarchy will be sent to FPO for approval. It will not be added until approved.</p>
+    <p class="fpo-approver">FPO approver: leo.y.liao@lns.maersk.com</p>
+    <form id="fpoRequestForm">
+      <div class="fpo-fields">
+        <div><label for="fpoProduct">Product</label><select id="fpoProduct" required></select></div>
+        <div><label for="fpoL1">L1</label><input id="fpoL1" maxlength="128" required></div>
+        <div><label for="fpoL2">L2</label><input id="fpoL2" maxlength="128" required></div>
+        <div><label for="fpoL3">L3</label><input id="fpoL3" maxlength="128" required></div>
+        <div><label for="fpoL4">L4</label><input id="fpoL4" maxlength="255" required></div>
+      </div>
+      <div class="fpo-actions"><button class="btn" type="button" id="fpoCancel">Cancel</button><button class="btn pri" type="submit" id="fpoSubmit">Submit FPO request</button></div>
+    </form>
+  </section>
+</div>
 
 <script>
 const MIGRATION_ID="TEST_SWARUP_20261102_050";
@@ -154,6 +175,7 @@ const STORE="wpm_oa_scope_v3_"+MIGRATION_ID;
 // Pre-populated from the project intake form (sample values)
 const INTAKE={region:"APA",area:"South East Asia",product:"LCL",owner:"Shirley Figueroa",countries:["Indonesia","Malaysia","Philippines","Singapore","Thailand","Vietnam"]};
 const COUNTRIES=INTAKE.countries;
+const NOT_IN_CATALOGUE="__not_in_catalogue__";
 const LOCATIONS=["Manila","Pune","Mumbai","Chengdu","Ho Chi Minh City"],DEFAULT_LOC="Manila"; // default from Location Strategy
 const PER_MONTH={Daily:21,Weekly:4.33,Monthly:1,Quarterly:1/3,Yearly:1/12,"Ad hoc":1};
 const COLS=[
@@ -187,11 +209,15 @@ function fte(r){const v=parseFloat(r.vol),m=parseFloat(r.tpu),f=PER_MONTH[r.freq
 
 /* state: two separate datasets, one per method */
 let S={cat:null,task:[],seq:1},mode="",sel=new Set(),dirty=false,page=1;const PAGE=50;
+let catalogueRequests=window.OA_CONFIG?.catalogue_requests||[];
 let applied={p:"",l1:"",l2:"",l3:"",l4:"",mig:""};
 function load(){try{const x=JSON.parse(localStorage.getItem(STORE));if(x){S=x;S.task=S.task||[];return}}catch(e){}S={cat:null,task:[],seq:1}}
-function ensureCat(){if(!S.cat){S.cat=CAT.map((c,i)=>({id:"c"+i,...rowFromCat(i)}))}}
+function ensureCat(){if(!S.cat){S.cat=CAT.map((c,i)=>({id:"c"+i,...rowFromCat(i)}));return}const known=new Set(S.cat.map(r=>[r.p,r.l1,r.l2,r.l3,r.l4].join("|").toLowerCase()));CAT.forEach((c,i)=>{const key=c.slice(0,5).join("|").toLowerCase();if(!known.has(key)){S.cat.push({id:"c"+i,...rowFromCat(i)});known.add(key)}})}
 function rows(){return mode==="cat"?S.cat:S.task}
 function setDirty(v){dirty=v;$("save").disabled=!v;$("dirty").innerHTML=v?'<span class="dirty">● Unsaved changes</span>':""}
+function renderCatalogueReminders(){const box=$("catalogueReminder");if(!box)return;if(!catalogueRequests.length){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=catalogueRequests.map(item=>{const state=item.status==="approved"?"FPO approved":item.status==="rejected"?"FPO rejected":"Pending FPO approval";const instruction=item.status==="approved"?"Select this approved Product and L1–L4 in the scope filters or add its tasks to update this assessment.":item.status==="rejected"?(item.decision_comment?`Reason: ${esc(item.decision_comment)}`:"Review the rejection in Approval Cycle."):"This request will remain here until FPO has reviewed it.";return `<div><strong>Service Catalogue request ${esc(state)}</strong><p class="request-path">${esc(item.product)} / ${esc(item.l1)} / ${esc(item.l2)} / ${esc(item.l3)} / ${esc(item.l4)}</p><p>${instruction}</p></div>`}).join("")}
+function openFpoRequest(product=""){const options=INTAKE.catalogue_products||[INTAKE.product];$("fpoProduct").innerHTML=opt(options);$("fpoProduct").value=product|| (options.length===1?options[0]:"");["L1","L2","L3","L4"].forEach(key=>$("fpo"+key).value="");$("fpoRequestModal").classList.remove("hidden");$("fpoL1").focus()}
+function closeFpoRequest(){$("fpoRequestModal").classList.add("hidden")}
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
 
 /* ---------- method selector ---------- */
@@ -211,15 +237,15 @@ function bFill(){
   const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value;
   $("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;
 }
-function onBP(){const p=$("bP").value;$("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;if(p&&$("bL1").options.length===2){$("bL1").selectedIndex=1}onBL1()}
-function onBL1(){const p=$("bP").value,l1=$("bL1").value,a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
+function onBP(){const p=$("bP").value;$("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first")+(p?`<option value="${NOT_IN_CATALOGUE}">Not in Service Catalog</option>`:"");$("bL1").disabled=!p;if(p&&$("bL1").options.length===2){$("bL1").selectedIndex=1}onBL1()}
+function onBL1(){const p=$("bP").value,l1=$("bL1").value;if(l1===NOT_IN_CATALOGUE){$("bL2").innerHTML=opt([],"Select L1 first");$("bL3").innerHTML=opt([],"Select L2 first");$("bL2").disabled=true;$("bL3").disabled=true;$("bL1").value="";openFpoRequest(p);bPreview();return}const a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
 function onBL2(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,a=l2?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1&&c[2]===l2).map(c=>c[3])):[];$("bL3").innerHTML=opt(a,l2?"Select L3":"Select L2 first");$("bL3").disabled=!l2;$("h3").textContent=l2?a.length+" options":"";bPreview()}
 function pending(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,l3=$("bL3").value;if(!(p&&l1&&l2&&l3))return null;
   const idx=catBy(c=>c[0]===p&&c[1]===l1&&c[2]===l2&&c[3]===l3),have=new Set(S.task.map(r=>r.ref));return{l3,idx,fresh:idx.filter(i=>!have.has(i))}}
 function bPreview(){const x=pending();$("bAdd").disabled=!x||!x.fresh.length;
   $("preview").innerHTML=!x?"Select L1, L2 and L3.":!x.fresh.length?`<span class="warn">All ${x.idx.length} L4 tasks under ${esc(x.l3)} are already in the grid.</span>`:`Will add <b>${x.fresh.length} L4 task${x.fresh.length>1?"s":""}</b> under <b>${esc(x.l3)}</b>.${x.fresh.length<x.idx.length?` <span class="warn">${x.idx.length-x.fresh.length} already in the grid will be skipped.</span>`:""}`}
 function addRows(){const x=pending();if(!x)return;const add=x.fresh.map(i=>({id:"t"+(S.seq++),...rowFromCat(i),ctry:bCtryVal}));S.task=S.task.concat(add);
-  clearFilters(false);applied.l3=x.l3;syncFilterUI();setDirty(true);page=1;render();bPreview();toast(`${add.length} L4 task${add.length>1?"s":""} added – showing ${x.l3}`)}
+  clearFilters(false);applied.l3=x.l3;syncFilterUI();setDirty(true);page=1;render();bPreview();toast(`${add.length} L4 task${add.length>1?"s":""} added – showing ${x.l3}`);if(typeof queueCatalogueAcknowledgement==="function")queueCatalogueAcknowledgement(add)}
 
 /* ---------- filters (apply on View) ---------- */
 const FK=[["fL1","l1"],["fL2","l2"],["fL3","l3"],["fL4","l4"]];
@@ -227,6 +253,7 @@ function buildFilters(){
   const keep={};FK.forEach(([id])=>keep[id]=$(id).value);
   let base=rows()||[];
   FK.forEach(([id,k])=>{$(id).innerHTML=opt(uniq(base.map(r=>r[k])),"All");if([...$(id).options].some(o=>o.value===keep[id]))$(id).value=keep[id];else $(id).value="";if($(id).value)base=base.filter(r=>r[k]===$(id).value)});
+  $("fL1").insertAdjacentHTML("beforeend",`<option value="${NOT_IN_CATALOGUE}">Not in Service Catalog</option>`);
 }
 function syncFilterUI(){FK.forEach(([id,k])=>{buildFilters();$(id).value=applied[k]||""});buildFilters();$("fMig").value=applied.mig}
 function clearFilters(doRender=true){applied={p:"",l1:"",l2:"",l3:"",l4:"",mig:""};FK.forEach(([id])=>$(id).value="");$("fMig").value="";buildFilters();page=1;if(doRender)render()}
@@ -330,9 +357,9 @@ document.querySelector(".grid").addEventListener("scroll",closePicker);
 $("idChip").textContent=MIGRATION_ID;$("idCode").textContent=MIGRATION_ID;
 document.querySelectorAll(".mcard").forEach(c=>c.onclick=()=>{document.querySelectorAll(".mcard").forEach(x=>{const on=x===c;x.classList.toggle("on",on);x.setAttribute("aria-checked",on)});setMode(c.dataset.mode)});
 $("bP").innerHTML=opt([INTAKE.product]);
-$("bL1").onchange=onBL1;$("bL2").onchange=onBL2;$("bL3").onchange=bPreview;$("bAdd").onclick=addRows;
-FK.forEach(([id])=>$(id).onchange=()=>{const i=FK.findIndex(x=>x[0]===id);FK.slice(i+1).forEach(([n])=>$(n).value="");buildFilters()});
-$("viewBtn").onclick=()=>{applied={mig:$("fMig").value};FK.forEach(([id,k])=>applied[k]=$(id).value);page=1;sel.clear();render()};
+$("bL1").onchange=()=>{onBL1();if($("bL1").value)void refreshCatalogueRequests()};$("bL2").onchange=onBL2;$("bL3").onchange=bPreview;$("bAdd").onclick=addRows;
+FK.forEach(([id])=>$(id).onchange=async()=>{if(id==="fL1"&&$(id).value===NOT_IN_CATALOGUE){$(id).value="";FK.slice(1).forEach(([name])=>$(name).value="");buildFilters();openFpoRequest("");return}const i=FK.findIndex(x=>x[0]===id);FK.slice(i+1).forEach(([n])=>$(n).value="");buildFilters();if(id==="fL1")await refreshCatalogueRequests()});
+$("viewBtn").onclick=()=>{applied={mig:$("fMig").value};FK.forEach(([id,k])=>applied[k]=$(id).value);page=1;sel.clear();render();if(applied.l1&&applied.l2&&applied.l3&&applied.l4)void acknowledgeCatalogueRows(view())};
 $("clearBtn").onclick=()=>{clearFilters();toast("Filters cleared – your entries are kept")};
 $("prev").onclick=()=>{page--;render()};$("next").onclick=()=>{page++;render()};
 $("save").onclick=()=>{localStorage.setItem(STORE,JSON.stringify(S));setDirty(false);toast("Saved")};

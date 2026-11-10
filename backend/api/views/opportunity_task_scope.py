@@ -9,9 +9,10 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope
+from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope, ServiceCatalogue
 from api.permissions.attributes_access import get_request_email
 from api.views.opportunity_assessment import _build_setup_context, _deny_unless_requestor, _get_project, _parse_number
+from api.views.fpo_catalogue_requests import catalogue_request_reminders
 
 
 FIELD_MAP = {
@@ -30,9 +31,29 @@ OPTIONS = {
 
 
 @lru_cache(maxsize=1)
-def _catalogue():
+def _base_catalogue():
     source = (settings.BASE_DIR.parent / "refer doc" / "WPM_Pulse_OA_Task_Scoping.html").read_text(encoding="utf-8")
     return json.JSONDecoder().raw_decode(source.split("const CAT=", 1)[1])[0]
+
+
+@lru_cache(maxsize=1)
+def _catalogue_additions():
+    catalogue = _base_catalogue()
+    keys = {tuple(str(value).strip().casefold() for value in row[:5]) for row in catalogue}
+    additions = []
+    for row in ServiceCatalogue.objects.all().values("product", "l1", "l2", "l3", "l4", "current_ownership"):
+        hierarchy = tuple(str(row[field] or "").strip() for field in ("product", "l1", "l2", "l3", "l4"))
+        key = tuple(value.casefold() for value in hierarchy)
+        if not all(hierarchy) or key in keys:
+            continue
+        additions.append([*hierarchy, "", row["current_ownership"] or "", "", hierarchy[4]])
+        keys.add(key)
+    return additions
+
+
+@lru_cache(maxsize=1)
+def _catalogue():
+    return _base_catalogue() + _catalogue_additions()
 
 
 def _initial_state(project):
@@ -181,6 +202,8 @@ def opportunity_task_scope(request, project_id):
     return Response({
         "migration_request_id": project.migration_request_id,
         "state": state, "revision": scope.revision if scope else 0,
+        "catalogue_requests": catalogue_request_reminders(project),
+        "catalogue_additions": _catalogue_additions(),
         "intake": {"region": project.region, "area": ", ".join(project.areas or []),
                    "product": ", ".join(project.products or []), "products": project.products or [],
                    "catalogue_products": [re.sub(r"^General\s+", "", product, flags=re.IGNORECASE).strip() for product in (project.products or [])],

@@ -496,6 +496,32 @@ class ServiceCatalogue(models.Model):
         return f"{self.product} / {self.l4 or self.l3 or self.id}"
 
 
+class FpoCatalogueRequest(models.Model):
+    project = models.ForeignKey(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="fpo_catalogue_requests",
+    )
+    product = models.CharField(max_length=128)
+    l1 = models.CharField(max_length=128)
+    l2 = models.CharField(max_length=128)
+    l3 = models.CharField(max_length=128)
+    l4 = models.CharField(max_length=255)
+    requested_by = models.CharField(max_length=255)
+    approver_email = models.CharField(max_length=255)
+    status = models.CharField(max_length=16, default="pending", db_index=True)
+    decision_comment = models.TextField(blank=True, default="")
+    decided_by = models.CharField(max_length=255, blank=True, default="")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    catalogue_updated_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "fpo_catalogue_request"
+        ordering = ["-created_at", "id"]
+
+
 class WorkingHours(models.Model):
     """Area / GSC working hours reference data."""
 

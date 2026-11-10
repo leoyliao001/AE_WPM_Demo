@@ -200,11 +200,48 @@
           </div>
           <div class="ac-detail-tags">
             <span class="ac-tag ac-tag-info">{{ detail.type }}</span>
-            <span class="ac-tag" :class="budgetTagClass(detail)">
+            <span v-if="detail.requestKind !== 'fpo_catalogue'" class="ac-tag" :class="budgetTagClass(detail)">
               {{ budgetLabel(detail) }}
             </span>
-            <span class="ac-tag ac-tag-neutral">{{ detail.businessCaseBlocked ? 'Business Case blocked' : detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
+            <span class="ac-tag ac-tag-neutral">{{ detail.requestKind === 'fpo_catalogue' ? `FPO ${detail.fpoStatus}` : detail.businessCaseBlocked ? 'Business Case blocked' : detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
           </div>
+        </div>
+
+        <div v-if="detail.requestKind === 'fpo_catalogue'" class="ac-detail-grid">
+          <div class="ac-detail-col">
+            <div class="ac-card">
+              <h2 class="ac-card-title">Service Catalogue addition request</h2>
+              <p class="ac-card-sub">The proposed hierarchy will be added to Service Catalogue only after FPO approval.</p>
+              <dl class="ac-defs">
+                <div><dt>Product</dt><dd>{{ detail.fpoProduct }}</dd></div>
+                <div><dt>L1</dt><dd>{{ detail.fpoL1 }}</dd></div>
+                <div><dt>L2</dt><dd>{{ detail.fpoL2 }}</dd></div>
+                <div><dt>L3</dt><dd>{{ detail.fpoL3 }}</dd></div>
+                <div><dt>L4</dt><dd>{{ detail.fpoL4 }}</dd></div>
+                <div><dt>Migration Request ID</dt><dd>{{ detail.migrationRequestId }}</dd></div>
+                <div><dt>Project</dt><dd>{{ detail.title }}</dd></div>
+                <div><dt>Requested by</dt><dd>{{ detail.requester }}</dd></div>
+                <div v-if="detail.fpoDecidedBy"><dt>Reviewed by</dt><dd>{{ detail.fpoDecidedBy }} · {{ detail.fpoDecidedAt }}</dd></div>
+                <div v-if="detail.fpoDecisionComment"><dt>Decision comment</dt><dd>{{ detail.fpoDecisionComment }}</dd></div>
+              </dl>
+            </div>
+          </div>
+          <aside class="ac-decision-col">
+            <div class="ac-card ac-decision">
+              <h2 class="ac-card-title">FPO decision</h2>
+              <p class="ac-card-sub">{{ detail.actionable ? 'Review the proposed Product and L1–L4 hierarchy.' : detail.completed ? `Request ${detail.fpoStatus}.` : 'This request is assigned to the configured FPO approver.' }}</p>
+              <template v-if="detail.actionable">
+                <textarea v-model="comment" class="ac-textarea" rows="4" placeholder="Comment (required when rejecting)" aria-label="FPO decision comment"></textarea>
+                <button class="ac-btn ac-btn-primary ac-btn-block" type="button" :disabled="fpoSubmitting" @click="submitFpoDecision('approved')">
+                  {{ fpoSubmitting ? 'Saving…' : 'Approve and add to Service Catalogue' }}
+                </button>
+                <button class="ac-btn ac-btn-danger ac-btn-block" type="button" :disabled="fpoSubmitting" @click="submitFpoDecision('rejected')">
+                  Reject
+                </button>
+              </template>
+              <p v-if="decisionMessage" class="ac-decision-msg" role="status">{{ decisionMessage }}</p>
+            </div>
+          </aside>
         </div>
 
         <div v-if="detail.businessCaseBlocked" class="ac-banner" role="alert">
@@ -222,7 +259,7 @@
           </div>
         </div>
 
-        <div class="ac-detail-grid">
+        <div v-if="detail.requestKind !== 'fpo_catalogue'" class="ac-detail-grid">
           <div class="ac-detail-col">
             <!-- Slot 1 — approval chain -->
             <div class="ac-card">
@@ -527,6 +564,7 @@ const budgetFilter = ref('Any budget status')
 const visibleCount = ref(4)
 const selected = ref(new Set())
 const comment = ref('')
+const fpoSubmitting = ref(false)
 const budgetChoice = ref('within')
 const parallelComment = ref({ elt: '', gscHead: '' })
 const decisionMessage = ref('')
@@ -566,6 +604,7 @@ const businessCaseWarning = (row) => row.businessCaseStatus === 'needs_review'
   : 'Business Case is not currently submitted for approval.'
 
 const stageNameFor = (row) => {
+  if (row.requestKind === 'fpo_catalogue') return 'FPO Review'
   const seqLen = sequentialLength(row.beyondBudget)
   if (row.step <= seqLen) return stepsFor(row.beyondBudget)[row.step - 1]
   return 'ELT & GSC Head'
@@ -764,6 +803,53 @@ const myRoleFor = (row, role) => (row?.myRoles || []).includes(role === 'gscHead
 // Server already computed step/beyondBudget/parallel/myRoles/actionable; this only
 // shapes the fields the template's business-case & summary sections read.
 const toRow = (r) => {
+  if (r.request_kind === 'fpo_catalogue') {
+    const completed = !!r.completed
+    return {
+      id: `FPO-${r.fpo_request_id}`,
+      fpoRequestId: r.fpo_request_id,
+      migrationRequestId: r.migration_request_id,
+      requestKind: 'fpo_catalogue',
+      title: r.project_name || r.migration_request_id,
+      type: 'FPO Catalogue',
+      requester: r.requestor || 'Unknown requester',
+      area: first(r.areas) || r.region || '—',
+      region: r.region || '—',
+      fte: 0,
+      scope: r.proposed_scope,
+      budgetStatus: 'pending',
+      beyondBudget: false,
+      currentRole: r.currentRole || '',
+      decisions: {},
+      responsibleApprovers: { fpo: [r.fpoApprover] },
+      businessCaseSubmittedAt: r.requested_date,
+      businessCaseStatus: null,
+      businessCaseBlocked: false,
+      step: 1,
+      totalSteps: 1,
+      parallel: { elt: 'pending', gscHead: 'pending' },
+      completed,
+      myRoles: r.myRoles || [],
+      submittedByMe: !!r.submittedByMe,
+      approvedByMe: !!r.approvedByMe,
+      handledByMe: !!r.handledByMe,
+      actionable: !!r.actionable,
+      waiting: completed ? `FPO ${r.fpoStatus}` : 'Awaiting FPO review',
+      waitingDetail: r.fpoDecisionComment || 'A new Service Catalogue entry is pending FPO approval.',
+      slaBreached: false,
+      submitted: formatDate(r.requested_date),
+      product: r.fpoProduct,
+      fpoProduct: r.fpoProduct,
+      fpoL1: r.fpoL1,
+      fpoL2: r.fpoL2,
+      fpoL3: r.fpoL3,
+      fpoL4: r.fpoL4,
+      fpoStatus: r.fpoStatus,
+      fpoDecisionComment: r.fpoDecisionComment,
+      fpoDecidedBy: r.fpoDecidedBy,
+      fpoDecidedAt: r.fpoDecidedAt
+    }
+  }
   const fte = Number.parseFloat(r.fte_number) || 0
   const annualSaving = Math.round(fte * 44000) || 1
   const transitionCost = Math.round(fte * 12000)
@@ -792,6 +878,7 @@ const toRow = (r) => {
     myRoles: r.myRoles || [],
     submittedByMe: !!r.submittedByMe,
     approvedByMe: !!r.approvedByMe,
+    handledByMe: !!r.handledByMe,
     actionable: !!r.actionable && !r.businessCaseBlocked,
     waiting: '',
     waitingDetail: '',
@@ -848,7 +935,12 @@ async function loadQueue() {
     const mapped = (data?.rows || []).filter((r) => r.migration_request_id).map(toRow)
     rows.value = mapped
     activeTab.value = 'waiting'
-    detail.value = mapped[0] || null
+    const fpoRequestId = Number(route.query.fpo_request)
+    const requestedFpoRow = fpoRequestId
+      ? mapped.find((row) => row.fpoRequestId === fpoRequestId)
+      : null
+    detail.value = requestedFpoRow || mapped[0] || null
+    view.value = requestedFpoRow ? 'details' : 'inbox'
   } catch (e) {
     loadError.value = e?.response?.data?.error || 'Unable to load approval requests.'
     rows.value = []
@@ -875,7 +967,7 @@ const waitingRows = computed(() => rows.value.filter((row) => row.actionable && 
 const delegatedRows = computed(() => rows.value.filter((row) => row.myRoles.length > 0 || row.approvedByMe))
 const submittedRows = computed(() => rows.value.filter((row) => row.submittedByMe))
 const completedRows = computed(() => rows.value.filter(
-  (row) => row.completed && (row.submittedByMe || row.approvedByMe)
+  (row) => row.completed && (row.submittedByMe || row.approvedByMe || row.handledByMe)
 ))
 
 const waitingCount = computed(() => waitingRows.value.length)
@@ -893,7 +985,7 @@ const tabFilteredRows = computed(() => {
   if (activeTab.value === 'delegated') return filteredRows.value.filter((row) => row.myRoles.length > 0 || row.approvedByMe)
   if (activeTab.value === 'submitted') return filteredRows.value.filter((row) => row.submittedByMe)
   if (activeTab.value === 'completed') {
-    return filteredRows.value.filter((row) => row.completed && (row.submittedByMe || row.approvedByMe))
+    return filteredRows.value.filter((row) => row.completed && (row.submittedByMe || row.approvedByMe || row.handledByMe))
   }
   return []
 })
@@ -961,6 +1053,34 @@ function exportRows() {
   a.download = 'gsc-approvals.csv'
   a.click()
   URL.revokeObjectURL(url)
+}
+
+async function submitFpoDecision(action) {
+  if (action === 'rejected' && !comment.value.trim()) {
+    decisionMessage.value = 'A comment is required when rejecting a request.'
+    return
+  }
+  fpoSubmitting.value = true
+  decisionMessage.value = ''
+  try {
+    const { data } = await axios.post(
+      `/api/approval-cycle/fpo-requests/${detail.value.fpoRequestId}/decision/`,
+      { action, comment: comment.value }
+    )
+    const updated = toRow(data.row)
+    const idx = rows.value.findIndex((row) => row.id === updated.id)
+    if (idx === -1) rows.value.push(updated)
+    else rows.value[idx] = updated
+    detail.value = updated
+    comment.value = ''
+    decisionMessage.value = action === 'approved'
+      ? 'Approved and added to Service Catalogue.'
+      : 'FPO request rejected.'
+  } catch (e) {
+    decisionMessage.value = e?.response?.data?.error || 'Unable to record the FPO decision.'
+  } finally {
+    fpoSubmitting.value = false
+  }
 }
 
 // Posts a decision to the backend, which re-checks approval_input access server-side,

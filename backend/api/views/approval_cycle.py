@@ -32,6 +32,7 @@ from api.services.approval_notifications import (
     send_next_stage_notification,
     send_return_notification,
 )
+from api.views.fpo_catalogue_requests import list_fpo_catalogue_requests
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +263,7 @@ def list_approval_queue(request):
 
         row = _serialize_row(submission, workflow, progress, my_roles, approval_rows, email)
         rows.append(row)
+    rows.extend(list_fpo_catalogue_requests(email, scope))
 
     return Response({"email": email, "scope": scope, "count": len(rows), "rows": rows})
 
