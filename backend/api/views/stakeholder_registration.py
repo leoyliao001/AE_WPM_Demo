@@ -5,12 +5,13 @@ import re
 from uuid import uuid4
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import MigrationIntakeSubmission, StakeholderRegistration
+from api.models import MigrationIntakeSubmission, StakeholderRegistration, UserNameList
 from api.permissions.attributes_access import (
     can_access_table,
     get_request_email,
@@ -301,6 +302,40 @@ def get_stakeholder_registration(request, project_id):
         return error
     registration = StakeholderRegistration.objects.filter(project=project).first()
     return Response(_serialize(project, registration, email))
+
+
+@api_view(["GET"])
+def search_stakeholder_people(request, project_id):
+    project = _get_project(project_id)
+    if not project:
+        return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
+    _email, error = _authorize(request, project)
+    if error:
+        return error
+
+    query = str(request.query_params.get("q") or "").strip()
+    if len(query) < 2:
+        return Response({"error": "Enter at least 2 characters to search."}, status=status.HTTP_400_BAD_REQUEST)
+
+    registration = StakeholderRegistration.objects.filter(project=project).first()
+    existing_emails = {
+        normalize_email(person.get("email"))
+        for person in (registration.team_members if registration else [])
+    }
+    matches = UserNameList.objects.filter(
+        Q(display_name__icontains=query) | Q(mail__icontains=query)
+    ).order_by("display_name", "id")
+    count = matches.count()
+    rows = [
+        {
+            "id": person.id,
+            "displayName": person.display_name,
+            "mail": person.mail,
+            "alreadyInTeam": normalize_email(person.mail) in existing_emails,
+        }
+        for person in matches[:20]
+    ]
+    return Response({"count": count, "rows": rows, "hasMore": count > len(rows)})
 
 
 @api_view(["POST"])

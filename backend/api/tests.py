@@ -8,6 +8,7 @@ from api.models import (
 	ScopeStatement,
 	ScopeStatementLine,
 	StakeholderRegistration,
+	 UserNameList,
 )
 
 
@@ -286,6 +287,28 @@ class StakeholderRegistrationTests(TestCase):
 		self.assertIn("gsc_leaders", {role["code"] for role in roles})
 		self.assertTrue(all(role.get("source", "manual") == "manual" for role in roles))
 		self.assertEqual(response.data["teamMembers"], [])
+
+	def test_project_requestor_can_search_directory_by_name_or_email(self):
+		UserNameList.objects.create(display_name="Alex Kim", mail="alex.kim@example.com")
+		UserNameList.objects.create(display_name="Jordan Lee", mail="jordan.alex@example.com")
+		StakeholderRegistration.objects.create(
+			project=self.project,
+			team_members=[{"id": "existing", "fullName": "Alex Kim", "email": "alex.kim@example.com"}],
+		)
+		url = f"{self.url}people/"
+
+		name_response = self.client.get(url, {"q": "Alex"}, HTTP_X_USER_EMAIL="project.owner@example.com")
+		mail_response = self.client.get(url, {"q": "jordan.alex@"}, HTTP_X_USER_EMAIL="project.owner@example.com")
+		short_response = self.client.get(url, {"q": "a"}, HTTP_X_USER_EMAIL="project.owner@example.com")
+		denied_response = self.client.get(url, {"q": "Alex"}, HTTP_X_USER_EMAIL="stranger@example.com")
+
+		self.assertEqual(name_response.status_code, 200)
+		self.assertEqual(name_response.data["count"], 2)
+		alex = next(row for row in name_response.data["rows"] if row["mail"] == "alex.kim@example.com")
+		self.assertTrue(alex["alreadyInTeam"])
+		self.assertEqual(mail_response.data["rows"][0]["displayName"], "Jordan Lee")
+		self.assertEqual(short_response.status_code, 400)
+		self.assertEqual(denied_response.status_code, 403)
 
 	def test_save_requires_assigned_people_to_belong_to_project_team(self):
 		response = self.client.post(

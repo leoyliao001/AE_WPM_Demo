@@ -39,6 +39,7 @@ from api.views.scope_statement import (
 from api.views.stakeholder_registration import list_stakeholder_registrations
 from api.views.stakeholder_registration import (
     get_stakeholder_registration,
+    search_stakeholder_people,
     save_stakeholder_registration,
 )
 
@@ -60,6 +61,11 @@ urlpatterns = [
     path("projects/<int:project_id>/project-charter/delete/", delete_project_charter, name="project-charter-delete"),
     path("projects/", list_projects, name="migration-dashboard-projects"),
     path("stakeholder-registrations/", list_stakeholder_registrations, name="stakeholder-registration-database"),
+    path(
+        "projects/<int:project_id>/stakeholder-registration/people/",
+        search_stakeholder_people,
+        name="stakeholder-registration-people-search",
+    ),
     path(
         "projects/<int:project_id>/stakeholder-registration/",
         get_stakeholder_registration,

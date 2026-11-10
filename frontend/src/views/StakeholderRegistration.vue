@@ -235,6 +235,27 @@
           <div class="drawer-content">
             <p class="role-description">Add people to this project roster. Stakeholder roles can only be assigned from this list.</p>
             <form class="team-form" @submit.prevent="addTeamMember">
+              <div class="directory-lookup">
+                <label class="field-label">Search directory by name or email<input v-model="directoryQuery" type="search" autocomplete="off" placeholder="Enter a full name or email" /></label>
+                <button class="button button--outline" type="button" :disabled="directoryLoading" @click="searchDirectory">
+                  {{ directoryLoading ? 'Searching…' : 'Search' }}
+                </button>
+              </div>
+              <p v-if="directoryError" class="directory-message directory-message--error" role="alert">{{ directoryError }}</p>
+              <div v-if="directorySearched" class="directory-results" aria-live="polite">
+                <button
+                  v-for="person in directoryResults"
+                  :key="person.id"
+                  class="directory-result"
+                  type="button"
+                  :disabled="person.alreadyInTeam || !person.mail"
+                  @click="selectDirectoryPerson(person)"
+                >
+                  <span><strong>{{ person.displayName }}</strong><small>{{ person.mail || 'No email address' }}</small></span>
+                  <span class="directory-result__action">{{ person.alreadyInTeam ? 'Already added' : 'Select' }}</span>
+                </button>
+                <p v-if="!directoryResults.length" class="directory-message">No directory matches found.</p>
+              </div>
               <label class="field-label">Full name<input v-model="newMember.fullName" required type="text" autocomplete="name" /></label>
               <label class="field-label">Email<input v-model="newMember.email" required type="email" autocomplete="email" /></label>
               <label class="field-label">Title<input v-model="newMember.title" type="text" /></label>
@@ -278,6 +299,11 @@ const roleDraft = ref(null)
 const teamPanelOpen = ref(false)
 const memberQuery = ref('')
 const newMember = ref(emptyMember())
+const directoryQuery = ref('')
+const directoryResults = ref([])
+const directorySearched = ref(false)
+const directoryLoading = ref(false)
+const directoryError = ref('')
 
 const teamMembers = computed(() => registration.value?.teamMembers || [])
 const allRoles = computed(() => (registration.value?.groups || []).flatMap((group) => group.roles || []))
@@ -426,6 +452,41 @@ function addTeamMember() {
   newMember.value = emptyMember()
   error.value = ''
   success.value = 'Person added to the Project Team draft.'
+}
+
+async function searchDirectory() {
+  const query = directoryQuery.value.trim()
+  directoryError.value = ''
+  directorySearched.value = true
+  directoryResults.value = []
+  if (query.length < 2) {
+    directoryError.value = 'Enter at least 2 characters to search.'
+    return
+  }
+
+  directoryLoading.value = true
+  try {
+    const { data } = await axios.get(
+      `/api/migration-dashboard/projects/${projectId.value}/stakeholder-registration/people/`,
+      { params: { q: query } }
+    )
+    directoryResults.value = data.rows || []
+    if (data.hasMore) directoryError.value = `Showing the first ${directoryResults.value.length} matches. Refine your search for more specific results.`
+  } catch (caught) {
+    directoryError.value = caught?.response?.data?.error || caught?.response?.data?.detail || caught.message || 'Unable to search the directory.'
+  } finally {
+    directoryLoading.value = false
+  }
+}
+
+function selectDirectoryPerson(person) {
+  if (person.alreadyInTeam || !person.mail) return
+  newMember.value.fullName = person.displayName
+  newMember.value.email = person.mail
+  directoryResults.value = []
+  directorySearched.value = false
+  directoryError.value = ''
+  success.value = `${person.displayName} selected. Complete any optional details, then add them to the Project Team.`
 }
 
 function applyRegistration(data) {
@@ -697,6 +758,19 @@ watch(projectId, loadData, { immediate: true })
 .remove-link { background: transparent; border: 0; color: #ad3932; cursor: pointer; font: inherit; font-size: 9px; padding: 7px 3px; }
 .drawer-footer { border-top: 1px solid var(--line); flex-wrap: wrap; gap: 7px; justify-content: flex-end; padding: 12px 18px; }
 .team-form { background: #f5f8fa; border: 1px solid #e2e9ee; border-radius: 6px; display: grid; gap: 10px; padding: 12px; }
+.directory-lookup { align-items: end; display: grid; gap: 8px; grid-template-columns: minmax(0,1fr) auto; }
+.directory-results { background: #fff; border: 1px solid #dce4e9; border-radius: 4px; max-height: 190px; overflow-y: auto; }
+.directory-result { align-items: center; background: #fff; border: 0; border-bottom: 1px solid #e8edf1; color: var(--ink); cursor: pointer; display: flex; font: inherit; gap: 12px; justify-content: space-between; padding: 9px 10px; text-align: left; width: 100%; }
+.directory-result:last-of-type { border-bottom: 0; }
+.directory-result:hover:not(:disabled),.directory-result:focus-visible { background: #edf5ff; outline: 0; }
+.directory-result:disabled { color: #84919a; cursor: not-allowed; }
+.directory-result > span:first-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.directory-result strong { font-size: 11px; }
+.directory-result small { color: var(--muted); font-size: 9px; overflow-wrap: anywhere; }
+.directory-result__action { color: #1265a0; flex: 0 0 auto; font-size: 9px; font-weight: 750; }
+.directory-result:disabled .directory-result__action { color: #84919a; }
+.directory-message { color: var(--muted); font-size: 10px; margin: 0; padding: 9px 10px; }
+.directory-message--error { color: #ad3932; padding: 0; }
 .form-pair { display: grid; gap: 9px; grid-template-columns: 1fr 1fr; }
 .roster-heading { margin: 17px 0 7px; }
 .sr-only { clip: rect(0,0,0,0); height: 1px; margin: -1px; overflow: hidden; position: absolute; width: 1px; }
