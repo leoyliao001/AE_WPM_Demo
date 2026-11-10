@@ -182,6 +182,41 @@ def _send_request_email(item: FpoCatalogueRequest) -> None:
         )
 
 
+def _insert_service_catalogue_entry(item: FpoCatalogueRequest) -> None:
+    now = timezone.now()
+    values = {
+        "catalogue": "Service Catalogue",
+        "product": item.product,
+        "l1": item.l1,
+        "l2": item.l2,
+        "l3": item.l3,
+        "l4": item.l4,
+        "current_ownership": "",
+        "customer": "",
+        "direction": "",
+        "average_handle_time": "",
+        "task_name": item.l4,
+        "created_at": now,
+        "updated_at": now,
+    }
+    table = ServiceCatalogue._meta.db_table
+    with connection.cursor() as cursor:
+        columns = {
+            column.name.casefold(): column.name
+            for column in connection.introspection.get_table_description(cursor, table)
+        }
+        insert_values = {
+            columns[name]: value for name, value in values.items() if name in columns
+        }
+        quote_name = connection.ops.quote_name
+        column_sql = ", ".join(quote_name(name) for name in insert_values)
+        placeholders = ", ".join(["%s"] * len(insert_values))
+        cursor.execute(
+            f"INSERT INTO {quote_name(table)} ({column_sql}) VALUES ({placeholders})",
+            list(insert_values.values()),
+        )
+
+
 @api_view(["POST"])
 def submit_fpo_catalogue_request(request, project_id: int):
     project = _get_project(project_id)
@@ -301,14 +336,15 @@ def decide_fpo_catalogue_request(request, request_id: int):
         return Response({"error": "A comment is required when rejecting a request."}, status=status.HTTP_400_BAD_REQUEST)
 
     if action == "approved":
-        ServiceCatalogue.objects.get_or_create(
+        exists = ServiceCatalogue.objects.filter(
             product=item.product,
             l1=item.l1,
             l2=item.l2,
             l3=item.l3,
             l4=item.l4,
-            defaults={"catalogue": "Service Catalogue"},
-        )
+        ).exists()
+        if not exists:
+            _insert_service_catalogue_entry(item)
         from api.views.opportunity_task_scope import _catalogue, _catalogue_additions
 
         _catalogue.cache_clear()
