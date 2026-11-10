@@ -31,6 +31,7 @@ class FpoCatalogueReminderTests(TestCase):
             "l2": "New L2",
             "l3": "New L3",
             "l4": "New L4",
+            "request_comment": "This process is not present in the current catalogue.",
         }
 
     def test_reminder_persists_until_approved_hierarchy_is_acknowledged(self):
@@ -42,6 +43,7 @@ class FpoCatalogueReminderTests(TestCase):
 
         self.assertEqual(response.status_code, 201, response.data)
         request = FpoCatalogueRequest.objects.get(pk=response.data["id"])
+        self.assertEqual(request.request_comment, self.payload["request_comment"])
         reminder = self.client.get(self.scope_url).data["catalogue_requests"][0]
         self.assertEqual(reminder["status"], "pending")
         self.assertEqual(reminder["l4"], "New L4")
@@ -86,6 +88,13 @@ class FpoCatalogueReminderTests(TestCase):
         self.assertEqual(submit_response.status_code, 503, submit_response.data)
         self.assertIn("migration", submit_response.data["error"].lower())
 
+    def test_request_reason_is_required(self):
+        payload = {key: value for key, value in self.payload.items() if key != "request_comment"}
+        response = self.client.post(self.request_url, payload, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("reason", response.data["error"].lower())
+
     def test_approval_inserts_and_exposes_catalogue_entry(self):
         request = FpoCatalogueRequest.objects.create(
             project=self.project,
@@ -94,13 +103,18 @@ class FpoCatalogueReminderTests(TestCase):
             **self.payload,
         )
         self.client.credentials(HTTP_X_USER_EMAIL="fpo@example.com")
-        response = self.client.post(
-            f"/api/approval-cycle/fpo-requests/{request.pk}/decision/",
-            {"action": "approved", "comment": "Approved"},
-            format="json",
-        )
+        from unittest.mock import Mock, patch
+
+        with patch("api.views.fpo_catalogue_requests.requests.post", return_value=Mock(status_code=202)) as send:
+            response = self.client.post(
+                f"/api/approval-cycle/fpo-requests/{request.pk}/decision/",
+                {"action": "approved", "comment": "Approved"},
+                format="json",
+            )
 
         self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["notification_sent"])
+        self.assertEqual(send.call_args.kwargs["json"]["personalizations"][0]["to"], [{"email": "owner@example.com"}])
         self.assertTrue(ServiceCatalogue.objects.filter(
             product="LCL", l1="New L1", l2="New L2", l3="New L3", l4="New L4"
         ).exists())
@@ -112,6 +126,58 @@ class FpoCatalogueReminderTests(TestCase):
         self.client.credentials(HTTP_X_USER_EMAIL="owner@example.com")
         additions = self.client.get(self.scope_url).data["catalogue_additions"]
         self.assertIn(["LCL", "New L1", "New L2", "New L3", "New L4", "", "", "", "New L4"], additions)
+
+    def test_rejection_notifies_requester_without_catalogue_insert(self):
+        request = FpoCatalogueRequest.objects.create(
+            project=self.project,
+            requested_by="owner@example.com",
+            approver_email="fpo@example.com",
+            **self.payload,
+        )
+        self.client.credentials(HTTP_X_USER_EMAIL="fpo@example.com")
+        from unittest.mock import Mock, patch
+
+        with patch("api.views.fpo_catalogue_requests.requests.post", return_value=Mock(status_code=202)) as send:
+            response = self.client.post(
+                f"/api/approval-cycle/fpo-requests/{request.pk}/decision/",
+                {"action": "rejected", "comment": "Please clarify scope."},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["notification_sent"])
+        self.assertEqual(FpoCatalogueRequest.objects.get(pk=request.pk).status, "rejected")
+        self.assertFalse(ServiceCatalogue.objects.filter(
+            product="LCL", l1="New L1", l2="New L2", l3="New L3", l4="New L4"
+        ).exists())
+        email = send.call_args.kwargs["json"]
+        self.assertEqual(email["personalizations"][0]["to"], [{"email": "owner@example.com"}])
+        self.assertIn("rejected", email["content"][0]["value"])
+        self.assertIn("Please clarify scope.", email["content"][0]["value"])
+
+    def test_decision_is_saved_when_applicant_notification_fails(self):
+        request = FpoCatalogueRequest.objects.create(
+            project=self.project,
+            requested_by="owner@example.com",
+            approver_email="fpo@example.com",
+            **self.payload,
+        )
+        self.client.credentials(HTTP_X_USER_EMAIL="fpo@example.com")
+        from unittest.mock import patch
+
+        with patch("api.views.fpo_catalogue_requests.requests.post", side_effect=TimeoutError("network unavailable")):
+            response = self.client.post(
+                f"/api/approval-cycle/fpo-requests/{request.pk}/decision/",
+                {"action": "approved", "comment": "Approved"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["notification_sent"])
+        self.assertEqual(FpoCatalogueRequest.objects.get(pk=request.pk).status, "approved")
+        self.assertTrue(ServiceCatalogue.objects.filter(
+            product="LCL", l1="New L1", l2="New L2", l3="New L3", l4="New L4"
+        ).exists())
 
     @override_settings(SENDGRID_API_KEY="test-key", DEFAULT_FROM_EMAIL="noreply@example.com")
     def test_fpo_email_uses_configured_sendgrid_api(self):
@@ -134,3 +200,5 @@ class FpoCatalogueReminderTests(TestCase):
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-key")
         self.assertEqual(kwargs["json"]["personalizations"][0]["to"], [{"email": "fpo@example.com"}])
         self.assertIn("Open Approval Cycle", kwargs["json"]["content"][1]["value"])
+        self.assertIn(self.payload["request_comment"], kwargs["json"]["content"][0]["value"])
+        self.assertIn(self.payload["request_comment"], kwargs["json"]["content"][1]["value"])

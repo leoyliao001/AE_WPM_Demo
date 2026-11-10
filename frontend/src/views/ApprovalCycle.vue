@@ -214,6 +214,7 @@
               <p class="ac-card-sub">The proposed hierarchy will be added to Service Catalogue only after FPO approval.</p>
               <dl class="ac-defs">
                 <div><dt>Product</dt><dd>{{ detail.fpoProduct }}</dd></div>
+                <div><dt>Reason for request</dt><dd>{{ detail.fpoRequestComment }}</dd></div>
                 <div><dt>L1</dt><dd>{{ detail.fpoL1 }}</dd></div>
                 <div><dt>L2</dt><dd>{{ detail.fpoL2 }}</dd></div>
                 <div><dt>L3</dt><dd>{{ detail.fpoL3 }}</dd></div>
@@ -840,6 +841,7 @@ const toRow = (r) => {
       submitted: formatDate(r.requested_date),
       product: r.fpoProduct,
       fpoProduct: r.fpoProduct,
+      fpoRequestComment: r.fpoRequestComment || '',
       fpoL1: r.fpoL1,
       fpoL2: r.fpoL2,
       fpoL3: r.fpoL3,
@@ -1073,9 +1075,10 @@ async function submitFpoDecision(action) {
     else rows.value[idx] = updated
     detail.value = updated
     comment.value = ''
-    decisionMessage.value = action === 'approved'
+      const decisionText = action === 'approved'
       ? 'Approved and added to Service Catalogue.'
       : 'FPO request rejected.'
+      decisionMessage.value = `${decisionText}${data.notification_sent === false ? ' Applicant notification email could not be sent.' : ''}`
   } catch (e) {
     decisionMessage.value = e?.response?.data?.error || 'Unable to record the FPO decision.'
   } finally {

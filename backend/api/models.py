@@ -509,6 +509,7 @@ class FpoCatalogueRequest(models.Model):
     l4 = models.CharField(max_length=255)
     requested_by = models.CharField(max_length=255)
     approver_email = models.CharField(max_length=255)
+    request_comment = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, default="pending", db_index=True)
     decision_comment = models.TextField(blank=True, default="")
     decided_by = models.CharField(max_length=255, blank=True, default="")

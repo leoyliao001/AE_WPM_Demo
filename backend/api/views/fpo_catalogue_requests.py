@@ -21,6 +21,7 @@ from api.views.stakeholder_registration import _authorize, _get_project
 logger = logging.getLogger(__name__)
 
 FIELD_LIMITS = {"l1": 128, "l2": 128, "l3": 128, "l4": 255}
+REQUEST_COMMENT_LIMIT = 2000
 
 
 @lru_cache(maxsize=1)
@@ -73,6 +74,7 @@ def _serialize_request(item: FpoCatalogueRequest, email: str) -> dict:
         "approvedByMe": item.status == "approved" and decided_by_me,
         "handledByMe": decided_by_me,
         "fpoProduct": item.product,
+        "fpoRequestComment": item.request_comment,
         "fpoL1": item.l1,
         "fpoL2": item.l2,
         "fpoL3": item.l3,
@@ -111,6 +113,7 @@ def catalogue_request_reminders(project) -> list[dict]:
             "l4": item.l4,
             "status": item.status,
             "decision_comment": item.decision_comment,
+            "request_comment": item.request_comment,
             "created_at": item.created_at.isoformat(),
         }
         for item in FpoCatalogueRequest.objects.filter(
@@ -135,6 +138,7 @@ def _send_request_email(item: FpoCatalogueRequest) -> None:
         f"L3: {item.l3}",
         f"L4: {item.l4}",
         f"Requested by: {item.requested_by}",
+        f"Reason: {item.request_comment}",
         "",
         f"Review this request in Approval Cycle: {review_url}",
         "The entry will be added to Service Catalogue only after approval.",
@@ -151,10 +155,15 @@ def _send_request_email(item: FpoCatalogueRequest) -> None:
             <tr><th align="left">L3</th><td>{escape(item.l3)}</td></tr>
             <tr><th align="left">L4</th><td>{escape(item.l4)}</td></tr>
             <tr><th align="left">Requested by</th><td>{escape(item.requested_by)}</td></tr>
+            <tr><th align="left">Reason</th><td>{escape(item.request_comment)}</td></tr>
         </table>
         <p><a href="{escape(review_url)}">Open Approval Cycle to review this request</a></p>
         <p>The entry will be added to Service Catalogue only after approval.</p>
     """
+    _send_sendgrid_email(item.approver_email, subject, text_body, html_body)
+
+
+def _send_sendgrid_email(to_email: str, subject: str, text_body: str, html_body: str) -> None:
     api_key = getattr(settings, "SENDGRID_API_KEY", "")
     if not api_key:
         raise RuntimeError("The SendGrid API key is not configured.")
@@ -165,7 +174,7 @@ def _send_request_email(item: FpoCatalogueRequest) -> None:
             "Content-Type": "application/json",
         },
         json={
-            "personalizations": [{"to": [{"email": item.approver_email}]}],
+            "personalizations": [{"to": [{"email": to_email}]}],
             "from": {"email": settings.DEFAULT_FROM_EMAIL},
             "subject": subject,
             "content": [
@@ -180,6 +189,46 @@ def _send_request_email(item: FpoCatalogueRequest) -> None:
         raise RuntimeError(
             f"SendGrid API returned {response.status_code}: {response.text[:500]}"
         )
+
+
+def _send_decision_email(item: FpoCatalogueRequest) -> None:
+    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "").rstrip("/")
+    review_url = f"{base_url}/approval-cycle?fpo_request={item.pk}"
+    decision = "approved" if item.status == "approved" else "rejected"
+    subject = f"FPO request {decision}: Service Catalogue entry for {item.project.migration_request_id}"
+    text_body = "\n".join([
+        f"Your FPO Service Catalogue request has been {decision}.",
+        "",
+        f"Project: {item.project.project_name}",
+        f"Migration Request ID: {item.project.migration_request_id}",
+        f"Product: {item.product}",
+        f"L1: {item.l1}",
+        f"L2: {item.l2}",
+        f"L3: {item.l3}",
+        f"L4: {item.l4}",
+        f"Your reason: {item.request_comment}",
+        f"FPO comment: {item.decision_comment or 'No additional comment.'}",
+        f"Reviewed by: {item.decided_by}",
+        "",
+        f"Open the request in Approval Cycle: {review_url}",
+    ])
+    html_body = f"""
+        <p>Your FPO Service Catalogue request has been <strong>{escape(decision)}</strong>.</p>
+        <table>
+            <tr><th align="left">Project</th><td>{escape(item.project.project_name)}</td></tr>
+            <tr><th align="left">Migration Request ID</th><td>{escape(item.project.migration_request_id)}</td></tr>
+            <tr><th align="left">Product</th><td>{escape(item.product)}</td></tr>
+            <tr><th align="left">L1</th><td>{escape(item.l1)}</td></tr>
+            <tr><th align="left">L2</th><td>{escape(item.l2)}</td></tr>
+            <tr><th align="left">L3</th><td>{escape(item.l3)}</td></tr>
+            <tr><th align="left">L4</th><td>{escape(item.l4)}</td></tr>
+            <tr><th align="left">Your reason</th><td>{escape(item.request_comment)}</td></tr>
+            <tr><th align="left">FPO comment</th><td>{escape(item.decision_comment or 'No additional comment.')}</td></tr>
+            <tr><th align="left">Reviewed by</th><td>{escape(item.decided_by)}</td></tr>
+        </table>
+        <p><a href="{escape(review_url)}">Open the request in Approval Cycle</a></p>
+    """
+    _send_sendgrid_email(item.requested_by, subject, text_body, html_body)
 
 
 def _insert_service_catalogue_entry(item: FpoCatalogueRequest) -> None:
@@ -246,6 +295,12 @@ def submit_fpo_catalogue_request(request, project_id: int):
             return Response({"error": f"{field.upper()} exceeds {limit} characters."}, status=status.HTTP_400_BAD_REQUEST)
         values[field] = value
 
+    request_comment = str(payload.get("request_comment") or "").strip()
+    if not request_comment:
+        return Response({"error": "A reason for the FPO request is required."}, status=status.HTTP_400_BAD_REQUEST)
+    if len(request_comment) > REQUEST_COMMENT_LIMIT:
+        return Response({"error": f"The reason exceeds {REQUEST_COMMENT_LIMIT} characters."}, status=status.HTTP_400_BAD_REQUEST)
+
     exists = ServiceCatalogue.objects.filter(
         product__iexact=product,
         l1__iexact=values["l1"],
@@ -263,6 +318,7 @@ def submit_fpo_catalogue_request(request, project_id: int):
             product=product,
             requested_by=email,
             approver_email=approver_email,
+            request_comment=request_comment,
             **values,
         )
         try:
@@ -308,7 +364,6 @@ def acknowledge_fpo_catalogue_request(request, project_id: int, request_id: int)
 
 
 @api_view(["POST"])
-@transaction.atomic
 def decide_fpo_catalogue_request(request, request_id: int):
     email = get_request_email(request)
     if not email:
@@ -318,41 +373,50 @@ def decide_fpo_catalogue_request(request, request_id: int):
             {"error": "FPO catalogue requests are temporarily unavailable until the database migration is applied."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    with transaction.atomic():
+        try:
+            item = FpoCatalogueRequest.objects.select_for_update().select_related("project").get(pk=request_id)
+        except FpoCatalogueRequest.DoesNotExist:
+            return Response({"error": "FPO catalogue request not found."}, status=status.HTTP_404_NOT_FOUND)
+        if normalize_email(item.approver_email) != normalize_email(email) and not is_super_admin(email):
+            return Response({"error": "You are not authorised to decide this FPO request."}, status=status.HTTP_403_FORBIDDEN)
+        if item.status != "pending":
+            return Response({"error": "This FPO request has already been decided."}, status=status.HTTP_409_CONFLICT)
+
+        payload = request.data if isinstance(request.data, dict) else {}
+        action = str(payload.get("action") or "").strip().lower()
+        comment = str(payload.get("comment") or "").strip()
+        if action not in {"approved", "rejected"}:
+            return Response({"error": "Choose approved or rejected."}, status=status.HTTP_400_BAD_REQUEST)
+        if action == "rejected" and not comment:
+            return Response({"error": "A comment is required when rejecting a request."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if action == "approved":
+            exists = ServiceCatalogue.objects.filter(
+                product=item.product,
+                l1=item.l1,
+                l2=item.l2,
+                l3=item.l3,
+                l4=item.l4,
+            ).exists()
+            if not exists:
+                _insert_service_catalogue_entry(item)
+            from api.views.opportunity_task_scope import _catalogue, _catalogue_additions
+
+            _catalogue.cache_clear()
+            _catalogue_additions.cache_clear()
+
+        item.status = action
+        item.decision_comment = comment
+        item.decided_by = email
+        item.decided_at = timezone.now()
+        item.save(update_fields=["status", "decision_comment", "decided_by", "decided_at", "updated_at"])
+        row = _serialize_request(item, email)
+
+    notification_sent = True
     try:
-        item = FpoCatalogueRequest.objects.select_for_update().select_related("project").get(pk=request_id)
-    except FpoCatalogueRequest.DoesNotExist:
-        return Response({"error": "FPO catalogue request not found."}, status=status.HTTP_404_NOT_FOUND)
-    if normalize_email(item.approver_email) != normalize_email(email) and not is_super_admin(email):
-        return Response({"error": "You are not authorised to decide this FPO request."}, status=status.HTTP_403_FORBIDDEN)
-    if item.status != "pending":
-        return Response({"error": "This FPO request has already been decided."}, status=status.HTTP_409_CONFLICT)
-
-    payload = request.data if isinstance(request.data, dict) else {}
-    action = str(payload.get("action") or "").strip().lower()
-    comment = str(payload.get("comment") or "").strip()
-    if action not in {"approved", "rejected"}:
-        return Response({"error": "Choose approved or rejected."}, status=status.HTTP_400_BAD_REQUEST)
-    if action == "rejected" and not comment:
-        return Response({"error": "A comment is required when rejecting a request."}, status=status.HTTP_400_BAD_REQUEST)
-
-    if action == "approved":
-        exists = ServiceCatalogue.objects.filter(
-            product=item.product,
-            l1=item.l1,
-            l2=item.l2,
-            l3=item.l3,
-            l4=item.l4,
-        ).exists()
-        if not exists:
-            _insert_service_catalogue_entry(item)
-        from api.views.opportunity_task_scope import _catalogue, _catalogue_additions
-
-        _catalogue.cache_clear()
-        _catalogue_additions.cache_clear()
-
-    item.status = action
-    item.decision_comment = comment
-    item.decided_by = email
-    item.decided_at = timezone.now()
-    item.save(update_fields=["status", "decision_comment", "decided_by", "decided_at", "updated_at"])
-    return Response({"status": "success", "row": _serialize_request(item, email)})
+        _send_decision_email(item)
+    except Exception:
+        notification_sent = False
+        logger.exception("FPO decision saved but applicant notification failed for request %s", item.pk)
+    return Response({"status": "success", "row": row, "notification_sent": notification_sent})
