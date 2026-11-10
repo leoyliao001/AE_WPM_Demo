@@ -450,9 +450,9 @@ const ARTEFACT_STAGES = [
     icon: 'mi-play-circle',
     color: '#2d8cff',
     items: [
+      { label: 'Stakeholder Registration', source: 'stakeholders' },
       { label: 'Opportunity Assessment/Task details', source: 'opportunity' },
       { label: 'Scope Statement', source: 'scope_statement' },
-      { label: 'Stakeholder Registration', source: 'stakeholders' },
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'project_charter' },
       { label: 'People Consultation & Compliance', source: null },

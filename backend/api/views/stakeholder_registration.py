@@ -37,7 +37,7 @@ STAKEHOLDER_GROUPS = [
         "roles": [
             {"code": "area_poc", "label": "Area POC (Migration Owner)", "required": True, "multiple": False, "description": "Area point of contact and migration owner."},
             {"code": "area_sme", "label": "Area SME", "required": True, "multiple": True, "description": "Area subject-matter experts supporting scope and knowledge transfer."},
-            {"code": "fpo", "label": "FPO (if applicable)", "required": False, "multiple": False, "description": "Process owner, when applicable."},
+            {"code": "fpo", "label": "FPO", "required": True, "multiple": False, "description": "Process owner for the in-scope activity."},
         ],
     },
     {
@@ -57,7 +57,7 @@ STAKEHOLDER_GROUPS = [
         "roles": [
             {"code": "wpm_focals", "label": "WPM Focals", "required": True, "multiple": True, "description": "WPM focal points assigned to this migration."},
             {"code": "business_resilience", "label": "Business Resilience", "required": False, "multiple": True, "description": "Business Resilience reviewers for the BCP questionnaire. Lock this assignment before joint review."},
-            {"code": "msp_focals", "label": "MSP Focals (if applicable)", "required": False, "multiple": True, "description": "One manually selected project-team focal for each applicable MSP."},
+            {"code": "msp_focals", "label": "MSP Focals", "required": True, "multiple": True, "description": "At least one MSP must be listed, with one manually selected project-team focal for each MSP."},
         ],
     },
 ]

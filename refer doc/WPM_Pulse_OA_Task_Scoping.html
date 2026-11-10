@@ -67,6 +67,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
 .toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#0b2a4a;color:#fff;padding:10px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;z-index:20}.toast.show{opacity:1}
 .catalogue-reminder{margin:0 0 14px;padding:13px 16px;border:1px solid #d89c20;border-left:6px solid #b77900;border-radius:6px;background:#fff8e6;color:#513900}.catalogue-reminder strong{display:block;margin-bottom:4px}.catalogue-reminder p{margin:4px 0}.catalogue-reminder .request-path{font-weight:600;overflow-wrap:anywhere}
 .fpo-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(13,30,45,.56)}.fpo-dialog{width:min(560px,100%);max-height:calc(100vh - 32px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 18px 50px rgba(0,0,0,.25);padding:22px}.fpo-dialog h2{margin:0 0 6px;font-size:20px}.fpo-dialog p{margin:0 0 16px;color:#52606d}.fpo-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fpo-fields label{display:block;margin-bottom:5px;font-weight:600}.fpo-fields input,.fpo-fields select{box-sizing:border-box;width:100%;height:38px;border:1px solid #aeb8c2;border-radius:5px;padding:0 9px;background:#fff}.fpo-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.fpo-entry{padding:12px 0;border-top:1px solid #d8dee5}.fpo-entry-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-weight:700}.fpo-entry-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fpo-entry-fields label{display:block;margin-bottom:5px;font-weight:600}.fpo-entry-fields input{box-sizing:border-box;width:100%;height:38px;border:1px solid #aeb8c2;border-radius:5px;padding:0 9px;background:#fff}.fpo-entry-remove,.fpo-add-entry{border:1px solid #aeb8c2;border-radius:5px;background:#fff;padding:7px 10px;cursor:pointer}.fpo-add-entry{margin-top:12px;color:#005a87}.fpo-entry-remove:disabled{opacity:.45;cursor:default}
 .fpo-approver{padding:9px 11px;border-left:3px solid #0073ab;border-radius:4px;background:#edf5fa;color:#344054!important;font-weight:600}
 .fpo-reason{margin-top:14px}.fpo-reason label{display:block;margin-bottom:5px;font-weight:600}.fpo-reason textarea{box-sizing:border-box;width:100%;min-height:88px;resize:vertical;border:1px solid #aeb8c2;border-radius:5px;padding:8px 9px;background:#fff;font:inherit}
 .hidden{display:none!important}
@@ -155,13 +156,9 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
     <p>The proposed L1–L4 hierarchy will be sent to FPO for approval. It will not be added until approved.</p>
     <p class="fpo-approver">FPO approver: leo.y.liao@lns.maersk.com</p>
     <form id="fpoRequestForm">
-      <div class="fpo-fields">
-        <div><label for="fpoProduct">Product</label><select id="fpoProduct" required></select></div>
-        <div><label for="fpoL1">L1</label><input id="fpoL1" maxlength="128" required></div>
-        <div><label for="fpoL2">L2</label><input id="fpoL2" maxlength="128" required></div>
-        <div><label for="fpoL3">L3</label><input id="fpoL3" maxlength="128" required></div>
-        <div><label for="fpoL4">L4</label><input id="fpoL4" maxlength="255" required></div>
-      </div>
+      <div class="fpo-fields"><div><label for="fpoProduct">Product</label><select id="fpoProduct" required></select></div></div>
+      <div id="fpoEntries"></div>
+      <button class="fpo-add-entry" type="button" id="fpoAddEntry">Add another hierarchy</button>
       <div class="fpo-reason"><label for="fpoReason">Reason for request</label><textarea id="fpoReason" maxlength="2000" rows="4" required placeholder="Explain why this Service Catalogue entry is needed."></textarea></div>
       <div class="fpo-actions"><button class="btn" type="button" id="fpoCancel">Cancel</button><button class="btn pri" type="submit" id="fpoSubmit">Submit FPO request</button></div>
     </form>
@@ -220,6 +217,9 @@ function setDirty(v){dirty=v;$("save").disabled=!v;$("dirty").innerHTML=v?'<span
 function renderCatalogueReminders(){const box=$("catalogueReminder");if(!box)return;if(!catalogueRequests.length){box.classList.add("hidden");box.innerHTML="";return}box.classList.remove("hidden");box.innerHTML=catalogueRequests.map(item=>{const state=item.status==="approved"?"FPO approved":item.status==="rejected"?"FPO rejected":"Pending FPO approval";const instruction=item.status==="approved"?"Select this approved Product and L1–L4 in the scope filters or add its tasks to update this assessment.":item.status==="rejected"?(item.decision_comment?`Reason: ${esc(item.decision_comment)}`:"Review the rejection in Approval Cycle."):"This request will remain here until FPO has reviewed it.";return `<div><strong>Service Catalogue request ${esc(state)}</strong><p class="request-path">${esc(item.product)} / ${esc(item.l1)} / ${esc(item.l2)} / ${esc(item.l3)} / ${esc(item.l4)}</p><p>${instruction}</p></div>`}).join("")}
 function openFpoRequest(product=""){const options=INTAKE.catalogue_products||[INTAKE.product];$("fpoProduct").innerHTML=opt(options);$("fpoProduct").value=product|| (options.length===1?options[0]:"");["L1","L2","L3","L4"].forEach(key=>$("fpo"+key).value="");$("fpoReason").value="";$("fpoRequestModal").classList.remove("hidden");$("fpoL1").focus()}
 function closeFpoRequest(){$("fpoRequestModal").classList.add("hidden")}
+function addFpoEntry(){const entry=document.createElement("div");entry.className="fpo-entry";entry.innerHTML=`<div class="fpo-entry-head"><span></span><button class="fpo-entry-remove" type="button">Remove</button></div><div class="fpo-entry-fields">${[["l1","L1",128],["l2","L2",128],["l3","L3",128],["l4","L4",255]].map(([key,label,max])=>`<div><label>${label}</label><input data-field="${key}" maxlength="${max}" required></div>`).join("")}</div>`;entry.querySelector(".fpo-entry-remove").onclick=()=>{if(document.querySelectorAll("#fpoEntries .fpo-entry").length>1)entry.remove();updateFpoEntryControls()};$("fpoEntries").appendChild(entry);updateFpoEntryControls()}
+function updateFpoEntryControls(){const entries=[...document.querySelectorAll("#fpoEntries .fpo-entry")];entries.forEach((entry,index)=>{entry.querySelector(".fpo-entry-head span").textContent=`Hierarchy ${index+1}`;entry.querySelector(".fpo-entry-remove").disabled=entries.length===1})}
+function openFpoRequest(product=""){const options=INTAKE.catalogue_products||[INTAKE.product];$("fpoProduct").innerHTML=opt(options);$("fpoProduct").value=product|| (options.length===1?options[0]:"");$("fpoEntries").innerHTML="";addFpoEntry();$("fpoReason").value="";$("fpoRequestModal").classList.remove("hidden");document.querySelector("#fpoEntries input").focus()}
 window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
 
 /* ---------- method selector ---------- */
@@ -239,7 +239,7 @@ function bFill(){
   const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value;
   $("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first");$("bL1").disabled=!p;
 }
-function onBP(){const p=$("bP").value;$("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first")+(p?`<option value="${NOT_IN_CATALOGUE}">Not in Service Catalog</option>`:"");$("bL1").disabled=!p;if(p&&$("bL1").options.length===2){$("bL1").selectedIndex=1}onBL1()}
+function onBP(){const p=$("bP").value;$("bL1").innerHTML=opt(p?uniq(CAT.filter(c=>c[0]===p).map(c=>c[1])):[],p?"Select L1":"Select Product first")+(p?`<option value="${NOT_IN_CATALOGUE}">Not in Service Catalog</option>`:"");$("bL1").disabled=!p;onBL1()}
 function onBL1(){const p=$("bP").value,l1=$("bL1").value;if(l1===NOT_IN_CATALOGUE){$("bL2").innerHTML=opt([],"Select L1 first");$("bL3").innerHTML=opt([],"Select L2 first");$("bL2").disabled=true;$("bL3").disabled=true;$("bL1").value="";openFpoRequest(p);bPreview();return}const a=l1?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1).map(c=>c[2])):[];$("bL2").innerHTML=opt(a,l1?"Select L2":"Select L1 first");$("bL2").disabled=!l1;$("h2").textContent=l1?a.length+" options":"";onBL2()}
 function onBL2(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,a=l2?uniq(CAT.filter(c=>c[0]===p&&c[1]===l1&&c[2]===l2).map(c=>c[3])):[];$("bL3").innerHTML=opt(a,l2?"Select L3":"Select L2 first");$("bL3").disabled=!l2;$("h3").textContent=l2?a.length+" options":"";bPreview()}
 function pending(){const p=$("bP").value,l1=$("bL1").value,l2=$("bL2").value,l3=$("bL3").value;if(!(p&&l1&&l2&&l3))return null;

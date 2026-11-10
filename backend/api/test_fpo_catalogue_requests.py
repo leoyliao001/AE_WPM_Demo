@@ -202,3 +202,122 @@ class FpoCatalogueReminderTests(TestCase):
         self.assertIn("Open Approval Cycle", kwargs["json"]["content"][1]["value"])
         self.assertIn(self.payload["request_comment"], kwargs["json"]["content"][0]["value"])
         self.assertIn(self.payload["request_comment"], kwargs["json"]["content"][1]["value"])
+
+    def test_multi_entry_submission_creates_one_email_and_shared_batch(self):
+        from unittest.mock import patch
+
+        entries = [
+            {"l1": "New L1", "l2": "New L2", "l3": "New L3", "l4": "New L4"},
+            {"l1": "New L1", "l2": "New L2", "l3": "New L3", "l4": "Another L4"},
+        ]
+        payload = {"product": "LCL", "entries": entries, "request_comment": self.payload["request_comment"]}
+        with patch("api.views.fpo_catalogue_requests._send_request_batch_email") as send:
+            response = self.client.post(self.request_url, payload, format="json")
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["count"], 2)
+        self.assertEqual(len(set(FpoCatalogueRequest.objects.filter(batch_id=response.data["batch_id"]).values_list("batch_id", flat=True))), 1)
+        self.assertEqual(FpoCatalogueRequest.objects.filter(batch_id=response.data["batch_id"]).count(), 2)
+        send.assert_called_once()
+
+    def test_invalid_entry_prevents_any_batch_rows(self):
+        entries = [
+            {"l1": "New L1", "l2": "New L2", "l3": "New L3", "l4": "New L4"},
+            {"l1": "New L1", "l2": "", "l3": "New L3", "l4": "Another L4"},
+        ]
+        response = self.client.post(
+            self.request_url,
+            {"product": "LCL", "entries": entries, "request_comment": self.payload["request_comment"]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(FpoCatalogueRequest.objects.count(), 0)
+
+    def test_batch_approval_inserts_all_entries_and_updates_all_rows(self):
+        from unittest.mock import patch
+
+        batch_id = "9ef6a3f9-915a-4c0f-b746-c38526e27f1b"
+        requests = [
+            FpoCatalogueRequest.objects.create(
+                project=self.project,
+                batch_id=batch_id,
+                requested_by="owner@example.com",
+                approver_email="fpo@example.com",
+                **{**self.payload, "l4": f"New L4 {index}"},
+            )
+            for index in (1, 2)
+        ]
+        edited_entries = [
+            {"id": requests[0].pk, "product": "General LCL", "l1": "FPO L1", "l2": "FPO L2", "l3": "FPO L3", "l4": "FPO L4 A"},
+            {"id": requests[1].pk, "product": "LCL", "l1": "FPO L1", "l2": "FPO L2", "l3": "FPO L3", "l4": "FPO L4 B"},
+        ]
+        self.client.credentials(HTTP_X_USER_EMAIL="fpo@example.com")
+        with patch("api.views.fpo_catalogue_requests._send_decision_batch_email") as send:
+            response = self.client.post(
+                "/api/approval-cycle/fpo-requests/batch-decision/",
+                {"batch_id": batch_id, "action": "approved", "comment": "Approved", "entries": edited_entries},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(len(response.data["rows"]), 2)
+        self.assertEqual(FpoCatalogueRequest.objects.filter(batch_id=batch_id, status="approved").count(), 2)
+        for request, entry in zip(requests, edited_entries):
+            request.refresh_from_db()
+            expected = ("LCL", entry["l1"], entry["l2"], entry["l3"], entry["l4"])
+            self.assertEqual((request.product, request.l1, request.l2, request.l3, request.l4), expected)
+        self.assertEqual(ServiceCatalogue.objects.filter(l1="FPO L1", l2="FPO L2", l3="FPO L3").count(), 2)
+        send.assert_called_once()
+
+    def test_duplicate_fpo_edits_leave_batch_pending_and_do_not_insert(self):
+        batch_id = "4ad483da-23c1-4ad7-968d-88794af564be"
+        requests = [
+            FpoCatalogueRequest.objects.create(
+                project=self.project,
+                batch_id=batch_id,
+                requested_by="owner@example.com",
+                approver_email="fpo@example.com",
+                **{**self.payload, "l4": f"Original {index}"},
+            )
+            for index in (1, 2)
+        ]
+        duplicate_entries = [
+            {"id": request.pk, "product": "LCL", "l1": "Edited", "l2": "Edited", "l3": "Edited", "l4": "Edited"}
+            for request in requests
+        ]
+        self.client.credentials(HTTP_X_USER_EMAIL="fpo@example.com")
+        response = self.client.post(
+            "/api/approval-cycle/fpo-requests/batch-decision/",
+            {"batch_id": batch_id, "action": "approved", "comment": "Approved", "entries": duplicate_entries},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(FpoCatalogueRequest.objects.filter(batch_id=batch_id, status="pending").count(), 2)
+        self.assertFalse(ServiceCatalogue.objects.filter(l1="Edited", l2="Edited", l3="Edited", l4="Edited").exists())
+
+    def test_batch_rejection_updates_all_rows_without_catalogue_insert(self):
+        from unittest.mock import patch
+
+        batch_id = "23a12712-89b5-48a5-bfec-2cc3408d5f31"
+        for index in (1, 2):
+            FpoCatalogueRequest.objects.create(
+                project=self.project,
+                batch_id=batch_id,
+                requested_by="owner@example.com",
+                approver_email="fpo@example.com",
+                **{**self.payload, "l4": f"New L4 {index}"},
+            )
+        self.client.credentials(HTTP_X_USER_EMAIL="fpo@example.com")
+        with patch("api.views.fpo_catalogue_requests._send_decision_batch_email"):
+            response = self.client.post(
+                "/api/approval-cycle/fpo-requests/batch-decision/",
+                {"batch_id": batch_id, "action": "rejected", "comment": "Not enough detail"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(FpoCatalogueRequest.objects.filter(batch_id=batch_id, status="rejected").count(), 2)
+        self.assertEqual(FpoCatalogueRequest.objects.filter(batch_id=batch_id, decision_comment="Not enough detail").count(), 2)
+        self.assertFalse(ServiceCatalogue.objects.filter(l4__startswith="New L4 ").exists())

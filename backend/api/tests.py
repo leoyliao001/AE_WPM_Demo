@@ -286,6 +286,10 @@ class StakeholderRegistrationTests(TestCase):
 		self.assertFalse(response.data["saved"])
 		self.assertIn("gsc_leaders", {role["code"] for role in roles})
 		self.assertTrue(all(role.get("source", "manual") == "manual" for role in roles))
+		roles_by_code = {role["code"]: role for role in roles}
+		self.assertTrue(roles_by_code["fpo"]["required"])
+		self.assertTrue(roles_by_code["msp_focals"]["required"])
+		self.assertFalse(roles_by_code["business_resilience"]["required"])
 		self.assertEqual(response.data["teamMembers"], [])
 
 	def test_project_requestor_can_search_directory_by_name_or_email(self):

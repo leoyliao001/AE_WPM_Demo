@@ -372,6 +372,7 @@ class OpportunityAssessment(models.Model):
     migratable_to_gsc = models.CharField(max_length=255, blank=True, default="")
     fte_calculation = models.CharField(max_length=64, blank=True, default="")
     scope_details = models.JSONField(default=dict, blank=True)
+    system = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -502,6 +503,7 @@ class FpoCatalogueRequest(models.Model):
         on_delete=models.CASCADE,
         related_name="fpo_catalogue_requests",
     )
+    batch_id = models.UUIDField(null=True, blank=True, db_index=True)
     product = models.CharField(max_length=128)
     l1 = models.CharField(max_length=128)
     l2 = models.CharField(max_length=128)

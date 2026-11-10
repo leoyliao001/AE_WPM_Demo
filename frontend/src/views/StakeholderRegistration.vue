@@ -59,8 +59,8 @@
                   <li>Use <strong>Save and lock</strong> to save a role and confirm it. Once locked, its people, notes and applicability cannot change until <strong>Unlock</strong> is selected.</li>
                   <li>Any authorised page editor can lock or unlock a saved role. Unlocking does not grant permission to change a restricted assignment; its designated-assigner rule still applies.</li>
                   <li>All required roles must contain at least one person; required roles cannot be marked <strong>Not applicable</strong>. Optional roles may be marked Not applicable.</li>
-                  <li>For each applicable MSP, enter a unique MSP name and select exactly one Project Team focal.</li>
-                  <li><strong>Lock all</strong> requires all required roles to be filled. It locks populated roles and roles explicitly marked Not applicable; empty optional roles may remain open.</li>
+                  <li>At least one MSP is required. Enter a unique MSP name and select exactly one Project Team focal for each MSP.</li>
+                  <li><strong>Lock all</strong> requires every required role, including FPO and MSP Focals, to be filled. Empty optional roles such as Business Resilience may remain open.</li>
                   <li>This register has no separate submit or revision-reason step. The dashboard shows <strong>Secured</strong> when the register is saved and all required roles are filled and locked. Unlocking a required role makes it incomplete again.</li>
                   <li>Save, lock and unlock actions record who acted and when in the audit log. Stakeholder registration is not itself a Business Case approval; formal approval permissions and stages remain separate.</li>
                 </ul>
@@ -154,7 +154,7 @@
                 <tbody><tr v-for="row in mspRows" :key="row.mspName"><td>{{ row.mspName }}</td><td>{{ personById(row.personIds[0])?.fullName || 'To assign' }}</td><td>{{ isLocked('msp_focals') ? 'Locked' : 'Draft' }}</td></tr></tbody>
               </table>
             </div>
-            <div v-else class="empty-panel"><strong>No MSP focals added</strong><span>Add one focal from the Project Team for each applicable MSP.</span></div>
+            <div v-else class="empty-panel"><strong>No MSP focals added</strong><span>Add at least one MSP and select one Project Team focal for each.</span></div>
           </article>
 
           <article class="support-panel">

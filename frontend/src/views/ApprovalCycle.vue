@@ -211,14 +211,19 @@
           <div class="ac-detail-col">
             <div class="ac-card">
               <h2 class="ac-card-title">Service Catalogue addition request</h2>
-              <p class="ac-card-sub">The proposed hierarchy will be added to Service Catalogue only after FPO approval.</p>
+              <p class="ac-card-sub">{{ detail.fpoEntries.length }} proposed hierarch{{ detail.fpoEntries.length === 1 ? 'y will' : 'ies will' }} be added to Service Catalogue only after FPO approval.</p>
               <dl class="ac-defs">
-                <div><dt>Product</dt><dd>{{ detail.fpoProduct }}</dd></div>
                 <div><dt>Reason for request</dt><dd>{{ detail.fpoRequestComment }}</dd></div>
-                <div><dt>L1</dt><dd>{{ detail.fpoL1 }}</dd></div>
-                <div><dt>L2</dt><dd>{{ detail.fpoL2 }}</dd></div>
-                <div><dt>L3</dt><dd>{{ detail.fpoL3 }}</dd></div>
-                <div><dt>L4</dt><dd>{{ detail.fpoL4 }}</dd></div>
+                <div v-for="(entry, index) in detail.fpoEntries" :key="entry.id" class="ac-fpo-entry">
+                  <dt>Entry {{ index + 1 }}</dt>
+                  <dd class="ac-fpo-fields">
+                    <label>Product<input v-model.trim="entry.product" maxlength="128" :disabled="!detail.actionable"></label>
+                    <label>L1<input v-model.trim="entry.l1" maxlength="128" :disabled="!detail.actionable"></label>
+                    <label>L2<input v-model.trim="entry.l2" maxlength="128" :disabled="!detail.actionable"></label>
+                    <label>L3<input v-model.trim="entry.l3" maxlength="128" :disabled="!detail.actionable"></label>
+                    <label>L4<input v-model.trim="entry.l4" maxlength="255" :disabled="!detail.actionable"></label>
+                  </dd>
+                </div>
                 <div><dt>Migration Request ID</dt><dd>{{ detail.migrationRequestId }}</dd></div>
                 <div><dt>Project</dt><dd>{{ detail.title }}</dd></div>
                 <div><dt>Requested by</dt><dd>{{ detail.requester }}</dd></div>
@@ -234,7 +239,7 @@
               <template v-if="detail.actionable">
                 <textarea v-model="comment" class="ac-textarea" rows="4" placeholder="Comment (required when rejecting)" aria-label="FPO decision comment"></textarea>
                 <button class="ac-btn ac-btn-primary ac-btn-block" type="button" :disabled="fpoSubmitting" @click="submitFpoDecision('approved')">
-                  {{ fpoSubmitting ? 'Saving…' : 'Approve and add to Service Catalogue' }}
+                  {{ fpoSubmitting ? 'Saving…' : `Approve and add ${detail.fpoEntries.length} entr${detail.fpoEntries.length === 1 ? 'y' : 'ies'}` }}
                 </button>
                 <button class="ac-btn ac-btn-danger ac-btn-block" type="button" :disabled="fpoSubmitting" @click="submitFpoDecision('rejected')">
                   Reject
@@ -809,6 +814,9 @@ const toRow = (r) => {
     return {
       id: `FPO-${r.fpo_request_id}`,
       fpoRequestId: r.fpo_request_id,
+      fpoBatchId: r.fpo_batch_id || '',
+      fpoRequestIds: [r.fpo_request_id],
+      fpoEntries: [{ id: r.fpo_request_id, product: r.fpoProduct, l1: r.fpoL1, l2: r.fpoL2, l3: r.fpoL3, l4: r.fpoL4 }],
       migrationRequestId: r.migration_request_id,
       requestKind: 'fpo_catalogue',
       title: r.project_name || r.migration_request_id,
@@ -923,6 +931,32 @@ const toRow = (r) => {
   return row
 }
 
+function groupFpoBatches(mappedRows) {
+  const grouped = new Map()
+  const result = []
+  for (const row of mappedRows) {
+    if (row.requestKind !== 'fpo_catalogue' || !row.fpoBatchId) {
+      result.push(row)
+      continue
+    }
+    let batch = grouped.get(row.fpoBatchId)
+    if (!batch) {
+      batch = { ...row, id: `FPO-BATCH-${row.fpoBatchId}`, fpoRequestIds: [], fpoEntries: [], completed: true }
+      grouped.set(row.fpoBatchId, batch)
+      result.push(batch)
+    }
+    batch.fpoRequestIds.push(...row.fpoRequestIds)
+    batch.fpoEntries.push(...row.fpoEntries)
+    batch.scope = batch.fpoEntries.length === 1 ? row.scope : `${batch.fpoEntries.length} catalogue hierarchies`
+    batch.actionable ||= row.actionable
+    batch.completed &&= row.completed
+    batch.submittedByMe ||= row.submittedByMe
+    batch.approvedByMe ||= row.approvedByMe
+    batch.handledByMe ||= row.handledByMe
+  }
+  return result
+}
+
 const rows = ref([])
 const detail = ref(null)
 const myEmail = ref('')
@@ -934,13 +968,14 @@ async function loadQueue() {
     const scope = isAdminHistory.value ? 'all' : 'mine'
     const { data } = await axios.get(`/api/approval-cycle/queue/?scope=${scope}`)
     myEmail.value = data?.email || ''
-    const mapped = (data?.rows || []).filter((r) => r.migration_request_id).map(toRow)
+    const mapped = groupFpoBatches((data?.rows || []).filter((r) => r.migration_request_id).map(toRow))
     rows.value = mapped
     activeTab.value = 'waiting'
     const fpoRequestId = Number(route.query.fpo_request)
+    const fpoBatchId = String(route.query.fpo_batch || '')
     const requestedFpoRow = fpoRequestId
-      ? mapped.find((row) => row.fpoRequestId === fpoRequestId)
-      : null
+      ? mapped.find((row) => row.fpoRequestIds.includes(fpoRequestId))
+      : fpoBatchId ? mapped.find((row) => row.fpoBatchId === fpoBatchId) : null
     detail.value = requestedFpoRow || mapped[0] || null
     view.value = requestedFpoRow ? 'details' : 'inbox'
   } catch (e) {
@@ -1062,23 +1097,49 @@ async function submitFpoDecision(action) {
     decisionMessage.value = 'A comment is required when rejecting a request.'
     return
   }
+  const editedEntries = action === 'approved'
+    ? detail.value.fpoEntries.map(({ id, product, l1, l2, l3, l4 }) => ({ id, product, l1, l2, l3, l4 }))
+    : []
+  if (action === 'approved') {
+    const seen = new Map()
+    for (const [index, entry] of editedEntries.entries()) {
+      const values = [entry.product, entry.l1, entry.l2, entry.l3, entry.l4].map((value) => String(value || '').trim().toLowerCase())
+      if (values.some((value) => !value)) {
+        decisionMessage.value = `Entry ${index + 1}: Product and L1-L4 are required.`
+        return
+      }
+      if (seen.has(JSON.stringify(values))) {
+        decisionMessage.value = `Entry ${index + 1} duplicates Entry ${seen.get(JSON.stringify(values))}. Change one hierarchy before approving.`
+        return
+      }
+      seen.set(JSON.stringify(values), index + 1)
+    }
+  }
   fpoSubmitting.value = true
   decisionMessage.value = ''
   try {
-    const { data } = await axios.post(
-      `/api/approval-cycle/fpo-requests/${detail.value.fpoRequestId}/decision/`,
-      { action, comment: comment.value }
-    )
-    const updated = toRow(data.row)
-    const idx = rows.value.findIndex((row) => row.id === updated.id)
+    const isBatch = Boolean(detail.value.fpoBatchId)
+    const endpoint = isBatch
+      ? '/api/approval-cycle/fpo-requests/batch-decision/'
+      : `/api/approval-cycle/fpo-requests/${detail.value.fpoRequestId}/decision/`
+    const payload = { action, comment: comment.value }
+    if (isBatch) payload.batch_id = detail.value.fpoBatchId
+    if (action === 'approved') {
+      if (isBatch) payload.entries = editedEntries
+      else payload.entry = editedEntries[0]
+    }
+    const { data } = await axios.post(endpoint, payload)
+    const updatedRows = data.rows || [data.row]
+    const updated = groupFpoBatches(updatedRows.map(toRow))[0]
+    const idx = rows.value.findIndex((row) => row.id === detail.value.id)
     if (idx === -1) rows.value.push(updated)
     else rows.value[idx] = updated
     detail.value = updated
     comment.value = ''
-      const decisionText = action === 'approved'
-      ? 'Approved and added to Service Catalogue.'
-      : 'FPO request rejected.'
-      decisionMessage.value = `${decisionText}${data.notification_sent === false ? ' Applicant notification email could not be sent.' : ''}`
+    const decisionText = action === 'approved'
+      ? `Approved and added ${updated.fpoEntries.length} entr${updated.fpoEntries.length === 1 ? 'y' : 'ies'} to Service Catalogue.`
+      : `Rejected ${updated.fpoEntries.length} FPO entr${updated.fpoEntries.length === 1 ? 'y' : 'ies'}.`
+    decisionMessage.value = `${decisionText}${data.notification_sent === false ? ' Applicant notification email could not be sent.' : ''}`
   } catch (e) {
     decisionMessage.value = e?.response?.data?.error || 'Unable to record the FPO decision.'
   } finally {
@@ -1692,6 +1753,42 @@ async function decideParallel(role, action) {
   margin: 0;
 }
 
+.ac-fpo-fields {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px !important;
+}
+
+.ac-fpo-fields label {
+  color: var(--ac-ink-soft);
+  display: grid;
+  font-size: 12px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ac-fpo-fields input {
+  background: #fff;
+  border: 1px solid var(--ac-line);
+  border-radius: 5px;
+  box-sizing: border-box;
+  color: var(--ac-ink);
+  font: inherit;
+  min-width: 0;
+  padding: 8px;
+  width: 100%;
+}
+
+.ac-fpo-fields input:focus {
+  border-color: var(--ac-blue);
+  outline: 2px solid rgba(0, 115, 171, 0.16);
+}
+
+.ac-fpo-fields input:disabled {
+  background: #f7f8f9;
+  color: var(--ac-ink-soft);
+}
+
 .ac-jl {
   background: #eef7fb;
   border-radius: 4px;
@@ -1957,6 +2054,10 @@ async function decideParallel(role, action) {
   .ac-defs > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
+  }
+
+  .ac-fpo-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .ac-toolbar-actions {
