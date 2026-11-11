@@ -6,9 +6,6 @@
 
 /** Excel row-3 / row-4 headers (columns A–J). */
 export const projectGanttFieldLabels = {
-  region: 'Region',
-  area: 'Area',
-  total: 'Total',
   migrationKeySteps:
     'Migration Key Steps -  A view at expected critical outcomes, items and activities.',
   calendarWeeks: 'Calendar weeks',
@@ -85,14 +82,8 @@ export const buildProjectGanttWeeks = (startOrDate = PROJECT_GANTT_DEFAULT_CALEN
 
 export const projectGanttWeeks = buildProjectGanttWeeks(PROJECT_GANTT_DEFAULT_CALENDAR_START)
 
-/** Legend tips for Standard / Plan / Actual bar types (Excel column J). */
+/** Legend tips for Plan / Actual bar types. */
 export const projectGanttBarTypes = [
-  {
-    id: 'standard',
-    label: 'Standard',
-    hint: 'Standard cycle (fixed)',
-    color: '#8E9BA8'
-  },
   {
     id: 'plan',
     label: 'Plan',
@@ -108,18 +99,30 @@ export const projectGanttBarTypes = [
   }
 ]
 
-export const projectGanttMeta = {
-  total: 4
-}
+export const projectGanttLifecycleStages = [
+  { id: 'initiate', label: 'Initiate', description: 'Authorise & define', color: '#1f78d1' },
+  { id: 'plan', label: 'Plan', description: 'Build the roadmap', color: '#14a3a3' },
+  { id: 'execute', label: 'Execute', description: 'Do the work', color: '#7a5af8' },
+  {
+    id: 'monitor_control',
+    label: 'Monitor & Control',
+    description: 'Track & correct',
+    color: '#5f9b2d'
+  },
+  {
+    id: 'close_realize_value',
+    label: 'Close & Realize Value',
+    description: 'Finalise & learn',
+    color: '#0b5fa5'
+  }
+]
 
-const range = (startWeek, endWeek) => ({ startWeek, endWeek })
-
-/** Task names from Excel; each step has Standard / Plan / Actual ranges. */
+/** Migration Key Steps with lifecycle classifications from the reference Gantt. */
 export const projectGanttTasks = [
   {
     id: 'business-case',
     name: 'Business Case (Memo)',
-    standard: range(1, 2),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -127,7 +130,7 @@ export const projectGanttTasks = [
   {
     id: 'fbp-approval',
     name: 'FBP approval',
-    standard: range(3, 4),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -135,7 +138,7 @@ export const projectGanttTasks = [
   {
     id: 'functional-head',
     name: 'Functional head approval',
-    standard: range(3, 3),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -143,7 +146,7 @@ export const projectGanttTasks = [
   {
     id: 'elt-approval',
     name: 'ELT approval',
-    standard: range(5, 5),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -151,7 +154,7 @@ export const projectGanttTasks = [
   {
     id: 'gsc-head',
     name: 'GSC Head -1 approval',
-    standard: range(5, 5),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -159,7 +162,7 @@ export const projectGanttTasks = [
   {
     id: 'opportunity-assessment',
     name: 'Opportunity Assessment (Detailed task scoping)',
-    standard: range(6, 10),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -167,7 +170,7 @@ export const projectGanttTasks = [
   {
     id: 'pid-approval',
     name: 'PID Approval',
-    standard: range(6, 7),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -175,7 +178,7 @@ export const projectGanttTasks = [
   {
     id: 'hiring-request',
     name: 'Hiring Request approval',
-    standard: range(8, 8),
+    lifecycleStage: 'initiate',
     plan: null,
     actual: null,
     completedAt: null
@@ -183,7 +186,7 @@ export const projectGanttTasks = [
   {
     id: 'resource-mobilization',
     name: 'Resource mobilization',
-    standard: range(9, 18),
+    lifecycleStage: 'execute',
     plan: null,
     actual: null,
     completedAt: null
@@ -191,7 +194,7 @@ export const projectGanttTasks = [
   {
     id: 'neo-training',
     name: 'NEO + GSC L&D business & training stage',
-    standard: range(24, 27),
+    lifecycleStage: 'execute',
     plan: null,
     actual: null,
     completedAt: null
@@ -199,7 +202,7 @@ export const projectGanttTasks = [
   {
     id: 'knowledge-transfer',
     name: 'Knowledge Transfer Business + System Training sessions + Assessments',
-    standard: range(28, 30),
+    lifecycleStage: 'plan',
     plan: null,
     actual: null,
     completedAt: null
@@ -207,7 +210,7 @@ export const projectGanttTasks = [
   {
     id: 'volume-transfer',
     name: 'Volume Transfer/Ramp-up stage',
-    standard: range(31, 36),
+    lifecycleStage: 'execute',
     plan: null,
     actual: null,
     completedAt: null
@@ -215,7 +218,7 @@ export const projectGanttTasks = [
   {
     id: 'hypercare',
     name: 'Hypercare stage',
-    standard: range(37, 41),
+    lifecycleStage: 'monitor_control',
     plan: null,
     actual: null,
     completedAt: null
@@ -223,7 +226,7 @@ export const projectGanttTasks = [
   {
     id: 'hypercare-exit',
     name: 'Hypercare Exit Success Criteria Review',
-    standard: range(42, 42),
+    lifecycleStage: 'monitor_control',
     plan: null,
     actual: null,
     completedAt: null
@@ -231,7 +234,7 @@ export const projectGanttTasks = [
   {
     id: 'sign-off',
     name: 'Migration Sign-off recommendation',
-    standard: range(43, 43),
+    lifecycleStage: 'close_realize_value',
     plan: null,
     actual: null,
     completedAt: null
@@ -239,7 +242,7 @@ export const projectGanttTasks = [
   {
     id: 'capacity-release',
     name: 'Recommended soonest Capacity Release',
-    standard: range(44, 44),
+    lifecycleStage: 'close_realize_value',
     plan: null,
     actual: null,
     completedAt: null
@@ -266,7 +269,7 @@ export const projectGanttFixture = {
   weeks: projectGanttWeeks,
   barTypes: projectGanttBarTypes,
   tasks: projectGanttTasks,
-  meta: projectGanttMeta,
+  lifecycleStages: projectGanttLifecycleStages,
   notes: projectGanttNotes,
   todayWeek: projectGanttTodayWeek
 }

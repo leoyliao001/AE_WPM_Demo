@@ -238,7 +238,7 @@ def build_dashboard_summary(submissions) -> dict:
             else:
                 task = {}
 
-            plan_range = task.get("plan") or task.get("standard") or {}
+            plan_range = task.get("plan") or {}
             actual_range = task.get("actual")
             completed_at = task.get("completedAt") or task.get("completed_at")
 

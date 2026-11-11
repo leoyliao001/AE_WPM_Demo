@@ -773,14 +773,14 @@ class ProjectGanttPlan(models.Model):
     tasks = models.JSONField(
         default=list,
         help_text=(
-            "[{id, name, plan:{startWeek,endWeek}, actual, completedAt, "
+            "[{id, name, lifecycleStage, plan:{startWeek,endWeek}, actual, completedAt, "
             "comments:[{id, at, text, updatedBy, fromPlan, toPlan}]}, ...]"
         ),
     )
     meta = models.JSONField(
         default=dict,
         blank=True,
-        help_text="Project summary fields (phase, scope, FTE, HC, totals).",
+        help_text="Project Gantt Attributes metadata.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

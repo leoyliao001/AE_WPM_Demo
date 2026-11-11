@@ -1,9 +1,8 @@
 """
-Project Gantt API — per-project editable task week spans + summary meta.
+Project Gantt API — per-project lifecycle-grouped task week spans.
 
 Default (unsaved) projects use the Migration Key Steps template.
 Once saved, the task list (order, names, add/remove/duplicates) is authoritative.
-Template task ids keep Standard ranges from the Excel baseline.
 
 GET  /api/migration-dashboard/projects/<id>/gantt/
 PUT  /api/migration-dashboard/projects/<id>/gantt/
@@ -26,14 +25,7 @@ DEFAULT_CALENDAR_START_WEEK = 9
 # Append-only Plan change log per stage (kept in tasks JSON).
 MAX_PLAN_COMMENTS_PER_TASK = 100
 
-BAR_TYPES = ("standard", "plan", "actual")
 BAR_TYPE_META = [
-    {
-        "id": "standard",
-        "label": "Standard",
-        "hint": "Standard cycle (fixed)",
-        "color": "#8E9BA8",
-    },
     {
         "id": "plan",
         "label": "Plan",
@@ -49,9 +41,11 @@ BAR_TYPE_META = [
     },
 ]
 
+LIFECYCLE_STAGE_IDS = frozenset(
+    {"initiate", "plan", "execute", "monitor_control", "close_realize_value"}
+)
 META_TEXT_KEYS = ()
 META_NUMBER_KEYS = ("total",)
-# Legacy Gantt summary fields — dropped from UI; strip on save/serialize.
 OBSOLETE_META_KEYS = frozenset(
     {
         "projectPhase",
@@ -63,49 +57,70 @@ OBSOLETE_META_KEYS = frozenset(
         "totalWoBuffer",
     }
 )
+DEFAULT_LIFECYCLE_STAGE_BY_TASK_ID = {
+    "business-case": "initiate",
+    "fbp-approval": "initiate",
+    "functional-head": "initiate",
+    "elt-approval": "initiate",
+    "gsc-head": "initiate",
+    "opportunity-assessment": "initiate",
+    "pid-approval": "initiate",
+    "hiring-request": "initiate",
+    "resource-mobilization": "execute",
+    "neo-training": "execute",
+    "knowledge-transfer": "plan",
+    "volume-transfer": "execute",
+    "hypercare": "monitor_control",
+    "hypercare-exit": "monitor_control",
+    "sign-off": "close_realize_value",
+    "capacity-release": "close_realize_value",
+}
 
-# Fixed Migration Key Steps — Standard ranges match Excel template.
+# Fixed Migration Key Steps, classified using the reference lifecycle stages.
 TEMPLATE_TASKS = [
-    {"id": "business-case", "name": "Business Case (Memo)", "startWeek": 1, "endWeek": 2},
-    {"id": "fbp-approval", "name": "FBP approval", "startWeek": 3, "endWeek": 4},
-    {"id": "functional-head", "name": "Functional head approval", "startWeek": 3, "endWeek": 3},
-    {"id": "elt-approval", "name": "ELT approval", "startWeek": 5, "endWeek": 5},
-    {"id": "gsc-head", "name": "GSC Head -1 approval", "startWeek": 5, "endWeek": 5},
+    {"id": "business-case", "name": "Business Case (Memo)", "lifecycleStage": "initiate"},
+    {"id": "fbp-approval", "name": "FBP approval", "lifecycleStage": "initiate"},
+    {"id": "functional-head", "name": "Functional head approval", "lifecycleStage": "initiate"},
+    {"id": "elt-approval", "name": "ELT approval", "lifecycleStage": "initiate"},
+    {"id": "gsc-head", "name": "GSC Head -1 approval", "lifecycleStage": "initiate"},
     {
         "id": "opportunity-assessment",
         "name": "Opportunity Assessment (Detailed task scoping)",
-        "startWeek": 6,
-        "endWeek": 10,
+        "lifecycleStage": "initiate",
     },
-    {"id": "pid-approval", "name": "PID Approval", "startWeek": 6, "endWeek": 7},
-    {"id": "hiring-request", "name": "Hiring Request approval", "startWeek": 8, "endWeek": 8},
-    {"id": "resource-mobilization", "name": "Resource mobilization", "startWeek": 9, "endWeek": 18},
+    {"id": "pid-approval", "name": "PID Approval", "lifecycleStage": "initiate"},
+    {"id": "hiring-request", "name": "Hiring Request approval", "lifecycleStage": "initiate"},
+    {"id": "resource-mobilization", "name": "Resource mobilization", "lifecycleStage": "execute"},
     {
         "id": "neo-training",
         "name": "NEO + GSC L&D business & training stage",
-        "startWeek": 24,
-        "endWeek": 27,
+        "lifecycleStage": "execute",
     },
     {
         "id": "knowledge-transfer",
         "name": "Knowledge Transfer Business + System Training sessions + Assessments",
-        "startWeek": 28,
-        "endWeek": 30,
+        "lifecycleStage": "plan",
     },
-    {"id": "volume-transfer", "name": "Volume Transfer/Ramp-up stage", "startWeek": 31, "endWeek": 36},
-    {"id": "hypercare", "name": "Hypercare stage", "startWeek": 37, "endWeek": 41},
+    {
+        "id": "volume-transfer",
+        "name": "Volume Transfer/Ramp-up stage",
+        "lifecycleStage": "execute",
+    },
+    {"id": "hypercare", "name": "Hypercare stage", "lifecycleStage": "monitor_control"},
     {
         "id": "hypercare-exit",
         "name": "Hypercare Exit Success Criteria Review",
-        "startWeek": 42,
-        "endWeek": 42,
+        "lifecycleStage": "monitor_control",
     },
-    {"id": "sign-off", "name": "Migration Sign-off recommendation", "startWeek": 43, "endWeek": 43},
+    {
+        "id": "sign-off",
+        "name": "Migration Sign-off recommendation",
+        "lifecycleStage": "close_realize_value",
+    },
     {
         "id": "capacity-release",
         "name": "Recommended soonest Capacity Release",
-        "startWeek": 44,
-        "endWeek": 44,
+        "lifecycleStage": "close_realize_value",
     },
 ]
 
@@ -240,17 +255,14 @@ def _refresh_actual(
     saved_actual: dict | None,
     completed_at,
     created_at,
-    standard: dict | None = None,
 ) -> dict | None:
     """
-    Actual is driven by completion date when present:
-    start = plan.startWeek (or completion week), end = completion week.
-    Falls back to Standard when no Plan has been set yet, then to saved actual range.
+    Actual is driven by completion date when present.
+    Without a Plan, the completion week is shown as a one-week Actual range.
     """
     completed_week = _week_index_for_date(created_at, completed_at)
-    basis = plan or standard
-    if completed_week is not None and basis:
-        start = min(int(basis["startWeek"]), completed_week)
+    if completed_week is not None:
+        start = min(int(plan["startWeek"]), completed_week) if plan else completed_week
         return _range_dict(start, completed_week)
     return saved_actual
 
@@ -258,7 +270,7 @@ def _refresh_actual(
 def build_template_tasks(
     created_at=None, business_case_submitted_at=None
 ) -> list[dict]:
-    """Return Standard baseline + empty Plan/Actual by default.
+    """Return classified template tasks with empty Plan bars by default.
 
     The Business Case task's Actual is auto-filled from the intake's
     business_case_submission_date, since that submission already happened
@@ -266,19 +278,17 @@ def build_template_tasks(
     """
     tasks = []
     for task in TEMPLATE_TASKS:
-        standard = _range_dict(task["startWeek"], task["endWeek"])
         completed_at = None
         actual = None
         actual_status = None
         if task["id"] == "business-case" and business_case_submitted_at:
             completed_at = business_case_submitted_at.isoformat()
-            actual = _refresh_actual(None, None, business_case_submitted_at, created_at, standard)
-            actual_status = _actual_status(standard, actual)
+            actual = _refresh_actual(None, None, business_case_submitted_at, created_at)
         tasks.append(
             {
                 "id": task["id"],
                 "name": task["name"],
-                "standard": standard,
+                "lifecycleStage": task["lifecycleStage"],
                 "plan": None,
                 "actual": actual,
                 "completedAt": completed_at,
@@ -295,11 +305,11 @@ def merge_gantt_tasks_with_template(
     """
     Build display tasks from saved plan when present; otherwise use template.
 
-    - No saved plan (None): return full Standard template with empty Plan.
+    - No saved plan (None): return the full template with empty Plan.
     - Saved list (including empty): authoritative order / membership.
-      Template ids keep Standard from template; custom / duplicated ids keep
-      saved Standard and names.
-    Returns (merged_tasks, baseline_tasks).
+      Template ids keep their default lifecycle stage; custom / duplicated ids
+      keep their saved stage and names.
+    Returns (merged_tasks, template_tasks).
     """
     baseline = build_template_tasks(
         created_at=created_at, business_case_submitted_at=business_case_submitted_at
@@ -319,17 +329,18 @@ def merge_gantt_tasks_with_template(
 
         base = baseline_by_id.get(task_id)
         saved_name = str(saved.get("name") or "").strip()
+        lifecycle_stage = str(saved.get("lifecycleStage") or "").strip()
 
         if base:
-            standard = dict(base["standard"])
             # Correct the legacy typo without overwriting intentional custom names.
             name = base["name"] if saved_name == "ELT approg" else (saved_name or base["name"])
+            default_stage = base["lifecycleStage"]
         else:
-            standard = _parse_range(saved.get("standard"), fallback=None)
             name = saved_name or "Untitled stage"
+            default_stage = "initiate"
 
-        # Nested plan/standard/actual, or legacy flat startWeek/endWeek as Plan.
-        if "plan" in saved or "standard" in saved or "actual" in saved:
+        # Nested plan/actual, or legacy flat startWeek/endWeek as Plan.
+        if "plan" in saved or "actual" in saved:
             if "plan" in saved and saved.get("plan") is None:
                 plan = None
             else:
@@ -354,18 +365,20 @@ def merge_gantt_tasks_with_template(
         if not completed_at and task_id == "business-case" and business_case_submitted_at:
             completed_at = business_case_submitted_at.isoformat()
             completed_at_for_calc = business_case_submitted_at
-        actual = _refresh_actual(plan, actual_raw, completed_at_for_calc, created_at, standard)
+        actual = _refresh_actual(plan, actual_raw, completed_at_for_calc, created_at)
         comments = _normalize_comments(saved.get("comments"))
 
         merged.append(
             {
                 "id": task_id,
                 "name": name,
-                "standard": standard,
+                "lifecycleStage": (
+                    lifecycle_stage if lifecycle_stage in LIFECYCLE_STAGE_IDS else default_stage
+                ),
                 "plan": plan,
                 "actual": actual,
                 "completedAt": completed_at,
-                "actualStatus": _actual_status(plan or standard, actual),
+                "actualStatus": _actual_status(plan, actual),
                 "comments": comments,
             }
         )
@@ -408,11 +421,11 @@ def _normalize_tasks(raw_tasks):
         else:
             plan = None
 
-        standard = None
-        if "standard" in item and item.get("standard") is None:
-            standard = None
-        elif isinstance(item.get("standard"), dict):
-            standard = _parse_range(item.get("standard"), fallback=None)
+        lifecycle_stage = str(item.get("lifecycleStage") or "").strip()
+        if not lifecycle_stage:
+            lifecycle_stage = DEFAULT_LIFECYCLE_STAGE_BY_TASK_ID.get(task_id, "initiate")
+        if lifecycle_stage not in LIFECYCLE_STAGE_IDS:
+            raise ValueError(f"Invalid lifecycle stage for task {task_id}.")
 
         actual = _parse_range(item.get("actual"), fallback=None)
         completed_at = item.get("completedAt") or item.get("completed_at") or None
@@ -426,7 +439,7 @@ def _normalize_tasks(raw_tasks):
         payload = {
             "id": task_id,
             "name": name,
-            "standard": standard,
+            "lifecycleStage": lifecycle_stage,
             "plan": plan,
             "actual": actual,
             "completedAt": completed_at,
@@ -535,14 +548,12 @@ def _normalize_meta(raw_meta):
 
     normalized = {}
     for key in META_TEXT_KEYS:
-        if key not in raw_meta:
-            continue
-        normalized[key] = str(raw_meta.get(key) or "").strip()
-
+        if key in raw_meta:
+            normalized[key] = str(raw_meta.get(key) or "").strip()
     for key in META_NUMBER_KEYS:
         if key not in raw_meta:
             continue
-        value = raw_meta.get(key)
+        value = raw_meta[key]
         if value is None or value == "":
             normalized[key] = ""
             continue
@@ -550,11 +561,7 @@ def _normalize_meta(raw_meta):
             number = float(value)
         except (TypeError, ValueError) as exc:
             raise ValueError(f"Invalid number for meta.{key}.") from exc
-        if number.is_integer():
-            normalized[key] = int(number)
-        else:
-            normalized[key] = number
-
+        normalized[key] = int(number) if number.is_integer() else number
     return normalized
 
 
@@ -563,7 +570,6 @@ def _serialize_plan(
     project: MigrationIntakeSubmission,
 ) -> dict:
     mid = (project.migration_request_id or "").strip()
-    saved_meta = (plan.meta if plan else {}) or {}
     saved_tasks = plan.tasks if plan else None
     tasks, template_tasks = merge_gantt_tasks_with_template(
         saved_tasks,
@@ -572,12 +578,6 @@ def _serialize_plan(
     )
     weeks = build_gantt_weeks(project.created_at)
     start_week = weeks[0]["calendarWeekNumber"] if weeks else DEFAULT_CALENDAR_START_WEEK
-    public_meta = {
-        k: v
-        for k, v in saved_meta.items()
-        if k not in {"customPhases", "planVersionSaved"} and k not in OBSOLETE_META_KEYS
-    }
-    areas = [str(a).strip() for a in (project.areas or []) if str(a).strip()]
     return {
         "project_id": project.id,
         "migration_request_id": mid or None,
@@ -587,10 +587,7 @@ def _serialize_plan(
         "weeks": weeks,
         "calendar_start_week": start_week,
         "intake_created_at": project.created_at.isoformat() if project.created_at else None,
-        "region": (project.region or "").strip(),
-        "areas": areas,
         "barTypes": BAR_TYPE_META,
-        "meta": public_meta,
         "updated_at": plan.updated_at.isoformat() if plan and plan.updated_at else None,
     }
 
@@ -607,27 +604,10 @@ def project_gantt(request, project_id: int):
 
     try:
         tasks = _normalize_tasks(request.data.get("tasks"))
-        meta = _normalize_meta(request.data.get("meta"))
         existing = ProjectGanttPlan.objects.filter(project=project).first()
         # Keep full Plan-comment history per stage (append-only merge with DB).
         if existing:
             tasks = _merge_saved_task_comments(existing.tasks, tasks)
-        # Drop obsolete customPhases / legacy summary fields from meta on save.
-        if existing and isinstance(existing.meta, dict):
-            preserved = {
-                k: v
-                for k, v in existing.meta.items()
-                if k not in META_TEXT_KEYS
-                and k not in META_NUMBER_KEYS
-                and k not in OBSOLETE_META_KEYS
-                and k != "customPhases"
-            }
-            preserved.update(meta)
-            meta = preserved
-        else:
-            meta = {
-                k: v for k, v in meta.items() if k not in OBSOLETE_META_KEYS
-            }
     except ValueError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -635,7 +615,6 @@ def project_gantt(request, project_id: int):
         project=project,
         defaults={
             "tasks": tasks,
-            "meta": meta,
             "migration_request_id": project.migration_request_id or "",
         },
     )

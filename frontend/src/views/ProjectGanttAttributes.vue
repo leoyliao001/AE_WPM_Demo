@@ -151,12 +151,18 @@ import {
   persistColumnWidths,
   resolveColumnWidth
 } from '../utils/handsontableColumnWidths.js'
+import { projectGanttLifecycleStages } from '../data/projectGanttFixture.js'
 
 const ALL_COLUMNS = [
   { key: 'task_id', label: 'Task ID', width: 180 },
   { key: 'name', label: 'Task Name', width: 280 },
-  { key: 'standardStartWeek', label: 'Standard Start', width: 110, readOnly: true },
-  { key: 'standardEndWeek', label: 'Standard End', width: 110, readOnly: true },
+  {
+    key: 'lifecycleStage',
+    label: 'Lifecycle Stage',
+    width: 180,
+    type: 'dropdown',
+    source: projectGanttLifecycleStages.map((stage) => stage.id)
+  },
   { key: 'planStartWeek', label: 'Plan Start', width: 110 },
   { key: 'planEndWeek', label: 'Plan End', width: 110 },
   { key: 'actualStartWeek', label: 'Actual Start', width: 110, readOnly: true },
@@ -167,8 +173,6 @@ const ALL_COLUMNS = [
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)
 const WEEK_KEYS = new Set([
-  'standardStartWeek',
-  'standardEndWeek',
   'planStartWeek',
   'planEndWeek',
   'actualStartWeek',
@@ -255,6 +259,9 @@ function buildColumns() {
       width: resolveColumnWidth(col.width, col.key, storedWidths),
       readOnly: Boolean(col.readOnly)
     }
+    if (col.type === 'dropdown') {
+      return { ...base, type: 'dropdown', source: col.source }
+    }
     if (WEEK_KEYS.has(col.key)) {
       return { ...base, type: 'numeric' }
     }
@@ -297,8 +304,7 @@ function collectTasksFromHot() {
       id: normalizeCellValue(row.task_id) || null,
       task_id: normalizeCellValue(row.task_id),
       name: normalizeCellValue(row.name),
-      standardStartWeek: normalizeCellValue(row.standardStartWeek),
-      standardEndWeek: normalizeCellValue(row.standardEndWeek),
+      lifecycleStage: normalizeCellValue(row.lifecycleStage),
       planStartWeek: normalizeCellValue(row.planStartWeek),
       planEndWeek: normalizeCellValue(row.planEndWeek),
       actualStartWeek: normalizeCellValue(row.actualStartWeek),

@@ -23,7 +23,7 @@
             <p>
               {{
                 !editMode
-                  ? 'View mode — turn on Edit to change Total, Plan bars, or stages (+/−).'
+                  ? 'View mode — turn on Edit to change lifecycle stages, Plan bars, or items (+/−).'
                   : isDirty
                     ? 'Unsaved changes — first Plan save is free; later Plan updates need a comment on Save.'
                     : savedAt
@@ -72,11 +72,9 @@
           :weeks="weeks"
           :tasks="tasks"
           :bar-types="barTypes"
-          :meta="summaryMeta"
           :field-labels="fieldLabels"
           :today-week="todayWeek"
           @update-task="onUpdateTask"
-          @update-meta="onUpdateMeta"
           @duplicate-task="onDuplicateTask"
           @remove-task="onRemoveTask"
           @view-comments="onViewComments"
@@ -146,10 +144,6 @@
               <div class="history-dialog__metric">
                 <span>Current Plan</span>
                 <strong>{{ formatPlanLabel(historyDialogCurrentPlan) }}</strong>
-              </div>
-              <div class="history-dialog__metric">
-                <span>Standard</span>
-                <strong>{{ formatPlanLabel(historyDialogStandard) }}</strong>
               </div>
             </div>
           </div>
@@ -344,7 +338,11 @@ const cloneTasks = (rows) =>
   rows.map((task) => ({
     id: task.id,
     name: task.name,
-    standard: cloneRange(task.standard),
+    lifecycleStage:
+      task.lifecycleStage ||
+      projectGanttFixture.tasks.find((templateTask) => templateTask.id === task.id)
+        ?.lifecycleStage ||
+      'initiate',
     plan: cloneRange(task.plan),
     actual: cloneRange(task.actual),
     completedAt: task.completedAt ?? null,
@@ -375,27 +373,13 @@ const serializeTasksForSave = (rows, draftCommentsByTaskId = {}) =>
     return {
       id: taskId,
       name: String(task.name || '').trim(),
-      standard: cloneRange(task.standard),
+      lifecycleStage: task.lifecycleStage,
       plan: cloneRange(task.plan),
       actual: cloneRange(task.actual),
       completedAt: task.completedAt ? String(task.completedAt) : null,
       comments: [...cloneComments(task.comments), ...cloneComments(draftList)]
     }
   })
-
-const cloneMeta = (source = {}) => ({
-  total: source.total ?? ''
-})
-
-const formatAreasLabel = (areas) => {
-  const list = Array.isArray(areas)
-    ? areas.map((item) => String(item || '').trim()).filter(Boolean)
-    : String(areas || '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-  return list.length ? list.join(', ') : '—'
-}
 
 const route = useRoute()
 const project = ref(null)
@@ -420,7 +404,6 @@ const historyDialogOpen = ref(false)
 const historyDialogTaskName = ref('')
 const historyDialogComments = ref([])
 const historyDialogCurrentPlan = ref(null)
-const historyDialogStandard = ref(null)
 const lastSavedTasks = ref([])
 const fieldLabels = projectGanttFixture.fieldLabels
 const weeks = ref(buildProjectGanttWeeks())
@@ -429,13 +412,6 @@ const notes = projectGanttFixture.notes
 const todayWeek = projectGanttFixture.todayWeek
 const tasks = ref(cloneTasks(projectGanttFixture.tasks))
 const templateTasks = ref(cloneTasks(projectGanttFixture.tasks))
-const meta = ref(cloneMeta(projectGanttFixture.meta))
-
-const summaryMeta = computed(() => ({
-  region: String(project.value?.region || '').trim() || '—',
-  area: formatAreasLabel(project.value?.areas),
-  total: meta.value.total ?? ''
-}))
 
 const currentPendingPlanChange = computed(
   () => pendingPlanChanges.value[reasonStepIndex.value] || null
@@ -494,10 +470,7 @@ const applyGanttPayload = (data, projectData = null) => {
     ? data.template_tasks
     : projectGanttFixture.tasks
   const initialTasks = cloneTasks(nextTasks.length ? nextTasks : projectGanttFixture.tasks)
-  tasks.value = initialTasks.map((task) => ({
-    ...task,
-    plan: task.plan || (task.standard ? { ...task.standard } : null)
-  }))
+  tasks.value = initialTasks
   templateTasks.value = cloneTasks(nextTemplate)
 
   if (Array.isArray(data?.weeks) && data.weeks.length) {
@@ -514,22 +487,12 @@ const applyGanttPayload = (data, projectData = null) => {
     weeks.value = buildProjectGanttWeeks(createdAt || undefined)
   }
 
-  if (data?.meta && typeof data.meta === 'object') {
-    meta.value = mergeSavedMeta(data.meta)
-  }
-
   barTypes.value = Array.isArray(data?.barTypes) && data.barTypes.length
     ? data.barTypes
     : [...projectGanttBarTypes]
 
   savedAt.value = data?.updated_at || null
   lastSavedTasks.value = cloneTasks(tasks.value)
-}
-
-const mergeSavedMeta = (savedMeta) => {
-  const base = cloneMeta(projectGanttFixture.meta)
-  if (!savedMeta || typeof savedMeta !== 'object') return base
-  return cloneMeta({ ...base, ...savedMeta })
 }
 
 const rangesEqual = (a, b) =>
@@ -638,9 +601,14 @@ const applyTaskUpdate = (payload) => {
   const current = tasks.value[index]
 
   let nextName = current.name
+  let nextLifecycleStage = current.lifecycleStage
   const hasName = Object.prototype.hasOwnProperty.call(payload, 'name')
   if (hasName) {
     nextName = String(payload.name ?? '')
+  }
+  const hasLifecycleStage = Object.prototype.hasOwnProperty.call(payload, 'lifecycleStage')
+  if (hasLifecycleStage) {
+    nextLifecycleStage = String(payload.lifecycleStage || '')
   }
 
   let nextPlan = current.plan
@@ -663,11 +631,13 @@ const applyTaskUpdate = (payload) => {
     : current.completedAt || null
 
   const nameChanged = hasName && nextName !== current.name
+  const lifecycleStageChanged =
+    hasLifecycleStage && nextLifecycleStage !== current.lifecycleStage
   const planChanged = !rangesEqual(current.plan, nextPlan)
   const completedChanged =
     hasCompletedAt && String(current.completedAt || '') !== String(nextCompletedAt || '')
 
-  if (!nameChanged && !planChanged && !completedChanged) return
+  if (!nameChanged && !lifecycleStageChanged && !planChanged && !completedChanged) return
 
   let nextActual = current.actual
   let nextActualStatus = current.actualStatus
@@ -687,6 +657,7 @@ const applyTaskUpdate = (payload) => {
   next[index] = {
     ...current,
     name: nextName,
+    lifecycleStage: nextLifecycleStage,
     plan: nextPlan,
     completedAt: nextCompleted,
     actual: nextActual,
@@ -795,11 +766,10 @@ const onDuplicateTask = ({ id } = {}) => {
   const index = tasks.value.findIndex((task) => task.id === id)
   if (index < 0) return
   const source = tasks.value[index]
-  const standard = cloneRange(source.standard)
   const duplicated = {
     id: makeTaskId(source.name),
     name: source.name,
-    standard,
+    lifecycleStage: source.lifecycleStage,
     plan: null,
     actual: null,
     completedAt: null,
@@ -819,7 +789,6 @@ const onViewComments = ({ id } = {}) => {
   historyDialogTaskName.value = task.name || 'Stage'
   historyDialogComments.value = cloneComments(task.comments)
   historyDialogCurrentPlan.value = cloneRange(task.plan)
-  historyDialogStandard.value = cloneRange(task.standard)
   historyDialogOpen.value = true
 }
 
@@ -828,7 +797,6 @@ const closeHistoryDialog = () => {
   historyDialogTaskName.value = ''
   historyDialogComments.value = []
   historyDialogCurrentPlan.value = null
-  historyDialogStandard.value = null
 }
 
 const onRemoveTask = ({ id } = {}) => {
@@ -838,17 +806,8 @@ const onRemoveTask = ({ id } = {}) => {
   isDirty.value = true
 }
 
-const onUpdateMeta = ({ key, value }) => {
-  if (key !== 'total') return
-  if (!(key in meta.value)) return
-  if (meta.value[key] === value) return
-  meta.value = { ...meta.value, [key]: value }
-  isDirty.value = true
-}
-
 const resetToTemplate = () => {
   tasks.value = cloneTasks(templateTasks.value.length ? templateTasks.value : projectGanttFixture.tasks)
-  meta.value = cloneMeta(projectGanttFixture.meta)
   isDirty.value = true
 }
 
@@ -873,7 +832,6 @@ const loadAll = async () => {
   isDirty.value = false
   tasks.value = cloneTasks(projectGanttFixture.tasks)
   templateTasks.value = cloneTasks(projectGanttFixture.tasks)
-  meta.value = cloneMeta(projectGanttFixture.meta)
   barTypes.value = [...projectGanttBarTypes]
   savedAt.value = null
   lastSavedTasks.value = []
@@ -898,8 +856,7 @@ const persistGantt = async () => {
   saving.value = true
   try {
     const payload = {
-      tasks: serializeTasksForSave(tasks.value, draftCommentsByTaskId.value),
-      meta: cloneMeta(meta.value)
+      tasks: serializeTasksForSave(tasks.value, draftCommentsByTaskId.value)
     }
     const { data } = await axios.put(
       `/api/migration-dashboard/projects/${route.params.id}/gantt/`,

@@ -5,41 +5,32 @@
     role="region"
     aria-label="Project Gantt chart"
   >
-    <div class="gantt-summary" role="group" aria-label="Project parameters">
-      <div v-if="editable" class="gantt-summary__cue" aria-hidden="true">
-        <span class="gantt-summary__cue-icon">✎</span>
-        <span>Editable — click a value to type, then Save</span>
-      </div>
-      <label
-        v-for="field in summaryFields"
-        :key="field.key"
-        class="gantt-summary__item"
-        :class="{
-          'gantt-summary__item--editable': editable && !field.locked,
-          'gantt-summary__item--locked': field.locked
-        }"
-        :title="
-          field.locked
-            ? `${fieldLabels[field.key]} (from Migration Intake)`
-            : editable
-              ? `Edit ${fieldLabels[field.key]}`
-              : fieldLabels[field.key]
-        "
+    <div class="gantt-lifecycle" role="group" aria-label="Filter by lifecycle stage">
+      <button
+        type="button"
+        class="gantt-lifecycle__card gantt-lifecycle__card--all"
+        :class="{ 'gantt-lifecycle__card--active': !selectedLifecycleStage }"
+        :aria-pressed="!selectedLifecycleStage"
+        @click="selectedLifecycleStage = ''"
       >
-        <span class="gantt-summary__dot" :style="{ background: field.color }" />
-        <span class="gantt-summary__name">{{ fieldLabels[field.key] }}</span>
-        <input
-          class="gantt-summary__value"
-          :type="field.type"
-          :inputmode="field.type === 'number' ? 'decimal' : 'text'"
-          :step="field.type === 'number' ? 'any' : undefined"
-          :value="metaValue(field.key)"
-          :readonly="!editable || field.locked"
-          :placeholder="editable && !field.locked ? 'Type…' : ''"
-          :aria-label="fieldLabels[field.key]"
-          @input="onMetaInput(field.key, field.type, $event)"
-        />
-      </label>
+        <span class="gantt-lifecycle__number">ALL</span>
+        <span class="gantt-lifecycle__name">All stages</span>
+        <span class="gantt-lifecycle__count">{{ props.tasks.length }} items</span>
+      </button>
+      <button
+        v-for="stage in lifecycleStages"
+        :key="stage.id"
+        type="button"
+        class="gantt-lifecycle__card"
+        :class="{ 'gantt-lifecycle__card--active': selectedLifecycleStage === stage.id }"
+        :style="{ '--stage-color': stage.color }"
+        :aria-pressed="selectedLifecycleStage === stage.id"
+        @click="selectedLifecycleStage = stage.id"
+      >
+        <span class="gantt-lifecycle__number">{{ stage.description }}</span>
+        <span class="gantt-lifecycle__name">{{ stage.label }}</span>
+        <span class="gantt-lifecycle__count">{{ stageTaskCount(stage.id) }} items</span>
+      </button>
     </div>
 
     <div v-if="editable" class="gantt-editor">
@@ -47,13 +38,24 @@
         Only <strong>Plan</strong> is editable. Actual updates from completion.
         Drag Plan <strong>ends</strong> to resize, or drag the <strong>bar</strong> to
         move. Use <strong>+</strong> / <strong>−</strong> on a stage to duplicate or
-        remove it.
+        remove it. Select a lifecycle stage in the inspector to reclassify an item.
       </p>
 
       <div v-if="selectedTask" class="gantt-inspector">
         <div class="gantt-inspector__title" :title="selectedTask.name">
           {{ selectedTask.name }}
         </div>
+        <label class="gantt-inspector__field">
+          <span>Lifecycle stage</span>
+          <select
+            :value="selectedTask.lifecycleStage"
+            @change="onLifecycleStageChange(selectedTask.id, $event)"
+          >
+            <option v-for="stage in lifecycleStages" :key="stage.id" :value="stage.id">
+              {{ stage.label }}
+            </option>
+          </select>
+        </label>
         <label class="gantt-inspector__field">
           <span>Plan start</span>
           <select
@@ -116,7 +118,7 @@
         type="button"
         class="gantt-legend__all"
         :class="{ 'gantt-legend__all--active': allLanesVisible }"
-        title="Show Standard, Plan and Actual"
+        title="Show Plan and Actual"
         @click="showAllLanes"
       >
         All
@@ -207,137 +209,145 @@
           {{ week.timelineWeek }}
         </div>
 
-        <!-- Tasks: 3 sub-rows each (Standard / Plan / Actual) -->
-        <template v-for="(task, taskIndex) in displayTasks" :key="task.id">
+        <template v-for="group in displayGroups" :key="group.id">
           <div
-            class="gantt-cell gantt-cell--label gantt-cell--label-span gantt-row-band"
-            :class="{
-              'gantt-cell--label-clickable': editable,
-              'gantt-row--selected': isSelected(task.id),
-              'gantt-row--alt': taskIndex % 2 === 1
-            }"
-            :style="{ gridRow: `span ${laneSpan}` }"
-            :title="task.name"
-            @click="selectTask(task.id)"
+            class="gantt-cell gantt-cell--group"
+            :style="{ '--stage-color': group.color, gridColumn: '1 / -1' }"
           >
-            <div class="gantt-label__main">
-              <input
-                v-if="editable"
-                class="gantt-label__name"
-                type="text"
-                :value="task.name"
-                :aria-label="`Stage name: ${task.name}`"
+            <span class="gantt-cell--group__title">{{ group.label }}</span>
+            <span class="gantt-cell--group__count">{{ group.tasks.length }} items</span>
+          </div>
+          <template v-for="(task, taskIndex) in group.tasks" :key="task.id">
+            <div
+              class="gantt-cell gantt-cell--label gantt-cell--label-span gantt-row-band"
+              :class="{
+                'gantt-cell--label-clickable': editable,
+                'gantt-row--selected': isSelected(task.id),
+                'gantt-row--alt': taskIndex % 2 === 1
+              }"
+              :style="{ gridRow: `span ${laneSpan}` }"
+              :title="task.name"
+              @click="selectTask(task.id)"
+            >
+              <div class="gantt-label__main">
+                <input
+                  v-if="editable"
+                  class="gantt-label__name"
+                  type="text"
+                  :value="task.name"
+                  :aria-label="`Stage name: ${task.name}`"
+                  @click.stop
+                  @mousedown.stop
+                  @input="onStageNameInput(task.id, $event)"
+                />
+                <span v-else class="gantt-label__text">{{ task.name }}</span>
+              </div>
+              <div
+                v-if="editable || taskCommentCount(task) > 0"
+                class="gantt-label__actions"
                 @click.stop
                 @mousedown.stop
-                @input="onStageNameInput(task.id, $event)"
-              />
-              <span v-else class="gantt-label__text">{{ task.name }}</span>
-            </div>
-            <div
-              v-if="editable || taskCommentCount(task) > 0"
-              class="gantt-label__actions"
-              @click.stop
-              @mousedown.stop
-            >
-              <button
-                v-if="taskCommentCount(task) > 0"
-                type="button"
-                class="gantt-label__btn gantt-label__btn--comments"
-                :title="`View ${taskCommentCount(task)} Plan comment(s)`"
-                :aria-label="`View comments for ${task.name}`"
-                @click="emit('view-comments', { id: task.id })"
-              >
-                {{ taskCommentCount(task) }}
-              </button>
-              <template v-if="editable">
-                <button
-                  type="button"
-                  class="gantt-label__btn gantt-label__btn--add"
-                  title="Duplicate stage below (keeps Standard; Plan/Actual empty)"
-                  aria-label="Duplicate stage"
-                  @click="emit('duplicate-task', { id: task.id })"
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  class="gantt-label__btn gantt-label__btn--remove"
-                  title="Remove this stage"
-                  aria-label="Remove stage"
-                  :disabled="displayTasks.length <= 1"
-                  @click="emit('remove-task', { id: task.id })"
-                >
-                  −
-                </button>
-              </template>
-            </div>
-          </div>
-
-          <template v-for="lane in visibleTaskLanes" :key="`${task.id}-${lane.id}`">
-            <div
-              class="gantt-cell gantt-cell--type gantt-row-band"
-              :class="{
-                'gantt-row--selected': isSelected(task.id),
-                'gantt-row--alt': taskIndex % 2 === 1,
-                [`gantt-cell--type-${lane.id}`]: true
-              }"
-            >
-              {{ lane.rowLabel }}
-            </div>
-            <div
-              class="gantt-lane gantt-row-band"
-              :class="{
-                'gantt-lane--editable': editable && lane.id === 'plan',
-                'gantt-lane--selected': isSelected(task.id),
-                'gantt-row--alt': taskIndex % 2 === 1,
-                [`gantt-lane--${lane.id}`]: true
-              }"
-              :data-task-id="task.id"
-              :data-bar-type="lane.id"
-              :style="{ gridColumn: `span ${weeks.length}` }"
-              @mousedown="onLaneMouseDown($event, task, lane.id)"
-            >
-              <div
-                v-for="week in weeks"
-                :key="`${task.id}-${lane.id}-bg-${week.index}`"
-                class="gantt-lane__cell"
-                :class="{ 'gantt-lane__cell--today': isTodayWeek(week.index) }"
-              />
-              <div
-                v-if="laneRange(task, lane.id)"
-                class="gantt-bar"
-                :class="{
-                  'gantt-bar--selected': isSelected(task.id) && lane.id === 'plan',
-                  'gantt-bar--readonly': lane.id !== 'plan',
-                  [`gantt-bar--${lane.id}`]: true
-                }"
-                :style="barStyle(laneRange(task, lane.id), barColor(task, lane.id))"
-                :title="barTitle(task, lane.id)"
-                @mousedown.stop="onBarMouseDown($event, task, lane.id, 'move')"
               >
                 <button
-                  v-if="editable && lane.id === 'plan'"
+                  v-if="taskCommentCount(task) > 0"
                   type="button"
-                  class="gantt-bar__handle gantt-bar__handle--start"
-                  title="Drag to change Plan start week"
-                  aria-label="Resize Plan start"
-                  @mousedown.stop.prevent="onBarMouseDown($event, task, 'plan', 'resize-start')"
-                />
-                <span class="gantt-bar__label">
-                  {{ weekLabel(laneRange(task, lane.id).startWeek) }}–{{
-                    weekLabel(laneRange(task, lane.id).endWeek)
-                  }}
-                </span>
-                <button
-                  v-if="editable && lane.id === 'plan'"
-                  type="button"
-                  class="gantt-bar__handle gantt-bar__handle--end"
-                  title="Drag to change Plan end week"
-                  aria-label="Resize Plan end"
-                  @mousedown.stop.prevent="onBarMouseDown($event, task, 'plan', 'resize-end')"
-                />
+                  class="gantt-label__btn gantt-label__btn--comments"
+                  :title="`View ${taskCommentCount(task)} Plan comment(s)`"
+                  :aria-label="`View comments for ${task.name}`"
+                  @click="emit('view-comments', { id: task.id })"
+                >
+                  {{ taskCommentCount(task) }}
+                </button>
+                <template v-if="editable">
+                  <button
+                    type="button"
+                    class="gantt-label__btn gantt-label__btn--add"
+                    title="Duplicate stage below (keeps lifecycle stage; Plan/Actual empty)"
+                    aria-label="Duplicate stage"
+                    @click="emit('duplicate-task', { id: task.id })"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    class="gantt-label__btn gantt-label__btn--remove"
+                    title="Remove this stage"
+                    aria-label="Remove stage"
+                    :disabled="props.tasks.length <= 1"
+                    @click="emit('remove-task', { id: task.id })"
+                  >
+                    −
+                  </button>
+                </template>
               </div>
             </div>
+
+            <template v-for="lane in visibleTaskLanes" :key="`${task.id}-${lane.id}`">
+              <div
+                class="gantt-cell gantt-cell--type gantt-row-band"
+                :class="{
+                  'gantt-row--selected': isSelected(task.id),
+                  'gantt-row--alt': taskIndex % 2 === 1,
+                  [`gantt-cell--type-${lane.id}`]: true
+                }"
+              >
+                {{ lane.rowLabel }}
+              </div>
+              <div
+                class="gantt-lane gantt-row-band"
+                :class="{
+                  'gantt-lane--editable': editable && lane.id === 'plan',
+                  'gantt-lane--selected': isSelected(task.id),
+                  'gantt-row--alt': taskIndex % 2 === 1,
+                  [`gantt-lane--${lane.id}`]: true
+                }"
+                :data-task-id="task.id"
+                :data-bar-type="lane.id"
+                :style="{ gridColumn: `span ${weeks.length}` }"
+                @mousedown="onLaneMouseDown($event, task, lane.id)"
+              >
+                <div
+                  v-for="week in weeks"
+                  :key="`${task.id}-${lane.id}-bg-${week.index}`"
+                  class="gantt-lane__cell"
+                  :class="{ 'gantt-lane__cell--today': isTodayWeek(week.index) }"
+                />
+                <div
+                  v-if="laneRange(task, lane.id)"
+                  class="gantt-bar"
+                  :class="{
+                    'gantt-bar--selected': isSelected(task.id) && lane.id === 'plan',
+                    'gantt-bar--readonly': lane.id !== 'plan',
+                    [`gantt-bar--${lane.id}`]: true
+                  }"
+                  :style="barStyle(laneRange(task, lane.id), barColor(task, lane.id))"
+                  :title="barTitle(task, lane.id)"
+                  @mousedown.stop="onBarMouseDown($event, task, lane.id, 'move')"
+                >
+                  <button
+                    v-if="editable && lane.id === 'plan'"
+                    type="button"
+                    class="gantt-bar__handle gantt-bar__handle--start"
+                    title="Drag to change Plan start week"
+                    aria-label="Resize Plan start"
+                    @mousedown.stop.prevent="onBarMouseDown($event, task, 'plan', 'resize-start')"
+                  />
+                  <span class="gantt-bar__label">
+                    {{ weekLabel(laneRange(task, lane.id).startWeek) }}–{{
+                      weekLabel(laneRange(task, lane.id).endWeek)
+                    }}
+                  </span>
+                  <button
+                    v-if="editable && lane.id === 'plan'"
+                    type="button"
+                    class="gantt-bar__handle gantt-bar__handle--end"
+                    title="Drag to change Plan end week"
+                    aria-label="Resize Plan end"
+                    @mousedown.stop.prevent="onBarMouseDown($event, task, 'plan', 'resize-end')"
+                  />
+                </div>
+              </div>
+            </template>
           </template>
         </template>
       </div>
@@ -349,16 +359,11 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
   projectGanttBarTypes,
-  projectGanttFieldLabels
+  projectGanttFieldLabels,
+  projectGanttLifecycleStages
 } from '../data/projectGanttFixture.js'
 
 const COL_WIDTH_STORAGE_KEY = 'ae-wpm-project-gantt-col-widths'
-
-const summaryFields = [
-  { key: 'region', type: 'text', color: '#0070C0', locked: true },
-  { key: 'area', type: 'text', color: '#2088A8', locked: true },
-  { key: 'total', type: 'number', color: '#6E6E6E' }
-]
 
 const DEFAULT_COL_WIDTHS = {
   label: 360,
@@ -373,15 +378,13 @@ const MIN_COL_WIDTHS = {
 }
 
 const LANE_ROW_LABELS = {
-  standard: 'Standard',
   plan: 'Plan',
   actual: 'Actual'
 }
 
-const ALL_LANE_IDS = ['standard', 'plan', 'actual']
+const ALL_LANE_IDS = ['plan', 'actual']
 
 const taskLanes = [
-  { id: 'standard', rowLabel: LANE_ROW_LABELS.standard },
   { id: 'plan', rowLabel: LANE_ROW_LABELS.plan },
   { id: 'actual', rowLabel: LANE_ROW_LABELS.actual }
 ]
@@ -421,32 +424,25 @@ const props = defineProps({
     type: Object,
     default: () => projectGanttFieldLabels
   },
-  meta: {
-    type: Object,
-    default: () => ({
-      region: '',
-      area: '',
-      total: ''
-    })
-  },
+  lifecycleStages: { type: Array, default: () => projectGanttLifecycleStages },
   todayWeek: { type: Number, default: 1 },
   editable: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
   'update-task',
-  'update-meta',
   'duplicate-task',
   'remove-task',
   'view-comments'
 ])
 
 const selectedTaskId = ref('')
+const selectedLifecycleStage = ref('')
 const drag = ref(null)
 const preview = ref(null)
 const colWidths = ref(loadColWidths())
 const colResize = ref(null)
-/** Which Standard / Plan / Actual rows are visible (multi-select). */
+/** Which Plan / Actual rows are visible (multi-select). */
 const visibleLaneIds = ref([...ALL_LANE_IDS])
 
 const visibleTaskLanes = computed(() =>
@@ -520,9 +516,33 @@ const displayTasks = computed(() => {
   )
 })
 
+const filteredTasks = computed(() =>
+  selectedLifecycleStage.value
+    ? displayTasks.value.filter(
+        (task) => task.lifecycleStage === selectedLifecycleStage.value
+      )
+    : displayTasks.value
+)
+
+const displayGroups = computed(() =>
+  props.lifecycleStages
+    .filter(
+      (stage) =>
+        !selectedLifecycleStage.value || stage.id === selectedLifecycleStage.value
+    )
+    .map((stage) => ({
+      ...stage,
+      tasks: filteredTasks.value.filter((task) => task.lifecycleStage === stage.id)
+    }))
+    .filter((stage) => stage.tasks.length)
+)
+
+const stageTaskCount = (stageId) =>
+  props.tasks.filter((task) => task.lifecycleStage === stageId).length
+
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null
-  return displayTasks.value.find((task) => task.id === selectedTaskId.value) || null
+  return filteredTasks.value.find((task) => task.id === selectedTaskId.value) || null
 })
 
 const selectedDuration = computed(() => {
@@ -544,7 +564,6 @@ const weekLabel = (weekIndex) => {
 }
 
 const laneRange = (task, barTypeId) => {
-  if (barTypeId === 'standard') return task.standard || null
   if (barTypeId === 'plan') return task.plan || null
   if (barTypeId === 'actual') return task.actual || null
   return null
@@ -553,7 +572,6 @@ const laneRange = (task, barTypeId) => {
 const barTypeColor = (barTypeId, late = false) => {
   const meta = barTypeById.value.get(barTypeId)
   if (!meta) {
-    if (barTypeId === 'standard') return '#8E9BA8'
     if (barTypeId === 'plan') return '#1E8BB5'
     return late ? '#E57F90' : '#6DBF80'
   }
@@ -606,28 +624,10 @@ const selectTask = (taskId) => {
   selectedTaskId.value = taskId
 }
 
-const metaValue = (key) => {
-  const value = props.meta?.[key]
-  return value == null ? '' : String(value)
-}
-
-const readInputValue = (event) => event?.target?.value ?? event?.detail?.value ?? ''
-
-const onMetaInput = (key, type, event) => {
-  if (!props.editable) return
-  const field = summaryFields.find((row) => row.key === key)
-  if (field?.locked) return
-  const raw = readInputValue(event)
-  if (type === 'number') {
-    if (raw === '') {
-      emit('update-meta', { key, value: '' })
-      return
-    }
-    const number = Number(raw)
-    emit('update-meta', { key, value: Number.isFinite(number) ? number : raw })
-    return
-  }
-  emit('update-meta', { key, value: raw })
+const onLifecycleStageChange = (taskId, event) => {
+  const lifecycleStage = String(event.target.value || '')
+  if (!props.lifecycleStages.some((stage) => stage.id === lifecycleStage)) return
+  emit('update-task', { id: taskId, lifecycleStage })
 }
 
 const weekFromClientX = (clientX, laneEl) => {
@@ -870,6 +870,64 @@ onUnmounted(() => {
   color: var(--ink);
 }
 
+.gantt-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.gantt-lifecycle__card {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-height: 92px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--stage-color, #0b1f33);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.gantt-lifecycle__card:hover {
+  border-color: var(--stage-color, #0b1f33);
+  box-shadow: var(--shadow);
+}
+
+.gantt-lifecycle__card--active {
+  border-color: var(--stage-color, #0b1f33);
+  background: color-mix(in srgb, var(--stage-color, #0b1f33) 7%, white);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--stage-color, #0b1f33) 18%, transparent);
+}
+
+.gantt-lifecycle__card--all {
+  --stage-color: #0b1f33;
+}
+
+.gantt-lifecycle__number {
+  color: var(--stage-color, #0b1f33);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gantt-lifecycle__name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gantt-lifecycle__count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .gantt-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1089,143 +1147,6 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-.gantt-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
-  box-shadow: var(--shadow);
-}
-
-.gantt-summary__cue {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 4px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(0, 112, 192, 0.08);
-  color: #0070c0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-.gantt-summary__cue-icon {
-  font-size: 12px;
-  line-height: 1;
-}
-
-.gantt-summary__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid var(--line-soft);
-  font-size: 12px;
-  color: var(--ink-soft);
-  font-weight: 500;
-}
-
-.gantt-summary__item--editable {
-  cursor: text;
-}
-
-.gantt-summary__item--editable:hover {
-  border-color: rgba(0, 112, 192, 0.45);
-  background: #f5fafe;
-}
-
-.gantt-summary__item--editable:focus-within {
-  border-color: #0070c0;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(0, 112, 192, 0.14);
-}
-
-.gantt-summary__item--locked {
-  cursor: default;
-}
-
-.gantt-summary__item--locked .gantt-summary__value {
-  border-style: solid;
-  border-color: rgba(22, 22, 22, 0.1);
-  background: rgba(22, 22, 22, 0.03);
-  max-width: 16rem;
-}
-
-.gantt-summary__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
-}
-
-.gantt-summary__name {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.gantt-summary__value {
-  min-width: 3.25rem;
-  max-width: 9rem;
-  margin: 0;
-  padding: 3px 8px;
-  border: 1px dashed rgba(0, 112, 192, 0.35);
-  border-radius: 999px;
-  background: rgba(0, 112, 192, 0.06);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
-  line-height: 1.2;
-  outline: none;
-  transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
-}
-
-.gantt-summary__item--editable .gantt-summary__value:hover {
-  border-color: #0070c0;
-  background: rgba(0, 112, 192, 0.1);
-}
-
-.gantt-summary__item--editable .gantt-summary__value:focus {
-  border-style: solid;
-  border-color: #0070c0;
-  background: #fff;
-  box-shadow: 0 0 0 2px rgba(0, 112, 192, 0.16);
-}
-
-.gantt-summary__value::placeholder {
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.gantt-summary__value[readonly] {
-  cursor: default;
-  pointer-events: none;
-  border-color: transparent;
-  background: transparent;
-}
-
-.gantt-summary__value[type='number'] {
-  font-variant-numeric: tabular-nums;
-  -moz-appearance: textfield;
-}
-
-.gantt-summary__value[type='number']::-webkit-outer-spin-button,
-.gantt-summary__value[type='number']::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
 .gantt-scroll {
   overflow-x: auto;
   overflow-y: visible;
@@ -1257,6 +1178,28 @@ onUnmounted(() => {
   min-height: 28px;
   font-size: 10px;
   line-height: 1.15;
+}
+
+.gantt-cell--group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid var(--stage-color);
+  background: color-mix(in srgb, var(--stage-color) 8%, white);
+  color: var(--ink);
+}
+
+.gantt-cell--group__title {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gantt-cell--group__count {
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .gantt-cell--head,
@@ -1455,10 +1398,6 @@ onUnmounted(() => {
   border-right: 1px dashed rgba(148, 163, 184, 0.45);
 }
 
-.gantt-cell--type-standard {
-  color: #7a8794;
-}
-
 .gantt-cell--type-plan {
   color: #1a8bb0;
 }
@@ -1613,11 +1552,6 @@ onUnmounted(() => {
 }
 
 .gantt-bar--actual .gantt-bar__label {
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 63, 110, 0.35);
-}
-
-.gantt-bar--standard .gantt-bar__label {
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 63, 110, 0.35);
 }

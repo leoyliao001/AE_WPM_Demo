@@ -17,6 +17,8 @@ from api.models import MigrationIntakeSubmission, ProjectGanttPlan
 from api.permissions.attributes_access import require_attributes_access
 from api.views.project_gantt import (
     BAR_TYPE_META,
+    DEFAULT_LIFECYCLE_STAGE_BY_TASK_ID,
+    LIFECYCLE_STAGE_IDS,
     META_NUMBER_KEYS,
     META_TEXT_KEYS,
     MAX_WEEK,
@@ -29,8 +31,7 @@ from api.views.project_gantt import (
 TASK_COLUMNS = [
     ("task_id", "Task ID"),
     ("name", "Task Name"),
-    ("standardStartWeek", "Standard Start"),
-    ("standardEndWeek", "Standard End"),
+    ("lifecycleStage", "Lifecycle Stage"),
     ("planStartWeek", "Plan Start"),
     ("planEndWeek", "Plan End"),
     ("actualStartWeek", "Actual Start"),
@@ -66,8 +67,7 @@ def _serialize_task_row(task: dict) -> dict:
         "id": str(task.get("id") or ""),
         "task_id": str(task.get("id") or ""),
         "name": str(task.get("name") or ""),
-        "standardStartWeek": _range_value(task, "standard", "startWeek"),
-        "standardEndWeek": _range_value(task, "standard", "endWeek"),
+        "lifecycleStage": str(task.get("lifecycleStage") or "initiate"),
         "planStartWeek": _range_value(task, "plan", "startWeek"),
         "planEndWeek": _range_value(task, "plan", "endWeek"),
         "actualStartWeek": _range_value(task, "actual", "startWeek"),
@@ -168,30 +168,19 @@ def _normalize_task_rows(raw_tasks) -> list[dict]:
 
         completed_at = str(item.get("completedAt") or "").strip() or None
 
-        # Optional Standard for custom / duplicated stages
-        standard = None
-        std_start_raw = item.get("standardStartWeek")
-        std_end_raw = item.get("standardEndWeek")
-        if std_start_raw not in (None, "") or std_end_raw not in (None, ""):
-            s_start = _parse_week(
-                std_start_raw if std_start_raw not in (None, "") else std_end_raw,
-                f"Task {task_id} Standard Start",
-            )
-            s_end = _parse_week(
-                std_end_raw if std_end_raw not in (None, "") else s_start,
-                f"Task {task_id} Standard End",
-            )
-            if s_start > s_end:
-                s_start, s_end = s_end, s_start
-            standard = {"startWeek": s_start, "endWeek": s_end}
+        lifecycle_stage = str(item.get("lifecycleStage") or "").strip()
+        if not lifecycle_stage:
+            lifecycle_stage = DEFAULT_LIFECYCLE_STAGE_BY_TASK_ID.get(task_id, "initiate")
+        if lifecycle_stage not in LIFECYCLE_STAGE_IDS:
+            raise ValueError(f"Task {task_id}: invalid Lifecycle Stage.")
 
         payload = {
             "id": task_id,
             "name": name,
+            "lifecycleStage": lifecycle_stage,
             "plan": plan,
             "actual": actual,
             "completedAt": completed_at,
-            "standard": standard,
         }
         normalized.append(payload)
 
