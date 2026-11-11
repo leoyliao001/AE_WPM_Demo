@@ -1,0 +1,99 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>WPM Pulse – Phase Gantt</title>
+<style>
+*{box-sizing:border-box;font-family:"Segoe UI",Arial,sans-serif}body{margin:0;background:#f5f8fb;color:#0b1f33}
+.top{background:#fff;border-bottom:1px solid #e3e9ef;padding:12px 28px;display:flex;align-items:center;gap:10px}
+.logo{font-weight:800;color:#0b1f33;letter-spacing:1px}.logo span{background:#42b0d5;color:#fff;padding:2px 7px;border-radius:4px;margin-right:6px}
+.wrap{padding:20px 28px}h1{margin:4px 0 2px;font-size:26px}.sub{color:#5a6b7c;font-size:13px}
+.card{background:#fff;border:1px solid #e3e9ef;border-radius:12px;padding:16px;margin-top:16px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+select{padding:9px 12px;border:1px solid #c9d4de;border-radius:8px;font-size:14px;min-width:340px;background:#fff}
+label{font-size:12px;color:#5a6b7c;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.chips{margin-left:auto;display:flex;gap:8px}.chip{background:#eef4f8;border-radius:16px;padding:5px 12px;font-size:12px}
+.phases{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.pb{border:1px solid #e3e9ef;border-radius:10px;padding:12px;cursor:pointer;background:#fff;transition:.15s;border-top:4px solid var(--c)}
+.pb:hover{box-shadow:0 4px 14px rgba(0,0,0,.08)}.pb.on{background:var(--c);color:#fff}
+.pb .n{font-size:11px;opacity:.7}.pb .t{font-weight:700;font-size:14px}.pb .p{font-size:12px;margin-top:6px}
+.bar{height:5px;background:#e3e9ef;border-radius:3px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--c)}
+.pb.on .bar{background:rgba(255,255,255,.35)}.pb.on .bar i{background:#fff}
+.legend{display:flex;gap:14px;font-size:12px;color:#5a6b7c}.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:4px}
+.gantt{overflow:auto;margin-top:12px;border:1px solid #e3e9ef;border-radius:10px}
+table{border-collapse:collapse;width:max-content;min-width:100%}
+th,td{border-right:1px solid #eef2f5;font-size:12px;height:34px;padding:0}
+th{background:#0b1f33;color:#fff;position:sticky;top:0;min-width:42px;font-weight:600}
+td.name,th.name{position:sticky;left:0;background:#fff;min-width:300px;text-align:left;padding:0 12px;z-index:2;border-right:2px solid #e3e9ef}
+th.name{background:#0b1f33;z-index:3}td.st{position:sticky;left:300px;background:#fff;min-width:90px;padding:0 8px;z-index:2}
+tr.grp td{background:#f0f5f9;font-weight:700;height:30px}tr.grp td.name{background:#f0f5f9}
+tr:not(.grp):hover td{background:#fafcfd}
+.cell{position:relative}.b{position:absolute;top:8px;height:18px;border-radius:9px;color:#fff;font-size:10px;line-height:18px;padding:0 8px;white-space:nowrap;overflow:hidden;z-index:1}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.s{font-size:11px;padding:2px 8px;border-radius:10px}.Secured{background:#dff3ea;color:#127a4a}.Prog{background:#fff2d9;color:#a96800}.Not{background:#f1f3f5;color:#6b7785}
+.today{position:absolute;top:0;bottom:0;width:2px;background:#e0004d;left:0;z-index:1}
+.tg{display:flex;border:1px solid #c9d4de;border-radius:8px;overflow:hidden;margin-left:16px}
+.tg button{border:0;background:#fff;padding:6px 12px;font-size:12px;cursor:pointer}.tg button.on{background:#0b1f33;color:#fff}
+td.lbl{position:sticky;left:390px;background:#fff;min-width:60px;padding:0 8px;font-size:11px;font-weight:600;z-index:2;border-right:2px solid #e3e9ef}
+td.lbl.p{color:#0073ab}td.lbl.a{color:#2fa36b}tr.pl td{height:26px}tr.ac td{height:26px;border-bottom:1px solid #e3e9ef}
+tr.pl .b,tr.ac .b{top:5px;height:16px;line-height:16px}.var{font-size:10px;margin-left:4px}.late{color:#d0355f}.ok{color:#127a4a}
+</style></head><body>
+<div class="top"><div class="logo"><span>✶</span>MAERSK</div><div style="margin-left:auto;font-size:13px;color:#5a6b7c">WPM Pulse · Gantt</div></div>
+<div class="wrap">
+<div class="sub">Gantt</div><h1>Gantt — [TEST SWARUP 050] Indonesia - General LCL</h1>
+<div class="sub">Region APA · Area SEA · Calendar weeks start at Wk46</div>
+<div class="card"><div class="row"><div><label>Project phase</label><br><select id="proj"></select></div><div class="chips" id="chips"></div></div></div>
+<div class="card"><label>Lifecycle stages</label><div class="phases" id="phases" style="margin-top:8px"></div></div>
+<div class="card"><div class="row"><b id="gt">Artefact timeline</b>
+<div class="tg" id="tg"><button data-v="both" class="on">Plan + Actual</button><button data-v="plan">Plan</button><button data-v="act">Actual</button></div>
+<div class="legend" style="margin-left:auto"><span><i class="sw" style="background:#0073ab"></i>Plan</span><span><i class="sw" style="background:#2fa36b"></i>Actual – on time</span><span><i class="sw" style="background:#e8708f"></i>Actual – late</span><span><i class="sw" style="background:#f0a020"></i>In progress</span><span><i class="sw" style="background:#e0004d;width:3px"></i>Today</span></div></div>
+<div class="gantt"><table id="g"></table></div></div>
+</div>
+<script>
+const ST=[{k:"Initiate",d:"Authorise & define",c:"#1f78d1"},{k:"Plan",d:"Build the roadmap",c:"#14a3a3"},{k:"Execute",d:"Do the work",c:"#7a5af8"},{k:"Monitor & Control",d:"Track & correct",c:"#5f9b2d"},{k:"Close & Realize Value",d:"Finalise & learn",c:"#0b5fa5"}];
+const ART=[["Opportunity Assessment/Task details","Business Case","Scope Statement","Stakeholder Registration","Project Charter","People Consultation & Compliance","Resources","Access & Enablement Requirements","Business Impact Analysis","Gantt","Approvals"],
+["Knowledge Transfer","Baseline & KPIs","Gantt","RAID & Action Tracker"],
+["Resources","Access & Enablement Requirements","Business Impact Analysis","Knowledge Transfer","Baseline & KPIs","RAID & Action Tracker"],
+["BAU Control Methodology","Baseline & KPIs","Business Impact Analysis","Gantt","RAID & Action Tracker"],
+["Lessons Learned","Resources","Gantt","RAID & Action Tracker"]];
+const STS=["Secured","Not started","Secured","Secured","In progress","Not started","In progress","In progress","In progress","Secured","Not started"];
+const PH=[{n:"Phase 1 – Wave 1 (Jakarta)",o:0},{n:"Phase 2 – Wave 2 (Surabaya)",o:12},{n:"Phase 3 – Wave 3 (Medan)",o:22}];
+const WEEKS=48,startWk=46,TODAY=8,W=42;let sel="all",stage=-1,view="both";
+const STAGE_OFF=[0,5,8,8,26],STAGE_LEN=[2,3,10,14,3],STEP=[0.6,1,1.5,0,1];
+function wk(i){return "Wk"+((startWk+i-1)%53+1)}
+function build(p,pi){let rows=[];ART.forEach((a,s)=>a.forEach((x,j)=>{
+ let ps=Math.round(p.o+STAGE_OFF[s]+j*STEP[s]),pl=STAGE_LEN[s];
+ let status=pi==0&&s==0?STS[j]:pi==0&&s==1&&j<2?"Secured":pi==0&&s==1?"In progress":"Not started";
+ let as=null,al=null;
+ if(status=="Secured"){as=ps+(j%3==0?1:0);al=pl+(j%2)}
+ if(status=="In progress"){as=ps+1;al=Math.max(1,TODAY-as)}
+ rows.push({s,name:x,ps,pl,as,al,status})}));return rows}
+const DATA=PH.map(build);
+const proj=document.getElementById("proj");proj.innerHTML='<option value="all">Overall timeline – all phases</option>'+PH.map((p,i)=>`<option value="${i}">${p.n}</option>`).join("");
+proj.onchange=()=>{sel=proj.value;render()};
+document.querySelectorAll("#tg button").forEach(b=>b.onclick=()=>{view=b.dataset.v;document.querySelectorAll("#tg button").forEach(x=>x.classList.toggle("on",x==b));render()});
+function prog(rows,s){let r=rows.filter(x=>x.s==s);return r.length?Math.round(r.filter(x=>x.status=="Secured").length/r.length*100):0}
+function cells(bar){return Array.from({length:WEEKS},(_,i)=>`<td class="cell">${i==TODAY?'<div class="today"></div>':""}${bar&&i==bar.a?`<div class="b" title="${bar.t}" style="left:2px;width:${bar.l*W-4}px;background:${bar.c}">${bar.t}</div>`:""}</td>`).join("")}
+function actColor(r){if(r.status=="In progress")return "#f0a020";return (r.as+r.al)>(r.ps+r.pl)?"#e8708f":"#2fa36b"}
+function variance(r){if(r.as==null)return "";if(r.status=="In progress")return `<span class="var" style="color:#a96800">ongoing</span>`;let d=(r.as+r.al)-(r.ps+r.pl);return d>0?`<span class="var late">+${d}w late</span>`:`<span class="var ok">on time</span>`}
+function pair(name,st,r){let h="",span=view=="both"?2:1;
+ if(view!="act")h+=`<tr class="pl"><td class="name" rowspan="${span}">${name}</td><td class="st" rowspan="${span}">${st}</td><td class="lbl p">Plan</td>${cells({a:r.ps,l:r.pl,c:"#0073ab",t:wk(r.ps+1)+"–"+wk(r.ps+r.pl)})}</tr>`;
+ if(view!="plan")h+=`<tr class="ac">${view=="act"?`<td class="name">${name}</td><td class="st">${st}</td>`:""}<td class="lbl a">Actual${variance(r)}</td>${cells(r.as!=null?{a:r.as,l:r.al,c:actColor(r),t:wk(r.as+1)+"–"+wk(r.as+r.al)}:null)}</tr>`;
+ return h}
+function grp(t){return `<tr class="grp"><td class="name">${t}</td><td class="st"></td><td class="lbl"></td>${cells()}</tr>`}
+function render(){
+ let idx=sel=="all"?PH.map((_,i)=>i):[+sel];let all=idx.flatMap(i=>DATA[i]);
+ let late=all.filter(r=>r.status=="Secured"&&(r.as+r.al)>(r.ps+r.pl)).length;
+ document.getElementById("chips").innerHTML=`<span class="chip">${idx.length} phase(s)</span><span class="chip">${all.length} artefacts</span><span class="chip">${all.filter(r=>r.status=="Secured").length} secured</span><span class="chip" style="background:#fde8ee;color:#d0355f">${late} late</span>`;
+ document.getElementById("phases").innerHTML=`<div class="pb ${stage<0?"on":""}" style="--c:#0b1f33" onclick="stage=-1;render()"><div class="n">ALL</div><div class="t">All stages</div><div class="p">${all.length} artefacts</div></div>`+
+ ST.map((s,i)=>{let p=Math.round(idx.reduce((a,k)=>a+prog(DATA[k],i),0)/idx.length);return `<div class="pb ${stage==i?"on":""}" style="--c:${s.c}" onclick="stage=${i};render()"><div class="n">0${i+1} · ${s.d}</div><div class="t">${s.k}</div><div class="p">${p}% · ${ART[i].length} artefacts</div><div class="bar"><i style="width:${p}%"></i></div></div>`}).join("");
+ document.getElementById("gt").textContent=(sel=="all"?"Overall timeline":PH[sel].n)+(stage<0?"":" · "+ST[stage].k);
+ let h=`<tr><th class="name">Artefact</th><th class="name" style="left:300px;min-width:90px">Status</th><th class="name" style="left:390px;min-width:60px"></th>${Array.from({length:WEEKS},(_,i)=>`<th>${wk(i+1)}</th>`).join("")}</tr>`;
+ if(sel=="all"&&stage<0){
+  idx.forEach(i=>{h+=grp(PH[i].n);ST.forEach((s,k)=>{let r=DATA[i].filter(x=>x.s==k),a=Math.min(...r.map(x=>x.ps)),b=Math.max(...r.map(x=>x.ps+x.pl));
+   let ar=r.filter(x=>x.as!=null),sum={ps:a,pl:b-a,as:null,al:null,status:"Not started"};
+   if(ar.length){let aa=Math.min(...ar.map(x=>x.as)),ab=Math.max(...ar.map(x=>x.as+x.al));sum.as=aa;sum.al=ab-aa;sum.status=ar.length==r.length&&ar.every(x=>x.status=="Secured")?"Secured":"In progress"}
+   h+=pair(`<span class="dot" style="background:${s.c}"></span>${s.k}`,`<span class="s Not">${prog(DATA[i],k)}%</span>`,sum)})})
+ }else{
+  idx.forEach(i=>{if(idx.length>1)h+=grp(PH[i].n);
+   ST.forEach((s,k)=>{if(stage>=0&&stage!=k)return;h+=grp(`<span class="dot" style="background:${s.c}"></span>0${k+1} ${s.k}`);
+    DATA[i].filter(x=>x.s==k).forEach(r=>h+=pair(r.name,`<span class="s ${r.status.split(" ")[0].replace("In","Prog")}">${r.status}</span>`,r))})})}
+ document.getElementById("g").innerHTML=h}
+render();
+</script></body></html>
