@@ -12,7 +12,7 @@ from api.models import AccessEnablement, ApprovalWorkflow, BusinessCase, Migrati
 from api.permissions.attributes_access import build_access_snapshot, get_request_email, normalize_email
 from api.services.business_case import approval_progress, build_business_case, case_status, online_case_is_approved
 from api.services.project_artefacts import (
-    AREA_FIELDS, BARRIER_TYPES, EXECUTION_FIELDS, HIRING_STATUSES, HIRING_TYPES,
+    AREA_FIELDS, BARRIER_TYPES, EXECUTION_FIELDS, HIRING_STATUSES, HIRING_TYPES, JOB_LEVELS,
     HR_FIELDS, IT_ITEMS, LANGUAGES, SYSTEM_CATALOGUE, access_summary, date_value,
     integer, project_permissions, resource_ready, resource_sites, rows_list, scope_source, text,
 )
@@ -79,7 +79,7 @@ def _serialize(project, record, kind, email):
     return result
 
 
-def _resource_rows(payload, record, permissions, action, email):
+def _resource_rows(payload, record, permissions, action, email, source):
     raw = rows_list(payload.get("rows", record.rows if record else []), "Resources")
     previous = {row["id"]: row for row in (record.rows if record else [])}
     if not permissions["edit"] and set(previous) != {row["id"] for row in raw}:
@@ -93,6 +93,10 @@ def _resource_rows(payload, record, permissions, action, email):
         for field in EXECUTION_FIELDS + AREA_FIELDS + HR_FIELDS:
             value = row.get(field, "")
             normalized[field] = date_value(value, field) if field.endswith("Date") or field.endswith("Doj") else text(value, field)
+        if normalized["jobLevel"] and normalized["jobLevel"] not in JOB_LEVELS:
+            raise ValueError("Choose JL1, JL2, JL3 or JL4 for each resource.")
+        if normalized["jobLevel"] == "JL4" and not source["finalFteByLevel"].get("JL4") and old.get("jobLevel") != "JL4":
+            raise ValueError("JL4 is unavailable because Scope has no positive JL4 final agreement.")
         if normalized["hiringType"] not in HIRING_TYPES:
             raise ValueError("Choose Efficiency, Backfill, External or IJP for each resource.")
         if normalized["language"] and normalized["language"] not in LANGUAGES:
@@ -276,7 +280,7 @@ def project_artefact(request, project_id, kind):
                 if kind == "access_enablement":
                     record.it_confirmation = {}
             elif kind == "resources":
-                rows = _resource_rows(payload, record, permissions, action, email)
+                rows = _resource_rows(payload, record, permissions, action, email, source)
                 if any(row["site"] and row["site"] not in resource_sites(project) for row in rows):
                     raise ValueError("Choose a GSC site from the project or site catalogue.")
                 if action == "submit" and not resource_ready(rows, source):

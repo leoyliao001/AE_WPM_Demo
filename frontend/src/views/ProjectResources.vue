@@ -18,15 +18,16 @@
           <div class="pa-project-meta"><strong>{{ record.projectName }}</strong><span>{{ record.migrationRequestId }}</span><span>{{ record.products.join(', ') || 'No product' }} / {{ record.region }}</span><span>{{ dirty ? 'Unsaved changes' : record.updatedAt ? `Last saved ${dateTime(record.updatedAt)}` : 'Not yet saved' }}</span></div>
           <div class="pa-tabs" role="tablist" aria-label="Resource views"><button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" @click="tab = item.id">{{ item.label }}</button></div>
           <div class="pa-metrics">
-            <article v-for="metric in metrics" :key="metric.label" class="pa-metric" :class="{ 'pa-metric--risk': metric.risk && metric.value > 0 }">
-              <span class="pa-metric-label">{{ metric.label }}<mc-icon class="pa-metric-info" icon="mi-information" size="14" :title="metric.note" :aria-label="metric.note" role="img" /></span><strong>{{ metric.value }}</strong>
+            <article v-for="metric in metrics" :key="metric.label" class="pa-metric" :class="[`pa-metric--${metric.tone}`, { 'pa-metric--risk': metric.risk && metric.value > 0 }]">
+              <span class="pa-metric-icon" aria-hidden="true"><mc-icon :icon="metric.icon" color="var(--pa-metric-accent)" size="24" /></span>
+              <div class="pa-metric-content"><span class="pa-metric-label">{{ metric.label }}<mc-icon class="pa-metric-info" icon="mi-information" size="14" :title="metric.note" :aria-label="metric.note" role="img" /></span><strong>{{ metric.value }}</strong></div>
             </article>
             <article class="pa-jl-card" aria-label="Job level scope summary">
               <h2 class="pa-jl-card__title">JL</h2>
               <div class="pa-jl-card__levels">
                 <div v-for="level in jlSummary" :key="level.name" class="pa-jl-card__level" :class="`pa-jl-card__level--${level.tone}`">
                   <span>{{ level.name }}</span>
-                  <strong>{{ level.selected }}<span>/{{ level.total }}</span></strong>
+                  <strong>{{ level.selected }}<span>/{{ level.total ?? '—' }}</span></strong>
                 </div>
               </div>
               <p class="pa-jl-card__caption">Selected / Scope Statement</p>
@@ -60,11 +61,22 @@
             <tbody><tr v-for="row in visibleRows" :key="row.id">
               <td class="pa-column--select"><input v-model="selected" type="checkbox" :value="row.id" :aria-label="`Select position ${row.gscPid || row.id}`" /></td>
               <td v-for="column in columns" :key="column.key" :class="`pa-column--${column.key}`">
-                <mc-select v-if="column.options && cellEditable(row, column.key)" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
-                  <mc-option value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :value="option">{{ option }}</mc-option>
+                <template v-if="column.key === 'hiringStatus' && tab === 'execution'">
+                  <select v-if="activeHiringStatusId === row.id" v-model="row.hiringStatus" aria-label="Hiring Status" @change="activeHiringStatusId = ''" @blur="activeHiringStatusId = ''">
+                    <option v-for="status in record.hiringStatuses" :key="status" :value="status">{{ status }}</option>
+                  </select>
+                  <button v-else type="button" class="pa-status pa-hiring-status" :class="{
+                    'pa-status--at_risk': row.hiringStatus === 'At Risk',
+                    'pa-status--confirmed': row.hiringStatus === 'Onboarded',
+                    'pa-status--in_progress': row.hiringStatus === 'In Progress',
+                    'pa-status--pending': row.hiringStatus === 'Pending',
+                    'pa-status--not_applicable': row.hiringStatus === 'Not Applicable',
+                  }" :disabled="!canEdit || row.hiringType === 'Efficiency'" @click="editHiringStatus(row)">{{ row.hiringStatus }}</button>
+                </template>
+                <mc-select v-else-if="column.options && cellEditable(row, column.key)" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
+                  <mc-option value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :value="option" :disabled="column.key === 'jobLevel' && option === 'JL4' && !jl4Available">{{ option }}</mc-option>
                 </mc-select>
                 <input v-else-if="cellEditable(row, column.key)" v-model="row[column.key]" :type="column.date ? 'date' : 'text'" :aria-label="column.label" maxlength="500" />
-                <span v-else-if="column.key === 'hiringStatus'" class="pa-status" :class="{ 'pa-status--at_risk': row.hiringStatus === 'At Risk', 'pa-status--confirmed': row.hiringStatus === 'Onboarded' }">{{ row.hiringStatus }}</span>
                 <span v-else>{{ row[column.key] || '—' }}</span>
               </td>
               <td class="pa-column--action"><span v-if="tab === 'area'" class="pa-status">{{ row.areaLockedAt ? 'Submitted' : 'Draft' }}</span><button v-else-if="tab === 'execution'" class="pa-text-button" :disabled="!canEdit || !!row.areaLockedAt" @click="removeRow(row)">Remove</button><span v-else>Synced to Execution</span></td>
@@ -102,6 +114,7 @@ const selected = ref([])
 const reason = ref('')
 const areaReason = ref('')
 const fileInput = ref(null)
+const activeHiringStatusId = ref('')
 const canEdit = computed(() => editable.value && record.value.permissions.edit)
 const canEditArea = computed(() => editable.value && record.value.permissions.area)
 const sites = computed(() => [...new Set([...(record.value?.sites || []), ...(record.value?.rows || []).map(row => row.site)].filter(Boolean))])
@@ -113,30 +126,36 @@ const approvedFtes = computed(() => record.value?.businessCase?.locked ? record.
 const countRows = (rows, predicate) => rows.filter(predicate).length
 const onboarded = rows => countRows(rows, row => row.actualDoj && row.apmmId)
 const atRisk = rows => countRows(rows, row => row.hiringStatus === 'At Risk')
-const jlSummary = [
-  { name: 'JL1', selected: 3, total: 5, tone: 'warm' },
-  { name: 'JL2', selected: 4, total: 4, tone: 'cool' },
-  { name: 'JL3', selected: 2, total: 1, tone: 'warm' },
-  { name: 'JL4', selected: 1, total: 0, tone: 'warm' },
-]
+const jobLevels = ['JL1', 'JL2', 'JL3', 'JL4']
+const scopeFinalFteByLevel = computed(() => record.value?.source?.finalFteByLevel || {})
+const jl4Available = computed(() => Number(scopeFinalFteByLevel.value.JL4) > 0)
+const jlSummary = computed(() => jobLevels.map((name, index) => ({
+  name,
+  selected: countRows(resourceRows.value, row => row.jobLevel === name),
+  total: scopeFinalFteByLevel.value[name] ?? null,
+  tone: index === 1 ? 'cool' : 'warm',
+})))
 const metricCards = {
   execution: () => [
     {
       label: 'Approved FTEs',
       value: approvedFtes.value ?? '—',
       note: approvedFtes.value != null ? 'Population from the locked Business Case' : 'Locked Business Case population',
+      icon: 'mi-people', tone: 'green',
     },
     {
       label: 'Efficiency/Backfill',
       value: `${countRows(executionRows.value, row => row.hiringType === 'Efficiency')} / ${countRows(executionRows.value, row => row.hiringType === 'Backfill')}`,
       note: 'Execution rows counted by Hiring Type: Efficiency / Backfill',
+      icon: 'mi-lightning', tone: 'teal',
     },
-    { label: 'Onboarding Completed', value: onboarded(executionRows.value), note: 'Execution rows with both Actual DOJ and APMM ID filled' },
-    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Non-Efficiency rows with Hiring Status set to At Risk', risk: true },
+    { label: 'Onboarding Completed', value: onboarded(executionRows.value), note: 'Execution rows with both Actual DOJ and APMM ID filled', icon: 'mi-user-circle', tone: 'purple' },
+    { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Non-Efficiency rows with Hiring Status set to At Risk', icon: 'mi-exclamation-triangle', tone: 'red', risk: true },
     {
       label: 'Area PIDs Received',
       value: `${countRows(areaRows.value, row => row.areaPid && row.areaApmmId && row.releaseDate)} / ${approvedFtes.value ?? '—'}`,
       note: 'Rows with Area PID, Area APMM ID and Release Date filled / locked Business Case population',
+      icon: 'mi-file', tone: 'blue',
     },
   ],
   area: () => [
@@ -167,21 +186,29 @@ const metricCards = {
 }
 const metrics = computed(() => (metricCards[tab.value] || metricCards.execution)())
 const baseColumns = computed(() => [
+  { key: 'cohort', label: 'Cohort' },
   { key: 'site', label: 'GSC Site', options: [...new Set([...record.value.siteOptions, ...sites.value])] }, { key: 'hiringType', label: 'Hiring Type', options: record.value.hiringTypes },
   { key: 'language', label: 'Language', options: record.value.languages }, { key: 'pidCreationDate', label: 'PID Creation Date', date: true },
   { key: 'gscPid', label: 'GSC PID' },
 ])
+const jobLevelColumn = { key: 'jobLevel', label: 'JL', options: ['JL1', 'JL2', 'JL3', 'JL4'] }
 const hrColumns = computed(() => [
   { key: 'requisitionId', label: 'Requisition ID' }, { key: 'hiringStatus', label: 'Hiring Status', options: record.value.hiringStatuses },
   { key: 'remarks', label: 'Remarks' }, { key: 'tentativeDoj', label: 'Tentative DOJ', date: true },
   { key: 'actualDoj', label: 'Actual DOJ', date: true }, { key: 'apmmId', label: 'APMM ID' },
 ])
+const executionColumns = computed(() => [
+  ...baseColumns.value,
+  { key: 'deletedPid', label: 'Deleted PID for Efficiency' },
+  hrColumns.value.find(column => column.key === 'requisitionId'),
+  jobLevelColumn,
+  ...hrColumns.value.filter(column => column.key !== 'requisitionId'),
+])
 const areaColumns = [
   { key: 'region', label: 'Region' }, { key: 'area', label: 'Area' }, { key: 'country', label: 'Country' },
   { key: 'areaPid', label: 'Area PID' }, { key: 'areaApmmId', label: 'Area APMM ID' }, { key: 'releaseDate', label: 'Release Date', date: true },
 ]
-const columns = computed(() => tab.value === 'area' ? areaColumns : tab.value === 'hr' ? [...baseColumns.value, ...hrColumns.value] :
-  [...baseColumns.value, { key: 'deletedPid', label: 'Deleted PID for Efficiency' }, ...hrColumns.value])
+const columns = computed(() => tab.value === 'area' ? areaColumns : tab.value === 'hr' ? [...baseColumns.value, ...hrColumns.value] : executionColumns.value)
 const visibleRows = computed(() => (record.value?.rows || []).filter(row =>
   (tab.value !== 'hr' || row.hiringType !== 'Efficiency') && (!siteFilter.value || row.site === siteFilter.value) &&
   (!statusFilter.value || row.hiringStatus === statusFilter.value) && Object.values(row).join(' ').toLowerCase().includes(query.value.toLowerCase())))
@@ -200,12 +227,16 @@ function cellEditable(row, key) {
   if (tab.value === 'area') return canEditArea.value && !row.areaLockedAt
   if (!canEdit.value) return false
   if (tab.value === 'hr') return hrColumns.value.some(column => column.key === key)
-  return baseColumns.value.some(column => column.key === key) || key === 'requisitionId' ||
-    (row.hiringType === 'Efficiency' && ['deletedPid', 'actualDoj', 'apmmId'].includes(key))
+  return baseColumns.value.some(column => column.key === key) || key === 'jobLevel' || key === 'hiringStatus' ||
+    (row.hiringType === 'Efficiency' && ['deletedPid', 'actualDoj', 'apmmId'].includes(key)) ||
+    (row.hiringType !== 'Efficiency' && ['requisitionId', 'tentativeDoj', 'actualDoj', 'apmmId'].includes(key))
+}
+function editHiringStatus(row) {
+  if (canEdit.value && row.hiringType !== 'Efficiency') activeHiringStatusId.value = row.id
 }
 function newRow() {
   return Object.fromEntries([
-    ...baseColumns.value, ...hrColumns.value, ...areaColumns, { key: 'deletedPid' },
+    ...baseColumns.value, ...hrColumns.value, ...areaColumns, { key: 'deletedPid' }, jobLevelColumn,
   ].map(column => [column.key, '']).concat([
     ['id', crypto.randomUUID()], ['site', record.value.sites.length === 1 ? record.value.sites[0] : ''],
     ['hiringType', 'External'], ['language', 'English'], ['hiringStatus', 'Pending'],
@@ -240,7 +271,7 @@ async function reopen() {
 function exportData() {
   error.value = ''
   try {
-    const execution = [...baseColumns.value, { key: 'deletedPid', label: 'Deleted PID for Efficiency' }, ...hrColumns.value]
+    const execution = executionColumns.value
     exportArtefact(record.value, 'resources', [
       ['Execution', [['Position ID', ...execution.map(column => column.label)], ...record.value.rows.map(row => [row.id, ...execution.map(column => row[column.key])])]],
       ['Area', [['Position ID', ...areaColumns.map(column => column.label), 'Submitted at', 'Submitted by'], ...record.value.rows.map(row => [row.id, ...areaColumns.map(column => row[column.key]), row.areaLockedAt, row.areaLockedBy])]],
@@ -261,8 +292,9 @@ async function importData(event) {
     if (!workbook.Sheets.Execution) throw new Error('Use an exported Resources workbook with an Execution sheet.')
     const rows = utils.sheet_to_json(workbook.Sheets.Execution, { defval: '', raw: false })
     if (!rows.length || rows.length > 1000) throw new Error('Import requires 1–1000 rows.')
-    const allowed = [...baseColumns.value, { key: 'deletedPid', label: 'Deleted PID for Efficiency' }]
-    if (allowed.some(column => !(column.label in rows[0]))) throw new Error('Execution sheet is missing required column headers.')
+    const allowed = [...baseColumns.value, { key: 'deletedPid', label: 'Deleted PID for Efficiency' }, jobLevelColumn]
+    const required = allowed.filter(column => !['cohort', 'jobLevel'].includes(column.key))
+    if (required.some(column => !(column.label in rows[0]))) throw new Error('Execution sheet is missing required column headers.')
     const updated = record.value.rows.map(row => ({ ...row }))
     const ids = new Set()
     for (const data of rows) {
@@ -271,9 +303,13 @@ async function importData(event) {
       ids.add(id)
       let row = updated.find(item => item.id === id)
       if (!row) { row = { ...newRow(), id }; updated.push(row) }
-      for (const column of allowed) row[column.key] = String(data[column.label]).trim()
+      for (const column of allowed) {
+        if (column.label in data) row[column.key] = String(data[column.label]).trim()
+      }
       if (!record.value.hiringTypes.includes(row.hiringType)) throw new Error('Invalid hiring type in workbook.')
       if (row.language && !record.value.languages.includes(row.language)) throw new Error('Invalid language in workbook.')
+      if (row.jobLevel && !jobLevels.includes(row.jobLevel)) throw new Error('Invalid JL value in workbook. Choose JL1, JL2, JL3 or JL4.')
+      if (row.jobLevel === 'JL4' && !jl4Available.value) throw new Error('JL4 cannot be imported because Scope has no positive JL4 final agreement.')
       changeHiringType(row)
     }
     if (updated.length > 1000) throw new Error('The project can have at most 1000 resource rows.')

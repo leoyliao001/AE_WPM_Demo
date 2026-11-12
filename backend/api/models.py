@@ -167,7 +167,7 @@ class ScopeStatementLine(models.Model):
     )
     job_level = models.CharField(
         max_length=3,
-        choices=[("JL2", "JL2"), ("JL3", "JL3"), ("JL4", "JL4")],
+        choices=[("JL1", "JL1"), ("JL2", "JL2"), ("JL3", "JL3"), ("JL4", "JL4")],
     )
     agreed_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     not_agreed_fte = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
@@ -274,7 +274,7 @@ class BusinessCase(models.Model):
 
 class BusinessCaseCostRate(models.Model):
     location = models.CharField(max_length=255)
-    job_level = models.CharField(max_length=3, choices=[("JL2", "JL2"), ("JL3", "JL3"), ("JL4", "JL4")])
+    job_level = models.CharField(max_length=3, choices=[("JL1", "JL1"), ("JL2", "JL2"), ("JL3", "JL3"), ("JL4", "JL4")])
     annual_cost = models.DecimalField(max_digits=18, decimal_places=4)
     currency = models.CharField(max_length=3, default="USD")
     usd_rate = models.DecimalField(max_digits=18, decimal_places=8, default=1)

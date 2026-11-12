@@ -55,7 +55,7 @@
                   <section>
                     <h3>FTE agreement and evidence rules</h3>
                     <ol>
-                      <li>For each of <strong>JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
+                      <li>For each of <strong>JL1, JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
                       <li>The system-wide Super Admin (temporarily treated as Migration Manager) enters and explicitly confirms the independent top-level <strong>Migratable FTE</strong> total. It is initially suggested from the agreed JL total; changing its value clears confirmation.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
                       <li>Only assigned GSC Leaders and the Area POC can upload evidence or use the page-level <strong>Lock / Unlock</strong> control. The whole page, including FTE, scope text, assumptions, migration waves and uploads, is locked together; downloads remain available while locked.</li>
@@ -350,7 +350,7 @@ const coverage = computed(() => allFinalEntered.value && ambition.value > 0 ? Ma
 const totalVariance = computed(() => completeField('agreedFte') && allFinalEntered.value ? finalTotal.value - agreedTotal.value : null)
 const reconciliationGap = computed(() => validNumber(migratableFte.value) && completeField('notAgreedFte') ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
 const reconciled = computed(() => reconciliationGap.value !== null && Math.abs(reconciliationGap.value) < 0.00005)
-const ready = computed(() => lockedCount.value === 3 && Boolean(scopeText.value.trim()) && migratableFteConfirmed.value)
+const ready = computed(() => lockedCount.value === 4 && Boolean(scopeText.value.trim()) && migratableFteConfirmed.value)
 const statusKey = computed(() => statement.value?.reviewRequired ? 'draft' : isSubmitted.value ? 'submitted' : ready.value ? 'ready' : 'draft')
 const statusLabel = computed(() => statement.value?.reviewRequired ? 'Review required' : isSubmitted.value ? 'Submitted' : ready.value ? 'Ready to submit' : 'Draft')
 const aboveAgreed = computed(() => lines.value.filter((line) => variance(line) > 0).map((line) => line.jobLevel).join(', '))
@@ -363,7 +363,7 @@ function validNumber(value, whole = false) {
 }
 
 function completeField(key) {
-  return lines.value.length === 3 && lines.value.every((line) => validNumber(line[key], key === 'finalFte'))
+  return lines.value.length === 4 && lines.value.every((line) => validNumber(line[key], key === 'finalFte'))
 }
 
 function sumField(key) {

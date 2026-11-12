@@ -27,7 +27,7 @@ from api.permissions.attributes_access import (
     require_attributes_access,
 )
 
-JOB_LEVELS = ("JL2", "JL3", "JL4")
+JOB_LEVELS = ("JL1", "JL2", "JL3", "JL4")
 MAX_EVIDENCE_BYTES = 20 * 1024 * 1024
 EVIDENCE_EXTENSIONS = {".pdf", ".docx", ".msg", ".xlsx"}
 MAX_FTE = Decimal("99999999.9999")
@@ -493,8 +493,6 @@ def save_scope_statement(request, project_id):
             if action != "save":
                 return Response({"error": "Save a draft and upload an attachment before locking or submitting."}, status=409)
             statement = ScopeStatement.objects.create(project=project, revision=0)
-            for level in JOB_LEVELS:
-                ScopeStatementLine.objects.create(statement=statement, job_level=level)
         if "revision" in payload and payload["revision"] != statement.revision:
             return Response({"error": "Scope Statement changed. Reload before saving."}, status=409)
 
@@ -515,6 +513,8 @@ def save_scope_statement(request, project_id):
         if statement.status == "submitted":
             return Response({"error": "Submitted Scope Statement is frozen. Reopen for revision first."}, status=status.HTTP_409_CONFLICT)
 
+        for level in JOB_LEVELS:
+            ScopeStatementLine.objects.get_or_create(statement=statement, job_level=level)
         all_lines = list(statement.lines.all())
         page_locked = any(line.locked_at for line in all_lines)
         if action == "unlock":
@@ -577,7 +577,7 @@ def save_scope_statement(request, project_id):
         if action == "lock":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
                 return Response({"error": "Manually confirm Migratable FTE before locking the page."}, status=400)
-            if len(all_lines) != 3 or not statement.scope_text.strip() or any(
+            if len(all_lines) != len(JOB_LEVELS) or not statement.scope_text.strip() or any(
                 line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None
                 for line in all_lines
             ):
@@ -595,7 +595,7 @@ def save_scope_statement(request, project_id):
                 return Response({"error": "Unlock the page and manually confirm Migratable FTE before submitting."}, status=400)
             if not statement.scope_text.strip():
                 return Response({"error": "High-level scope statement is required before submitting."}, status=status.HTTP_400_BAD_REQUEST)
-            if len(all_lines) != 3 or any(line.locked_at is None for line in all_lines):
+            if len(all_lines) != len(JOB_LEVELS) or any(line.locked_at is None for line in all_lines):
                 return Response({"error": "Lock the whole page before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             statement.ambition_fte = Decimal(str(project.fte_number or 0))
             statement.final_project_fte = sum(int(line.final_fte or 0) for line in all_lines)
@@ -704,8 +704,8 @@ def upload_scope_evidence(request, project_id, job_level=None):
         statement = _statement_for_project(project, for_update=True)
         if statement is None:
             statement = ScopeStatement.objects.create(project=project)
-            for level in JOB_LEVELS:
-                ScopeStatementLine.objects.create(statement=statement, job_level=level)
+        for level in JOB_LEVELS:
+            ScopeStatementLine.objects.get_or_create(statement=statement, job_level=level)
         if "revision" in request.data and str(statement.revision) != str(request.data["revision"]):
             return Response({"error": "Scope Statement changed. Reload before uploading."}, status=409)
         if statement.status == "submitted" or statement.lines.filter(locked_at__isnull=False).exists():

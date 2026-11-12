@@ -25,7 +25,8 @@ BARRIER_TYPES = ["Licensing", "Permissions", "Hardware", "Network", "Security", 
 HIRING_TYPES = ["Efficiency", "Backfill", "External", "IJP"]
 HIRING_STATUSES = ["Pending", "In Progress", "At Risk", "Onboarded"]
 LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Danish", "Dutch", "Other"]
-EXECUTION_FIELDS = ["site", "hiringType", "language", "pidCreationDate", "gscPid", "deletedPid"]
+JOB_LEVELS = ["JL1", "JL2", "JL3", "JL4"]
+EXECUTION_FIELDS = ["cohort", "site", "hiringType", "language", "pidCreationDate", "gscPid", "deletedPid", "jobLevel"]
 AREA_FIELDS = ["region", "area", "country", "areaPid", "areaApmmId", "releaseDate"]
 HR_FIELDS = ["requisitionId", "hiringStatus", "remarks", "tentativeDoj", "actualDoj", "apmmId"]
 
@@ -63,10 +64,14 @@ def scope_source(project):
     except ScopeStatement.DoesNotExist:
         scope = None
     lines = list(scope.lines.all()) if scope else []
+    final_fte_by_level = {
+        level: next((line.final_fte for line in lines if line.job_level == level), None)
+        for level in JOB_LEVELS
+    }
     ready = bool(
         scope and scope.status == "submitted" and not scope.review_required
         and scope.final_project_fte is not None
-        and {line.job_level for line in lines} == {"JL2", "JL3", "JL4"}
+        and {line.job_level for line in lines} == set(JOB_LEVELS)
         and all(line.locked_at and line.final_fte is not None for line in lines)
         and sum(line.final_fte for line in lines) == scope.final_project_fte
     )
@@ -75,6 +80,7 @@ def scope_source(project):
         "status": scope.status if scope else "missing",
         "reviewRequired": scope.review_required if scope else False,
         "population": scope.final_project_fte if ready else None,
+        "finalFteByLevel": final_fte_by_level,
     }
     version = hashlib.sha256(json.dumps(basis, sort_keys=True).encode()).hexdigest()
     return {**basis, "ready": ready, "version": version}

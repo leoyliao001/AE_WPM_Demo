@@ -1926,7 +1926,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  margin-left: auto;
+  margin-left: 10px;
 }
 
 .project-picker__shortcut {
@@ -1937,9 +1937,10 @@ onBeforeUnmount(() => {
   color: #29445d;
   cursor: pointer;
   display: inline-flex;
-  font: 700 10px 'Maersk Text', sans-serif;
-  min-height: 23px;
-  padding: 0 9px;
+  font: 700 12px 'Maersk Text', sans-serif;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
   box-shadow: 0 1px 2px rgba(11, 43, 75, .06);
   transition: background .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
   white-space: nowrap;

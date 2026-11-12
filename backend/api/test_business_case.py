@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 from api.models import (
     ApprovalInput, ApprovalWorkflow, BusinessCase, BusinessCaseCostRate,
     MigrationIntakeSubmission, ProjectAttributesAccess, ScopeStatement, ScopeStatementLine,
+    StakeholderRegistration,
 )
 
 
@@ -27,11 +28,16 @@ class OnlineBusinessCaseTests(TestCase):
         self.url = f"/api/migration-dashboard/projects/{self.project.pk}/business-case/"
         self.scope = ScopeStatement.objects.create(project=self.project, scope_text="Locked scope",
                                                    status="submitted", final_project_fte=98)
-        for level, count in (("JL2", 58), ("JL3", 30), ("JL4", 10)):
+        for level, count in (("JL1", 0), ("JL2", 58), ("JL3", 30), ("JL4", 10)):
             ScopeStatementLine.objects.create(statement=self.scope, job_level=level, final_fte=count, locked_at=timezone.now())
+        StakeholderRegistration.objects.create(
+            project=self.project,
+            team_members=[{"id": "owner", "fullName": "Owner", "email": "owner@example.com"}],
+            assignments={"area_poc": {"personIds": ["owner"], "lockedAt": timezone.now().isoformat()}},
+        )
 
     def rates(self):
-        for level in ("JL2", "JL3", "JL4"):
+        for level in ("JL2", "JL3", "JL4", "JL1"):
             for location, annual in (("Denmark", "100000"), ("GSC Mumbai", "25000")):
                 BusinessCaseCostRate.objects.create(
                     location=location, job_level=level, annual_cost=annual,
@@ -295,7 +301,7 @@ class OnlineBusinessCaseTests(TestCase):
     def test_cost_change_flags_review_and_blocks_approval(self):
         self.rates()
         self.save(action="submit")
-        rate = BusinessCaseCostRate.objects.first()
+        rate = BusinessCaseCostRate.objects.filter(job_level="JL2").first()
         rate.annual_cost += 100
         rate.save()
         record = BusinessCase.objects.get()
@@ -417,7 +423,7 @@ class OnlineBusinessCaseTests(TestCase):
         charter = self.client.get(f"/api/migration-dashboard/projects/{self.project.pk}/project-charter/").data
         self.assertTrue(charter["sources"]["completeness"][1]["complete"])
         self.assertEqual(charter["sources"]["risks"], "KT capacity")
-        rate = BusinessCaseCostRate.objects.first()
+        rate = BusinessCaseCostRate.objects.filter(job_level="JL2").first()
         rate.delete()
         charter = self.client.get(f"/api/migration-dashboard/projects/{self.project.pk}/project-charter/").data
         self.assertFalse(charter["sources"]["completeness"][1]["complete"])
@@ -455,7 +461,7 @@ class OnlineBusinessCaseTests(TestCase):
     def test_stale_scope_or_rate_snapshot_cannot_be_submitted(self):
         self.rates()
         source_version = self.client.get(self.url).data["sourceVersion"]
-        rate = BusinessCaseCostRate.objects.first()
+        rate = BusinessCaseCostRate.objects.filter(job_level="JL2").first()
         rate.annual_cost += 1
         rate.save()
         response = self.save(action="submit", sourceVersion=source_version)

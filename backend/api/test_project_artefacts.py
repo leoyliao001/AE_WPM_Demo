@@ -27,7 +27,7 @@ class ProjectArtefactTests(TestCase):
         self.scope = ScopeStatement.objects.create(
             project=self.project, scope_text="Transfer support", final_project_fte=1, status="submitted",
         )
-        for level in ("JL2", "JL3", "JL4"):
+        for level in ("JL1", "JL2", "JL3", "JL4"):
             ScopeStatementLine.objects.create(
                 statement=self.scope, job_level=level, final_fte=1 if level == "JL2" else 0, locked_at=timezone.now(),
             )
@@ -66,9 +66,9 @@ class ProjectArtefactTests(TestCase):
 
     def resource(self, efficiency=False):
         return {
-            "id": "position-1", "site": "Pune", "hiringType": "Efficiency" if efficiency else "External",
+            "id": "position-1", "cohort": "", "site": "Pune", "hiringType": "Efficiency" if efficiency else "External",
             "language": "English", "pidCreationDate": "2026-01-01", "gscPid": "GSC-001",
-            "deletedPid": "DEL-1" if efficiency else "", "region": "EUR", "area": "EME", "country": "Egypt",
+            "deletedPid": "DEL-1" if efficiency else "", "jobLevel": "", "region": "EUR", "area": "EME", "country": "Egypt",
             "areaPid": "AREA-001", "areaApmmId": "A-001", "releaseDate": "2027-01-01",
             "requisitionId": "REQ-1", "hiringStatus": "Onboarded", "remarks": "Ready",
             "tentativeDoj": "2027-01-01", "actualDoj": "2027-01-02", "apmmId": "APMM-1",
@@ -132,6 +132,31 @@ class ProjectArtefactTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["frozen"])
         self.assertEqual(response.data["auditLog"][-1]["reason"], "Change plan")
+
+    def test_resource_cohort_and_job_level_persist_and_validate(self):
+        row = {**self.resource(), "cohort": "Cohort A", "jobLevel": "JL2"}
+        response = self.post("resources", rows=[row])
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["rows"][0]["cohort"], "Cohort A")
+        self.assertEqual(response.data["rows"][0]["jobLevel"], "JL2")
+
+        response = self.post("resources", rows=[{**row, "jobLevel": "JL5"}])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("JL1, JL2, JL3 or JL4", response.data["error"])
+
+    def test_jl4_requires_positive_scope_final_agreement(self):
+        source = self.get("resources").data["source"]
+        self.assertEqual(source["finalFteByLevel"], {"JL1": 0, "JL2": 1, "JL3": 0, "JL4": 0})
+        response = self.post("resources", rows=[{**self.resource(), "jobLevel": "JL4"}])
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("JL4 is unavailable", response.data["error"])
+
+        self.scope.lines.filter(job_level="JL2").update(final_fte=0)
+        self.scope.lines.filter(job_level="JL4").update(final_fte=1)
+        self.scope.revision += 1
+        self.scope.save(update_fields=["revision"])
+        response = self.post("resources", rows=[{**self.resource(), "jobLevel": "JL4"}])
+        self.assertEqual(response.status_code, 200, response.data)
 
     def test_area_permissions_and_lock_cannot_be_bypassed(self):
         self.assertEqual(self.post("resources", rows=[self.resource()]).status_code, 200)

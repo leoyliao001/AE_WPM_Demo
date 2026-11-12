@@ -15,7 +15,7 @@
       <fieldset :disabled="blocked">
         <div class="bc-fields bc-fields--columns">
           <label>Exact location<input v-model="editor.location" required /></label>
-          <label>Job level<select v-model="editor.jobLevel" required><option value="">Select job level</option><option>JL2</option><option>JL3</option><option>JL4</option></select></label>
+          <label>Job level<select v-model="editor.jobLevel" required><option value="">Select job level</option><option>JL1</option><option>JL2</option><option>JL3</option><option>JL4</option></select></label>
           <label>Annual cost per FTE (local currency)<input v-model="editor.annualCost" type="text" inputmode="decimal" required /></label>
           <label>Currency (3 uppercase letters)<input v-model="editor.currency" maxlength="3" pattern="[A-Z]{3}" required placeholder="ISO currency code" /></label>
           <label>USD exchange rate (USD per currency unit)<input v-model="editor.usdRate" type="text" inputmode="decimal" required /></label>
@@ -102,13 +102,13 @@ async function reload() {
 }
 function validRate(value) {
   const decimal = /^\d+(?:\.\d+)?$/
-  if (!value.location.trim() || !['JL2', 'JL3', 'JL4'].includes(value.jobLevel) ||
+  if (!value.location.trim() || !['JL1', 'JL2', 'JL3', 'JL4'].includes(value.jobLevel) ||
       !decimal.test(String(value.annualCost)) || !Number.isFinite(Number(value.annualCost)) ||
       !/^[A-Z]{3}$/.test(value.currency) || !decimal.test(String(value.usdRate)) ||
       !Number.isFinite(Number(value.usdRate)) || Number(value.usdRate) <= 0 ||
       !Number.isInteger(Number(value.year)) || Number(value.year) < 1 || Number(value.year) > 9999 ||
       !value.version.trim()) {
-    error.value = 'Provide an exact location, JL2/JL3/JL4, non-negative decimal annual cost, three-uppercase-letter currency, positive decimal USD rate, integer cost year and version.'
+    error.value = 'Provide an exact location, JL1/JL2/JL3/JL4, non-negative decimal annual cost, three-uppercase-letter currency, positive decimal USD rate, integer cost year and version.'
     return false
   }
   if (value.currency === 'USD' && Number(value.usdRate) !== 1) {

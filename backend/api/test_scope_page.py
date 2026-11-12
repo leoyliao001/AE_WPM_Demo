@@ -39,7 +39,7 @@ class ScopePageTests(TestCase):
         self.client.credentials(HTTP_X_USER_EMAIL="scope@example.com")
         self.url = f"/api/migration-dashboard/projects/{self.project.pk}/scope-statement/"
         self.statement = ScopeStatement.objects.create(project=self.project)
-        for level in ("JL2", "JL3", "JL4"):
+        for level in ("JL1", "JL2", "JL3", "JL4"):
             ScopeStatementLine.objects.create(statement=self.statement, job_level=level)
 
     def payload(self, action="save"):
@@ -49,13 +49,42 @@ class ScopePageTests(TestCase):
             "outOfScope": "Sales", "assumptions": "Systems remain available",
             "waves": [{"name": "First wave", "date": "2027-01-01", "fte": 6}],
             "lines": [
-                {"jobLevel": level, "agreedFte": 2, "notAgreedFte": 0, "finalFte": 2}
-                for level in ("JL2", "JL3", "JL4")
+                {"jobLevel": "JL1", "agreedFte": 0, "notAgreedFte": 0, "finalFte": 0},
+                *[
+                    {"jobLevel": level, "agreedFte": 2, "notAgreedFte": 0, "finalFte": 2}
+                    for level in ("JL2", "JL3", "JL4")
+                ],
             ],
         }
 
     def save(self, payload):
         return self.client.post(self.url + "save/", payload, format="json")
+
+    def test_save_draft_with_live_four_level_values(self):
+        payload = {
+            "action": "save",
+            "revision": self.statement.revision,
+            "scopeText": "Demo data: transition selected Ocean billing amendment activities from China operations to Chengdu, including task handover and validation; exclude unrelated service lines.",
+            "migratableFte": "7",
+            "migratableFteConfirmed": True,
+            "outOfScope": "Demo data: local statutory, tax and non-Ocean activities remain with the originating teams.",
+            "assumptions": "Demo data: source procedures and sample records are available; Chengdu capacity is planned for a six-FTE pilot.",
+            "waves": [],
+            "lines": [
+                {"jobLevel": "JL1", "agreedFte": 1, "notAgreedFte": 0, "finalFte": 1},
+                {"jobLevel": "JL2", "agreedFte": 2, "notAgreedFte": 0, "finalFte": 2},
+                {"jobLevel": "JL3", "agreedFte": 3, "notAgreedFte": 0, "finalFte": 3},
+                {"jobLevel": "JL4", "agreedFte": 1, "notAgreedFte": 0, "finalFte": 1},
+            ],
+        }
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["migratableFte"], "7.0000")
+        self.assertTrue(response.data["migratableFteConfirmed"])
+        self.assertEqual(len(response.data["lines"]), 4)
+        self.assertEqual(sum(line["finalFte"] for line in response.data["lines"]), 7)
 
     def test_scope_role_and_super_admin_have_separate_edit_permissions(self):
         StakeholderRegistration.objects.filter(project=self.project).update(

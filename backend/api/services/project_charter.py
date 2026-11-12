@@ -68,7 +68,7 @@ def build_charter_sources(project):
     lines = list(scope.lines.all()) if scope else []
     scope_locked = bool(
         scope and scope.status == "submitted" and not scope.review_required and scope.final_project_fte is not None
-        and {line.job_level for line in lines} == {"JL2", "JL3", "JL4"}
+        and {line.job_level for line in lines} == {"JL1", "JL2", "JL3", "JL4"}
         and all(line.locked_at and line.final_fte is not None for line in lines)
     )
     final_fte = scope.final_project_fte if scope_locked else None

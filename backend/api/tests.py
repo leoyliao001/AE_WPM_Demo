@@ -29,11 +29,18 @@ class ScopeStatementAccessTests(TestCase):
 		self.url = f"/api/migration-dashboard/projects/{self.project.id}/scope-statement/"
 		self.client = APIClient()
 
-	def test_project_requestor_can_view_and_edit(self):
+	def assign_gsc_editor(self, email):
+		StakeholderRegistration.objects.create(
+			project=self.project,
+			team_members=[{"id": "editor", "fullName": "Editor", "email": email}],
+			assignments={"gsc_leaders": {"personIds": ["editor"], "lockedAt": timezone.now().isoformat()}},
+		)
+
+	def test_project_requestor_can_view_but_not_edit(self):
 		response = self.client.get(self.url, HTTP_X_USER_EMAIL="REQUESTOR@example.com")
 
 		self.assertEqual(response.status_code, 200)
-		self.assertTrue(response.data["canEdit"])
+		self.assertFalse(response.data["canEdit"])
 
 	def test_scope_statement_access_user_can_view_and_edit(self):
 		ProjectAttributesAccess.objects.create(
@@ -50,8 +57,8 @@ class ScopeStatementAccessTests(TestCase):
 		)
 
 		self.assertEqual(response.status_code, 200)
-		self.assertTrue(response.data["canEdit"])
-		self.assertEqual(save_response.status_code, 200)
+		self.assertFalse(response.data["canEdit"])
+		self.assertEqual(save_response.status_code, 403)
 
 	def test_user_without_access_is_denied(self):
 		response = self.client.get(self.url, HTTP_X_USER_EMAIL="other@example.com")
@@ -62,7 +69,7 @@ class ScopeStatementAccessTests(TestCase):
 		response = self.client.get(self.url, HTTP_X_USER_EMAIL="local.dev@localhost")
 
 		self.assertEqual(response.status_code, 200)
-		self.assertTrue(response.data["canEdit"])
+		self.assertFalse(response.data["canEdit"])
 
 	def test_scope_statement_access_user_can_list_saved_statements(self):
 		ProjectAttributesAccess.objects.create(
@@ -120,6 +127,7 @@ class ScopeStatementAccessTests(TestCase):
 			email="admin@example.com",
 			scope_statement=True,
 		)
+		self.assign_gsc_editor("admin@example.com")
 		url = "/api/migration-dashboard/scope-statements/data/"
 		payload = {
 			"uniqueData": [{
@@ -171,6 +179,7 @@ class ScopeStatementAccessTests(TestCase):
 			email="admin@example.com",
 			scope_statement=True,
 		)
+		self.assign_gsc_editor("admin@example.com")
 		statement = ScopeStatement.objects.create(project=self.project)
 		line = ScopeStatementLine.objects.create(
 			statement=statement,

@@ -21,7 +21,7 @@ class BusinessImpactAnalysisTests(TestCase):
             project=self.project, scope_text="Invoice processing", status="submitted", final_project_fte=12,
             migratable_fte=99, migratable_fte_confirmed=True,
         )
-        for level in ("JL2", "JL3", "JL4"):
+        for level in ("JL1", "JL2", "JL3", "JL4"):
             ScopeStatementLine.objects.create(
                 statement=self.scope, job_level=level, final_fte=12 if level == "JL2" else 0,
                 locked_at=timezone.now(),

@@ -11,7 +11,7 @@ INTAKE_FIELDS = (
     "business_owner", "target_start_date", "target_end_date", "initial_rationale", "region", "areas",
 )
 DETAIL_FIELDS = ("rationale", "expectedBenefits", "risks", "dependencies", "recommendation")
-LEVELS = ("JL2", "JL3", "JL4")
+LEVELS = ("JL1", "JL2", "JL3", "JL4")
 
 
 def decimal_value(value, label, *, signed=False):
@@ -80,7 +80,7 @@ def _calculate_financials(intake, scope, inputs):
     if len(countries) != 1 or len(sites) != 1:
         errors.append("Exactly one source country and one destination GSC site are required. Multi-location FTE allocation is not yet captured.")
     if not scope_ready(scope):
-        errors.append("Submit Scope with all three job levels locked and a matching final FTE total.")
+        errors.append("Submit Scope with all four job levels locked and a matching final FTE total.")
     try:
         year = date.fromisoformat(intake["target_start_date"]).year
         end = date.fromisoformat(intake["target_end_date"])

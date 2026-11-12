@@ -73,8 +73,11 @@ class ProjectCharterTests(TestCase):
         scope = ScopeStatement.objects.create(
             project=self.project, scope_text="Live scope", status="submitted", final_project_fte=12
         )
-        for level in ("JL2", "JL3", "JL4"):
-            ScopeStatementLine.objects.create(statement=scope, job_level=level, final_fte=4, locked_at=timezone.now())
+        for level in ("JL1", "JL2", "JL3", "JL4"):
+            ScopeStatementLine.objects.create(
+                statement=scope, job_level=level,
+                final_fte=0 if level == "JL1" else 4, locked_at=timezone.now(),
+            )
         data = self.client.get(self.url).data
         self.assertTrue(data["sourceUpdated"])
         self.assertEqual(data["vision"], "Charter-owned wording")
@@ -181,7 +184,7 @@ class ProjectCharterTests(TestCase):
     def test_locked_roles_and_business_approval_gate(self):
         now = timezone.now()
         scope = ScopeStatement.objects.create(project=self.project, status="submitted", final_project_fte=0)
-        for level in ("JL2", "JL3", "JL4"):
+        for level in ("JL1", "JL2", "JL3", "JL4"):
             ScopeStatementLine.objects.create(statement=scope, job_level=level, final_fte=0, locked_at=now)
         roles = ("project_sponsor", "elt", "area_functional_leader", "gsc_head_1")
         StakeholderRegistration.objects.create(
