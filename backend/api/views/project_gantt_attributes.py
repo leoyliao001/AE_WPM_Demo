@@ -36,7 +36,6 @@ TASK_COLUMNS = [
     ("planEndWeek", "Plan End"),
     ("actualStartWeek", "Actual Start"),
     ("actualEndWeek", "Actual End"),
-    ("completedAt", "Completed At"),
     ("actualStatus", "Actual Status"),
 ]
 
@@ -72,7 +71,6 @@ def _serialize_task_row(task: dict) -> dict:
         "planEndWeek": _range_value(task, "plan", "endWeek"),
         "actualStartWeek": _range_value(task, "actual", "startWeek"),
         "actualEndWeek": _range_value(task, "actual", "endWeek"),
-        "completedAt": task.get("completedAt") or "",
         "actualStatus": task.get("actualStatus") or "",
     }
 
@@ -166,8 +164,6 @@ def _normalize_task_rows(raw_tasks) -> list[dict]:
                 a_start, a_end = a_end, a_start
             actual = {"startWeek": a_start, "endWeek": a_end}
 
-        completed_at = str(item.get("completedAt") or "").strip() or None
-
         lifecycle_stage = str(item.get("lifecycleStage") or "").strip()
         if not lifecycle_stage:
             lifecycle_stage = DEFAULT_LIFECYCLE_STAGE_BY_TASK_ID.get(task_id, "initiate")
@@ -180,7 +176,6 @@ def _normalize_task_rows(raw_tasks) -> list[dict]:
             "lifecycleStage": lifecycle_stage,
             "plan": plan,
             "actual": actual,
-            "completedAt": completed_at,
         }
         normalized.append(payload)
 

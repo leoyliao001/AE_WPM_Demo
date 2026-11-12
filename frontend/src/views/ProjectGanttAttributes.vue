@@ -67,7 +67,7 @@
         appearance="info"
         fit="medium"
         heading="Enter a Migration ID"
-        body="Enter a Migration Request ID and Load. Task rows use the fixed Migration Key Steps template; edit Plan weeks and Completed At as primary fields."
+        body="Enter a Migration Request ID and Load. Task rows use the fixed Migration Key Steps template; edit Plan weeks as primary fields."
       />
 
       <template v-if="loaded">
@@ -167,7 +167,6 @@ const ALL_COLUMNS = [
   { key: 'planEndWeek', label: 'Plan End', width: 110 },
   { key: 'actualStartWeek', label: 'Actual Start', width: 110, readOnly: true },
   { key: 'actualEndWeek', label: 'Actual End', width: 110, readOnly: true },
-  { key: 'completedAt', label: 'Completed At', width: 160 },
   { key: 'actualStatus', label: 'Actual Status', width: 120, readOnly: true }
 ]
 
@@ -309,7 +308,6 @@ function collectTasksFromHot() {
       planEndWeek: normalizeCellValue(row.planEndWeek),
       actualStartWeek: normalizeCellValue(row.actualStartWeek),
       actualEndWeek: normalizeCellValue(row.actualEndWeek),
-      completedAt: normalizeCellValue(row.completedAt),
       actualStatus: normalizeCellValue(row.actualStatus)
     }))
 }

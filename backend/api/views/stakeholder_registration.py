@@ -170,6 +170,26 @@ def _serialize(project, registration, email):
     }
 
 
+def _assigned_role_emails(registration, role_code):
+    if registration is None:
+        return []
+    members_by_id = {
+        str(person.get("id") or ""): normalize_email(person.get("email"))
+        for person in (registration.team_members or [])
+        if isinstance(person, dict)
+    }
+    assignment = (registration.assignments or {}).get(role_code, {})
+    person_ids = assignment.get("personIds", []) if isinstance(assignment, dict) else []
+    if not isinstance(person_ids, list):
+        return []
+    emails = []
+    for person_id in person_ids:
+        email = members_by_id.get(str(person_id), "")
+        if email and email not in emails:
+            emails.append(email)
+    return emails
+
+
 def _normalize_team_members(raw_members):
     if not isinstance(raw_members, list):
         raise ValueError("Project Team members must be a list.")

@@ -773,7 +773,7 @@ class ProjectGanttPlan(models.Model):
     tasks = models.JSONField(
         default=list,
         help_text=(
-            "[{id, name, lifecycleStage, plan:{startWeek,endWeek}, actual, completedAt, "
+            "[{id, name, lifecycleStage, plan:{startWeek,endWeek}, actual, "
             "comments:[{id, at, text, updatedBy, fromPlan, toPlan}]}, ...]"
         ),
     )

@@ -1,7 +1,12 @@
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from api.models import FpoCatalogueRequest, MigrationIntakeSubmission, ServiceCatalogue
+from api.models import (
+    FpoCatalogueRequest,
+    MigrationIntakeSubmission,
+    ServiceCatalogue,
+    StakeholderRegistration,
+)
 
 
 class FpoCatalogueReminderTests(TestCase):
@@ -21,6 +26,17 @@ class FpoCatalogueReminderTests(TestCase):
             proposed_scope="Test scope",
             fte_number="1",
         )
+        StakeholderRegistration.objects.create(
+            project=self.project,
+            team_members=[
+                {
+                    "id": "assigned-fpo",
+                    "fullName": "Assigned FPO",
+                    "email": "fpo@example.com",
+                }
+            ],
+            assignments={"fpo": {"personIds": ["assigned-fpo"]}},
+        )
         self.client = APIClient()
         self.client.credentials(HTTP_X_USER_EMAIL="owner@example.com")
         self.scope_url = f"/api/migration-dashboard/projects/{self.project.pk}/opportunity-assessment/task-scope/"
@@ -35,14 +51,16 @@ class FpoCatalogueReminderTests(TestCase):
         }
 
     def test_reminder_persists_until_approved_hierarchy_is_acknowledged(self):
-        with self.settings(FPO_CATALOGUE_APPROVER_EMAIL="fpo@example.com"):
-            from unittest.mock import patch
+        from unittest.mock import patch
 
+        with self.settings(FPO_CATALOGUE_APPROVER_EMAIL="someone-else@example.com"):
             with patch("api.views.fpo_catalogue_requests._send_request_email"):
                 response = self.client.post(self.request_url, self.payload, format="json")
 
         self.assertEqual(response.status_code, 201, response.data)
         request = FpoCatalogueRequest.objects.get(pk=response.data["id"])
+        self.assertEqual(request.approver_email, "fpo@example.com")
+        self.assertEqual(response.data["approver"], "fpo@example.com")
         self.assertEqual(request.request_comment, self.payload["request_comment"])
         reminder = self.client.get(self.scope_url).data["catalogue_requests"][0]
         self.assertEqual(reminder["status"], "pending")
@@ -62,6 +80,17 @@ class FpoCatalogueReminderTests(TestCase):
         self.assertEqual(acknowledged.status_code, 200, acknowledged.data)
         self.assertIsNotNone(request.__class__.objects.get(pk=request.pk).catalogue_updated_at)
         self.assertEqual(self.client.get(self.scope_url).data["catalogue_requests"], [])
+
+    def test_request_requires_exactly_one_assigned_project_fpo(self):
+        registration = StakeholderRegistration.objects.get(project=self.project)
+        registration.assignments = {"fpo": {"personIds": []}}
+        registration.save(update_fields=["assignments"])
+
+        response = self.client.post(self.request_url, self.payload, format="json")
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("exactly one FPO", response.data["error"])
+        self.assertEqual(FpoCatalogueRequest.objects.count(), 0)
 
     def test_pending_request_cannot_be_acknowledged(self):
         request = FpoCatalogueRequest.objects.create(

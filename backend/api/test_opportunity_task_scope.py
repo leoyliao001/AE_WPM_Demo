@@ -1,7 +1,12 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope
+from api.models import (
+    MigrationIntakeSubmission,
+    OpportunityAssessment,
+    OpportunityAssessmentScope,
+    StakeholderRegistration,
+)
 from api.views.opportunity_task_scope import _catalogue
 
 
@@ -70,6 +75,20 @@ class OpportunityTaskScopeTests(TestCase):
         intake = self.client.get(self.url).data["intake"]
         self.assertEqual(intake["product"], "General LCL")
         self.assertEqual(intake["catalogue_products"], ["LCL"])
+
+    def test_scope_returns_the_project_area_fpo_email(self):
+        StakeholderRegistration.objects.create(
+            project=self.project,
+            team_members=[
+                {"id": "fpo-person", "fullName": "Area FPO", "email": "area-fpo@example.com"}
+            ],
+            assignments={"fpo": {"personIds": ["fpo-person"]}},
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["fpo_approver_email"], "area-fpo@example.com")
 
     def test_country_and_duplicate_validation(self):
         state = {"cat": None, "task": [self.row()], "seq": 2, "mode": "task"}

@@ -15,9 +15,13 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import FpoCatalogueRequest, ServiceCatalogue
+from api.models import FpoCatalogueRequest, ServiceCatalogue, StakeholderRegistration
 from api.permissions.attributes_access import get_request_email, is_super_admin, normalize_email
-from api.views.stakeholder_registration import _authorize, _get_project
+from api.views.stakeholder_registration import (
+    _assigned_role_emails,
+    _authorize,
+    _get_project,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -366,7 +370,16 @@ def submit_fpo_catalogue_request(request, project_id: int):
     if len(request_comment) > REQUEST_COMMENT_LIMIT:
         return Response({"error": f"The reason exceeds {REQUEST_COMMENT_LIMIT} characters."}, status=status.HTTP_400_BAD_REQUEST)
 
-    approver_email = getattr(settings, "FPO_CATALOGUE_APPROVER_EMAIL", "leo.y.liao@lns.maersk.com")
+    registration = StakeholderRegistration.objects.filter(project=project).only(
+        "team_members", "assignments"
+    ).first()
+    approver_emails = _assigned_role_emails(registration, "fpo")
+    if len(approver_emails) != 1:
+        return Response(
+            {"error": "Assign exactly one FPO in this project's Stakeholder Registration before submitting."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    approver_email = approver_emails[0]
     batch_id = uuid4()
     with transaction.atomic():
         items = [

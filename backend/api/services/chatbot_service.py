@@ -53,7 +53,7 @@ Tables and key fields:
 - migration_intake_submission: migration_request_id, project_name, status, requestor, region, function_name, products, fte_number, jl2, jl3, jl4, risks, requested_date
 - opportunity_assessment: migration_request_id, product, owner, location, l1, l2, l3, l4, task_name, task_description, complexity, migratable_to_gsc, risks_related, gsc_site, area, training_time_needed, recommended_handoff_duration, task_frequency, volume_monthly
 - approval_workflow: migration_request_id, area_head_status, pmo_status, bpm_budget_status, fbp_status, wpm_review_status, gsc_head_status, elt_status, business_case_submitted_date, area_head_comments, pmo_review_comment, bpm_comment, fbp_comment, wpm_review_comment, gsc_head_comment, elt_comment
-- project_gantt_plan: migration_request_id, tasks (JSON list of {id, name, plan:{startWeek,endWeek}, actual, completedAt}), meta (JSON with phase, scope, FTE, HC totals)
+- project_gantt_plan: migration_request_id, tasks (JSON list of {id, name, lifecycleStage, plan:{startWeek,endWeek}, actual}), meta (JSON with phase, scope, FTE, HC totals)
 
 Extract query intent from the user's question. Your response must be ONLY a valid JSON object — no explanation, no markdown, no code block, just the raw JSON.
 

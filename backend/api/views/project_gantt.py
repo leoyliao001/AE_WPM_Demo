@@ -35,7 +35,7 @@ BAR_TYPE_META = [
     {
         "id": "actual",
         "label": "Actual",
-        "hint": "Auto from completion · green if within Plan, pink if beyond",
+        "hint": "Recorded progress · green if within Plan, pink if beyond",
         "color": "#6DBF80",
         "lateColor": "#E57F90",
     },
@@ -250,21 +250,13 @@ def _actual_status(plan: dict | None, actual: dict | None) -> Optional[str]:
         return None
 
 
-def _refresh_actual(
-    plan: dict | None,
-    saved_actual: dict | None,
-    completed_at,
-    created_at,
-) -> dict | None:
-    """
-    Actual is driven by completion date when present.
-    Without a Plan, the completion week is shown as a one-week Actual range.
-    """
-    completed_week = _week_index_for_date(created_at, completed_at)
-    if completed_week is not None:
-        start = min(int(plan["startWeek"]), completed_week) if plan else completed_week
-        return _range_dict(start, completed_week)
-    return saved_actual
+def _actual_from_date(plan: dict | None, actual_date, created_at) -> dict | None:
+    """Map a completion date recorded outside Gantt to its Actual week range."""
+    completed_week = _week_index_for_date(created_at, actual_date)
+    if completed_week is None:
+        return None
+    start = min(int(plan["startWeek"]), completed_week) if plan else completed_week
+    return _range_dict(start, completed_week)
 
 
 def build_template_tasks(
@@ -278,12 +270,10 @@ def build_template_tasks(
     """
     tasks = []
     for task in TEMPLATE_TASKS:
-        completed_at = None
         actual = None
         actual_status = None
         if task["id"] == "business-case" and business_case_submitted_at:
-            completed_at = business_case_submitted_at.isoformat()
-            actual = _refresh_actual(None, None, business_case_submitted_at, created_at)
+            actual = _actual_from_date(None, business_case_submitted_at, created_at)
         tasks.append(
             {
                 "id": task["id"],
@@ -291,7 +281,6 @@ def build_template_tasks(
                 "lifecycleStage": task["lifecycleStage"],
                 "plan": None,
                 "actual": actual,
-                "completedAt": completed_at,
                 "actualStatus": actual_status,
                 "comments": [],
             }
@@ -356,16 +345,10 @@ def merge_gantt_tasks_with_template(
             plan = None
             actual_raw = None
 
-        completed_at = saved.get("completedAt") or saved.get("completed_at") or None
-        if completed_at == "":
-            completed_at = None
-        # Business Case is submitted from its own page, not the Gantt page —
-        # fall back to that submission date until someone sets it manually here.
-        completed_at_for_calc = completed_at
-        if not completed_at and task_id == "business-case" and business_case_submitted_at:
-            completed_at = business_case_submitted_at.isoformat()
-            completed_at_for_calc = business_case_submitted_at
-        actual = _refresh_actual(plan, actual_raw, completed_at_for_calc, created_at)
+        actual = actual_raw
+        # Business Case submission is tracked on its own page, not in Gantt.
+        if not actual and task_id == "business-case" and business_case_submitted_at:
+            actual = _actual_from_date(plan, business_case_submitted_at, created_at)
         comments = _normalize_comments(saved.get("comments"))
 
         merged.append(
@@ -377,7 +360,6 @@ def merge_gantt_tasks_with_template(
                 ),
                 "plan": plan,
                 "actual": actual,
-                "completedAt": completed_at,
                 "actualStatus": _actual_status(plan, actual),
                 "comments": comments,
             }
@@ -428,11 +410,6 @@ def _normalize_tasks(raw_tasks):
             raise ValueError(f"Invalid lifecycle stage for task {task_id}.")
 
         actual = _parse_range(item.get("actual"), fallback=None)
-        completed_at = item.get("completedAt") or item.get("completed_at") or None
-        if completed_at == "":
-            completed_at = None
-        if completed_at is not None:
-            completed_at = str(completed_at).strip() or None
 
         comments = _normalize_comments(item.get("comments"))
 
@@ -442,7 +419,6 @@ def _normalize_tasks(raw_tasks):
             "lifecycleStage": lifecycle_stage,
             "plan": plan,
             "actual": actual,
-            "completedAt": completed_at,
             "comments": comments,
         }
         normalized.append(payload)

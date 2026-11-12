@@ -10,12 +10,13 @@
         type="button"
         class="gantt-lifecycle__card gantt-lifecycle__card--all"
         :class="{ 'gantt-lifecycle__card--active': !selectedLifecycleStage }"
+        :style="{ '--stage-color': '#0b1f33', '--stage-tint': '#f1f5f9' }"
         :aria-pressed="!selectedLifecycleStage"
         @click="selectedLifecycleStage = ''"
       >
         <span class="gantt-lifecycle__number">ALL</span>
         <span class="gantt-lifecycle__name">All stages</span>
-        <span class="gantt-lifecycle__count">{{ props.tasks.length }} items</span>
+        <span class="gantt-lifecycle__count">{{ formatItemCount(props.tasks.length) }}</span>
       </button>
       <button
         v-for="stage in lifecycleStages"
@@ -23,19 +24,21 @@
         type="button"
         class="gantt-lifecycle__card"
         :class="{ 'gantt-lifecycle__card--active': selectedLifecycleStage === stage.id }"
-        :style="{ '--stage-color': stage.color }"
+        :style="{ '--stage-color': stage.color, '--stage-tint': stage.tint }"
         :aria-pressed="selectedLifecycleStage === stage.id"
         @click="selectedLifecycleStage = stage.id"
       >
         <span class="gantt-lifecycle__number">{{ stage.description }}</span>
         <span class="gantt-lifecycle__name">{{ stage.label }}</span>
-        <span class="gantt-lifecycle__count">{{ stageTaskCount(stage.id) }} items</span>
+        <span class="gantt-lifecycle__count">
+          {{ formatItemCount(stageTaskCount(stage.id)) }}
+        </span>
       </button>
     </div>
 
     <div v-if="editable" class="gantt-editor">
       <p class="gantt-hint">
-        Only <strong>Plan</strong> is editable. Actual updates from completion.
+        Only <strong>Plan</strong> is editable. Actual reflects recorded progress.
         Drag Plan <strong>ends</strong> to resize, or drag the <strong>bar</strong> to
         move. Use <strong>+</strong> / <strong>−</strong> on a stage to duplicate or
         remove it. Select a lifecycle stage in the inspector to reclassify an item.
@@ -87,22 +90,6 @@
           />
           {{ selectedDuration }} week{{ selectedDuration === 1 ? '' : 's' }}
         </div>
-        <label class="gantt-inspector__field">
-          <span>Completed at</span>
-          <input
-            type="date"
-            :value="completedAtInputValue(selectedTask.completedAt)"
-            @change="onCompletedAtChange(selectedTask.id, $event)"
-          />
-        </label>
-        <p class="gantt-inspector__hint">
-          Set a completion date to refresh Actual (green if within Plan, pink if beyond).
-          Prefer a date inside the chart calendar
-          <template v-if="weeks.length">
-            ({{ weeks[0].calendarWeek }}–{{ weeks[weeks.length - 1].calendarWeek }}).
-            Dates outside are clamped to the nearest week.
-          </template>
-        </p>
         <button type="button" class="gantt-inspector__clear" @click="selectedTaskId = ''">
           Clear selection
         </button>
@@ -124,7 +111,7 @@
         All
       </button>
       <button
-        v-for="barType in barTypes"
+        v-for="barType in visibleBarTypes"
         :key="barType.id"
         type="button"
         class="gantt-legend__item"
@@ -212,10 +199,16 @@
         <template v-for="group in displayGroups" :key="group.id">
           <div
             class="gantt-cell gantt-cell--group"
-            :style="{ '--stage-color': group.color, gridColumn: '1 / -1' }"
+            :style="{
+              '--stage-color': group.color,
+              '--stage-tint': group.tint,
+              gridColumn: '1 / -1'
+            }"
           >
             <span class="gantt-cell--group__title">{{ group.label }}</span>
-            <span class="gantt-cell--group__count">{{ group.tasks.length }} items</span>
+            <span class="gantt-cell--group__count">
+              {{ formatItemCount(group.tasks.length) }}
+            </span>
           </div>
           <template v-for="(task, taskIndex) in group.tasks" :key="task.id">
             <div
@@ -449,6 +442,10 @@ const visibleTaskLanes = computed(() =>
   taskLanes.filter((lane) => visibleLaneIds.value.includes(lane.id))
 )
 
+const visibleBarTypes = computed(() =>
+  (props.barTypes || []).filter((barType) => ALL_LANE_IDS.includes(barType.id))
+)
+
 const laneSpan = computed(() => Math.max(1, visibleTaskLanes.value.length))
 
 const allLanesVisible = computed(
@@ -494,7 +491,7 @@ const maxWeek = computed(() => props.weeks.length || 44)
 
 const barTypeById = computed(() => {
   const map = new Map()
-  for (const item of props.barTypes || []) {
+  for (const item of visibleBarTypes.value) {
     map.set(item.id, item)
   }
   return map
@@ -539,6 +536,8 @@ const displayGroups = computed(() =>
 
 const stageTaskCount = (stageId) =>
   props.tasks.filter((task) => task.lifecycleStage === stageId).length
+
+const formatItemCount = (count) => `${count} item${count === 1 ? '' : 's'}`
 
 const selectedTask = computed(() => {
   if (!selectedTaskId.value) return null
@@ -675,27 +674,6 @@ const onStageNameInput = (taskId, event) => {
   emit('update-task', {
     id: taskId,
     name: String(event.target.value ?? '')
-  })
-}
-
-const completedAtInputValue = (value) => {
-  if (!value) return ''
-  const text = String(value)
-  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10)
-  try {
-    const date = new Date(text)
-    if (Number.isNaN(date.getTime())) return ''
-    return date.toISOString().slice(0, 10)
-  } catch {
-    return ''
-  }
-}
-
-const onCompletedAtChange = (taskId, event) => {
-  const raw = String(event.target.value || '').trim()
-  emit('update-task', {
-    id: taskId,
-    completedAt: raw || null
   })
 }
 
@@ -881,12 +859,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 5px;
-  min-height: 92px;
-  padding: 12px 14px;
+  gap: 4px;
+  min-height: 84px;
+  padding: 10px 13px;
   border: 1px solid var(--line);
-  border-top: 4px solid var(--stage-color, #0b1f33);
-  border-radius: 12px;
+  border-top: 3px solid var(--stage-color, #0b1f33);
+  border-radius: 10px;
   background: #fff;
   color: var(--ink);
   font: inherit;
@@ -902,20 +880,15 @@ onUnmounted(() => {
 
 .gantt-lifecycle__card--active {
   border-color: var(--stage-color, #0b1f33);
-  background: color-mix(in srgb, var(--stage-color, #0b1f33) 7%, white);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--stage-color, #0b1f33) 18%, transparent);
-}
-
-.gantt-lifecycle__card--all {
-  --stage-color: #0b1f33;
+  background: var(--stage-tint, #f1f5f9);
+  box-shadow: 0 0 0 1px var(--stage-color, #0b1f33);
 }
 
 .gantt-lifecycle__number {
   color: var(--stage-color, #0b1f33);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 .gantt-lifecycle__name {
@@ -925,7 +898,7 @@ onUnmounted(() => {
 
 .gantt-lifecycle__count {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .gantt-legend {
@@ -1183,23 +1156,41 @@ onUnmounted(() => {
 .gantt-cell--group {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 36px;
   padding: 5px 12px;
+  border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 4px solid var(--stage-color);
-  background: color-mix(in srgb, var(--stage-color) 8%, white);
+  background: linear-gradient(90deg, var(--stage-tint) 0%, #f8fafc 55%, #fff 100%);
   color: var(--ink);
 }
 
 .gantt-cell--group__title {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
   font-weight: 700;
 }
 
+.gantt-cell--group__title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--stage-color);
+}
+
 .gantt-cell--group__count {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
   color: var(--muted);
   font-size: 10px;
+  font-weight: 600;
 }
 
 .gantt-cell--head,

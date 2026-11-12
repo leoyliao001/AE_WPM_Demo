@@ -240,7 +240,6 @@ def build_dashboard_summary(submissions) -> dict:
 
             plan_range = task.get("plan") or {}
             actual_range = task.get("actual")
-            completed_at = task.get("completedAt") or task.get("completed_at")
 
             plan_end = None
             actual_end = None
@@ -265,10 +264,12 @@ def build_dashboard_summary(submissions) -> dict:
                     else:
                         bucket = "Delayed"
             else:
-                # Try to derive completed week from completed_at using project_gantt helper
-                if completed_at:
+                # Business Case submission is recorded on the intake, outside Gantt.
+                if task.get("id") == "business-case" and submission.business_case_submission_date:
                     try:
-                        completed_week = _pg._week_index_for_date(created_at, completed_at)
+                        completed_week = _pg._week_index_for_date(
+                            created_at, submission.business_case_submission_date
+                        )
                     except Exception:
                         completed_week = None
                     if plan_end is not None and completed_week is not None:

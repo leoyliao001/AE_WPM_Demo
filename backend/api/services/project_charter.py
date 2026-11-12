@@ -100,8 +100,8 @@ def build_charter_sources(project):
     deliverables = []
     for phase_id, label, text, task_ids in DELIVERABLES:
         selected = [tasks_by_id[task_id] for task_id in task_ids if task_id in tasks_by_id]
-        complete = len(selected) == len(task_ids) and all(task.get("completedAt") for task in selected)
-        started = any(task.get("completedAt") or task.get("actual") for task in selected)
+        complete = len(selected) == len(task_ids) and all(task.get("actual") for task in selected)
+        started = any(task.get("actual") for task in selected)
         deliverables.append({
             "id": phase_id, "phase": label, "description": text,
             "timeline": date_range(selected),

@@ -12,15 +12,28 @@ from api.views.project_gantt import (
     merge_gantt_tasks_with_template,
 )
 from api.views.project_gantt_attributes import _normalize_task_rows
+from api.views.stakeholder_registration import _assigned_role_emails
 
 
 class ProjectGanttTaskSchemaTests(SimpleTestCase):
+    def test_assigned_role_emails_resolve_team_member_email(self):
+        registration = SimpleNamespace(
+            team_members=[
+                {"id": "person-1", "email": "FPO@example.com"},
+                {"id": "person-2", "email": "other@example.com"},
+            ],
+            assignments={"fpo": {"personIds": ["person-1"]}},
+        )
+
+        self.assertEqual(_assigned_role_emails(registration, "fpo"), ["fpo@example.com"])
+
     def test_template_tasks_have_lifecycle_stages_and_no_standard_ranges(self):
         tasks = build_template_tasks()
 
         self.assertEqual(len(tasks), len(TEMPLATE_TASKS))
         self.assertTrue(all(task["lifecycleStage"] for task in tasks))
         self.assertTrue(all("standard" not in task for task in tasks))
+        self.assertTrue(all("completedAt" not in task for task in tasks))
         self.assertTrue(all(task["plan"] is None for task in tasks))
 
     def test_old_standard_data_is_not_returned_and_template_stage_is_added(self):
@@ -38,6 +51,7 @@ class ProjectGanttTaskSchemaTests(SimpleTestCase):
         self.assertEqual(tasks[0]["lifecycleStage"], "initiate")
         self.assertIsNone(tasks[0]["plan"])
         self.assertNotIn("standard", tasks[0])
+        self.assertNotIn("completedAt", tasks[0])
 
     def test_task_normalization_persists_lifecycle_stage_without_standard(self):
         tasks = _normalize_tasks(
@@ -56,6 +70,7 @@ class ProjectGanttTaskSchemaTests(SimpleTestCase):
             DEFAULT_LIFECYCLE_STAGE_BY_TASK_ID["knowledge-transfer"],
         )
         self.assertNotIn("standard", tasks[0])
+        self.assertNotIn("completedAt", tasks[0])
 
     def test_task_normalization_rejects_unknown_lifecycle_stage(self):
         with self.assertRaisesRegex(ValueError, "Invalid lifecycle stage"):

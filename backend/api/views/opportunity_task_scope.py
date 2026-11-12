@@ -9,10 +9,11 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope, ServiceCatalogue
+from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope, ServiceCatalogue, StakeholderRegistration
 from api.permissions.attributes_access import get_request_email
 from api.views.opportunity_assessment import _build_setup_context, _deny_unless_requestor, _get_project, _parse_number
 from api.views.fpo_catalogue_requests import catalogue_request_reminders
+from api.views.stakeholder_registration import _assigned_role_emails
 
 
 FIELD_MAP = {
@@ -199,9 +200,14 @@ def opportunity_task_scope(request, project_id):
     else:
         scope = OpportunityAssessmentScope.objects.filter(project=project).first()
         state = scope.state if scope else _initial_state(project)
+    registration = StakeholderRegistration.objects.filter(project=project).only(
+        "team_members", "assignments"
+    ).first()
+    fpo_approvers = _assigned_role_emails(registration, "fpo")
     return Response({
         "migration_request_id": project.migration_request_id,
         "state": state, "revision": scope.revision if scope else 0,
+        "fpo_approver_email": fpo_approvers[0] if len(fpo_approvers) == 1 else "",
         "catalogue_requests": catalogue_request_reminders(project),
         "catalogue_additions": _catalogue_additions(),
         "intake": {"region": project.region, "area": ", ".join(project.areas or []),

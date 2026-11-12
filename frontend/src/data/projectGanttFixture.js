@@ -93,27 +93,47 @@ export const projectGanttBarTypes = [
   {
     id: 'actual',
     label: 'Actual',
-    hint: 'Auto from completion · green if within Plan, pink if beyond',
+    hint: 'Recorded progress · green if within Plan, pink if beyond',
     color: '#6DBF80',
     lateColor: '#E57F90'
   }
 ]
 
 export const projectGanttLifecycleStages = [
-  { id: 'initiate', label: 'Initiate', description: 'Authorise & define', color: '#1f78d1' },
-  { id: 'plan', label: 'Plan', description: 'Build the roadmap', color: '#14a3a3' },
-  { id: 'execute', label: 'Execute', description: 'Do the work', color: '#7a5af8' },
+  {
+    id: 'initiate',
+    label: 'Initiate',
+    description: 'Authorise & define',
+    color: '#1f78d1',
+    tint: '#edf5fc'
+  },
+  {
+    id: 'plan',
+    label: 'Plan',
+    description: 'Build the roadmap',
+    color: '#14a3a3',
+    tint: '#eaf7f6'
+  },
+  {
+    id: 'execute',
+    label: 'Execute',
+    description: 'Do the work',
+    color: '#7a5af8',
+    tint: '#f2efff'
+  },
   {
     id: 'monitor_control',
     label: 'Monitor & Control',
     description: 'Track & correct',
-    color: '#5f9b2d'
+    color: '#5f9b2d',
+    tint: '#f0f6ea'
   },
   {
     id: 'close_realize_value',
     label: 'Close & Realize Value',
     description: 'Finalise & learn',
-    color: '#0b5fa5'
+    color: '#0b5fa5',
+    tint: '#edf4f9'
   }
 ]
 
@@ -124,128 +144,112 @@ export const projectGanttTasks = [
     name: 'Business Case (Memo)',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'fbp-approval',
     name: 'FBP approval',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'functional-head',
     name: 'Functional head approval',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'elt-approval',
     name: 'ELT approval',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'gsc-head',
     name: 'GSC Head -1 approval',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'opportunity-assessment',
     name: 'Opportunity Assessment (Detailed task scoping)',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'pid-approval',
     name: 'PID Approval',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'hiring-request',
     name: 'Hiring Request approval',
     lifecycleStage: 'initiate',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'resource-mobilization',
     name: 'Resource mobilization',
     lifecycleStage: 'execute',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'neo-training',
     name: 'NEO + GSC L&D business & training stage',
     lifecycleStage: 'execute',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'knowledge-transfer',
     name: 'Knowledge Transfer Business + System Training sessions + Assessments',
     lifecycleStage: 'plan',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'volume-transfer',
     name: 'Volume Transfer/Ramp-up stage',
     lifecycleStage: 'execute',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'hypercare',
     name: 'Hypercare stage',
     lifecycleStage: 'monitor_control',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'hypercare-exit',
     name: 'Hypercare Exit Success Criteria Review',
     lifecycleStage: 'monitor_control',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'sign-off',
     name: 'Migration Sign-off recommendation',
     lifecycleStage: 'close_realize_value',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   },
   {
     id: 'capacity-release',
     name: 'Recommended soonest Capacity Release',
     lifecycleStage: 'close_realize_value',
     plan: null,
-    actual: null,
-    completedAt: null
+    actual: null
   }
 ]
 

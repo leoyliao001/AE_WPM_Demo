@@ -203,7 +203,12 @@ class ProjectCharterTests(TestCase):
 
     def test_gantt_dates_and_partial_progress_are_real(self):
         ProjectGanttPlan.objects.create(project=self.project, tasks=[
-            {"id": "neo-training", "name": "Training", "plan": {"startWeek": 1, "endWeek": 2}, "completedAt": timezone.now().isoformat()},
+            {
+                "id": "neo-training",
+                "name": "Training",
+                "plan": {"startWeek": 1, "endWeek": 2},
+                "actual": {"startWeek": 1, "endWeek": 1},
+            },
         ])
         data = self.client.get(self.url).data
         executing = next(row for row in data["sources"]["deliverables"] if row["id"] == "executing")

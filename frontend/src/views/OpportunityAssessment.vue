@@ -35,8 +35,13 @@ const backTo = computed(() => route.query.from === 'toll-gates'
 function buildDocument(data) {
   const config = JSON.stringify(data).replace(/</g, '\\u003c')
   const catalogueAdditions = JSON.stringify(data.catalogue_additions || []).replace(/</g, '\\u003c')
+  const fpoApprover = escapeHtml(data.fpo_approver_email || 'Not assigned')
   let source = scopeTemplate
     .replace(/<header class="top">[\s\S]*?<\/header>/, '')
+    .replace(
+      '<span id="fpoApprover">Not assigned</span>',
+      `<span id="fpoApprover">${fpoApprover}</span>`
+    )
     .replace('<script>', `<script>window.OA_CONFIG=${config};`)
     .replace(/const MIGRATION_ID=.*?;/, 'const MIGRATION_ID=window.OA_CONFIG.migration_request_id;')
     .replace(/const CAT=([^\r\n]*);/, (_match, catalogue) => `const CAT=${catalogue}.concat(${catalogueAdditions});`)
@@ -89,6 +94,15 @@ html,body{height:100%;letter-spacing:0}main{padding-bottom:82px}.mcard,.builder,
 @media(max-width:600px){.method{grid-template-columns:minmax(0,1fr);gap:10px}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile{min-width:0;padding:9px}.tile .lbl{overflow-wrap:anywhere}.ctx{gap:8px 14px}.ctx span{overflow-wrap:anywhere;max-width:100%}.gfilters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.gfilters .f select{width:100%}.selbar{flex-wrap:wrap}.bbody,.bbody.multi-product{grid-template-columns:minmax(0,1fr)}.foot{padding:10px 14px}.lock{overflow-wrap:anywhere}.bar .chip{max-width:100%;overflow-wrap:anywhere}.pager{flex-wrap:wrap}.mcard{padding:12px}.mnum{width:26px;height:26px}.mbody b{font-size:13px}}
 </style>`
   return source.replace('</head>', `${styles}</head>`).replace('<\/script></body>', `${integration}<\/script></body>`)
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 async function loadAssessment() {
