@@ -5,7 +5,14 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from api.models import MigrationIntakeSubmission, ScopeStatement, ScopeStatementEvidence, ScopeStatementLine
+from api.models import (
+    MigrationIntakeSubmission,
+    ProjectAttributesAccess,
+    ScopeStatement,
+    ScopeStatementEvidence,
+    ScopeStatementLine,
+    StakeholderRegistration,
+)
 
 
 class ScopePageTests(TestCase):
@@ -18,6 +25,15 @@ class ScopePageTests(TestCase):
         self.project = MigrationIntakeSubmission.objects.create(
             migration_request_id="SCOPE-PAGE-TEST", requestor="scope@example.com",
             project_name="Scope page test", fte_number="6",
+        )
+        ProjectAttributesAccess.objects.create(email="scope@example.com", is_super_admin=True)
+        StakeholderRegistration.objects.create(
+            project=self.project,
+            team_members=[{"id": "scope-user", "fullName": "Scope User", "email": "scope@example.com"}],
+            assignments={
+                "area_poc": {"personIds": ["scope-user"], "lockedAt": "2026-11-12T00:00:00Z"},
+                "gsc_leaders": {"personIds": ["scope-user"], "lockedAt": "2026-11-12T00:00:00Z"},
+            },
         )
         self.client = APIClient()
         self.client.credentials(HTTP_X_USER_EMAIL="scope@example.com")
@@ -40,6 +56,42 @@ class ScopePageTests(TestCase):
 
     def save(self, payload):
         return self.client.post(self.url + "save/", payload, format="json")
+
+    def test_scope_role_and_super_admin_have_separate_edit_permissions(self):
+        StakeholderRegistration.objects.filter(project=self.project).update(
+            team_members=[
+                {"id": "scope-user", "fullName": "Scope User", "email": "scope@example.com"},
+                {"id": "stakeholder-user", "fullName": "Stakeholder User", "email": "stakeholder@example.com"},
+            ],
+            assignments={
+                "area_poc": {"personIds": ["scope-user"], "lockedAt": "2026-11-12T00:00:00Z"},
+                "gsc_leaders": {"personIds": ["stakeholder-user"], "lockedAt": "2026-11-12T00:00:00Z"},
+            },
+        )
+        self.client.credentials(HTTP_X_USER_EMAIL="stakeholder@example.com")
+        permissions = self.client.get(self.url).data
+        self.assertTrue(permissions["canEdit"])
+        self.assertFalse(permissions["canEditMigratableFte"])
+        self.assertEqual(self.save({"scopeText": "Updated by a GSC Leader."}).status_code, 200)
+        self.assertEqual(self.save({"migratableFte": "6", "migratableFteConfirmed": True}).status_code, 403)
+
+        ProjectAttributesAccess.objects.create(email="manager@example.com", is_super_admin=True)
+        self.client.credentials(HTTP_X_USER_EMAIL="manager@example.com")
+        permissions = self.client.get(self.url).data
+        self.assertFalse(permissions["canEdit"])
+        self.assertTrue(permissions["canEditMigratableFte"])
+        self.assertEqual(self.save({"migratableFte": "6", "migratableFteConfirmed": True}).status_code, 200)
+        self.assertEqual(self.save({"scopeText": "Unauthorized update."}).status_code, 403)
+
+    def test_unlocked_stakeholder_assignment_does_not_grant_scope_editing(self):
+        StakeholderRegistration.objects.filter(project=self.project).update(
+            assignments={"area_poc": {"personIds": ["scope-user"]}},
+        )
+        self.client.credentials(HTTP_X_USER_EMAIL="scope@example.com")
+        permissions = self.client.get(self.url).data
+        self.assertFalse(permissions["canEdit"])
+        self.assertTrue(permissions["canEditMigratableFte"])
+        self.assertEqual(self.save({"scopeText": "Unlocked role assignment."}).status_code, 403)
 
     def upload(self, suffix="attachments/"):
         return self.client.post(self.url + suffix, {
@@ -70,12 +122,19 @@ class ScopePageTests(TestCase):
         self.assertTrue(response.data["pageLocked"])
         self.assertFalse(ScopeStatementEvidence.objects.exists())
         self.assertEqual(self.save({"action": "unlock"}).status_code, 200)
+        self.statement.refresh_from_db()
+        saved_scope_text = self.statement.scope_text
+        saved_lines = list(self.statement.lines.order_by("job_level").values_list(
+            "job_level", "agreed_fte", "not_agreed_fte", "final_fte",
+        ))
         payload = self.payload("lock")
         payload["lines"][2]["finalFte"] = None
         self.assertEqual(self.save(payload).status_code, 400)
         self.statement.refresh_from_db()
-        self.assertEqual(self.statement.scope_text, "")
-        self.assertTrue(all(line.final_fte is None for line in self.statement.lines.all()))
+        self.assertEqual(self.statement.scope_text, saved_scope_text)
+        self.assertEqual(list(self.statement.lines.order_by("job_level").values_list(
+            "job_level", "agreed_fte", "not_agreed_fte", "final_fte",
+        )), saved_lines)
         payload = self.payload("lock")
         payload["waves"][0]["fte"] = 5
         self.assertEqual(self.save(payload).status_code, 400)
@@ -162,6 +221,17 @@ class ScopePageTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.statement.refresh_from_db()
         self.assertEqual(self.statement.scope_text, "Transfer support operations.")
+
+    def test_scope_database_admin_cannot_bypass_role_edit_permissions(self):
+        ProjectAttributesAccess.objects.create(email="manager@example.com", is_super_admin=True)
+        self.client.credentials(HTTP_X_USER_EMAIL="manager@example.com")
+        response = self.client.post("/api/migration-dashboard/scope-statements/data/", {
+            "uniqueData": [{"statement_id": self.statement.pk, "scope_text": "Admin bypass"}],
+        }, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["error_count"], 1)
+        self.statement.refresh_from_db()
+        self.assertEqual(self.statement.scope_text, "")
 
     def test_unlock_clears_legacy_partial_locks_and_preserves_files(self):
         self.upload()

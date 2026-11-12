@@ -37,17 +37,17 @@
                   <section>
                     <h3>Who can view and edit?</h3>
                     <ul>
-                      <li>The original Migration Intake Requestor for this project: <strong>{{ statement.requestor }}</strong>.</li>
-                      <li>Users granted <strong>Scope Statement</strong> access in Project Attributes &gt; Access Control.</li>
-                      <li><strong>Super Admins</strong> have this permission automatically, including for projects requested by someone else. Access Control permission alone does not grant Scope Statement access.</li>
-                      <li>You must be signed in. Being named in the Project Team or a stakeholder role does not by itself grant access to this page.</li>
+                      <li>The project Requestor (<strong>{{ statement.requestor }}</strong>), users with <strong>Scope Statement</strong> access, and assigned Stakeholder Registration members may view this page.</li>
+                      <li>Only the locked <strong>GSC Leaders</strong> and <strong>Area POC (Migration Owner)</strong> assignments in Stakeholder Registration can edit the Scope details.</li>
+                      <li>For now, a system-wide <strong>Super Admin</strong> is treated as the <strong>Migration Manager</strong> and may enter and confirm the top-level Migratable FTE only. Super Admin status does not grant permission to edit other Scope details.</li>
+                      <li>Being named in the Project Team without one of these locked role assignments does not grant editing permission.</li>
                     </ul>
                   </section>
                   <section>
                     <h3>Draft, submitted and review-required states</h3>
                     <p>Current state: <strong>{{ isSubmitted ? 'Submitted - read-only' : 'Draft' }}</strong><template v-if="statement.reviewRequired">; <strong>Scope review required</strong></template>.</p>
                     <ul>
-                      <li>In a draft, authorised editors can update scope text, out-of-scope items, assumptions and migration waves, then select <strong>Save draft</strong>.</li>
+                      <li>In a draft, assigned GSC Leaders and the Area POC can update scope text, out-of-scope items, assumptions, job-level FTE and migration waves, then select <strong>Save draft</strong>.</li>
                       <li>A submitted statement is read-only for everyone, including Super Admins. Enter a revision reason (maximum 2,000 characters) and select <strong>Reopen for revision</strong> before editing.</li>
                       <li>Reopening preserves attachments and the page lock. Use the single page-level <strong>Unlock</strong> control before editing; reopening alone does not unlock the page.</li>
                     </ul>
@@ -56,9 +56,9 @@
                     <h3>FTE agreement and evidence rules</h3>
                     <ol>
                       <li>For each of <strong>JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
-                      <li>Enter and explicitly confirm the independent <strong>Migratable FTE</strong> total. It is initially prefilled from the agreed JL total; changing its value clears confirmation.</li>
+                      <li>The system-wide Super Admin (temporarily treated as Migration Manager) enters and explicitly confirms the independent top-level <strong>Migratable FTE</strong> total. It is initially suggested from the agreed JL total; changing its value clears confirmation.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
-                      <li>The single <strong>Lock / Unlock</strong> control applies to the whole page, including FTE, scope text, assumptions, migration waves and uploads. Downloads remain available while locked.</li>
+                      <li>Only assigned GSC Leaders and the Area POC can upload evidence or use the page-level <strong>Lock / Unlock</strong> control. The whole page, including FTE, scope text, assumptions, migration waves and uploads, is locked together; downloads remain available while locked.</li>
                     </ol>
                   </section>
                   <section>
@@ -68,13 +68,13 @@
                       <li>Business Case and Charter read the manual Migratable FTE total. Financial calculations and final delivery commitments continue to use Final FTE by job level.</li>
                       <li>Final project FTE is the sum of the three final FTE values; Intake ambition is retained as the baseline, not a required matching total.</li>
                       <li>Waves are optional. If provided, each needs a name, valid date and non-negative whole-number FTE; the wave FTE total must equal final project FTE.</li>
-                      <li>Authorised editors can submit Scope; this is not limited to the Requestor. Submitted Scope without a review flag is shown as <strong>Secured</strong> on the Artefact Delivery Dashboard.</li>
+                      <li>Assigned GSC Leaders and the Area POC can submit or reopen Scope; this is not limited to the Requestor. Submitted Scope without a review flag is shown as <strong>Secured</strong> on the Artefact Delivery Dashboard.</li>
                       <li>Changes to relevant Intake sources can require Scope review. Reopen, review and resubmit. Changes to Scope can also mark an existing submitted Business Case for review and block further approval until it is reviewed and resubmitted.</li>
                       <li>Save, lock, unlock, evidence upload, submission and revision actions are recorded in the audit history, including the acting user and time; reopening also records the reason.</li>
                     </ul>
                   </section>
                 </PermissionsRulesHelp>
-                <mc-button appearance="neutral" variant="outlined" fit="small" label="Save draft" :disabled="!canEdit || isBusy" :loading="busy === 'save'" @click="saveData('save')" />
+                <mc-button appearance="neutral" variant="outlined" fit="small" label="Save draft" :disabled="!canSave || isBusy" :loading="busy === 'save'" @click="saveData('save')" />
                 <mc-button appearance="primary" fit="small" label="Submit statement" :disabled="!canManage || isBusy || !ready" :loading="busy === 'submit'" @click="saveData('submit')" />
               </div>
             </div>
@@ -104,10 +104,10 @@
             <article class="metric-card">
               <div class="metric-card__top"><span>Migratable FTE</span><mc-icon icon="mi-check" size="18" /></div>
               <div class="metric-card__value metric-card__manual">
-                <input v-model="migratableFte" aria-label="Migratable FTE" type="number" min="0" max="99999999.9999" step="0.0001" :disabled="!canEdit || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
+                <input v-model="migratableFte" aria-label="Migratable FTE" type="number" min="0" max="99999999.9999" step="0.0001" :disabled="!canEditMigratableFte || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
               </div>
-              <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEdit || isBusy || !validNumber(migratableFte)" />I confirm this Migratable FTE</label>
-              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Suggested from JL total: {{ totalDisplay('agreedFte') }}</p>
+              <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEditMigratableFte || isBusy || !validNumber(migratableFte)" />I confirm this Migratable FTE</label>
+              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Super Admin (Migration Manager) only · Suggested from JL total: {{ totalDisplay('agreedFte') }}</p>
             </article>
             <article class="metric-card metric-card--teal">
               <div class="metric-card__top"><span>Locked final FTE</span><mc-icon icon="mi-shield" size="18" /></div>
@@ -145,8 +145,11 @@
         <div v-else-if="pageLocked" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>The whole page is locked. Use Unlock at the top to edit project boundaries, FTE, migration waves or attachments.</span>
         </div>
+        <div v-else-if="canEditMigratableFte && !canEdit" class="notice notice--info">
+          <mc-icon icon="mi-shield" size="18" /><span>You can enter and confirm Migratable FTE. Other Scope details are editable only by the locked GSC Leaders and Area POC assignments.</span>
+        </div>
         <div v-else-if="!canManage" class="notice notice--info">
-          <mc-icon icon="mi-shield" size="18" /><span>Read-only view. Editing requires the project Requestor, Scope Statement access or Super Admin permission.</span>
+          <mc-icon icon="mi-shield" size="18" /><span>Read-only view. Scope details are editable only by the locked GSC Leaders and Area POC assignments; Migratable FTE is editable only by the system-wide Super Admin (Migration Manager).</span>
         </div>
         <form v-if="isSubmitted" class="detail-card scope-boundaries" @submit.prevent="reopenScope">
           <h2>Reopen for revision</h2>
@@ -154,7 +157,7 @@
           <label class="scope-revision-reason">Revision reason (required, maximum 2,000 characters)
             <textarea v-model="revisionReason" :disabled="isBusy" maxlength="2000" rows="2" required />
           </label>
-          <button type="submit" class="scope-add-wave" :disabled="isBusy || !revisionReason.trim()">Reopen for revision</button>
+          <button type="submit" class="scope-add-wave" :disabled="!canManage || isBusy || !revisionReason.trim()">Reopen for revision</button>
         </form>
 
         <section class="agreement-card" aria-labelledby="agreement-title">
@@ -332,6 +335,8 @@ const isSubmitted = computed(() => statement.value?.status === 'submitted')
 const canManage = computed(() => Boolean(statement.value?.canEdit) && !isSubmitted.value)
 const pageLocked = computed(() => Boolean(statement.value?.pageLocked))
 const canEdit = computed(() => canManage.value && !pageLocked.value)
+const canEditMigratableFte = computed(() => Boolean(statement.value?.canEditMigratableFte) && !isSubmitted.value && !pageLocked.value)
+const canSave = computed(() => canEdit.value || canEditMigratableFte.value)
 const ambition = computed(() => Number(statement.value?.ambitionFte || 0))
 const lockedCount = computed(() => lines.value.filter((line) => line.lockedAt).length)
 const lockedTotal = computed(() => lines.value.filter((line) => line.lockedAt).reduce((sum, line) => sum + Number(line.finalFte), 0))
@@ -460,7 +465,7 @@ async function loadData() {
 }
 
 async function persist(action, extra = {}) {
-  if (action === 'unlock' || action === 'submit') {
+  if (action === 'lock' || action === 'unlock' || action === 'submit') {
     const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
       action, revision: statement.value.revision
     })
@@ -471,42 +476,49 @@ async function persist(action, extra = {}) {
     error.value = 'Enter a non-negative Migratable FTE within the permitted range.'
     return false
   }
-  if (waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
+  if (canEdit.value && waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
       Number.isNaN(Date.parse(wave.date)) || new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
       !validNumber(wave.fte, true))) {
     error.value = 'Each wave needs a name, valid YYYY-MM-DD date and non-negative integer FTE. Complete or remove unfinished rows before saving.'
     return false
   }
-  const editableLines = lines.value.filter((line) => !line.lockedAt)
-  if (editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
+  const editableLines = canEdit.value ? lines.value.filter((line) => !line.lockedAt) : []
+  if (canEdit.value && editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
     line[key] !== '' && !validNumber(line[key], key === 'finalFte')
   ))) {
     error.value = 'Enter non-negative FTE values. Final FTE must be a whole number.'
     return false
   }
-  const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
+  const payload = {
     action,
     revision: statement.value.revision,
-    migratableFte: migratableFte.value === '' ? null : migratableFte.value,
-    migratableFteConfirmed: migratableFteConfirmed.value,
-    scopeText: scopeText.value,
-    outOfScope: outOfScope.value,
-    assumptions: assumptions.value,
-    waves: waves.value.map(wave => ({ name: wave.name.trim(), date: wave.date, fte: Number(wave.fte) })),
-    lines: editableLines.map((line) => ({
-      jobLevel: line.jobLevel,
-      agreedFte: line.agreedFte === '' ? null : line.agreedFte,
-      notAgreedFte: line.notAgreedFte === '' ? null : line.notAgreedFte,
-      finalFte: line.finalFte === '' ? null : line.finalFte
-    })),
-    ...extra
-  })
+    ...extra,
+  }
+  if (canEditMigratableFte.value) {
+    payload.migratableFte = migratableFte.value === '' ? null : migratableFte.value
+    payload.migratableFteConfirmed = migratableFteConfirmed.value
+  }
+  if (canEdit.value) {
+    Object.assign(payload, {
+      scopeText: scopeText.value,
+      outOfScope: outOfScope.value,
+      assumptions: assumptions.value,
+      waves: waves.value.map(wave => ({ name: wave.name.trim(), date: wave.date, fte: Number(wave.fte) })),
+      lines: editableLines.map((line) => ({
+        jobLevel: line.jobLevel,
+        agreedFte: line.agreedFte === '' ? null : line.agreedFte,
+        notAgreedFte: line.notAgreedFte === '' ? null : line.notAgreedFte,
+        finalFte: line.finalFte === '' ? null : line.finalFte
+      })),
+    })
+  }
+  const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, payload)
   applyResponse(data)
   return true
 }
 
 async function saveData(action, extra = {}) {
-  if (!canManage.value || isBusy.value) return
+  if ((action === 'save' ? !canSave.value : !canManage.value) || isBusy.value) return
   busy.value = action
   error.value = ''
   success.value = ''

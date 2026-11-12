@@ -21,6 +21,16 @@
             <article v-for="metric in metrics" :key="metric.label" class="pa-metric" :class="{ 'pa-metric--risk': metric.risk && metric.value > 0 }">
               <span class="pa-metric-label">{{ metric.label }}<mc-icon class="pa-metric-info" icon="mi-information" size="14" :title="metric.note" :aria-label="metric.note" role="img" /></span><strong>{{ metric.value }}</strong>
             </article>
+            <article class="pa-jl-card" aria-label="Job level scope summary">
+              <h2 class="pa-jl-card__title">JL</h2>
+              <div class="pa-jl-card__levels">
+                <div v-for="level in jlSummary" :key="level.name" class="pa-jl-card__level" :class="`pa-jl-card__level--${level.tone}`">
+                  <span>{{ level.name }}</span>
+                  <strong>{{ level.selected }}<span>/{{ level.total }}</span></strong>
+                </div>
+              </div>
+              <p class="pa-jl-card__caption">Selected / Scope Statement</p>
+            </article>
           </div>
         </header>
         <div v-if="!record.source.ready" class="pa-feedback">Complete and submit Scope before confirming Resources. Draft positions can be prepared now. <router-link class="pa-link" :to="`/migration-dashboard/${projectId}/scope-statement`">Open Scope</router-link></div>
@@ -103,6 +113,12 @@ const approvedFtes = computed(() => record.value?.businessCase?.locked ? record.
 const countRows = (rows, predicate) => rows.filter(predicate).length
 const onboarded = rows => countRows(rows, row => row.actualDoj && row.apmmId)
 const atRisk = rows => countRows(rows, row => row.hiringStatus === 'At Risk')
+const jlSummary = [
+  { name: 'JL1', selected: 3, total: 5, tone: 'warm' },
+  { name: 'JL2', selected: 4, total: 4, tone: 'cool' },
+  { name: 'JL3', selected: 2, total: 1, tone: 'warm' },
+  { name: 'JL4', selected: 1, total: 0, tone: 'warm' },
+]
 const metricCards = {
   execution: () => [
     {

@@ -17,10 +17,12 @@ from api.models import (
     ScopeStatement,
     ScopeStatementEvidence,
     ScopeStatementLine,
+    StakeholderRegistration,
 )
 from api.permissions.attributes_access import (
     can_access_table,
     get_request_email,
+    is_super_admin,
     normalize_email,
     require_attributes_access,
 )
@@ -42,7 +44,42 @@ def _has_scope_statement_access(project, email):
     return (
         normalize_email(email) == normalize_email(project.requestor)
         or can_access_table(email, "scope_statement")
+        or _can_edit_scope_details(project, email)
     )
+
+
+def _assigned_role_emails(project, role_codes):
+    registration = StakeholderRegistration.objects.filter(project=project).first()
+    if registration is None:
+        return set()
+
+    members_by_id = {
+        str(person.get("id") or ""): normalize_email(person.get("email"))
+        for person in registration.team_members or []
+        if isinstance(person, dict)
+    }
+    emails = set()
+    assignments = registration.assignments or {}
+    for role_code in role_codes:
+        assignment = assignments.get(role_code, {})
+        if not isinstance(assignment, dict) or not assignment.get("lockedAt"):
+            continue
+        person_ids = assignment.get("personIds", [])
+        if isinstance(person_ids, list):
+            emails.update(
+                members_by_id[person_id]
+                for person_id in map(str, person_ids)
+                if members_by_id.get(person_id)
+            )
+    return emails
+
+
+def _can_edit_scope_details(project, email):
+    return normalize_email(email) in _assigned_role_emails(project, {"gsc_leaders", "area_poc"})
+
+
+def _can_edit_migratable_fte(email):
+    return is_super_admin(email)
 
 
 def _scope_statement_access_denied():
@@ -116,7 +153,8 @@ def _serialize_statement(project, statement, email):
         "status": statement.status if statement else "draft",
         "reviewRequired": statement.review_required if statement else False,
         "saved": bool(statement),
-        "canEdit": bool(email and _has_scope_statement_access(project, email)) and not (statement and statement.status == "submitted"),
+        "canEdit": bool(email and _can_edit_scope_details(project, email)) and not (statement and statement.status == "submitted"),
+        "canEditMigratableFte": bool(email and _can_edit_migratable_fte(email)) and not (statement and statement.status == "submitted"),
         "revision": statement.revision if statement else 0,
         "scopeText": statement.scope_text if statement else "",
         "outOfScope": statement.out_of_scope if statement else "",
@@ -280,6 +318,8 @@ def save_scope_statement_database(request):
 
                 if statement.status == "submitted":
                     raise ValueError("Submitted Scope Statements are frozen.")
+                if not _can_edit_scope_details(project, email):
+                    raise ValueError("Only assigned GSC Leaders or the Area POC can edit Scope details.")
                 if statement.lines.filter(locked_at__isnull=False).exists():
                     raise ValueError("Scope Statement is locked. Unlock the page before editing.")
 
@@ -430,6 +470,17 @@ def save_scope_statement(request, project_id):
     action = (payload.get("action") or "save").strip().lower()
     if action not in {"save", "lock", "unlock", "submit", "revise"}:
         return Response({"error": "Unsupported action."}, status=status.HTTP_400_BAD_REQUEST)
+
+    can_edit_details = _can_edit_scope_details(project, email)
+    can_edit_fte = _can_edit_migratable_fte(email)
+    if not can_edit_details and action != "save":
+        return Response({"error": "Only assigned GSC Leaders or the Area POC can manage Scope details."}, status=403)
+    if not can_edit_details and any(key in payload for key in ("scopeText", "outOfScope", "assumptions", "waves", "lines")):
+        return Response({"error": "Only assigned GSC Leaders or the Area POC can edit Scope details."}, status=403)
+    if not can_edit_fte and any(key in payload for key in ("migratableFte", "migratableFteConfirmed")):
+        return Response({"error": "Only a Super Admin can enter or confirm Migratable FTE."}, status=403)
+    if not can_edit_details and not can_edit_fte:
+        return Response({"error": "You do not have permission to edit this Scope Statement."}, status=403)
 
     try:
         _apply_scope_extensions(ScopeStatement(), payload)
@@ -633,6 +684,8 @@ def upload_scope_evidence(request, project_id, job_level=None):
         return Response({"error": "Sign in required. Missing SSO email."}, status=status.HTTP_401_UNAUTHORIZED)
     if not _has_scope_statement_access(project, email):
         return _scope_statement_access_denied()
+    if not _can_edit_scope_details(project, email):
+        return Response({"error": "Only assigned GSC Leaders or the Area POC can upload Scope evidence."}, status=403)
 
     if job_level is not None and job_level not in JOB_LEVELS:
         return Response({"error": "Unknown job level."}, status=status.HTTP_404_NOT_FOUND)
