@@ -1,5 +1,5 @@
 <template>
-  <PageShell title="Stakeholder Registration" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" full-width class="stakeholder-shell">
+  <PageShell title="Stakeholder Registration" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" back-link-to-topbar full-width class="stakeholder-shell">
     <div class="stakeholder-page">
       <div v-if="loading" class="state-message" role="status">Loading stakeholder registry…</div>
       <div v-else-if="error && !registration" class="state-message state-message--error" role="alert">

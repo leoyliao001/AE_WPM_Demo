@@ -5,6 +5,8 @@
     subtitle="Migration lifecycle grouped into the five PMI process groups — Initiating through Closing."
     :back-to="backTo"
     :back-label="backLabel"
+    back-link-to-topbar
+    :show-back-link="false"
     full-width
   >
     <div class="project-picker">

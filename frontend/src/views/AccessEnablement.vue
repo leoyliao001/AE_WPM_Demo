@@ -1,5 +1,5 @@
 <template>
-  <PageShell title="Access & Enablement" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" full-width>
+  <PageShell title="Access & Enablement" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" back-link-to-topbar full-width>
     <div class="pa-page">
       <div v-if="loading" class="pa-panel" role="status">Loading access and IT readiness...</div>
       <div v-if="error" class="pa-feedback pa-feedback--error" role="alert">{{ error }} <button v-if="!record" class="pa-text-button" @click="load">Retry</button></div>

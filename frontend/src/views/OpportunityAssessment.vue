@@ -4,7 +4,6 @@
     <div v-if="error" class="oa-error" role="alert">
       <p>{{ error }}</p>
       <button type="button" @click="loadAssessment().catch(() => {})">Retry</button>
-      <router-link :to="backTo">Back to project</router-link>
     </div>
     <iframe v-if="documentSource" ref="scopeFrame" :key="frameKey" :srcdoc="documentSource" title="Opportunity Assessment task-level scoping" class="oa-frame" />
   </section>
@@ -14,6 +13,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
 import scopeTemplate from '../../../refer doc/WPM_Pulse_OA_Task_Scoping.html?raw'
 
 const route = useRoute()
@@ -31,6 +31,8 @@ const endpoint = computed(() => `/api/migration-dashboard/projects/${route.param
 const backTo = computed(() => route.query.from === 'toll-gates'
   ? `/toll-gates?project=${route.query.project || route.params.id}`
   : `/migration-dashboard/${route.params.id}`)
+const backLabel = computed(() => route.query.from === 'toll-gates' ? 'Back to Toll Gates' : 'Back to project')
+useTopbarBackLink(backTo, backLabel)
 
 function buildDocument(data) {
   const config = JSON.stringify(data).replace(/</g, '\\u003c')
@@ -51,7 +53,7 @@ function buildDocument(data) {
     .replace('opt([INTAKE.product])', 'opt(INTAKE.catalogue_products.length?INTAKE.catalogue_products:[INTAKE.product])')
     .replace('$("bP").value=INTAKE.product;', '$("bP").selectedIndex=0;')
     .replace('<select id="bP" hidden></select>', '<div class="f" id="productField" hidden><label>Product</label><select id="bP"></select><div class="hint"></div></div>')
-    .replace('onclick="history.back()"', 'id="backBtn"')
+    .replace(/<button class="btn" onclick="history\.back\(\)">[\s\S]*?<\/button>/, '')
     .replace('setDirty(ok>0);render();', 'if(ok)setDirty(true);render();')
     .replace('$("save").onclick=()=>{localStorage.setItem(STORE,JSON.stringify(S));setDirty(false);toast("Saved")};', '')
     .replace('$("reload").onclick=()=>{if(dirty&&!confirm("Discard unsaved changes?"))return;load();setDirty(false);if(mode)setMode(mode)};', '')
@@ -75,7 +77,6 @@ $("fpoRequestForm").addEventListener("submit",event=>{const entries=[...document
 $("fpoRequestForm").addEventListener("submit",async event=>{event.preventDefault();const button=$("fpoSubmit");button.disabled=true;try{const entries=[...document.querySelectorAll("#fpoEntries .fpo-entry")].map(entry=>Object.fromEntries([...entry.querySelectorAll("[data-field]")].map(input=>[input.dataset.field,input.value.trim()])));const payload={product:$("fpoProduct").value,entries,request_comment:$("fpoReason").value.trim()};const created=await requestParent("fpo-catalogue-request",payload);for(const row of created.entries||[])catalogueRequests.unshift({id:row.id,batch_id:created.batch_id,...row,request_comment:payload.request_comment,status:created.status,decision_comment:"",created_at:new Date().toISOString()});renderCatalogueReminders();closeFpoRequest();const count=created.count||entries.length;toast(count+" FPO request entr"+(count===1?"y":"ies")+" submitted")}catch(error){toast(error?.response?.data?.error||error.message||"Unable to submit the FPO request.")}finally{button.disabled=false}});
 if(INTAKE.products.length>1){$("productField").hidden=false;document.querySelector(".bbody").classList.add("multi-product")}
 $("bP").onchange=onBP;
-$("backBtn").onclick=()=>requestParent("back").catch(error=>toast(error.message));
 if(S.mode){setMode(S.mode);document.querySelectorAll(".mcard").forEach(button=>{const on=button.dataset.mode===S.mode;button.classList.toggle("on",on);button.setAttribute("aria-checked",String(on))})}
 const originalSetMode=setMode;
 setMode=function(value){originalSetMode(value);S.mode=value;setDirty(true)};

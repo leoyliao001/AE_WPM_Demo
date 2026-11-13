@@ -1,6 +1,6 @@
 <template>
   <PageShell title="Project Charter" subtitle="Assembled from existing project artefacts. Only vision, deliverable notes and additional success criteria are maintained here."
-    :back-to="backTo" :back-label="fromAdmin ? 'Back to Admin' : 'Back to Toll Gates'" full-width>
+    :back-to="backTo" :back-label="fromAdmin ? 'Back to Admin' : 'Back to Toll Gates'" back-link-to-topbar full-width>
     <p v-if="loading" class="charter-state">Loading Project Charter...</p>
     <p v-if="error" class="charter-error" role="alert">{{ error }}</p>
     <p v-if="success" class="charter-success" role="status">{{ success }}</p>

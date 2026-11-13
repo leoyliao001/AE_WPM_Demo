@@ -8,7 +8,7 @@
     <div class="page-shell__scroll">
       <div class="page-content">
         <header v-if="showHeader" class="page-header">
-          <router-link v-if="backTo" class="back-link" :to="backTo">
+          <router-link v-if="showBackLink && !backLinkToTopbar && backTo" class="back-link" :to="backTo">
             <mc-button
               class="back-button"
               appearance="neutral"
@@ -37,20 +37,29 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
 
-defineProps({
+const props = defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
   tag: { type: String, default: '' },
   tagAppearance: { type: String, default: 'info' },
   backTo: { type: String, default: '/' },
   backLabel: { type: String, default: 'Back to Welcome' },
+  backLinkToTopbar: { type: Boolean, default: false },
+  showBackLink: { type: Boolean, default: true },
   showHeader: { type: Boolean, default: true },
   showHeading: { type: Boolean, default: true },
   fullWidth: { type: Boolean, default: false }
 })
+
+useTopbarBackLink(
+  computed(() => props.backLinkToTopbar ? props.backTo : ''),
+  computed(() => props.backLabel)
+)
 </script>
 
 <style scoped>

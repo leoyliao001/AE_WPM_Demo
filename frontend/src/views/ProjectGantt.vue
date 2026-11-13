@@ -5,6 +5,7 @@
     tag="Gantt"
     :back-to="backTo"
     :back-label="backLabel"
+    back-link-to-topbar
     full-width
   >
     <mc-notification

@@ -1,5 +1,5 @@
 <template>
-  <PageShell title="Scope Statement" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" full-width class="scope-page">
+  <PageShell title="Scope Statement" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" back-link-to-topbar full-width class="scope-page">
     <div class="scope-workspace">
       <div v-if="loading" class="state-panel" role="status">
         <span class="loading-indicator" />

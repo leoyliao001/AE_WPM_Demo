@@ -7,6 +7,19 @@
       <router-link slot="link" class="home-link" to="/" aria-label="Home" />
 
       <nav slot="actions" class="app-nav" aria-label="Main navigation">
+        <router-link
+          v-if="topbarBackLink"
+          class="topbar-back-link"
+          :to="topbarBackLink.to"
+        >
+          <mc-button
+            appearance="neutral"
+            variant="plain"
+            fit="small"
+            :label="topbarBackLink.label"
+            icon="mi-arrow-left"
+          />
+        </router-link>
         <template v-for="item in navItems" :key="item.to">
           <div
             v-if="item.label === 'Admin'"
@@ -107,6 +120,7 @@ import { useRoute } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-top-bar'
 import '@maersk-global/mds-components-core/mc-icon'
 import { azureAuthState } from '../auth/azureAuth.js'
+import { topbarBackLink } from '../composables/useTopbarBackLink.js'
 import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 
 const route = useRoute()
@@ -240,6 +254,18 @@ watch(
   display: block;
   height: 100%;
   text-decoration: none;
+}
+
+.topbar-back-link {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  left: 140px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  text-decoration: none;
+  z-index: 1;
 }
 
 .app-nav {
