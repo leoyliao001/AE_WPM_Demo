@@ -549,6 +549,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { regionAreaMapping } from '../data/regionAreaMapping.js'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -559,6 +560,7 @@ const tollGatesBackTo = computed(() =>
 )
 
 const isAdminHistory = computed(() => route.query.scope === 'all')
+useTopbarBackLink(computed(() => cameFromTollGates.value ? '' : '/'), 'Back to Welcome')
 const view = ref('inbox')
 const loading = ref(false)
 const loadError = ref('')

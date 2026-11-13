@@ -4,6 +4,7 @@
     :subtitle="pageSubtitle"
     :tag="pageTag"
     back-label="Back to Welcome"
+    back-link-to-topbar
     full-width
   >
     <mc-notification

@@ -4,6 +4,7 @@
     subtitle="KPI concepts adapted from the WPM Power BI report — using current intake data and project styling."
     tag="Dashboard v2"
     back-label="Back to Welcome"
+    back-link-to-topbar
     full-width
   >
     <mc-notification
