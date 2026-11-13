@@ -228,6 +228,7 @@ function cellEditable(row, key) {
   if (!canEdit.value) return false
   if (tab.value === 'hr') return hrColumns.value.some(column => column.key === key)
   return baseColumns.value.some(column => column.key === key) || key === 'jobLevel' || key === 'hiringStatus' ||
+    key === 'remarks' ||
     (row.hiringType === 'Efficiency' && ['deletedPid', 'actualDoj', 'apmmId'].includes(key)) ||
     (row.hiringType !== 'Efficiency' && ['requisitionId', 'tentativeDoj', 'actualDoj', 'apmmId'].includes(key))
 }
