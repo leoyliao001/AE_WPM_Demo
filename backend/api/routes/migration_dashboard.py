@@ -2,6 +2,12 @@ from django.urls import path
 from api.views.opportunity_task_scope import opportunity_task_scope
 from api.views.business_impact_analysis import business_impact_analysis
 from api.views.project_artefacts import project_artefact, resource_projects
+from api.views.people_consultation import (
+    download_consultation_evidence,
+    people_consultation_checklist,
+    search_consultation_people,
+    upload_consultation_evidence,
+)
 from api.views.business_case import (
     get_business_case, save_business_case, list_business_cases, delete_business_case,
     cost_rates, delete_cost_rate,
@@ -49,6 +55,26 @@ urlpatterns = [
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/", submit_fpo_catalogue_request, name="fpo-catalogue-request-submit"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/<int:request_id>/acknowledge/", acknowledge_fpo_catalogue_request, name="fpo-catalogue-request-acknowledge"),
     path("projects/<int:project_id>/business-impact-analysis/", business_impact_analysis, name="business-impact-analysis"),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/",
+        people_consultation_checklist,
+        name="people-consultation-compliance",
+    ),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/people/",
+        search_consultation_people,
+        name="people-consultation-people-search",
+    ),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/evidence/<int:item_id>/",
+        upload_consultation_evidence,
+        name="people-consultation-evidence-upload",
+    ),
+    path(
+        "projects/<int:project_id>/people-consultation-compliance/evidence/<int:item_id>/download/",
+        download_consultation_evidence,
+        name="people-consultation-evidence-download",
+    ),
     path("resources/", resource_projects, name="resource-projects"),
     path("projects/<int:project_id>/resources/", project_artefact, {"kind": "resources"}, name="project-resources"),
     path("projects/<int:project_id>/access-enablement/", project_artefact, {"kind": "access_enablement"}, name="access-enablement"),

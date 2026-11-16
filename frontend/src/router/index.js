@@ -39,6 +39,7 @@ import BusinessImpactAnalysis from '../views/BusinessImpactAnalysis.vue'
 import MigrationSuccessPartnersHub from '../views/MigrationSuccessPartnersHub.vue'
 import LearningCapabilityReadiness from '../views/LearningCapabilityReadiness.vue'
 import TaaPartnerView from '../views/TaaPartnerView.vue'
+import PeopleConsultationCompliance from '../views/PeopleConsultationCompliance.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -70,6 +71,11 @@ const routes = [
   { path: '/migration-success-partners/learning-development', name: 'LearningCapabilityReadiness', component: LearningCapabilityReadiness },
   { path: '/migration-success-partners/talent-acquisition', name: 'TaaPartnerView', component: TaaPartnerView },
   { path: '/migration-dashboard/:id/business-impact-analysis', name: 'BusinessImpactAnalysis', component: BusinessImpactAnalysis },
+  {
+    path: '/migration-dashboard/:id/people-consultation-compliance',
+    name: 'PeopleConsultationCompliance',
+    component: PeopleConsultationCompliance
+  },
   { path: '/resources', name: 'Resources', component: Resources },
   { path: '/migration-dashboard/:id/resources', name: 'ProjectResources', component: ProjectResources },
   { path: '/migration-dashboard/:id/access-enablement', name: 'AccessEnablement', component: AccessEnablement },

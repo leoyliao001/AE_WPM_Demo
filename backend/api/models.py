@@ -231,6 +231,88 @@ class StakeholderRegistration(models.Model):
         return f"{self.project.migration_request_id} — Stakeholder Registration"
 
 
+class PeopleConsultationChecklist(models.Model):
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="people_consultation_checklist",
+    )
+    revision = models.PositiveIntegerField(default=0)
+    version = models.PositiveIntegerField(default=0)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "people_consultation_checklist"
+
+
+class PeopleConsultationItem(models.Model):
+    STATUS_CHOICES = [
+        ("not_started", "Not started"),
+        ("in_progress", "In progress"),
+        ("confirmed", "Confirmed"),
+        ("not_applicable", "Not applicable"),
+    ]
+
+    checklist = models.ForeignKey(
+        PeopleConsultationChecklist,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    item_type = models.CharField(max_length=80)
+    label = models.CharField(max_length=255)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    owner_role = models.CharField(max_length=128, blank=True, default="")
+    owner_user_id = models.CharField(max_length=80, blank=True, default="")
+    owner_name = models.CharField(max_length=255, blank=True, default="")
+    owner_email = models.CharField(max_length=254, blank=True, default="")
+    applicable = models.BooleanField(default=True)
+    na_reason = models.CharField(max_length=500, blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="not_started")
+    status_date = models.DateField(null=True, blank=True)
+    evidence_url = models.URLField(max_length=1000, blank=True, default="")
+    evidence_file = models.FileField(
+        upload_to="people_consultation/%Y/%m/",
+        max_length=255,
+        blank=True,
+    )
+    outcome_note = models.CharField(max_length=500, blank=True, default="")
+    version = models.PositiveIntegerField(default=0)
+    confirmed_by = models.CharField(max_length=254, blank=True, default="")
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "people_consultation_item"
+        ordering = ["sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["checklist", "item_type"],
+                name="people_consultation_item_type_unique",
+            ),
+        ]
+
+
+class PeopleConsultationAuditEntry(models.Model):
+    item = models.ForeignKey(
+        PeopleConsultationItem,
+        on_delete=models.CASCADE,
+        related_name="audit_entries",
+    )
+    field = models.CharField(max_length=80)
+    old_value = models.TextField(blank=True, default="")
+    new_value = models.TextField(blank=True, default="")
+    user = models.CharField(max_length=254)
+    reason = models.CharField(max_length=500, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "people_consultation_audit_entry"
+        ordering = ["created_at", "id"]
+
+
 class ProjectCharter(models.Model):
     project = models.OneToOneField(
         MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="project_charter"

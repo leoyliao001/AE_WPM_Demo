@@ -70,6 +70,14 @@ The HTTPS virtual host must retain these responsibilities:
 	the build output, so verify the alias after dependency/build changes and
 	remove it only after confirming all icons are served from `dist`.
 
+The production browser entry is HTTPS on port `443`; Apache serves the SPA and
+proxies its same-origin `/api/*` requests to the loopback-only backend on port
+`8000`. Vue pages must use relative `/api/...` URLs. Ports `3002` (Vite) and
+`8001` (local Django/SQLite) are development-only and must not be embedded in
+production page URLs or frontend API requests. The People Consultation &
+Compliance page follows this rule and is served at
+`/migration-dashboard/<project-id>/people-consultation-compliance`.
+
 Do not edit the production site config and restart blindly. Validate first:
 
 ```powershell
@@ -240,6 +248,10 @@ Expected results:
 - HTTPS returns the SPA and `/api/health/` returns the same health JSON.
 - Test a client-side route by refreshing it directly; it must render the SPA,
   not an Apache 404.
+- Refresh `/migration-dashboard/<project-id>/people-consultation-compliance`
+  in the production browser; the page must load from HTTPS `443`, and its
+  checklist API requests must pass through Apache to `127.0.0.1:8000` without
+  any request to development ports `3002` or `8001`.
 - Inspect the latest lines of Apache's `wpm-ssl-error.log` and the NSSM
   `ae-wpm-stderr.log` for errors.
 
