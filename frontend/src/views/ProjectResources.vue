@@ -22,7 +22,7 @@
               <span class="pa-metric-icon" aria-hidden="true"><mc-icon :icon="metric.icon" color="var(--pa-metric-accent)" size="24" /></span>
               <div class="pa-metric-content"><span class="pa-metric-label">{{ metric.label }}<mc-icon class="pa-metric-info" icon="mi-information" size="14" :title="metric.note" :aria-label="metric.note" role="img" /></span><strong>{{ metric.value }}</strong></div>
             </article>
-            <article class="pa-jl-card" aria-label="Job level scope summary">
+            <article v-if="tab !== 'area'" class="pa-jl-card" aria-label="Job level scope summary">
               <h2 class="pa-jl-card__title">JL</h2>
               <div class="pa-jl-card__levels">
                 <div v-for="level in jlSummary" :key="level.name" class="pa-jl-card__level" :class="`pa-jl-card__level--${level.tone}`">

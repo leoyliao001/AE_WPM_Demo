@@ -281,8 +281,8 @@ import '@maersk-global/mds-components-core/mc-button'
 
 const route = useRoute()
 const router = useRouter()
-const backTo = computed(() => route.query.from === 'project-dashboard' ? '/project-dashboard' : '/')
-const backLabel = computed(() => route.query.from === 'project-dashboard' ? 'Back to Projects' : 'Back to Welcome')
+const backTo = '/project-dashboard'
+const backLabel = 'Back to Projects'
 
 const projects = ref([])
 const loadingProjects = ref(false)
