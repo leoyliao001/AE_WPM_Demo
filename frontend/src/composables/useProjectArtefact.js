@@ -18,7 +18,12 @@ export function useProjectArtefact(endpoint) {
   })
   const dirty = computed(() => Boolean(record.value) && content(record.value) !== baseline.value)
   useUnsavedChanges(dirty, computed(() => loading.value || Boolean(busy.value)))
-  const backTo = computed(() => `/toll-gates?project=${projectId.value}`)
+  const backTo = computed(() => {
+    const returnTo = typeof route.query.returnTo === 'string' ? route.query.returnTo : ''
+    if (returnTo.startsWith('/') && !returnTo.startsWith('//')) return returnTo
+    return `/toll-gates?project=${encodeURIComponent(route.query.project || projectId.value)}`
+  })
+  const backLabel = computed(() => route.query.from === 'taa' ? 'Back to TAA View' : 'Back to Toll Gates')
   const editable = computed(() => record.value && !record.value.frozen && !busy.value)
   async function load() {
     const id = projectId.value
@@ -71,5 +76,5 @@ export function useProjectArtefact(endpoint) {
     }
   }
   watch(projectId, load, { immediate: true })
-  return { record, projectId, backTo, loading, busy, error, success, dirty, editable, load, save }
+  return { record, projectId, backTo, backLabel, loading, busy, error, success, dirty, editable, load, save }
 }

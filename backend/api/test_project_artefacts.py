@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from api.models import (
-    AccessEnablement, BusinessCase, MigrationIntakeSubmission, ProjectAttributesAccess,
+    AccessEnablement, BusinessCase, MigrationIntakeSubmission, MigrationTeam, ProjectAttributesAccess,
     ProjectResources, ScopeStatement, ScopeStatementLine, StakeholderRegistration,
 )
 from api.services.business_case import build_business_case
@@ -118,6 +118,9 @@ class ProjectArtefactTests(TestCase):
         self.assertEqual(self.post("resources", rows=[]).status_code, 200)
 
     def test_resource_hiring_flow_confirm_freeze_reopen_and_history(self):
+        manager = MigrationTeam.objects.create(role="Manager", email="manager@example.com")
+        self.registry.assignments["migration_manager"] = {"personIds": [f"migration-team-{manager.id}"]}
+        self.registry.save(update_fields=["assignments"])
         self.assertEqual(self.post("resources", rows=[self.resource()]).status_code, 200)
         response = self.post("resources", "submit_area")
         self.assertEqual(response.status_code, 200, response.data)
@@ -126,12 +129,49 @@ class ProjectArtefactTests(TestCase):
         response = self.post("resources", "submit")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], "confirmed")
+        self.assertFalse(response.data["permissions"]["reopen"])
+        self.assertEqual(response.data["migrationManagers"], ["manager@example.com"])
         self.assertEqual(self.post("resources").status_code, 409)
+        self.assertEqual(self.post("resources", "reopen", reason="Change plan").status_code, 403)
+
+        ProjectAttributesAccess.objects.create(email="admin@example.com", resources=True)
+        self.client.credentials(HTTP_X_USER_EMAIL="admin@example.com")
+        self.assertEqual(self.post("resources", "reopen", reason="Change plan").status_code, 403)
+
+        ProjectAttributesAccess.objects.create(email="superadmin@example.com", is_super_admin=True)
+        self.client.credentials(HTTP_X_USER_EMAIL="superadmin@example.com")
+        super_admin_view = self.get("resources")
+        self.assertEqual(super_admin_view.status_code, 200)
+        self.assertTrue(super_admin_view.data["permissions"]["reopen"])
+        response = self.post("resources", "reopen", reason="Admin unlock")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["auditLog"][-1]["reason"], "Admin unlock")
+        self.assertEqual(self.post("resources", "submit").status_code, 200)
+
+        self.client.credentials(HTTP_X_USER_EMAIL="manager@example.com")
+        manager_view = self.get("resources")
+        self.assertEqual(manager_view.status_code, 200)
+        self.assertTrue(manager_view.data["permissions"]["reopen"])
         self.assertEqual(self.post("resources", "reopen", reason="").status_code, 400)
         response = self.post("resources", "reopen", reason="Change plan")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["frozen"])
         self.assertEqual(response.data["auditLog"][-1]["reason"], "Change plan")
+
+        self.client.credentials(HTTP_X_USER_EMAIL="owner@example.com")
+        rows = response.data["rows"]
+        rows[0]["remarks"] = "Updated after unlock"
+        response = self.post("resources", rows=rows)
+        self.assertEqual(response.status_code, 200, response.data)
+        unlock_event = next(event for event in reversed(response.data["auditLog"]) if event["action"] == "reopen")
+        self.assertEqual(unlock_event["reason"], "Change plan")
+        self.assertEqual(unlock_event["unlockChanges"][-1]["changes"], [{
+            "type": "field_updated", "positionId": "position-1", "position": "GSC-001",
+            "field": "Remarks", "from": "Ready", "to": "Updated after unlock",
+        }])
+        record = ProjectResources.objects.get(project=self.project)
+        persisted_unlock = next(event for event in reversed(record.audit_log) if event["action"] == "reopen")
+        self.assertEqual(persisted_unlock["unlockChanges"][-1]["changes"][0]["field"], "Remarks")
 
     def test_resource_cohort_and_job_level_persist_and_validate(self):
         row = {**self.resource(), "cohort": "Cohort A", "jobLevel": "JL2"}

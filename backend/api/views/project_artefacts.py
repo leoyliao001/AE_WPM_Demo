@@ -14,8 +14,33 @@ from api.services.business_case import approval_progress, build_business_case, c
 from api.services.project_artefacts import (
     AREA_FIELDS, BARRIER_TYPES, EXECUTION_FIELDS, HIRING_STATUSES, HIRING_TYPES, JOB_LEVELS,
     HR_FIELDS, IT_ITEMS, LANGUAGES, SYSTEM_CATALOGUE, access_summary, date_value,
-    integer, project_permissions, resource_ready, resource_sites, rows_list, scope_source, text,
+    integer, migration_manager_emails, project_permissions, resource_audit_changes, resource_ready, resource_sites,
+    rows_list, scope_source, text,
 )
+
+
+def _resource_audit_history(audit_log):
+    history = deepcopy(audit_log or [])
+    active_unlock = None
+    for entry in history:
+        old = entry.get("old") if isinstance(entry.get("old"), dict) else {}
+        new = entry.get("new") if isinstance(entry.get("new"), dict) else {}
+        entry["changes"] = resource_audit_changes(old, new)
+        if entry.get("action") == "reopen":
+            entry["unlockChanges"] = []
+            active_unlock = entry
+            continue
+        if active_unlock and entry["changes"]:
+            active_unlock["unlockChanges"].append({
+                "revision": entry.get("revision"),
+                "action": entry.get("action", ""),
+                "by": entry.get("by", ""),
+                "at": entry.get("at", ""),
+                "changes": deepcopy(entry["changes"]),
+            })
+        if entry.get("action") == "submit":
+            active_unlock = None
+    return history
 
 
 def _serialize(project, record, kind, email):
@@ -43,7 +68,8 @@ def _serialize(project, record, kind, email):
         "source": source, "sourceChanged": changed, "permissions": permissions,
         "saved": record is not None, "revision": record.revision if record else 0,
         "updatedAt": record.updated_at.isoformat() if record else "",
-        "updatedBy": record.updated_by if record else "", "auditLog": record.audit_log if record else [],
+        "updatedBy": record.updated_by if record else "",
+        "auditLog": _resource_audit_history(record.audit_log) if kind == "resources" and record else record.audit_log if record else [],
         "frozen": bool(record and record.status == "confirmed"),
     }
     if kind == "resources":
@@ -53,6 +79,7 @@ def _serialize(project, record, kind, email):
             "rows": rows, "ready": ready, "hiringTypes": HIRING_TYPES,
             "hiringStatuses": HIRING_STATUSES, "languages": LANGUAGES,
             "siteOptions": resource_sites(project),
+            "migrationManagers": migration_manager_emails(project),
             "status": "needs_review" if changed and result["frozen"] else "confirmed" if result["frozen"] else "ready" if ready else "draft",
         })
     else:
@@ -259,8 +286,13 @@ def project_artefact(request, project_id, kind):
         allowed = {"save", "submit", "reopen", "submit_area", "reopen_area"} if kind == "resources" else {"save", "submit", "reopen", "confirm_it"}
         if not isinstance(action, str) or action not in allowed:
             return Response({"error": "Unsupported artefact action."}, status=400)
+        if kind == "resources" and action == "reopen" and not permissions["reopen"]:
+            return Response({"error": "Only the assigned Migration Manager or a Platform Super Admin can unlock Resources."}, status=403)
         if not permissions["edit"] and not (kind == "access_enablement" and permissions["it"] and action in {"save", "confirm_it"}) and not (
-            kind == "resources" and permissions["area"] and action in {"save", "submit_area", "reopen_area"}
+            kind == "resources" and (
+                permissions["area"] and action in {"save", "submit_area", "reopen_area"}
+                or permissions["reopen"] and action == "reopen"
+            )
         ):
             return Response({"error": "You do not have permission for this action."}, status=403)
         if record and record.status == "confirmed" and action != "reopen":
@@ -316,6 +348,8 @@ def project_artefact(request, project_id, kind):
             "action": action, "by": email, "at": timezone.now().isoformat(),
             "revision": record.revision, "reason": reason, "old": previous, "new": current,
         }]
+        if kind == "resources":
+            record.audit_log = _resource_audit_history(record.audit_log)
         record.save()
         return Response(_serialize(project, record, kind, email))
 

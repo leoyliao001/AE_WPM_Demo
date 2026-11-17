@@ -1,5 +1,5 @@
 <template>
-  <PageShell title="Resources" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" back-link-to-topbar full-width>
+  <PageShell title="Resources" :show-heading="false" :back-to="backTo" :back-label="backLabel" back-link-to-topbar full-width>
     <div class="pa-page pa-resources-page">
       <div v-if="loading" class="pa-panel" role="status">Loading project resources...</div>
       <div v-if="error" class="pa-feedback pa-feedback--error" role="alert">{{ error }} <button v-if="!record" class="pa-text-button" @click="load">Retry</button></div>
@@ -11,6 +11,7 @@
             <div class="pa-actions">
               <router-link class="pa-link" to="/resources">All resource projects</router-link>
               <mc-button appearance="neutral" variant="outlined" label="Export" :disabled="!!busy" @click="exportData" />
+              <mc-button v-if="record.frozen && record.permissions.reopen" appearance="primary" label="Unlock Resources" :disabled="!!busy" @click="openUnlockDialog" />
               <mc-button v-if="!record.frozen && (record.permissions.edit || record.permissions.area)" appearance="neutral" variant="outlined" label="Save draft" :disabled="!!busy || cohortMode" @click="save()" />
               <mc-button v-if="!record.frozen && record.permissions.edit" appearance="primary" label="Confirm resources" :disabled="!!busy || cohortMode || !ready" @click="save('submit')" />
             </div>
@@ -77,9 +78,28 @@
             </div>
           </div>
         </section>
-        <div v-if="!record.source.ready" class="pa-feedback">Complete and submit Scope before confirming Resources. Draft positions can be prepared now. <router-link class="pa-link" :to="`/migration-dashboard/${projectId}/scope-statement`">Open Scope</router-link></div>
+        <section v-if="!record.frozen && submitBlockers.length" class="pa-submit-readiness" aria-live="polite">
+          <strong>Resources cannot be confirmed yet</strong>
+          <ul>
+            <li v-for="blocker in submitBlockers" :key="blocker.key">
+              {{ blocker.message }}
+              <router-link v-if="blocker.to" :to="blocker.to" class="pa-link">Open Scope</router-link>
+            </li>
+          </ul>
+        </section>
         <div v-if="record.sourceChanged" class="pa-feedback">Scope changed since the last save. Reconcile resource positions with the current locked FTE before confirming.</div>
-        <div v-if="record.frozen" class="pa-feedback">Confirmed resources are frozen. Reopen with a reason before making changes.</div>
+        <div v-if="record.frozen" class="pa-feedback pa-feedback--error">
+          <template v-if="record.migrationManagers.length">
+            Submitted Resources are locked. Contact this project's assigned Migration Manager
+            <template v-for="(manager, index) in record.migrationManagers" :key="manager">
+              <a class="pa-link" :href="`mailto:${manager}`">{{ manager }}</a>{{ index < record.migrationManagers.length - 1 ? ', ' : '' }}
+            </template>
+            or a platform administrator to request an unlock.
+          </template>
+          <template v-else>
+            Submitted Resources are locked. No Migration Manager is assigned to this project. Contact a platform administrator to request an unlock.
+          </template>
+        </div>
         <section class="pa-panel">
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
@@ -145,9 +165,39 @@
           <div class="pa-section-heading" style="margin-top: 18px"><span class="pa-note">{{ visibleRows.length }} visible · {{ selected.length }} selected · {{ record.rows.length }} total</span><a v-if="selected.length" class="pa-link" :href="reminderLink">Compose reminder for selected positions</a></div>
           <div v-if="tab === 'area' && areaSubmitted && canEditArea" class="pa-field"><label>Reason to reopen submitted Area details<textarea v-model="areaReason" maxlength="2000" rows="2" /></label><mc-button appearance="neutral" variant="outlined" label="Reopen Area details" :disabled="!areaReason.trim()" @click="reopenArea" /></div>
         </section>
-        <section v-if="record.frozen && record.permissions.edit" class="pa-panel"><h2>Reopen Resources</h2><label class="pa-field">Revision reason<textarea v-model="reason" maxlength="2000" rows="2" /></label><mc-button appearance="neutral" variant="outlined" label="Reopen" :disabled="!!busy || !reason.trim()" @click="reopen" /></section>
-        <details class="pa-audit"><summary>Audit history · {{ record.auditLog.length }} events</summary><div class="pa-scroll"><table class="pa-table"><thead><tr><th>Revision</th><th>Action</th><th>User</th><th>Timestamp</th><th>Reason</th></tr></thead><tbody><tr v-for="entry in [...record.auditLog].reverse()" :key="entry.revision"><td>{{ entry.revision }}</td><td>{{ entry.action }}</td><td>{{ entry.by }}</td><td>{{ dateTime(entry.at) }}</td><td>{{ entry.reason }}</td></tr></tbody></table></div></details>
+        <details class="pa-audit"><summary>Audit history · {{ record.auditLog.length }} events</summary><div class="pa-scroll"><table class="pa-table"><thead><tr><th>Revision</th><th>Action</th><th>User</th><th>Timestamp</th><th>Reason</th><th>Changes</th></tr></thead><tbody>
+          <tr v-for="entry in [...record.auditLog].reverse()" :key="entry.revision">
+            <td>{{ entry.revision }}</td><td>{{ auditActionLabel(entry.action) }}</td><td>{{ entry.by }}</td><td>{{ dateTime(entry.at) }}</td><td>{{ entry.reason || '—' }}</td>
+            <td class="pa-audit-changes">
+              <details v-if="entry.action === 'reopen' && entry.unlockChanges?.length">
+                <summary>{{ entry.unlockChanges.length }} saved change event{{ entry.unlockChanges.length === 1 ? '' : 's' }} after unlock</summary>
+                <div v-for="(update, index) in entry.unlockChanges" :key="`${update.revision}-${index}`" class="pa-audit-change-event">
+                  <strong>Revision {{ update.revision }} · {{ auditActionLabel(update.action) }} · {{ update.by }}</strong>
+                  <ul><li v-for="(change, changeIndex) in update.changes" :key="`${change.type}-${change.field || changeIndex}`">{{ auditChangeText(change) }}</li></ul>
+                </div>
+              </details>
+              <span v-else-if="entry.action === 'reopen'">No changes saved after this unlock.</span>
+              <details v-else-if="entry.changes?.length">
+                <summary>{{ entry.changes.length }} change{{ entry.changes.length === 1 ? '' : 's' }}</summary>
+                <ul><li v-for="(change, index) in entry.changes" :key="`${change.type}-${change.field || index}`">{{ auditChangeText(change) }}</li></ul>
+              </details>
+              <span v-else>—</span>
+            </td>
+          </tr>
+        </tbody></table></div></details>
       </template>
+      <mc-dialog :open="unlockDialogOpen" heading="Unlock Resources" dimension="small" showclosebutton @closing="closeUnlockDialog">
+        <p>Unlocking returns Resources to draft. Enter a reason; it will be saved in the audit history.</p>
+        <label class="unlock-dialog__field">
+          <span>Reason for unlocking <span aria-hidden="true">*</span></span>
+          <textarea v-model="unlockReason" rows="4" maxlength="2000" required />
+        </label>
+        <p v-if="unlockReasonError" class="unlock-dialog__error" role="alert">{{ unlockReasonError }}</p>
+        <div class="unlock-dialog__actions">
+          <mc-button type="button" appearance="neutral" variant="outlined" label="Cancel" :disabled="!!busy" @click="closeUnlockDialog" />
+          <mc-button type="button" appearance="primary" label="Unlock Resources" :disabled="!!busy" @click="confirmUnlock" />
+        </div>
+      </mc-dialog>
     </div>
   </PageShell>
 </template>
@@ -162,9 +212,10 @@ import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-select'
 import '@maersk-global/mds-components-core/mc-option'
+import '@maersk-global/mds-components-core/mc-dialog'
 import '../styles/projectArtefacts.css'
 
-const { record, projectId, backTo, loading, busy, error, success, dirty, editable, load, save } = useProjectArtefact('resources')
+const { record, projectId, backTo, backLabel, loading, busy, error, success, dirty, editable, load, save } = useProjectArtefact('resources')
 const tab = ref('execution')
 const tabs = [{ id: 'execution', label: 'Execution' }, { id: 'area', label: 'Area' }, { id: 'hr', label: 'HR / TAA' }]
 const query = ref('')
@@ -175,8 +226,10 @@ const cohortMode = ref(false)
 const cohortDraftName = ref('')
 const cohortSelection = ref([])
 const collapsedCohortGroups = ref(new Set())
-const reason = ref('')
 const areaReason = ref('')
+const unlockDialogOpen = ref(false)
+const unlockReason = ref('')
+const unlockReasonError = ref('')
 const fileInput = ref(null)
 const activeHiringStatusId = ref('')
 const canEdit = computed(() => editable.value && record.value.permissions.edit)
@@ -315,8 +368,75 @@ const cohortPalette = ['#0073ab', '#7c3aed', '#16a34a', '#f59e0b', '#dc2626', '#
 const ready = computed(() => record.value?.source.ready && record.value.rows.length === record.value.source.population &&
   record.value.rows.every(row => row.site && row.language && row.gscPid && row.pidCreationDate && row.areaLockedAt && row.actualDoj && row.apmmId &&
     (row.hiringType === 'Efficiency' ? row.deletedPid : row.hiringStatus === 'Onboarded' && row.requisitionId)))
+const submitBlockers = computed(() => {
+  const current = record.value
+  if (!current) return []
+
+  const blockers = []
+  if (!current.permissions.edit) {
+    blockers.push({
+      key: 'permission',
+      message: 'Your account does not have Resources edit permission. Ask the Requestor, locked WPM Focal, or Resources administrator to confirm.',
+    })
+  }
+  if (busy.value) blockers.push({ key: 'busy', message: 'Wait for the current save to finish.' })
+  if (cohortMode.value) blockers.push({ key: 'cohort', message: 'Finish or cancel Cohort creation before confirming.' })
+
+  if (!current.source.ready) {
+    blockers.push({
+      key: 'scope',
+      message: 'Submit and lock the Scope Statement before confirming Resources.',
+      to: `/migration-dashboard/${projectId.value}/scope-statement`,
+    })
+  } else if (current.rows.length !== current.source.population) {
+    blockers.push({
+      key: 'population',
+      message: `Resource positions: ${current.rows.length} of ${current.source.population}. Add or remove positions to match the locked Scope FTE.`,
+    })
+  }
+
+  const positionNames = rows => {
+    const names = rows.slice(0, 3).map(row => row.gscPid || row.id)
+    return `${names.join(', ')}${rows.length > names.length ? ` and ${rows.length - names.length} more` : ''}`
+  }
+  const addMissingFieldBlocker = (key, label, predicate) => {
+    const rows = current.rows.filter(predicate)
+    if (rows.length) {
+      blockers.push({
+        key,
+        message: `${label} is missing for ${rows.length} position${rows.length === 1 ? '' : 's'}: ${positionNames(rows)}.`,
+      })
+    }
+  }
+
+  addMissingFieldBlocker('site', 'GSC Site', row => !row.site)
+  addMissingFieldBlocker('language', 'Language', row => !row.language)
+  addMissingFieldBlocker('gsc-pid', 'GSC PID', row => !row.gscPid)
+  addMissingFieldBlocker('pid-date', 'PID Creation Date', row => !row.pidCreationDate)
+  addMissingFieldBlocker('area', 'Area details submission', row => !row.areaLockedAt)
+  addMissingFieldBlocker('actual-doj', 'Actual DOJ', row => !row.actualDoj)
+  addMissingFieldBlocker('apmm-id', 'APMM ID', row => !row.apmmId)
+  addMissingFieldBlocker('efficiency-pid', 'Deleted PID for Efficiency', row => row.hiringType === 'Efficiency' && !row.deletedPid)
+  addMissingFieldBlocker('onboarded', 'Hiring Status Onboarded and Requisition ID', row =>
+    row.hiringType !== 'Efficiency' && (row.hiringStatus !== 'Onboarded' || !row.requisitionId))
+
+  return blockers
+})
 const reminderLink = computed(() => `mailto:${encodeURIComponent(record.value?.requestor || '')}?subject=${encodeURIComponent(`Resource update: ${record.value?.migrationRequestId}`)}&body=${encodeURIComponent(`Please review these ${selected.value.length} resource positions:\n${record.value?.rows.filter(row => selected.value.includes(row.id)).map(row => `${row.gscPid || row.id} - ${row.site} - ${row.hiringType}`).join('\n')}\n${location.href}`)}`)
 const dateTime = value => new Date(value).toLocaleString('en-GB')
+const auditActionLabel = action => ({
+  save: 'Save changes',
+  submit: 'Confirm Resources',
+  reopen: 'Unlock Resources',
+  submit_area: 'Submit Area details',
+  reopen_area: 'Unlock Area details',
+}[action] || action)
+function auditChangeText(change) {
+  if (change.type === 'status') return `${change.label}: ${change.from || '—'} → ${change.to || '—'}`
+  if (change.type === 'position_added') return `Added position ${change.position} (${change.positionId})`
+  if (change.type === 'position_removed') return `Removed position ${change.position} (${change.positionId})`
+  return `${change.position} · ${change.field}: ${change.from || '—'} → ${change.to || '—'}`
+}
 function selectCellOption(row, key, event) {
   const value = event.detail?.value ?? event.currentTarget.value
   if (row[key] === value) return
@@ -484,8 +604,24 @@ async function deleteCohort(cohort) {
 async function reopenArea() {
   if (await save('reopen_area', { reason: areaReason.value })) areaReason.value = ''
 }
-async function reopen() {
-  if (await save('reopen', { reason: reason.value })) reason.value = ''
+function openUnlockDialog() {
+  unlockReason.value = ''
+  unlockReasonError.value = ''
+  unlockDialogOpen.value = true
+}
+function closeUnlockDialog() {
+  unlockDialogOpen.value = false
+  unlockReason.value = ''
+  unlockReasonError.value = ''
+}
+async function confirmUnlock() {
+  const reason = unlockReason.value.trim()
+  if (!reason) {
+    unlockReasonError.value = 'Enter a reason to unlock Resources.'
+    return
+  }
+  unlockReasonError.value = ''
+  if (await save('reopen', { reason })) closeUnlockDialog()
 }
 function exportData() {
   error.value = ''
@@ -539,6 +675,16 @@ async function importData(event) {
 </script>
 
 <style scoped>
+.unlock-dialog__field { color: #526d7f; display: flex; flex-direction: column; font-size: 12px; gap: 7px; margin-top: 18px; }
+.unlock-dialog__field textarea { border: 1px solid #cedce4; border-radius: 6px; box-sizing: border-box; color: var(--pa-ink); font: inherit; font-size: 13px; padding: 9px 10px; resize: vertical; width: 100%; }
+.unlock-dialog__field textarea:focus { outline: 2px solid #42b0d5; outline-offset: 1px; }
+.unlock-dialog__error { color: #a3332c; font-size: 12px; margin: 8px 0 0; }
+.unlock-dialog__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.pa-audit-changes { min-width: 260px; }
+.pa-audit-changes summary { color: #0073ab; cursor: pointer; }
+.pa-audit-changes ul { margin: 6px 0; padding-left: 18px; }
+.pa-audit-change-event { margin-top: 8px; }
+.pa-audit-change-event strong { color: #344054; font-size: 11px; }
 .pa-cohort-panel { margin-bottom: 12px; }
 .pa-cohort-panel .pa-section-heading { margin-bottom: 10px; }
 .pa-cohort-title { align-items: center; display: flex; gap: 9px; }

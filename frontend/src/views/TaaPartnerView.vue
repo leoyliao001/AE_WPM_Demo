@@ -60,7 +60,7 @@
           <tbody><tr v-for="project in paginatedProjects" :key="project.id" :class="{ 'taa-row--selected': selectedIds.has(project.id) }">
             <td class="check-cell"><input :checked="selectedIds.has(project.id)" type="checkbox" :aria-label="`Select ${project.name}`" @change="toggleProject(project.id)" /></td>
             <td><strong>{{ project.name }}</strong></td><td>{{ project.requestId }}</td><td>{{ project.products.join(', ') }}</td><td>{{ project.region }}</td><td>{{ project.areas.join(', ') }}</td><td>{{ project.sites.join(', ') }}</td><td>{{ project.approved ?? '—' }}</td><td>{{ project.pipeline ?? '—' }}</td><td>{{ project.joinMonth }}</td>
-            <td><span class="project-status" :class="`project-status--${project.status.toLowerCase()}`">{{ project.status }}</span></td><td><RouterLink class="view-button" :to="{ name: 'ProjectResources', params: { id: project.id }, query: { from: 'toll-gates', project: project.id } }" :aria-label="`View resources for ${project.name}`">View</RouterLink></td>
+            <td><span class="project-status" :class="`project-status--${project.status.toLowerCase()}`">{{ project.status }}</span></td><td><RouterLink class="view-button" :to="{ name: 'ProjectResources', params: { id: project.id }, query: { from: 'taa', project: project.id, returnTo: '/migration-success-partners/talent-acquisition' } }" :aria-label="`View resources for ${project.name}`">View</RouterLink></td>
           </tr><tr v-if="!filteredProjects.length"><td colspan="12" class="empty-state">No projects match these filters.</td></tr></tbody>
         </table>
       </div>
@@ -73,6 +73,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
+
+useTopbarBackLink('/migration-success-partners', 'Back to TAA')
 
 const projects = ref([])
 const loading = ref(false)
@@ -225,7 +228,7 @@ onMounted(loadProjects)
 .taa-brand { align-items: center; color: #102d49; display: flex; flex: 0 0 210px; gap: 9px; text-decoration: none; }.taa-logo { align-items: center; background: #0073ab; border-radius: 5px; color: #fff; display: flex; font-size: 17px; font-weight: 800; height: 28px; justify-content: center; width: 28px; }.taa-brand b, .taa-brand small { display: block; }.taa-brand b { font-size: 12px; }.taa-brand small { color: var(--muted); font-size: 9px; margin-top: 2px; }
 .global-search { flex: 1; max-width: 520px; }.global-search input, .taa-search input { background: #fff; border: 1px solid #cbd5df; border-radius: 6px; color: #344054; font: 11px 'Maersk Text', sans-serif; height: 30px; padding: 0 10px; width: 100%; }.taa-user { align-items: center; display: flex; font-size: 10px; gap: 8px; margin-left: auto; }.notification { font-size: 20px; position: relative; }.notification i { align-items: center; background: #dc2626; border-radius: 50%; color: #fff; display: flex; font-size: 8px; font-style: normal; height: 14px; justify-content: center; position: absolute; right: -5px; top: -3px; width: 14px; }
 .avatar { align-items: center; background: #0b2a4a; border-radius: 50%; color: #fff; display: flex; font-size: 9px; height: 24px; justify-content: center; width: 24px; }
-.taa-content { margin: 0 auto; max-width: 1580px; padding: 12px 18px 42px; position: relative; }.taa-crumb { align-items: center; border-bottom: 1px solid #e6ebef; color: var(--muted); display: flex; font-size: 9px; gap: 5px; padding-bottom: 9px; }.taa-crumb a { color: #12648d; text-decoration: none; }.taa-crumb b { color: #164b69; }.updated { margin-left: auto; }.taa-content > h1 { font-size: 21px; margin: 11px 0 10px; }
+.taa-content { margin: 0; max-width: none; padding: 12px 18px 42px; position: relative; width: 100%; }.taa-crumb { align-items: center; border-bottom: 1px solid #e6ebef; color: var(--muted); display: flex; font-size: 9px; gap: 5px; padding-bottom: 9px; }.taa-crumb a { color: #12648d; text-decoration: none; }.taa-crumb b { color: #164b69; }.updated { margin-left: auto; }.taa-content > h1 { font-size: 21px; margin: 11px 0 10px; }
 .taa-metrics { display: grid; gap: 9px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 10px; }.taa-metric { align-items: center; border: 1px solid #dfe5eb; border-radius: 8px; box-shadow: 0 2px 5px rgba(16,24,40,.05); display: flex; gap: 10px; min-height: 76px; min-width: 0; padding: 10px 12px; }.taa-metric--amber { background: #fff8ed; border-color: #ffd198; }.taa-metric > div { min-width: 0; }.taa-metric strong, .taa-metric small { display: block; }.taa-metric strong { font-size: 10px; }.taa-metric b { display: block; font-size: 20px; line-height: 1.1; margin: 3px 0; }.taa-metric small { color: var(--muted); font-size: 9px; }
 .taa-icon { align-items: center; border-radius: 9px; display: flex; flex: 0 0 35px; font-size: 19px; height: 35px; justify-content: center; }.taa-icon--blue { background: #e1effa; color: #0b5cad; }.taa-icon--green { background: #e3f5ea; color: #167a3e; }.taa-icon--amber { background: #fff0cf; color: #9a6200; }
 .taa-charts { display: grid; gap: 9px; grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr) minmax(230px, .88fr); margin-bottom: 12px; }.taa-panel { border: 1px solid #dfe5eb; border-radius: 7px; box-shadow: 0 1px 3px rgba(16,24,40,.04); min-width: 0; padding: 10px 11px; }.taa-panel h2 { font-size: 11px; margin: 0 0 11px; }.taa-panel h2 small { color: var(--muted); font-size: 9px; font-weight: 400; margin-left: 4px; }
