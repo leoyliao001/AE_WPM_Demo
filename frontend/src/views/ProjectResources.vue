@@ -11,12 +11,12 @@
             <div class="pa-actions">
               <router-link class="pa-link" to="/resources">All resource projects</router-link>
               <mc-button appearance="neutral" variant="outlined" label="Export" :disabled="!!busy" @click="exportData" />
-              <mc-button v-if="!record.frozen && (record.permissions.edit || record.permissions.area)" appearance="neutral" variant="outlined" label="Save draft" :disabled="!!busy" @click="save()" />
-              <mc-button v-if="!record.frozen && record.permissions.edit" appearance="primary" label="Confirm resources" :disabled="!!busy || !ready" @click="save('submit')" />
+              <mc-button v-if="!record.frozen && (record.permissions.edit || record.permissions.area)" appearance="neutral" variant="outlined" label="Save draft" :disabled="!!busy || cohortMode" @click="save()" />
+              <mc-button v-if="!record.frozen && record.permissions.edit" appearance="primary" label="Confirm resources" :disabled="!!busy || cohortMode || !ready" @click="save('submit')" />
             </div>
           </div>
           <div class="pa-project-meta"><strong>{{ record.projectName }}</strong><span>{{ record.migrationRequestId }}</span><span>{{ record.products.join(', ') || 'No product' }} / {{ record.region }}</span><span>{{ dirty ? 'Unsaved changes' : record.updatedAt ? `Last saved ${dateTime(record.updatedAt)}` : 'Not yet saved' }}</span></div>
-          <div class="pa-tabs" role="tablist" aria-label="Resource views"><button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" @click="tab = item.id">{{ item.label }}</button></div>
+          <div class="pa-tabs" role="tablist" aria-label="Resource views"><button v-for="item in tabs" :key="item.id" role="tab" :aria-selected="tab === item.id" @click="selectTab(item.id)">{{ item.label }}</button></div>
           <div class="pa-metrics">
             <article v-for="metric in metrics" :key="metric.label" class="pa-metric" :class="[`pa-metric--${metric.tone}`, { 'pa-metric--risk': metric.risk && metric.value > 0 }]">
               <span class="pa-metric-icon" aria-hidden="true"><mc-icon :icon="metric.icon" color="var(--pa-metric-accent)" size="24" /></span>
@@ -34,14 +34,57 @@
             </article>
           </div>
         </header>
+        <section v-if="tab === 'execution' && canEdit" class="pa-panel pa-cohort-panel" aria-label="Cohort management">
+          <div class="pa-section-heading">
+            <div>
+              <p class="pa-eyebrow">Execution grouping</p>
+              <div class="pa-cohort-title">
+                <h2>Cohorts</h2>
+                <span class="pa-cohort-help">
+                  <button type="button" class="pa-cohort-help__trigger" aria-describedby="pa-cohort-help-tooltip">Cohort guide</button>
+                  <span id="pa-cohort-help-tooltip" class="pa-cohort-help__tooltip" role="tooltip">
+                    <strong>What cohorts do</strong>
+                    <p>Cohorts group resource positions that belong to the same hiring or onboarding group. Positions stay as separate resource rows.</p>
+                    <strong>How to create one</strong>
+                    <ol>
+                      <li>Select <b>Create Cohort</b> and enter a cohort name.</li>
+                      <li>Tick one or more unassigned positions in the Execution table.</li>
+                      <li>Select <b>Create Cohort</b> again. The cohort is saved to this project automatically.</li>
+                    </ol>
+                    <strong>Manage cohorts</strong>
+                    <p>Each position can belong to one cohort. Rename updates all its positions; Delete only unassigns them. Use the cohort table headings to expand or collapse groups.</p>
+                  </span>
+                </span>
+              </div>
+            </div>
+            <button type="button" class="pa-text-button" :disabled="cohortMode || !unassignedRows.length || !!busy" @click="startCohortCreation">+ Create Cohort</button>
+          </div>
+          <div v-if="cohorts.length" class="pa-cohort-list">
+            <div v-for="(cohort, index) in cohorts" :key="cohort.name" class="pa-cohort-chip" :style="{ '--cohort-accent': cohortColor(index) }">
+              <span><strong>{{ cohort.name }}</strong><small>{{ cohort.rows.length }} position{{ cohort.rows.length === 1 ? '' : 's' }}</small></span>
+              <button type="button" :disabled="!!busy" :aria-label="`Rename ${cohort.name}`" @click="renameCohort(cohort.name)">Rename</button>
+              <button type="button" :disabled="!!busy" :aria-label="`Delete ${cohort.name}`" @click="deleteCohort(cohort)">Delete</button>
+            </div>
+          </div>
+          <p class="pa-note">{{ assignedRowCount }} / {{ record.rows.length }} positions assigned · {{ unassignedRows.length }} not yet in a cohort</p>
+          <div v-if="cohortMode" class="pa-cohort-builder">
+            <label>Cohort name<input v-model="cohortDraftName" maxlength="120" aria-label="Cohort name" /></label>
+            <span>Select resource positions in the Execution table below.</span>
+            <strong>{{ cohortSelection.length }} position{{ cohortSelection.length === 1 ? '' : 's' }} selected</strong>
+            <div>
+              <button type="button" class="pa-text-button" :disabled="!!busy" @click="cancelCohortCreation">Cancel</button>
+              <button type="button" class="pa-cohort-create" :disabled="!!busy || !cohortDraftName.trim() || !cohortSelection.length" @click="createCohort">Create Cohort</button>
+            </div>
+          </div>
+        </section>
         <div v-if="!record.source.ready" class="pa-feedback">Complete and submit Scope before confirming Resources. Draft positions can be prepared now. <router-link class="pa-link" :to="`/migration-dashboard/${projectId}/scope-statement`">Open Scope</router-link></div>
         <div v-if="record.sourceChanged" class="pa-feedback">Scope changed since the last save. Reconcile resource positions with the current locked FTE before confirming.</div>
         <div v-if="record.frozen" class="pa-feedback">Confirmed resources are frozen. Reopen with a reason before making changes.</div>
         <section class="pa-panel">
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
-              <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Add position" @click="addRow" />
-              <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Import Excel" @click="fileInput.click()" />
+              <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Add position" :disabled="cohortMode" @click="addRow" />
+              <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Import Excel" :disabled="cohortMode" @click="fileInput.click()" />
               <input ref="fileInput" type="file" accept=".xlsx" hidden @change="importData" />
               <mc-button v-if="tab === 'area' && canEditArea" appearance="primary" label="Submit Area details" :disabled="!record.rows.length" @click="save('submit_area')" />
             </div>
@@ -57,9 +100,22 @@
             <button class="pa-text-button" @click="resetFilters">Reset filters</button>
           </div>
           <div class="pa-scroll"><table class="pa-table pa-resource-table">
-            <thead><tr><th class="pa-column--select"><input type="checkbox" aria-label="Select visible resource rows" :checked="visibleRows.length > 0 && visibleRows.every(row => selected.includes(row.id))" @change="selectAll($event.target.checked)" /></th><th v-for="column in columns" :key="column.key" :class="`pa-column--${column.key}`">{{ column.label }}</th><th class="pa-column--action">Action</th></tr></thead>
-            <tbody><tr v-for="row in visibleRows" :key="row.id">
-              <td class="pa-column--select"><input v-model="selected" type="checkbox" :value="row.id" :aria-label="`Select position ${row.gscPid || row.id}`" /></td>
+            <thead><tr><th class="pa-column--select"><input type="checkbox" aria-label="Select visible resource rows" :checked="allVisibleRowsSelected" :disabled="cohortMode && !cohortSelectableRows.length" @change="selectVisibleRows($event.target.checked)" /></th><th v-for="column in columns" :key="column.key" :class="`pa-column--${column.key}`">{{ column.label }}</th><th class="pa-column--action">Action</th></tr></thead>
+            <tbody>
+              <template v-for="group in tableGroups" :key="group.key">
+                <tr v-if="group.showHeader" class="pa-cohort-group" :class="{ 'pa-cohort-group--collapsed': group.collapsed }" @click="toggleCohortGroup(group.key)">
+                  <td :colspan="columns.length + 2">
+                    <span class="pa-cohort-group__arrow">{{ group.collapsed ? '▸' : '▾' }}</span>
+                    <strong v-if="group.unassigned">Not in a cohort</strong>
+                    <strong v-else class="pa-cohort-tag" :style="{ '--cohort-accent': cohortColor(group.index) }">{{ group.name }}</strong>
+                    <b>{{ group.rows.length }} position{{ group.rows.length === 1 ? '' : 's' }}</b>
+                    <span v-if="!group.unassigned" class="pa-cohort-group__summary">{{ cohortSummary(group.rows) }}</span>
+                    <span class="pa-cohort-group__toggle">{{ group.collapsed ? 'Expand' : 'Collapse' }}</span>
+                  </td>
+                </tr>
+                <template v-if="!group.collapsed">
+                  <tr v-for="row in group.rows" :key="row.id">
+              <td class="pa-column--select"><input type="checkbox" :checked="cohortMode ? cohortSelection.includes(row.id) : selected.includes(row.id)" :disabled="cohortMode && Boolean(String(row.cohort || '').trim())" :aria-label="`Select position ${row.gscPid || row.id}`" @change="toggleRowSelection(row, $event.target.checked)" /></td>
               <td v-for="column in columns" :key="column.key" :class="`pa-column--${column.key}`">
                 <template v-if="column.key === 'hiringStatus' && tab === 'execution'">
                   <select v-if="activeHiringStatusId === row.id" v-model="row.hiringStatus" aria-label="Hiring Status" @change="activeHiringStatusId = ''" @blur="activeHiringStatusId = ''">
@@ -80,7 +136,11 @@
                 <span v-else>{{ row[column.key] || '—' }}</span>
               </td>
               <td class="pa-column--action"><span v-if="tab === 'area'" class="pa-status">{{ row.areaLockedAt ? 'Submitted' : 'Draft' }}</span><button v-else-if="tab === 'execution'" class="pa-text-button" :disabled="!canEdit || !!row.areaLockedAt" @click="removeRow(row)">Remove</button><span v-else>Synced to Execution</span></td>
-            </tr><tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : 'No positions yet. Add a position or import the Execution sheet from an exported workbook.' }}</td></tr></tbody>
+                  </tr>
+                </template>
+              </template>
+              <tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : 'No positions yet. Add a position or import the Execution sheet from an exported workbook.' }}</td></tr>
+            </tbody>
           </table></div>
           <div class="pa-section-heading" style="margin-top: 18px"><span class="pa-note">{{ visibleRows.length }} visible · {{ selected.length }} selected · {{ record.rows.length }} total</span><a v-if="selected.length" class="pa-link" :href="reminderLink">Compose reminder for selected positions</a></div>
           <div v-if="tab === 'area' && areaSubmitted && canEditArea" class="pa-field"><label>Reason to reopen submitted Area details<textarea v-model="areaReason" maxlength="2000" rows="2" /></label><mc-button appearance="neutral" variant="outlined" label="Reopen Area details" :disabled="!areaReason.trim()" @click="reopenArea" /></div>
@@ -111,6 +171,10 @@ const query = ref('')
 const siteFilter = ref('')
 const statusFilter = ref('')
 const selected = ref([])
+const cohortMode = ref(false)
+const cohortDraftName = ref('')
+const cohortSelection = ref([])
+const collapsedCohortGroups = ref(new Set())
 const reason = ref('')
 const areaReason = ref('')
 const fileInput = ref(null)
@@ -212,6 +276,42 @@ const columns = computed(() => tab.value === 'area' ? areaColumns : tab.value ==
 const visibleRows = computed(() => (record.value?.rows || []).filter(row =>
   (tab.value !== 'hr' || row.hiringType !== 'Efficiency') && (!siteFilter.value || row.site === siteFilter.value) &&
   (!statusFilter.value || row.hiringStatus === statusFilter.value) && Object.values(row).join(' ').toLowerCase().includes(query.value.toLowerCase())))
+const cohorts = computed(() => {
+  const groupedRows = new Map()
+  for (const row of resourceRows.value) {
+    const name = String(row.cohort || '').trim()
+    if (!name) continue
+    if (!groupedRows.has(name)) groupedRows.set(name, [])
+    groupedRows.get(name).push(row)
+  }
+  return [...groupedRows.entries()].map(([name, rows]) => ({ name, rows }))
+})
+const unassignedRows = computed(() => resourceRows.value.filter(row => !String(row.cohort || '').trim()))
+const assignedRowCount = computed(() => resourceRows.value.length - unassignedRows.value.length)
+const cohortSelectableRows = computed(() => visibleRows.value.filter(row => !String(row.cohort || '').trim()))
+const allVisibleRowsSelected = computed(() => {
+  const rows = cohortMode.value ? cohortSelectableRows.value : visibleRows.value
+  const selection = cohortMode.value ? cohortSelection.value : selected.value
+  return rows.length > 0 && rows.every(row => selection.includes(row.id))
+})
+const tableGroups = computed(() => {
+  if (tab.value !== 'execution' || cohortMode.value || !cohorts.value.length) {
+    return [{ key: 'all', rows: visibleRows.value, showHeader: false, collapsed: false }]
+  }
+  const groups = cohorts.value.flatMap((cohort, index) => {
+    const rows = visibleRows.value.filter(row => String(row.cohort || '').trim() === cohort.name)
+    if (!rows.length) return []
+    const key = `cohort:${cohort.name}`
+    return [{ key, name: cohort.name, rows, index, showHeader: true, collapsed: collapsedCohortGroups.value.has(key) }]
+  })
+  const unassigned = visibleRows.value.filter(row => !String(row.cohort || '').trim())
+  if (unassigned.length) {
+    const key = 'cohort:unassigned'
+    groups.push({ key, name: 'Not in a cohort', rows: unassigned, unassigned: true, showHeader: true, collapsed: collapsedCohortGroups.value.has(key) })
+  }
+  return groups
+})
+const cohortPalette = ['#0073ab', '#7c3aed', '#16a34a', '#f59e0b', '#dc2626', '#0f766e']
 const ready = computed(() => record.value?.source.ready && record.value.rows.length === record.value.source.population &&
   record.value.rows.every(row => row.site && row.language && row.gscPid && row.pidCreationDate && row.areaLockedAt && row.actualDoj && row.apmmId &&
     (row.hiringType === 'Efficiency' ? row.deletedPid : row.hiringStatus === 'Onboarded' && row.requisitionId)))
@@ -224,6 +324,7 @@ function selectCellOption(row, key, event) {
   if (key === 'hiringType') changeHiringType(row)
 }
 function cellEditable(row, key) {
+  if (key === 'cohort') return false
   if (tab.value === 'area') return canEditArea.value && !row.areaLockedAt
   if (!canEdit.value) return false
   if (tab.value === 'hr') return hrColumns.value.some(column => column.key === key)
@@ -262,6 +363,123 @@ function selectAll(checked) {
   const ids = new Set(selected.value)
   visibleRows.value.forEach(row => checked ? ids.add(row.id) : ids.delete(row.id))
   selected.value = [...ids]
+}
+function selectVisibleRows(checked) {
+  if (!cohortMode.value) {
+    selectAll(checked)
+    return
+  }
+  const ids = new Set(cohortSelection.value)
+  cohortSelectableRows.value.forEach(row => checked ? ids.add(row.id) : ids.delete(row.id))
+  cohortSelection.value = [...ids]
+}
+function toggleRowSelection(row, checked) {
+  if (cohortMode.value) {
+    if (String(row.cohort || '').trim()) return
+    const ids = new Set(cohortSelection.value)
+    checked ? ids.add(row.id) : ids.delete(row.id)
+    cohortSelection.value = [...ids]
+    return
+  }
+  const ids = new Set(selected.value)
+  checked ? ids.add(row.id) : ids.delete(row.id)
+  selected.value = [...ids]
+}
+function nextCohortName() {
+  const names = new Set(cohorts.value.map(cohort => cohort.name.toLocaleLowerCase()))
+  let suffix = 1
+  while (names.has(`cohort ${suffix}`)) suffix += 1
+  return `Cohort ${suffix}`
+}
+function startCohortCreation() {
+  if (!canEdit.value || !unassignedRows.value.length) return
+  tab.value = 'execution'
+  selected.value = []
+  cohortSelection.value = []
+  cohortDraftName.value = nextCohortName()
+  cohortMode.value = true
+}
+function cancelCohortCreation() {
+  cohortMode.value = false
+  cohortSelection.value = []
+  cohortDraftName.value = ''
+}
+function selectTab(tabId) {
+  if (cohortMode.value && tabId !== 'execution') cancelCohortCreation()
+  tab.value = tabId
+}
+function cohortColor(index) {
+  return cohortPalette[index % cohortPalette.length]
+}
+function cohortSummary(rows) {
+  const recruitmentRows = rows.filter(row => !['Efficiency', 'Backfill'].includes(row.hiringType))
+  const onboarded = recruitmentRows.filter(row => row.hiringStatus === 'Onboarded').length
+  return `Onboarded ${onboarded} / ${recruitmentRows.length} · Efficiency / Backfill ${rows.length - recruitmentRows.length}`
+}
+function toggleCohortGroup(key) {
+  const collapsed = new Set(collapsedCohortGroups.value)
+  collapsed.has(key) ? collapsed.delete(key) : collapsed.add(key)
+  collapsedCohortGroups.value = collapsed
+}
+async function createCohort() {
+  const name = cohortDraftName.value.trim()
+  if (!name) {
+    error.value = 'Enter a cohort name.'
+    return
+  }
+  if (cohorts.value.some(cohort => cohort.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    error.value = 'A cohort with this name already exists.'
+    return
+  }
+  const selectedIds = new Set(cohortSelection.value)
+  const rows = resourceRows.value.filter(row => selectedIds.has(row.id) && !String(row.cohort || '').trim())
+  if (!rows.length || rows.length !== selectedIds.size) {
+    error.value = 'Select one or more positions that are not already in a cohort.'
+    return
+  }
+  error.value = ''
+  success.value = ''
+  rows.forEach(row => { row.cohort = name })
+  if (!await save()) {
+    rows.forEach(row => { row.cohort = '' })
+    return
+  }
+  cancelCohortCreation()
+  success.value = `${name} created with ${rows.length} position${rows.length === 1 ? '' : 's'}.`
+}
+async function renameCohort(cohortName) {
+  const name = window.prompt('Rename cohort', cohortName)
+  if (name === null) return
+  const nextName = name.trim()
+  if (!nextName) {
+    error.value = 'Enter a cohort name.'
+    return
+  }
+  if (cohorts.value.some(cohort => cohort.name !== cohortName && cohort.name.toLocaleLowerCase() === nextName.toLocaleLowerCase())) {
+    error.value = 'A cohort with this name already exists.'
+    return
+  }
+  const rows = resourceRows.value.filter(row => String(row.cohort || '').trim() === cohortName)
+  if (!rows.length || nextName === cohortName) return
+  error.value = ''
+  success.value = ''
+  rows.forEach(row => { row.cohort = nextName })
+  if (!await save()) {
+    rows.forEach(row => { row.cohort = cohortName })
+    return
+  }
+  success.value = `${cohortName} renamed to ${nextName}.`
+}
+async function deleteCohort(cohort) {
+  if (!window.confirm(`Delete "${cohort.name}"? Its ${cohort.rows.length} position${cohort.rows.length === 1 ? '' : 's'} will become unassigned. The resource positions will not be deleted.`)) return
+  error.value = ''
+  success.value = ''
+  cohort.rows.forEach(row => { row.cohort = '' })
+  if (!await save()) {
+    cohort.rows.forEach(row => { row.cohort = cohort.name })
+    return
+  }
+  success.value = `${cohort.name} deleted; its positions are unassigned.`
 }
 async function reopenArea() {
   if (await save('reopen_area', { reason: areaReason.value })) areaReason.value = ''
@@ -319,3 +537,46 @@ async function importData(event) {
   } catch (caught) { error.value = `Unable to import: ${caught.message}` }
 }
 </script>
+
+<style scoped>
+.pa-cohort-panel { margin-bottom: 12px; }
+.pa-cohort-panel .pa-section-heading { margin-bottom: 10px; }
+.pa-cohort-title { align-items: center; display: flex; gap: 9px; }
+.pa-cohort-title h2 { margin: 0; }
+.pa-cohort-help { display: inline-block; margin-bottom: -6px; padding-bottom: 6px; position: relative; z-index: 20; }
+.pa-cohort-help__trigger { background: #e8f4fa; border: 0; border-radius: 12px; color: #0073ab; cursor: help; font-size: 9px; font-weight: 700; padding: 4px 8px; }
+.pa-cohort-help__trigger:focus-visible { outline: 2px solid #0073ab; outline-offset: 2px; }
+.pa-cohort-help__tooltip { background: #0b2a4a; border-radius: 7px; box-shadow: 0 8px 24px rgba(16, 24, 40, .2); color: #fff; display: none; font-size: 10px; font-weight: 400; left: 0; line-height: 1.5; padding: 12px 14px; position: absolute; text-align: left; top: 100%; width: min(360px, calc(100vw - 48px)); z-index: 30; }
+.pa-cohort-help:hover .pa-cohort-help__tooltip,.pa-cohort-help:focus-within .pa-cohort-help__tooltip { display: block; }
+.pa-cohort-help__tooltip strong { display: block; font-size: 10px; }
+.pa-cohort-help__tooltip p { color: #e3edf5; font-size: 10px; line-height: 1.5; margin: 4px 0 9px; }
+.pa-cohort-help__tooltip ol { margin: 4px 0 9px; padding-left: 18px; }
+.pa-cohort-help__tooltip li { margin: 3px 0; }
+.pa-cohort-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.pa-cohort-chip { align-items: center; background: #f7fafc; border: 1px solid #dfe5eb; border-left: 3px solid var(--cohort-accent); border-radius: 6px; display: flex; gap: 8px; padding: 6px 9px; }
+.pa-cohort-chip > span { display: flex; flex-direction: column; gap: 2px; min-width: 90px; }
+.pa-cohort-chip strong { color: #164b69; font-size: 11px; }
+.pa-cohort-chip small { color: var(--muted); font-size: 9px; }
+.pa-cohort-chip button { background: transparent; border: 0; color: #0073ab; cursor: pointer; font-size: 10px; padding: 3px; }
+.pa-cohort-chip button:disabled { cursor: not-allowed; opacity: .5; }
+.pa-cohort-panel > .pa-note { margin: 8px 0 0; }
+.pa-cohort-builder { align-items: end; border-top: 1px solid #e3e8ed; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; padding-top: 12px; }
+.pa-cohort-builder label { color: #344054; display: flex; flex-direction: column; font-size: 10px; font-weight: 700; gap: 4px; }
+.pa-cohort-builder input { border: 1px solid #c8d1d9; border-radius: 5px; font: inherit; height: 30px; min-width: 190px; padding: 0 8px; }
+.pa-cohort-builder > span,.pa-cohort-builder > strong { color: var(--muted); font-size: 10px; }
+.pa-cohort-builder > div { display: flex; gap: 8px; margin-left: auto; }
+.pa-cohort-create { background: #0073ab; border: 1px solid #0073ab; border-radius: 5px; color: white; cursor: pointer; font-size: 10px; font-weight: 700; padding: 7px 12px; }
+.pa-cohort-create:disabled { cursor: not-allowed; opacity: .5; }
+.pa-cohort-group { background: #f4f7fa; cursor: pointer; }
+.pa-cohort-group:hover { background: #edf4f8; }
+.pa-cohort-group td { color: #344054; font-size: 10px; }
+.pa-cohort-group__arrow { color: #0073ab; display: inline-block; margin-right: 7px; width: 10px; }
+.pa-cohort-group td > b { margin-left: 9px; }
+.pa-cohort-tag { background: #e8f4fa; border-radius: 10px; color: var(--cohort-accent); padding: 3px 8px; }
+.pa-cohort-group__summary,.pa-cohort-group__toggle { color: var(--muted); margin-left: 12px; }
+.pa-cohort-group__toggle { float: right; }
+@media (max-width: 700px) {
+  .pa-cohort-builder > div { margin-left: 0; width: 100%; }
+  .pa-cohort-builder > div button:last-child { margin-left: auto; }
+}
+</style>
