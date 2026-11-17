@@ -110,6 +110,7 @@
             </div>
           </div>
           <p v-if="tab === 'execution'">Maintain GSC site, hiring type, language and PID details here. Hiring and onboarding fields sync from HR / TAA. For Efficiency, Actual DOJ means the date the FTE is onboarded onto this project.</p>
+          <p v-if="tab === 'execution'" class="pa-feedback" role="note"><strong>Note:</strong> For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
           <p v-else-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
               <p v-else>HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
           <p class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
