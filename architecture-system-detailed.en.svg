@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="850" viewBox="0 0 1500 850" role="img" aria-labelledby="title desc">
+  <title id="title">AE WPM System Architecture — Detailed</title>
+  <desc id="desc">Detailed view of the browser frontend, Apache edge, Django APIs and services, SQL Server, and external identity and service integrations.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#2874a6"/></marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#718096"/></marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #183247; }
+      .title { font-size: 25px; font-weight: 700; }
+      .group { font-size: 18px; font-weight: 700; }
+      .label { font-size: 15px; font-weight: 700; }
+      .sub { font-size: 12px; fill: #496273; }
+      .flow { fill: none; stroke: #2874a6; stroke-width: 2.7; marker-end: url(#arrow); }
+      .ext { fill: none; stroke: #718096; stroke-width: 2; stroke-dasharray: 6 5; marker-end: url(#arrow-gray); }
+    </style>
+  </defs>
+  <rect width="1500" height="850" rx="18" fill="#f5f8fb"/>
+  <text x="40" y="48" class="title">AE WPM System Architecture · Detailed</text>
+  <text x="40" y="74" class="sub">Production request path, application responsibilities, data storage, and external integrations</text>
+
+  <rect x="35" y="115" width="315" height="470" rx="14" fill="#fff" stroke="#55a68c" stroke-width="2"/>
+  <text x="55" y="148" class="group">Browser / Frontend</text>
+  <rect x="60" y="175" width="265" height="72" rx="10" fill="#e2f4ee" stroke="#55a68c"/>
+  <text x="192" y="205" text-anchor="middle" class="label">Vue 3 SPA</text>
+  <text x="192" y="228" text-anchor="middle" class="sub">Vue Router · page workspaces</text>
+  <rect x="60" y="267" width="265" height="82" rx="10" fill="#f2faf7" stroke="#9bcfbd"/>
+  <text x="192" y="298" text-anchor="middle" class="label">Pages and shared components</text>
+  <text x="192" y="322" text-anchor="middle" class="sub">Intake · OA · Scope · Business Case · Gantt</text>
+  <text x="192" y="340" text-anchor="middle" class="sub">Dashboard · MDS UI</text>
+  <rect x="60" y="369" width="265" height="82" rx="10" fill="#f2faf7" stroke="#9bcfbd"/>
+  <text x="192" y="400" text-anchor="middle" class="label">Axios API client</text>
+  <text x="192" y="424" text-anchor="middle" class="sub">Relative /api path · shared headers</text>
+  <rect x="60" y="471" width="265" height="82" rx="10" fill="#f2faf7" stroke="#9bcfbd"/>
+  <text x="192" y="502" text-anchor="middle" class="label">Azure sign-in module</text>
+  <text x="192" y="526" text-anchor="middle" class="sub">Authorization code + PKCE · token/session</text>
+
+  <rect x="385" y="115" width="240" height="470" rx="14" fill="#fff" stroke="#4d9bbd" stroke-width="2"/>
+  <text x="405" y="148" class="group">Apache 2.4 Edge</text>
+  <rect x="410" y="185" width="190" height="70" rx="10" fill="#d9eef8" stroke="#4d9bbd"/>
+  <text x="505" y="215" text-anchor="middle" class="label">HTTP :80</text>
+  <text x="505" y="237" text-anchor="middle" class="sub">Redirect to HTTPS</text>
+  <rect x="410" y="277" width="190" height="82" rx="10" fill="#d9eef8" stroke="#4d9bbd"/>
+  <text x="505" y="309" text-anchor="middle" class="label">HTTPS :443</text>
+  <text x="505" y="333" text-anchor="middle" class="sub">TLS · production entry</text>
+  <rect x="410" y="381" width="190" height="72" rx="10" fill="#eef7fb" stroke="#9bc3d4"/>
+  <text x="505" y="411" text-anchor="middle" class="label">Static site</text>
+  <text x="505" y="435" text-anchor="middle" class="sub">frontend/dist · SPA fallback</text>
+  <rect x="410" y="475" width="190" height="72" rx="10" fill="#eef7fb" stroke="#9bc3d4"/>
+  <text x="505" y="505" text-anchor="middle" class="label">/api reverse proxy</text>
+  <text x="505" y="529" text-anchor="middle" class="sub">To 127.0.0.1:8000</text>
+
+  <rect x="660" y="115" width="480" height="470" rx="14" fill="#fff" stroke="#8179bd" stroke-width="2"/>
+  <text x="680" y="148" class="group">Django 5 + DRF · Modular Monolith</text>
+  <rect x="685" y="175" width="430" height="72" rx="10" fill="#e8e8fa" stroke="#8179bd"/>
+  <text x="900" y="205" text-anchor="middle" class="label">API routes</text>
+  <text x="900" y="228" text-anchor="middle" class="sub">migration-intake · projects · approvals · attributes</text>
+  <rect x="685" y="267" width="430" height="72" rx="10" fill="#f4f3fc" stroke="#b3aed9"/>
+  <text x="900" y="297" text-anchor="middle" class="label">Business views</text>
+  <text x="900" y="320" text-anchor="middle" class="sub">Request validation · project access · file handling</text>
+  <rect x="685" y="359" width="430" height="82" rx="10" fill="#f4f3fc" stroke="#b3aed9"/>
+  <text x="900" y="389" text-anchor="middle" class="label">Services and permissions</text>
+  <text x="900" y="413" text-anchor="middle" class="sub">Business case · notifications · chatbot · access rules</text>
+  <text x="900" y="431" text-anchor="middle" class="sub">Waitress Windows service · loopback only</text>
+  <rect x="685" y="461" width="430" height="82" rx="10" fill="#f4f3fc" stroke="#b3aed9"/>
+  <text x="900" y="491" text-anchor="middle" class="label">Django ORM and migrations</text>
+  <text x="900" y="515" text-anchor="middle" class="sub">Model mapping · queries · schema evolution</text>
+
+  <rect x="1175" y="115" width="290" height="470" rx="14" fill="#fff" stroke="#d7a640" stroke-width="2"/>
+  <text x="1195" y="148" class="group">Data and Files</text>
+  <rect x="1200" y="185" width="240" height="100" rx="10" fill="#fff1d6" stroke="#d7a640"/>
+  <text x="1320" y="224" text-anchor="middle" class="label">SQL Server</text>
+  <text x="1320" y="250" text-anchor="middle" class="sub">Production WPM database</text>
+  <rect x="1200" y="307" width="240" height="126" rx="10" fill="#fff9ed" stroke="#e8c77d"/>
+  <text x="1320" y="338" text-anchor="middle" class="label">Business data</text>
+  <text x="1320" y="364" text-anchor="middle" class="sub">Project · assessment · approvals</text>
+  <text x="1320" y="386" text-anchor="middle" class="sub">Workspaces · master data</text>
+  <text x="1320" y="410" text-anchor="middle" class="sub">JSON fields for flexible structures</text>
+  <rect x="1200" y="455" width="240" height="82" rx="10" fill="#fff9ed" stroke="#e8c77d"/>
+  <text x="1320" y="486" text-anchor="middle" class="label">Django FileField</text>
+  <text x="1320" y="510" text-anchor="middle" class="sub">Intake files and project evidence</text>
+
+  <rect x="155" y="635" width="1190" height="150" rx="14" fill="#fff" stroke="#aab8c2" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="180" y="668" class="group">External Identity and Services</text>
+  <rect x="190" y="695" width="235" height="62" rx="10" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="307" y="721" text-anchor="middle" class="label">Entra ID / Azure AD</text>
+  <text x="307" y="742" text-anchor="middle" class="sub">User sign-in</text>
+  <rect x="460" y="695" width="220" height="62" rx="10" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="570" y="721" text-anchor="middle" class="label">Microsoft Graph</text>
+  <text x="570" y="742" text-anchor="middle" class="sub">User profile</text>
+  <rect x="715" y="695" width="220" height="62" rx="10" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="825" y="721" text-anchor="middle" class="label">SendGrid</text>
+  <text x="825" y="742" text-anchor="middle" class="sub">Email notifications</text>
+  <rect x="970" y="695" width="220" height="62" rx="10" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="1080" y="721" text-anchor="middle" class="label">LLM API</text>
+  <text x="1080" y="742" text-anchor="middle" class="sub">Chat assistant</text>
+  <rect x="1220" y="695" width="100" height="62" rx="10" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="1270" y="721" text-anchor="middle" class="label">Dify</text>
+  <text x="1270" y="742" text-anchor="middle" class="sub">File parsing</text>
+
+  <path d="M350 220 H410" class="flow"/>
+  <text x="356" y="207" class="sub">HTTPS</text>
+  <path d="M600 510 H685" class="flow"/>
+  <text x="610" y="497" class="sub">/api</text>
+  <path d="M1115 502 H1200" class="flow"/>
+  <text x="1140" y="489" class="sub">ORM</text>
+  <path d="M192 510 C160 585 210 630 307 695" class="ext"/>
+  <path d="M280 510 C340 590 480 630 570 695" class="ext"/>
+  <path d="M900 543 C900 600 850 640 825 695" class="ext"/>
+  <path d="M990 543 C1020 610 1060 640 1080 695" class="ext"/>
+  <path d="M1050 543 C1160 585 1220 640 1270 695" class="ext"/>
+</svg>

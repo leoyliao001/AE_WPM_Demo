@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">AE WPM System Architecture — Overall</title>
+  <desc id="desc">Users access the Vue frontend and Django API through Apache. Django connects to SQL Server and integrates with Entra ID, Graph, SendGrid, and an LLM.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#2874a6"/></marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#718096"/></marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #183247; }
+      .title { font-size: 24px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 700; }
+      .sub { font-size: 13px; fill: #496273; }
+      .edge { fill: none; stroke: #2874a6; stroke-width: 2.5; marker-end: url(#arrow); }
+      .external { fill: none; stroke: #718096; stroke-width: 2; stroke-dasharray: 6 5; marker-end: url(#arrow-gray); }
+      .edge-label { font-size: 12px; fill: #496273; }
+    </style>
+  </defs>
+  <rect width="1200" height="500" rx="18" fill="#f5f8fb"/>
+  <text x="40" y="48" class="title">AE WPM System Architecture</text>
+  <text x="40" y="73" class="sub">Production: Windows + Apache + Waitress + Django + SQL Server</text>
+  <rect x="38" y="190" width="145" height="84" rx="12" fill="#fff" stroke="#9bb7c8" stroke-width="2"/>
+  <text x="110" y="224" text-anchor="middle" class="label">Business User</text>
+  <text x="110" y="249" text-anchor="middle" class="sub">Web browser</text>
+  <rect x="235" y="190" width="190" height="84" rx="12" fill="#d9eef8" stroke="#4d9bbd" stroke-width="2"/>
+  <text x="330" y="224" text-anchor="middle" class="label">Apache 2.4</text>
+  <text x="330" y="249" text-anchor="middle" class="sub">HTTPS · SPA · API proxy</text>
+  <rect x="500" y="100" width="220" height="92" rx="12" fill="#e2f4ee" stroke="#55a68c" stroke-width="2"/>
+  <text x="610" y="137" text-anchor="middle" class="label">Vue 3 + MDS</text>
+  <text x="610" y="163" text-anchor="middle" class="sub">Pages · forms · workspaces</text>
+  <rect x="500" y="285" width="220" height="100" rx="12" fill="#e8e8fa" stroke="#8179bd" stroke-width="2"/>
+  <text x="610" y="325" text-anchor="middle" class="label">Django + DRF</text>
+  <text x="610" y="351" text-anchor="middle" class="sub">APIs · services · access · ORM</text>
+  <text x="610" y="370" text-anchor="middle" class="sub">Waitress · 127.0.0.1:8000</text>
+  <rect x="840" y="285" width="190" height="100" rx="12" fill="#fff1d6" stroke="#d7a640" stroke-width="2"/>
+  <text x="935" y="326" text-anchor="middle" class="label">SQL Server</text>
+  <text x="935" y="353" text-anchor="middle" class="sub">Production data</text>
+  <rect x="825" y="91" width="335" height="148" rx="14" fill="#fff" stroke="#c7d4dc" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="845" y="116" class="sub">External identity and services</text>
+  <rect x="845" y="132" width="135" height="40" rx="8" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="912" y="157" text-anchor="middle" class="sub">Entra ID / Graph</text>
+  <rect x="997" y="132" width="140" height="40" rx="8" fill="#f1f5f8" stroke="#c7d4dc"/>
+  <text x="1067" y="157" text-anchor="middle" class="sub">SendGrid / LLM</text>
+  <text x="990" y="202" text-anchor="middle" class="sub">Dify helper: optional file parsing</text>
+  <path d="M183 232 H235" class="edge"/>
+  <path d="M425 218 C460 218 465 146 500 146" class="edge"/>
+  <text x="440" y="190" class="edge-label">Static SPA</text>
+  <path d="M610 192 V285" class="edge"/>
+  <text x="620" y="244" class="edge-label">Same-origin /api</text>
+  <path d="M720 335 H840" class="edge"/>
+  <text x="750" y="323" class="edge-label">ORM</text>
+  <path d="M720 118 C770 82 805 146 845 151" class="external"/>
+  <path d="M720 148 C820 215 910 208 997 153" class="external"/>
+  <path d="M720 306 C790 270 795 185 845 155" class="external"/>
+  <path d="M720 365 C825 396 930 270 997 160" class="external"/>
+</svg>

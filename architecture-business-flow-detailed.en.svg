@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1050" viewBox="0 0 1900 1050" role="img" aria-labelledby="title desc">
+  <title id="title">AE WPM Detailed Project Lifecycle Flowchart</title>
+  <desc id="desc">The lifecycle flows from Initiate to Plan, Execute, Monitor and Control, and Close and Realise Value. Each phase branches to its associated deliverables. Monitoring can inform corrective action during execution.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#396a86"/></marker>
+    <marker id="branch-arrow" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#6c8c9e"/></marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #183247; }
+      .title { font-size: 26px; font-weight: 700; }
+      .subtitle { font-size: 14px; fill: #506879; }
+      .phase { font-size: 18px; font-weight: 700; }
+      .phase-sub { font-size: 12px; fill: #506879; }
+      .item { font-size: 14px; font-weight: 600; }
+      .caption { font-size: 13px; font-weight: 600; fill: #506879; }
+      .flow { fill: none; stroke: #396a86; stroke-width: 3; marker-end: url(#arrow); }
+      .spine { fill: none; stroke: #a9bfcc; stroke-width: 2; }
+      .branch { fill: none; stroke: #6c8c9e; stroke-width: 2; marker-end: url(#branch-arrow); }
+      .feedback { fill: none; stroke: #6c8c9e; stroke-width: 2.5; stroke-dasharray: 8 5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1900" height="1050" rx="18" fill="#f5f8fb"/>
+  <text x="35" y="46" class="title">AE WPM Project Lifecycle · Detailed Flowchart</text>
+  <text x="35" y="74" class="subtitle">Phase-to-phase flow and associated deliverables · branches are not a mandatory order within a phase</text>
+
+  <!-- The five large boxes form the primary lifecycle flow. -->
+  <rect x="30" y="118" width="340" height="82" rx="12" fill="#eaf2ff" stroke="#3286fa" stroke-width="2"/>
+  <text x="50" y="151" class="phase">01  Initiate</text>
+  <text x="50" y="176" class="phase-sub">Authorise &amp; define</text>
+  <rect x="405" y="118" width="340" height="82" rx="12" fill="#e5f8f5" stroke="#18b6a4" stroke-width="2"/>
+  <text x="425" y="151" class="phase">02  Plan</text>
+  <text x="425" y="176" class="phase-sub">Build the roadmap</text>
+  <rect x="780" y="118" width="340" height="82" rx="12" fill="#f1ebff" stroke="#9865ed" stroke-width="2"/>
+  <text x="800" y="151" class="phase">03  Execute</text>
+  <text x="800" y="176" class="phase-sub">Do the work</text>
+  <rect x="1155" y="118" width="340" height="82" rx="12" fill="#edf6e6" stroke="#69b330" stroke-width="2"/>
+  <text x="1175" y="151" class="phase">04  Monitor &amp; Control</text>
+  <text x="1175" y="176" class="phase-sub">Track &amp; correct</text>
+  <rect x="1530" y="118" width="340" height="82" rx="12" fill="#eaf2ff" stroke="#3286fa" stroke-width="2"/>
+  <text x="1550" y="151" class="phase">05  Close &amp; Realise Value</text>
+  <text x="1550" y="176" class="phase-sub">Finalise &amp; learn</text>
+  <path d="M370 159 H405" class="flow"/>
+  <path d="M745 159 H780" class="flow"/>
+  <path d="M1120 159 H1155" class="flow"/>
+  <path d="M1495 159 H1530" class="flow"/>
+
+  <!-- Each spine fans out to deliverables without imposing an order. -->
+  <path d="M58 200 V790" class="spine"/>
+  <path d="M433 200 V460" class="spine"/>
+  <path d="M808 200 V460" class="spine"/>
+  <path d="M1183 200 V460" class="spine"/>
+  <path d="M1558 200 V460" class="spine"/>
+  <text x="88" y="226" class="caption">Initiation deliverables</text>
+  <text x="463" y="226" class="caption">Planning deliverables</text>
+  <text x="838" y="226" class="caption">Execution deliverables</text>
+  <text x="1213" y="226" class="caption">Control deliverables</text>
+  <text x="1588" y="226" class="caption">Closure deliverables</text>
+
+  <path d="M58 262 H85" class="branch"/><rect x="90" y="240" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="267" class="item">Stakeholder Registration</text>
+  <path d="M58 317 H85" class="branch"/><rect x="90" y="295" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="314" class="item">Opportunity Assessment /</text><text x="104" y="330" class="item">Task details</text>
+  <path d="M58 372 H85" class="branch"/><rect x="90" y="350" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="377" class="item">Scope Statement</text>
+  <path d="M58 427 H85" class="branch"/><rect x="90" y="405" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="432" class="item">Business Case</text>
+  <path d="M58 482 H85" class="branch"/><rect x="90" y="460" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="487" class="item">Project Charter</text>
+  <path d="M58 537 H85" class="branch"/><rect x="90" y="515" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="534" class="item">People Consultation &amp;</text><text x="104" y="550" class="item">Compliance</text>
+  <path d="M58 592 H85" class="branch"/><rect x="90" y="570" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="597" class="item">Resources</text>
+  <path d="M58 647 H85" class="branch"/><rect x="90" y="625" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="644" class="item">Access &amp; Enablement</text><text x="104" y="660" class="item">Requirements</text>
+  <path d="M58 702 H85" class="branch"/><rect x="90" y="680" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="707" class="item">Business Impact Analysis</text>
+  <path d="M58 757 H85" class="branch"/><rect x="90" y="735" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="104" y="762" class="item">Gantt</text>
+
+  <path d="M433 262 H460" class="branch"/><rect x="465" y="240" width="270" height="44" rx="8" fill="#fff" stroke="#b6ded8"/><text x="479" y="267" class="item">Integrated project plan</text>
+  <path d="M433 317 H460" class="branch"/><rect x="465" y="295" width="270" height="44" rx="8" fill="#fff" stroke="#b6ded8"/><text x="479" y="322" class="item">WBS &amp; milestone schedule</text>
+  <path d="M433 372 H460" class="branch"/><rect x="465" y="350" width="270" height="44" rx="8" fill="#fff" stroke="#b6ded8"/><text x="479" y="377" class="item">RAID log &amp; risk plan</text>
+  <path d="M433 427 H460" class="branch"/><rect x="465" y="405" width="270" height="44" rx="8" fill="#fff" stroke="#b6ded8"/><text x="479" y="432" class="item">RACI &amp; governance calendar</text>
+
+  <path d="M808 262 H835" class="branch"/><rect x="840" y="240" width="270" height="44" rx="8" fill="#fff" stroke="#d3c3ed"/><text x="854" y="267" class="item">Deliverables / outputs</text>
+  <path d="M808 317 H835" class="branch"/><rect x="840" y="295" width="270" height="44" rx="8" fill="#fff" stroke="#d3c3ed"/><text x="854" y="322" class="item">Status updates &amp; MoMs</text>
+  <path d="M808 372 H835" class="branch"/><rect x="840" y="350" width="270" height="44" rx="8" fill="#fff" stroke="#d3c3ed"/><text x="854" y="377" class="item">Updated RAID &amp; action log</text>
+  <path d="M808 427 H835" class="branch"/><rect x="840" y="405" width="270" height="44" rx="8" fill="#fff" stroke="#d3c3ed"/><text x="854" y="432" class="item">Change requests</text>
+
+  <path d="M1183 262 H1210" class="branch"/><rect x="1215" y="240" width="270" height="44" rx="8" fill="#fff" stroke="#c7ddba"/><text x="1229" y="267" class="item">Governance / status pack</text>
+  <path d="M1183 317 H1210" class="branch"/><rect x="1215" y="295" width="270" height="44" rx="8" fill="#fff" stroke="#c7ddba"/><text x="1229" y="322" class="item">Dashboards &amp; bowler charts</text>
+  <path d="M1183 372 H1210" class="branch"/><rect x="1215" y="350" width="270" height="44" rx="8" fill="#fff" stroke="#c7ddba"/><text x="1229" y="377" class="item">Change &amp; decision logs</text>
+  <path d="M1183 427 H1210" class="branch"/><rect x="1215" y="405" width="270" height="44" rx="8" fill="#fff" stroke="#c7ddba"/><text x="1229" y="432" class="item">Forecast &amp; variance view</text>
+
+  <path d="M1558 262 H1585" class="branch"/><rect x="1590" y="240" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="1604" y="267" class="item">Closure report &amp; sign-off</text>
+  <path d="M1558 317 H1585" class="branch"/><rect x="1590" y="295" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="1604" y="322" class="item">Benefits realisation plan</text>
+  <path d="M1558 372 H1585" class="branch"/><rect x="1590" y="350" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="1604" y="377" class="item">Lessons-learned log</text>
+  <path d="M1558 427 H1585" class="branch"/><rect x="1590" y="405" width="270" height="44" rx="8" fill="#fff" stroke="#bbd4ed"/><text x="1604" y="432" class="item">Handover pack</text>
+
+  <path d="M1183 460 V535 H795 V205" class="feedback"/>
+  <text x="990" y="522" text-anchor="middle" class="caption">Feedback / corrective action</text>
+  <rect x="30" y="900" width="1840" height="95" rx="12" fill="#eaf0f4"/>
+  <text x="50" y="931" class="caption">Reading the flow:</text>
+  <text x="50" y="955" class="subtitle">Solid arrows show the lifecycle direction; branches identify work products, not a required task sequence. Monitoring can occur alongside execution.</text>
+  <text x="50" y="978" class="subtitle">Based on the supplied lifecycle reference. Delivery status, phase gates, ownership and implemented features depend on project configuration.</text>
+</svg>
