@@ -104,16 +104,21 @@
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
               <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Add position" :disabled="cohortMode" @click="addRow" />
+              <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Download Import Template" :disabled="cohortMode" @click="downloadImportTemplate" />
               <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Import Excel" :disabled="cohortMode" @click="fileInput.click()" />
               <input ref="fileInput" type="file" accept=".xlsx" hidden @change="importData" />
               <mc-button v-if="tab === 'area' && canEditArea" appearance="primary" label="Submit Area details" :disabled="!record.rows.length" @click="save('submit_area')" />
             </div>
           </div>
-          <p v-if="tab === 'execution'">Maintain GSC site, hiring type, language and PID details here. Hiring and onboarding fields sync from HR / TAA. For Efficiency, Actual DOJ means the date the FTE is onboarded onto this project.</p>
-          <p v-if="tab === 'execution'" class="pa-feedback" role="note"><strong>Note:</strong> For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
+              <div v-if="tab === 'execution'" class="pa-execution-guidance">
+                <div class="pa-execution-guidance__note" role="note">
+                  <strong>Note</strong>
+                  <p>For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
+                </div>
+              </div>
           <p v-else-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
               <p v-else>HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
-          <p class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
+              <p v-if="tab !== 'execution'" class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
           <div class="pa-toolbar">
             <input v-model="query" type="search" placeholder="Search positions, PID, APMM ID..." aria-label="Search resources" />
             <select v-model="siteFilter" aria-label="Filter GSC site"><option value="">All GSC sites</option><option v-for="site in sites" :key="site">{{ site }}</option></select>
@@ -636,6 +641,81 @@ function exportData() {
     success.value = 'Excel export generated. All resource positions are included.'
   } catch (caught) { error.value = `Unable to export: ${caught.message}` }
 }
+async function downloadImportTemplate() {
+  error.value = ''
+  success.value = ''
+  try {
+    const { default: ExcelJS } = await import('exceljs')
+    const workbook = new ExcelJS.Workbook()
+    const worksheet = workbook.addWorksheet('Execution')
+    const importKeys = ['cohort', 'site', 'hiringType', 'language', 'pidCreationDate', 'gscPid', 'deletedPid', 'jobLevel']
+    const importColumns = executionColumns.value.filter(column => importKeys.includes(column.key))
+    const headers = ['Position ID', ...importColumns.map(column => column.label)]
+    const header = worksheet.addRow(headers)
+    header.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF164B69' } }
+    header.alignment = { vertical: 'middle' }
+    worksheet.views = [{ state: 'frozen', ySplit: 1 }]
+    worksheet.autoFilter = { from: 'A1', to: `${worksheet.getColumn(headers.length).letter}1` }
+    const columnWidths = { cohort: 20, site: 24, hiringType: 18, language: 18, pidCreationDate: 18, gscPid: 22, deletedPid: 28, jobLevel: 12 }
+    worksheet.columns = [{ width: 38 }, ...importColumns.map(column => ({ width: columnWidths[column.key] || 20 }))]
+    worksheet.addRows(Array.from({ length: 1000 }, () => Array(headers.length).fill(null)))
+    const fieldColumnNumber = key => importColumns.findIndex(column => column.key === key) + 2
+    const dateColumnNumber = fieldColumnNumber('pidCreationDate')
+    if (dateColumnNumber === 1) throw new Error('Execution date column is unavailable.')
+    for (let row = 2; row <= 1001; row += 1) worksheet.getCell(row, dateColumnNumber).numFmt = 'yyyy-mm-dd'
+
+    const dropdownFields = [
+      { key: 'site', name: 'GscSites' },
+      { key: 'hiringType', name: 'HiringTypes' },
+      { key: 'language', name: 'Languages' },
+      { key: 'jobLevel', name: 'JobLevels' },
+    ]
+    const optionLists = dropdownFields.map(field => {
+      const column = executionColumns.value.find(item => item.key === field.key)
+      if (!column || !Array.isArray(column.options)) throw new Error(`Dropdown options are unavailable for ${field.key}.`)
+      const values = column.options.filter(option => field.key !== 'jobLevel' || option !== 'JL4' || jl4Available.value)
+      return { ...field, label: column.label, values }
+    })
+    const optionSheet = workbook.addWorksheet('Options')
+    optionSheet.state = 'hidden'
+    optionLists.forEach((list, index) => {
+      const column = String.fromCharCode(65 + index)
+      const values = list.values.length ? list.values : ['']
+      optionSheet.getCell(1, index + 1).value = list.name
+      values.forEach((value, row) => { optionSheet.getCell(row + 2, index + 1).value = value })
+      workbook.definedNames.add(`Options!$${column}$2:$${column}$${values.length + 1}`, list.name)
+    })
+    optionLists.forEach(({ key, name, label }) => {
+      const columnNumber = fieldColumnNumber(key)
+      if (columnNumber === 1) throw new Error(`Execution dropdown column is unavailable for ${key}.`)
+      const letter = worksheet.getColumn(columnNumber).letter
+      worksheet.dataValidations.add(`${letter}2:${letter}1001`, {
+      type: 'list', allowBlank: true, formulae: [`=${name}`],
+      showErrorMessage: true, errorTitle: `Invalid ${label}`, error: `Select a ${label} from the dropdown list.`,
+      })
+    })
+    const dateLetter = worksheet.getColumn(dateColumnNumber).letter
+    worksheet.dataValidations.add(`${dateLetter}2:${dateLetter}1001`, {
+      type: 'date', operator: 'between', formulae: [1, 2958465], allowBlank: true,
+      showErrorMessage: true, errorTitle: 'Invalid date', error: 'Enter a valid date in yyyy-mm-dd format.',
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${record.value.migrationRequestId}-resources-import-template.xlsx`.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    success.value = 'Import template downloaded. Complete the Execution sheet, then use Import Excel and Save draft or Confirm resources.'
+  } catch (caught) {
+    error.value = `Unable to generate import template: ${caught.message}`
+  }
+}
 async function importData(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
@@ -676,6 +756,10 @@ async function importData(event) {
 </script>
 
 <style scoped>
+.pa-execution-guidance { margin: 14px 0 18px; }
+.pa-execution-guidance__note { align-items: flex-start; background: #eef7fc; border: 1px solid #dcecf4; border-left: 3px solid #0781a8; border-radius: 8px; display: flex; gap: 10px; line-height: 1.55; padding: 12px 14px; }
+.pa-execution-guidance__note strong { color: #164b69; flex: 0 0 auto; font-size: 12px; }
+.pa-execution-guidance__note p { color: #526d7f; font-size: 12px; line-height: 1.55; margin: 0; }
 .unlock-dialog__field { color: #526d7f; display: flex; flex-direction: column; font-size: 12px; gap: 7px; margin-top: 18px; }
 .unlock-dialog__field textarea { border: 1px solid #cedce4; border-radius: 6px; box-sizing: border-box; color: var(--pa-ink); font: inherit; font-size: 13px; padding: 9px 10px; resize: vertical; width: 100%; }
 .unlock-dialog__field textarea:focus { outline: 2px solid #42b0d5; outline-offset: 1px; }
