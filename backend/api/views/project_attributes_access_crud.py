@@ -34,6 +34,7 @@ WRITABLE_FIELDS = [
     "access_enablement",
     "business_impact_analysis",
     "user_name_list",
+    "migration_team",
 ]
 
 
@@ -74,6 +75,7 @@ def _extract_payload(item: dict) -> dict:
         payload["access_enablement"] = True
         payload["business_impact_analysis"] = True
         payload["user_name_list"] = True
+        payload["migration_team"] = True
     return payload
 
 

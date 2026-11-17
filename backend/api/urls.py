@@ -23,4 +23,5 @@ urlpatterns = [
     path("bpm-actual/", include("api.routes.bpm_actual")),
     path("executive-summary-notes/", include("api.routes.executive_summary_notes")),
     path("user-name-list/", include("api.routes.user_name_list")),
+    path("migration-team/", include("api.routes.migration_team")),
 ]

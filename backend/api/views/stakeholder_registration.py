@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import MigrationIntakeSubmission, StakeholderRegistration, UserNameList
+from api.models import MigrationIntakeSubmission, MigrationTeam, StakeholderRegistration, UserNameList
 from api.permissions.attributes_access import (
     can_access_table,
     get_request_email,
@@ -55,6 +55,7 @@ STAKEHOLDER_GROUPS = [
         "id": "project_team",
         "label": "Project Team",
         "roles": [
+            {"code": "migration_manager", "label": "Migration Manager", "required": False, "multiple": True, "source": "migration_team", "description": "Defaulted from Migration Team records with Role=Manager; you can adjust the assignment for this project."},
             {"code": "wpm_focals", "label": "WPM Focals", "required": True, "multiple": True, "description": "WPM focal points assigned to this migration."},
             {"code": "business_resilience", "label": "Business Resilience", "required": False, "multiple": True, "description": "Business Resilience reviewers for the BCP questionnaire. Lock this assignment before joint review."},
             {"code": "msp_focals", "label": "MSP Focals", "required": True, "multiple": True, "description": "At least one MSP must be listed, with one manually selected project-team focal for each MSP."},
@@ -97,6 +98,56 @@ def _empty_assignment(role_code):
     else:
         assignment["personIds"] = []
     return assignment
+
+
+def _migration_team_people(role):
+    source_rows = list(MigrationTeam.objects.filter(role=role).order_by("id"))
+    people = []
+    seen_emails = set()
+    for row in source_rows:
+        email = normalize_email(row.email)
+        if not email or email in seen_emails:
+            continue
+        seen_emails.add(email)
+        people.append({
+            "id": f"migration-team-{row.id}",
+            "email": email,
+            "fullName": email,
+            "title": "",
+            "organization": "",
+            "location": "",
+        })
+
+    if not people:
+        return people
+
+    query = Q()
+    for person in people:
+        query |= Q(mail__iexact=person["email"])
+    names_by_email = {
+        normalize_email(person["mail"]): person["display_name"]
+        for person in UserNameList.objects.filter(query).values("mail", "display_name")
+    }
+    for person in people:
+        person["fullName"] = names_by_email.get(person["email"]) or person["email"]
+    return people
+
+
+def _merge_default_team_members(raw_members, default_members):
+    if not isinstance(raw_members, list):
+        return raw_members
+    members = copy.deepcopy(raw_members)
+    existing_emails = {
+        normalize_email(person.get("email"))
+        for person in members
+        if isinstance(person, dict)
+    }
+    for person in default_members:
+        email = normalize_email(person.get("email"))
+        if email and email not in existing_emails:
+            members.append(copy.deepcopy(person))
+            existing_emails.add(email)
+    return members
 
 
 def _get_project(project_id):
@@ -148,8 +199,22 @@ def _can_assign_role(registration, email, role_code):
 def _serialize(project, registration, email):
     super_admin = is_super_admin(email)
     assignments = copy.deepcopy(registration.assignments or {}) if registration else {}
+    manager_options = _migration_team_people("Manager")
+    member_defaults = _migration_team_people("Member")
+    if registration:
+        team_members = copy.deepcopy(registration.team_members or [])
+        if not registration.migration_team_defaults_applied:
+            team_members = _merge_default_team_members(team_members, member_defaults)
+    else:
+        team_members = member_defaults
+
     for role_code in ROLE_DEFINITIONS:
-        assignments.setdefault(role_code, _empty_assignment(role_code))
+        if role_code == "migration_manager" and role_code not in assignments:
+            assignment = _empty_assignment(role_code)
+            assignment["personIds"] = [person["id"] for person in manager_options]
+            assignments[role_code] = assignment
+        else:
+            assignments.setdefault(role_code, _empty_assignment(role_code))
     return {
         "projectId": project.id,
         "migrationRequestId": project.migration_request_id,
@@ -164,7 +229,10 @@ def _serialize(project, registration, email):
             role_code: super_admin or _can_assign_role(registration, email, role_code)
             for role_code in ROLE_DEFINITIONS
         },
-        "teamMembers": registration.team_members if registration else [],
+        "teamMembers": team_members,
+        "migrationManagerOptions": manager_options,
+        "migrationTeamMemberCount": len(member_defaults),
+        "migrationTeamDefaultsPending": not registration or not registration.migration_team_defaults_applied,
         "assignments": assignments,
         "auditLog": registration.audit_log if registration else [],
     }
@@ -237,7 +305,7 @@ def _normalize_person_ids(raw_ids, valid_ids, role):
     return person_ids
 
 
-def _normalize_assignments(raw_assignments, team_members):
+def _normalize_assignments(raw_assignments, team_members, manager_ids):
     if not isinstance(raw_assignments, dict):
         raise ValueError("Role assignments must be an object.")
     valid_ids = {person["id"] for person in team_members}
@@ -271,7 +339,8 @@ def _normalize_assignments(raw_assignments, team_members):
                     raise ValueError(f"{msp_name} accepts one focal person.")
                 assignment["mspRows"].append({"mspName": msp_name[:120], "personIds": person_ids})
         else:
-            assignment["personIds"] = _normalize_person_ids(raw.get("personIds", []), valid_ids, role)
+            assignment_ids = manager_ids if role_code == "migration_manager" else valid_ids
+            assignment["personIds"] = _normalize_person_ids(raw.get("personIds", []), assignment_ids, role)
         assignment["lockedAt"] = str(raw.get("lockedAt") or "")
         assignment["lockedBy"] = str(raw.get("lockedBy") or "")
         assignments[role_code] = assignment
@@ -376,12 +445,27 @@ def save_stakeholder_registration(request, project_id):
         registration = StakeholderRegistration.objects.select_for_update().filter(project=project).first()
         if action == "save":
             try:
-                team_members = _normalize_team_members(
-                    payload.get("teamMembers", registration.team_members if registration else [])
+                team_members_payload = payload.get(
+                    "teamMembers",
+                    registration.team_members if registration else [],
                 )
+                if "teamMembers" not in payload and (
+                    registration is None or not registration.migration_team_defaults_applied
+                ):
+                    team_members_payload = _merge_default_team_members(
+                        team_members_payload,
+                        _migration_team_people("Member"),
+                    )
+                team_members = _normalize_team_members(
+                    team_members_payload
+                )
+                manager_ids = {
+                    person["id"] for person in _migration_team_people("Manager")
+                }
                 new_assignments = _normalize_assignments(
                     payload.get("assignments", registration.assignments if registration else {}),
                     team_members,
+                    manager_ids,
                 )
             except ValueError as exc:
                 return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -411,10 +495,12 @@ def save_stakeholder_registration(request, project_id):
                 registration = StakeholderRegistration.objects.create(
                     project=project,
                     team_members=team_members,
+                    migration_team_defaults_applied=True,
                     assignments=new_assignments,
                 )
             else:
                 registration.team_members = team_members
+                registration.migration_team_defaults_applied = True
                 registration.assignments = new_assignments
             _append_audit(registration, email, "save", details="Saved Project Team and stakeholder assignments.")
         else:

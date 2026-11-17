@@ -278,6 +278,16 @@ const allTables = [
     accent: '#0F766E',
     route: '/user-name-list',
     actionLabel: 'Maintain User Name List'
+  },
+  {
+    id: 'migration-team',
+    tableKey: 'migration_team',
+    title: 'Migration Team',
+    description: 'Maintain migration team roles and email addresses using an online editable table.',
+    icon: 'mi-users',
+    accent: '#176b87',
+    route: '/migration-team',
+    actionLabel: 'Maintain Migration Team'
   }
 ]
 

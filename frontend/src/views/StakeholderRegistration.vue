@@ -33,10 +33,10 @@
                 </ul>
               </section>
               <section>
-                <h3>Project Team and manual assignment</h3>
+                <h3>Project Team defaults and manual assignment</h3>
                 <ol>
-                  <li>Open <strong>Project Team</strong> or <strong>+ Add person</strong>. Add a full name and valid, unique email. People are added manually; there is no automatic role population.</li>
-                  <li>Open a stakeholder role and select people from this project's Project Team. Respect the role's <strong>One focal</strong> or <strong>Multiple people</strong> setting.</li>
+                  <li>People with Role=Member in Migration Team are added as Project Team defaults. You can also add a person manually with a full name and valid, unique email.</li>
+                  <li><strong>Migration Manager</strong> is initially selected from Migration Team records with Role=Manager; adjust the selection for this project if needed. Other stakeholder roles use this project's Project Team.</li>
                   <li>Select <strong>Save draft</strong> to persist changes. Adding people or changing selections locally is not a database save.</li>
                 </ol>
                 <p>A project supports up to 100 Project Team members. Unlock a person's assigned roles before removing them from the roster.</p>
@@ -82,8 +82,8 @@
           <div class="registry-topline">
             <div class="registry-heading">
               <span class="number-badge">1</span>
-              <div><h2 id="registry-title">Project Stakeholders</h2><p>All roles are assigned manually from this project’s Project Team.</p></div>
-              <span class="manual-badge">MANUAL</span>
+              <div><h2 id="registry-title">Project Stakeholders</h2><p>Migration Manager defaults from Migration Team; other roles are assigned from this project’s Project Team.</p></div>
+              <span class="manual-badge">MIXED SOURCES</span>
             </div>
             <div class="registry-actions">
               <strong>{{ filledCount }} of {{ requiredCount }} roles filled</strong>
@@ -108,6 +108,7 @@
 
           <div class="legend-row">
             <span><i class="legend-dot legend-dot--manual" /> Manual assignment</span>
+            <span><i class="legend-dot legend-dot--source" /> Migration Team defaults</span>
             <span><i class="legend-dot legend-dot--locked" /> Locked and confirmed</span>
             <small>Fill and lock required roles to secure this artefact on the dashboard.</small>
           </div>
@@ -120,7 +121,8 @@
                   <span class="role-accent" />
                   <span class="role-card__body">
                     <span class="role-card__top"><strong>{{ role.label }}</strong>
-                      <span v-if="isLocked(role.code)" class="role-state role-state--locked">LOCKED</span>
+                      <span v-if="role.source === 'migration_team'" class="role-state role-state--source">MIGRATION TEAM</span>
+                      <span v-else-if="isLocked(role.code)" class="role-state role-state--locked">LOCKED</span>
                       <span v-else-if="isNotApplicable(role.code)" class="role-state role-state--na">N/A</span>
                       <span v-else-if="assignedCount(role)" class="role-state role-state--draft">DRAFT</span>
                       <span v-else class="role-state role-state--empty">{{ role.required ? 'TO ASSIGN' : 'OPTIONAL' }}</span>
@@ -132,9 +134,10 @@
                       </span>
                       <span v-if="peopleForRole(role).length > 3" class="more-count">+{{ peopleForRole(role).length - 3 }}</span>
                     </span>
+                    <span v-else-if="role.source === 'migration_team'" class="role-person-empty">No Migration Manager selected</span>
                     <span v-else class="role-person-empty">+ Assign Project Team person</span>
                     <span v-if="role.assignmentRule" class="nomination-hint">Assigned by {{ role.assignmentRule }}</span>
-                    <span class="role-card__foot"><span>{{ role.multiple ? 'Multiple people' : 'One focal' }}</span><span>{{ role.required ? 'Required' : 'If applicable' }}</span></span>
+                    <span class="role-card__foot"><span>{{ role.source === 'migration_team' ? 'Migration Team · Manager' : role.multiple ? 'Multiple people' : 'One focal' }}</span><span>{{ role.required ? 'Required' : 'If applicable' }}</span></span>
                   </span>
                   <span class="role-chevron" aria-hidden="true">›</span>
                 </button>
@@ -176,15 +179,16 @@
       <div v-if="activeRole" class="drawer-backdrop" @click.self="closeRole">
         <aside class="drawer" aria-labelledby="role-editor-title">
           <header class="drawer-header">
-            <div><p class="eyebrow">{{ activeRole.required ? 'Required role' : 'If applicable' }}</p><h2 id="role-editor-title">Edit stakeholder: {{ activeRole.label }}</h2><span class="drawer-source">SOURCE: MANUAL · PROJECT TEAM ONLY</span></div>
+            <div><p class="eyebrow">{{ activeRole.required ? 'Required role' : 'If applicable' }}</p><h2 id="role-editor-title">Edit stakeholder: {{ activeRole.label }}</h2><span class="drawer-source">{{ activeRole.source === 'migration_team' ? 'SOURCE: MIGRATION TEAM · MANAGER' : 'SOURCE: MANUAL · PROJECT TEAM ONLY' }}</span></div>
             <button class="close-button" type="button" aria-label="Close editor" @click="closeRole">×</button>
           </header>
           <div class="drawer-content">
             <p class="role-description">{{ activeRole.description }}</p>
             <div class="assignment-rule-note">
               <span class="assignment-rule-note__label">Assignment rule</span>
-              <strong>{{ activeRole.assignmentRule ? `Assigned by ${activeRole.assignmentRule}` : 'Manually selected from the Project Team' }}</strong>
+              <strong>{{ activeRole.source === 'migration_team' ? 'Defaulted from Migration Team (Role=Manager)' : activeRole.assignmentRule ? `Assigned by ${activeRole.assignmentRule}` : 'Manually selected from the Project Team' }}</strong>
               <small v-if="activeRole.assignmentRule">The assigning person must already be assigned and locked in the specified role.</small>
+              <small v-else-if="activeRole.source === 'migration_team'">Choose the Manager records to use for this project. Changes here do not modify Migration Team.</small>
               <small v-else>Any authorized project editor can assign this role from the Project Team.</small>
             </div>
             <div v-if="!canEditActiveRole" class="assignment-readonly-note">You can view this role, but only a locked {{ activeRole.assignmentRule }} can change its assignment.</div>
@@ -203,8 +207,8 @@
             <template v-else>
               <label v-if="!activeRole.required" class="na-option"><input v-model="activeAssignment.notApplicable" type="checkbox" :disabled="isLocked(activeRole.code) || !canEditActiveRole" /> Not applicable</label>
               <template v-if="!activeAssignment.notApplicable">
-                <div class="section-row"><div><h3>Assigned people</h3><p>{{ activeRole.multiple ? 'Select one or more Project Team members.' : 'Select one Project Team member.' }}</p></div><span class="neutral-badge">{{ activeAssignment.personIds.length }} selected</span></div>
-                <label class="search-box"><span class="sr-only">Search Project Team</span><input v-model="memberQuery" type="search" placeholder="Search Project Team by name or email…" /></label>
+                <div class="section-row"><div><h3>Assigned people</h3><p>{{ activeRole.source === 'migration_team' ? 'Select one or more Manager records.' : activeRole.multiple ? 'Select one or more Project Team members.' : 'Select one Project Team member.' }}</p></div><span class="neutral-badge">{{ activeAssignment.personIds.length }} selected</span></div>
+                <label class="search-box"><span class="sr-only">Search assignment candidates</span><input v-model="memberQuery" type="search" :placeholder="activeRole.source === 'migration_team' ? 'Search Migration Managers…' : 'Search Project Team by name or email…'" /></label>
                 <div v-if="filteredTeamMembers.length" class="member-picker">
                   <label v-for="person in filteredTeamMembers" :key="person.id" class="member-option" :class="{ 'member-option--selected': activeAssignment.personIds.includes(person.id) }">
                     <input :type="activeRole.multiple ? 'checkbox' : 'radio'" :name="`stakeholder-${activeRole.code}`" :checked="activeAssignment.personIds.includes(person.id)" :disabled="isLocked(activeRole.code) || !canEditActiveRole" @change="togglePerson(person.id, $event.target.checked)" />
@@ -212,13 +216,13 @@
                     <span class="member-copy"><strong>{{ person.fullName }}</strong><small>{{ person.email }}<template v-if="person.organization"> · {{ person.organization }}</template><template v-if="person.location"> · {{ person.location }}</template></small></span>
                   </label>
                 </div>
-                <div v-else class="empty-picker"><strong>{{ teamMembers.length ? 'No matching team member' : 'Project Team is empty' }}</strong><span>Add the person to the project roster first; there is no automatic role population.</span></div>
-                <button class="text-button add-person-link" type="button" :disabled="isLocked(activeRole.code)" @click="teamPanelOpen = true">+ Add person to Project Team</button>
+                <div v-else class="empty-picker"><strong>{{ assignmentCandidates.length ? 'No matching person' : activeRole.source === 'migration_team' ? 'No Manager records available' : 'Project Team is empty' }}</strong><span>{{ activeRole.source === 'migration_team' ? 'Add Manager records in the Migration Team table.' : 'Add the person to the Project Team roster first.' }}</span></div>
+                <button v-if="activeRole.source !== 'migration_team'" class="text-button add-person-link" type="button" :disabled="isLocked(activeRole.code)" @click="teamPanelOpen = true">+ Add person to Project Team</button>
               </template>
             </template>
 
             <label class="field-label notes-field">Notes (optional)<textarea v-model="activeAssignment.notes" rows="3" placeholder="Add a note…" :disabled="isLocked(activeRole.code) || !canEditActiveRole" /></label>
-            <div class="drawer-note">Only people manually added to this project’s Project Team can be assigned. Locked stakeholders are used for approvals and notifications.</div>
+            <div class="drawer-note">{{ activeRole.source === 'migration_team' ? 'Migration Manager options come from the Migration Team table. The selected assignment is saved only for this project.' : 'Only people in this project’s Project Team can be assigned. Locked stakeholders are used for approvals and notifications.' }}</div>
           </div>
           <footer class="drawer-footer">
             <button class="button button--outline" type="button" :disabled="Boolean(busy)" @click="closeRole">Cancel</button>
@@ -231,9 +235,10 @@
 
       <div v-if="teamPanelOpen" class="drawer-backdrop drawer-backdrop--top" @click.self="teamPanelOpen = false">
         <aside class="drawer drawer--team" aria-labelledby="team-editor-title">
-          <header class="drawer-header"><div><p class="eyebrow">Manual roster</p><h2 id="team-editor-title">Project Team</h2><span class="drawer-source">{{ teamMembers.length }} people · no automatic population</span></div><button class="close-button" type="button" aria-label="Close Project Team" @click="teamPanelOpen = false">×</button></header>
+          <header class="drawer-header"><div><p class="eyebrow">Project roster</p><h2 id="team-editor-title">Project Team</h2><span class="drawer-source">{{ teamMembers.length }} people · {{ registration.migrationTeamMemberCount }} Migration Team Member defaults</span></div><button class="close-button" type="button" aria-label="Close Project Team" @click="teamPanelOpen = false">×</button></header>
           <div class="drawer-content">
-            <p class="role-description">Add people to this project roster. Stakeholder roles can only be assigned from this list.</p>
+            <p class="role-description">Members from Migration Team are included as defaults. You can also add people manually; stakeholder roles other than Migration Manager use this roster.</p>
+            <p v-if="registration.migrationTeamDefaultsPending && registration.migrationTeamMemberCount" class="directory-message">These defaults are not saved yet. Select Save Project Team or Save draft to keep them.</p>
             <form class="team-form" @submit.prevent="addTeamMember">
               <div class="directory-lookup">
                 <label class="field-label">Search directory by name or email<input v-model="directoryQuery" type="search" autocomplete="off" placeholder="Enter a full name or email" /></label>
@@ -317,10 +322,15 @@ const unassignedCount = computed(() => requiredCount.value - filledCount.value)
 const unlockedCount = computed(() => allRoles.value.filter((role) => isRoleFilled(role) && !isLocked(role.code)).length)
 const canLockAll = computed(() => unassignedCount.value === 0 && unlockedCount.value > 0)
 const mspRows = computed(() => registration.value?.assignments?.msp_focals?.mspRows || [])
+const assignmentCandidates = computed(() =>
+  activeRole.value?.source === 'migration_team'
+    ? registration.value?.migrationManagerOptions || []
+    : teamMembers.value
+)
 const filteredTeamMembers = computed(() => {
   const query = memberQuery.value.trim().toLowerCase()
-  if (!query) return teamMembers.value
-  return teamMembers.value.filter((person) => `${person.fullName} ${person.email} ${person.organization} ${person.location}`.toLowerCase().includes(query))
+  if (!query) return assignmentCandidates.value
+  return assignmentCandidates.value.filter((person) => `${person.fullName} ${person.email} ${person.organization} ${person.location}`.toLowerCase().includes(query))
 })
 const activeAssignment = computed(() => roleDraft.value || { personIds: [], mspRows: [], notes: '', notApplicable: false })
 const assignmentPermissions = computed(() => registration.value?.assignmentPermissions || {})
@@ -372,7 +382,8 @@ function personById(id) {
 function peopleForRole(role) {
   const assignment = assignmentFor(role.code)
   const ids = role.code === 'msp_focals' ? assignment.mspRows.flatMap((row) => row.personIds || []) : assignment.personIds
-  return ids.map(personById).filter(Boolean)
+  const people = role.source === 'migration_team' ? registration.value?.migrationManagerOptions || [] : teamMembers.value
+  return ids.map((id) => people.find((person) => person.id === id)).filter(Boolean)
 }
 
 function roleCardClass(role) {
@@ -490,7 +501,13 @@ function selectDirectoryPerson(person) {
 }
 
 function applyRegistration(data) {
-  registration.value = { ...data, teamMembers: data.teamMembers || [], assignments: data.assignments || {}, auditLog: data.auditLog || [] }
+  registration.value = {
+    ...data,
+    teamMembers: data.teamMembers || [],
+    migrationManagerOptions: data.migrationManagerOptions || [],
+    assignments: data.assignments || {},
+    auditLog: data.auditLog || []
+  }
 }
 
 async function loadData() {
@@ -673,6 +690,7 @@ watch(projectId, loadData, { immediate: true })
 .legend-row small { margin-left: auto; }
 .legend-dot { background: #df8a26; border-radius: 50%; height: 8px; width: 8px; }
 .legend-dot--locked { background: var(--green); }
+.legend-dot--source { background: #0f766e; }
 .role-groups { display: grid; gap: 11px; grid-template-columns: repeat(4,minmax(0,1fr)); padding-top: 13px; }
 .role-group { background: #f5f8fb; border: 1px solid #edf1f4; border-radius: 7px; min-width: 0; padding: 10px; }
 .role-group__header { align-items: center; color: #294052; display: flex; font-size: 10px; font-weight: 800; justify-content: space-between; letter-spacing: .03em; margin-bottom: 8px; text-transform: uppercase; }
@@ -692,6 +710,7 @@ watch(projectId, loadData, { immediate: true })
 .role-state--draft { background: #eaf2ff; color: #1265c4; }
 .role-state--empty { background: #fff0ed; color: #bd4337; }
 .role-state--na { background: #edf1f4; color: #5c6871; }
+.role-state--source { background: #e7f4f2; color: #0f766e; }
 .role-person { color: #1d3442; font-size: 11px; font-weight: 650; gap: 6px; min-width: 0; }
 .avatar { align-items: center; background: var(--avatar-color,#163753); border: 2px solid #fff; border-radius: 50%; color: white; display: inline-flex; flex: 0 0 24px; font-size: 8px; font-weight: 800; height: 24px; justify-content: center; width: 24px; }
 .role-person { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

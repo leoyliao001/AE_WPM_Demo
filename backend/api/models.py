@@ -217,6 +217,7 @@ class StakeholderRegistration(models.Model):
         related_name="stakeholder_registration",
     )
     team_members = models.JSONField(default=list)
+    migration_team_defaults_applied = models.BooleanField(default=False)
     assignments = models.JSONField(default=dict)
     audit_log = models.JSONField(default=list)
     revision = models.PositiveIntegerField(default=0)
@@ -767,6 +768,7 @@ class ProjectAttributesAccess(models.Model):
     access_enablement = models.BooleanField(default=False)
     business_impact_analysis = models.BooleanField(default=False)
     user_name_list = models.BooleanField(default=False)
+    migration_team = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -789,6 +791,23 @@ class UserNameList(models.Model):
 
     def __str__(self):
         return f"{self.display_name} <{self.mail}>"
+
+
+class MigrationTeam(models.Model):
+    ROLE_CHOICES = [
+        ("Manager", "Manager"),
+        ("Member", "Member"),
+    ]
+
+    role = models.CharField(max_length=16, choices=ROLE_CHOICES)
+    email = models.EmailField(max_length=254)
+
+    class Meta:
+        db_table = "migration_team"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.role} <{self.email}>"
 
 
 class ApprovalWorkflow(models.Model):

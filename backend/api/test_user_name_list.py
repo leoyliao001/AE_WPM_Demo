@@ -118,4 +118,9 @@ class UserNameListTests(TestCase):
             {"key": "user_name_list", "label": "User Name List (Y/N)"},
             response.data["columns"],
         )
+        self.assertIn(
+            {"key": "migration_team", "label": "Migration Team (Y/N)"},
+            response.data["columns"],
+        )
         self.assertEqual(row["user_name_list"], "Y")
+        self.assertEqual(row["migration_team"], "N")

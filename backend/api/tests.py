@@ -4,6 +4,7 @@ from rest_framework.test import APIClient
 
 from api.models import (
 	MigrationIntakeSubmission,
+	MigrationTeam,
 	ProjectAttributesAccess,
 	ScopeStatement,
 	ScopeStatementLine,
@@ -294,12 +295,69 @@ class StakeholderRegistrationTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertFalse(response.data["saved"])
 		self.assertIn("gsc_leaders", {role["code"] for role in roles})
-		self.assertTrue(all(role.get("source", "manual") == "manual" for role in roles))
+		self.assertEqual(
+			{role["code"]: role.get("source", "manual") for role in roles}["migration_manager"],
+			"migration_team",
+		)
+		self.assertTrue(all(
+			role.get("source", "manual") == "manual"
+			for role in roles
+			if role["code"] != "migration_manager"
+		))
 		roles_by_code = {role["code"]: role for role in roles}
 		self.assertTrue(roles_by_code["fpo"]["required"])
 		self.assertTrue(roles_by_code["msp_focals"]["required"])
 		self.assertFalse(roles_by_code["business_resilience"]["required"])
 		self.assertEqual(response.data["teamMembers"], [])
+
+	def test_migration_team_defaults_member_roster_and_manager_assignment(self):
+		manager = MigrationTeam.objects.create(role="Manager", email="manager@example.com")
+		member = MigrationTeam.objects.create(role="Member", email="member@example.com")
+		UserNameList.objects.create(display_name="Migration Manager", mail=manager.email)
+		UserNameList.objects.create(display_name="Project Member", mail=member.email)
+
+		response = self.client.get(self.url, **self.headers)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(
+			[(person["fullName"], person["email"]) for person in response.data["teamMembers"]],
+			[("Project Member", member.email)],
+		)
+		self.assertEqual(
+			[(person["fullName"], person["email"]) for person in response.data["migrationManagerOptions"]],
+			[("Migration Manager", manager.email)],
+		)
+		manager_assignment = response.data["assignments"]["migration_manager"]
+		self.assertEqual(manager_assignment["personIds"], [f"migration-team-{manager.id}"])
+
+		assignments = response.data["assignments"]
+		assignments["migration_manager"]["personIds"] = []
+		save_response = self.client.post(
+			self.save_url,
+			{"teamMembers": response.data["teamMembers"], "assignments": assignments},
+			format="json",
+			**self.headers,
+		)
+
+		self.assertEqual(save_response.status_code, 200)
+		self.assertEqual(save_response.data["teamMembers"][0]["email"], member.email)
+		self.assertEqual(save_response.data["assignments"]["migration_manager"]["personIds"], [])
+
+	def test_migration_manager_rejects_ids_outside_manager_directory(self):
+		MigrationTeam.objects.create(role="Manager", email="manager@example.com")
+
+		response = self.client.post(
+			self.save_url,
+			{
+				"teamMembers": [],
+				"assignments": {"migration_manager": {"personIds": ["not-a-manager"]}},
+			},
+			format="json",
+			**self.headers,
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(StakeholderRegistration.objects.filter(project=self.project).exists())
 
 	def test_project_requestor_can_search_directory_by_name_or_email(self):
 		UserNameList.objects.create(display_name="Alex Kim", mail="alex.kim@example.com")
