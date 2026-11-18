@@ -103,7 +103,6 @@
         <section class="pa-panel">
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
-              <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Add position" :disabled="cohortMode" @click="addRow" />
               <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Download Import Template" :disabled="cohortMode" @click="downloadImportTemplate" />
               <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Import Excel" :disabled="cohortMode" @click="fileInput.click()" />
               <input ref="fileInput" type="file" accept=".xlsx" hidden @change="importData" />
@@ -165,7 +164,7 @@
                   </tr>
                 </template>
               </template>
-              <tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : 'No positions yet. Add a position or import the Execution sheet from an exported workbook.' }}</td></tr>
+              <tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : 'No positions yet. Import the Execution sheet from an exported workbook.' }}</td></tr>
             </tbody>
           </table></div>
           <div class="pa-section-heading" style="margin-top: 18px"><span class="pa-note">{{ visibleRows.length }} visible · {{ selected.length }} selected · {{ record.rows.length }} total</span><a v-if="selected.length" class="pa-link" :href="reminderLink">Compose reminder for selected positions</a></div>
@@ -245,7 +244,7 @@ const resourceRows = computed(() => record.value?.rows || [])
 const executionRows = computed(() => resourceRows.value)
 const areaRows = computed(() => resourceRows.value)
 const hrRows = computed(() => resourceRows.value.filter(row => row.hiringType !== 'Efficiency'))
-const approvedFtes = computed(() => record.value?.businessCase?.locked ? record.value.businessCase.population : null)
+const scopeFtes = computed(() => record.value?.source?.ready ? record.value.source.population : null)
 const countRows = (rows, predicate) => rows.filter(predicate).length
 const onboarded = rows => countRows(rows, row => row.actualDoj && row.apmmId)
 const atRisk = rows => countRows(rows, row => row.hiringStatus === 'At Risk')
@@ -261,9 +260,9 @@ const jlSummary = computed(() => jobLevels.map((name, index) => ({
 const metricCards = {
   execution: () => [
     {
-      label: 'Approved FTEs',
-      value: approvedFtes.value ?? '—',
-      note: approvedFtes.value != null ? 'Population from the locked Business Case' : 'Locked Business Case population',
+      label: 'Scope FTEs',
+      value: scopeFtes.value ?? '—',
+      note: scopeFtes.value != null ? 'Population from the submitted Scope Statement' : 'Submit and lock the Scope Statement to show its population',
       icon: 'mi-people', tone: 'green',
     },
     {
@@ -276,16 +275,16 @@ const metricCards = {
     { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Non-Efficiency rows with Hiring Status set to At Risk', icon: 'mi-exclamation-triangle', tone: 'red', risk: true },
     {
       label: 'Area PIDs Received',
-      value: `${countRows(areaRows.value, row => row.areaPid && row.areaApmmId && row.releaseDate)} / ${approvedFtes.value ?? '—'}`,
-      note: 'Rows with Area PID, Area APMM ID and Release Date filled / locked Business Case population',
+      value: `${countRows(areaRows.value, row => row.areaPid && row.areaApmmId && row.releaseDate)} / ${scopeFtes.value ?? '—'}`,
+      note: 'Rows with Area PID, Area APMM ID and Release Date filled / submitted Scope Statement population',
       icon: 'mi-file', tone: 'blue',
     },
   ],
   area: () => [
     {
       label: 'Area PIDs Received',
-      value: `${countRows(areaRows.value, row => areaColumns.every(column => String(row[column.key] ?? '').trim()))} / ${approvedFtes.value ?? '—'}`,
-      note: 'Rows with all 6 Area fields filled / locked Business Case population',
+      value: `${countRows(areaRows.value, row => areaColumns.every(column => String(row[column.key] ?? '').trim()))} / ${scopeFtes.value ?? '—'}`,
+      note: 'Rows with all 6 Area fields filled / submitted Scope Statement population',
     },
   ],
   hr: () => [
@@ -473,7 +472,6 @@ function newRow() {
     ['areaLockedAt', ''], ['areaLockedBy', ''],
   ]))
 }
-function addRow() { record.value.rows.push(newRow()) }
 function changeHiringType(row) {
   if (row.hiringType === 'Efficiency') {
     row.hiringStatus = 'Not Applicable'; row.requisitionId = ''; row.tentativeDoj = ''
