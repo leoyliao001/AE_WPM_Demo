@@ -1,5 +1,5 @@
 <template>
-  <PageShell title="Final approval review" :subtitle="`${roleLabel} review for the migration request`" back-to="/approval-cycle" back-label="Back to approvals">
+  <PageShell title="Final approval review" :subtitle="`${roleLabel} review for the migration request`" :back-to="approvalCycleReturnTo" back-label="Back to approvals">
     <mc-notification v-if="error" appearance="error" fit="medium" heading="Unable to open approval review" :body="error" />
     <div v-else-if="loading" class="review-loading">Loading approval inputs...</div>
     <section v-else-if="row" class="review-shell">
@@ -61,6 +61,10 @@ import '@maersk-global/mds-components-core/mc-tag'
 
 const route = useRoute()
 const router = useRouter()
+const approvalCycleReturnTo = computed(() => ({
+  path: '/approval-cycle',
+  query: route.query
+}))
 const loading = ref(true)
 const error = ref('')
 const row = ref(null)
@@ -88,7 +92,7 @@ async function submit(action) {
       action,
       comment: comment.value
     })
-    router.push('/approval-cycle')
+    router.push(approvalCycleReturnTo.value)
   } catch (requestError) {
     error.value = requestError?.response?.data?.error || 'Unable to record the approval decision.'
   } finally {
@@ -98,7 +102,8 @@ async function submit(action) {
 
 onMounted(async () => {
   try {
-    const { data } = await axios.get('/api/approval-cycle/queue/')
+    const scope = route.query.scope === 'all' ? 'all' : 'mine'
+    const { data } = await axios.get(`/api/approval-cycle/queue/?scope=${scope}`)
     const source = (data.rows || []).find((item) => item.migration_request_id === route.params.migrationRequestId)
     if (!source) throw new Error('Migration request not found.')
     row.value = {

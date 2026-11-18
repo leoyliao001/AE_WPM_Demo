@@ -4,7 +4,7 @@
       <div class="msp-breadcrumb"><RouterLink to="/">WPM Pulse - Digital Hub</RouterLink><span aria-hidden="true">›</span> Migration Success Partners Hub</div>
       <p class="msp-eyebrow">MSP WORKSPACE</p>
       <h1>Migration Success Partners Hub</h1>
-      <p class="msp-intro">One place for partner teams to plan, track and sign off their part of every migration - from capability readiness and talent acquisition to business impact.</p>
+      <p class="msp-intro">One place for partner teams to plan, track and sign off their part of every migration - from capability readiness and talent acquisition to safety and resilience.</p>
     </section>
 
     <main class="msp-content">
@@ -35,12 +35,12 @@
           <span class="card-footer"><span>HR · TAA · GSC Execution</span><span class="card-action">Open TAA <span aria-hidden="true">→</span></span></span>
         </RouterLink>
 
-        <article class="partner-card partner-card--soon" aria-label="Business Impact Analysis, coming soon">
+        <article class="partner-card partner-card--soon" aria-label="Safety &amp; Resilience, coming soon">
           <span class="card-band card-band--bia" />
           <span class="card-body">
             <span class="card-heading">
               <span class="card-icon card-icon--bia" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 11h3v7H5zM10.5 7h3v11h-3zM16 4h3v14h-3z"/></svg></span>
-              <span><span class="card-kicker">BUSINESS IMPACT</span><strong class="card-title">Business Impact Analysis</strong></span>
+              <span><span class="card-kicker">SAFETY &amp; RESILIENCE</span><strong class="card-title">Safety &amp; Resilience</strong></span>
             </span>
             <span class="card-description">Assess the operational, customer and financial impact of each migration and capture mitigations before go-live.</span>
             <span class="card-status"><span>In design</span></span>
@@ -64,6 +64,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
+
+useTopbarBackLink('/', 'Back to Welcome')
 
 const projects = ref([])
 const loading = ref(false)

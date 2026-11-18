@@ -1,13 +1,13 @@
 <template>
-  <PageShell title="Business Impact Analysis" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" back-link-to-topbar full-width>
+  <PageShell title="Safety & Resilience" :show-heading="false" :back-to="backTo" back-label="Back to Toll Gates" back-link-to-topbar full-width>
     <div class="pa-page bia-page">
-      <div v-if="loading" class="pa-panel" role="status">Loading Business Impact Analysis...</div>
+      <div v-if="loading" class="pa-panel" role="status">Loading Safety &amp; Resilience...</div>
       <div v-if="error" class="pa-feedback pa-feedback--error" role="alert">{{ error }} <button v-if="!record" class="pa-text-button" @click="load">Retry</button></div>
       <div v-if="success" class="pa-feedback pa-feedback--success" role="status">{{ success }}</div>
       <template v-if="record && !loading">
         <header class="pa-hero bia-hero">
           <div class="pa-heading">
-            <div><p class="pa-eyebrow">Initiate / Business resilience</p><h1>Business Impact Analysis</h1><p class="pa-subtitle">BCP questionnaire · Understand the impact. Build continuity into the move.</p></div>
+            <div><p class="pa-eyebrow">Initiate / Safety &amp; resilience</p><h1>Safety &amp; Resilience</h1><p class="pa-subtitle">BCP questionnaire · Understand the impact. Build continuity into the move.</p></div>
             <div class="pa-actions">
               <mc-button appearance="neutral" variant="outlined" label="Export Excel" :disabled="!!busy" @click="exportData" />
               <mc-button v-if="canEdit" appearance="primary" label="Save draft" :disabled="!!busy" @click="act('save')" />

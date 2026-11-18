@@ -127,7 +127,7 @@
         <div class="bc-toolbar">
           <p v-if="record.approval">Approval: {{ record.approval.completed ? 'Completed' : `Step ${record.approval.step ?? '—'} of ${record.approval.seqLen ?? '—'}` }}</p>
           <p v-else class="bc-note">Complete / submit starts the existing approval chain. No separate Business Case approval process is created.</p>
-          <router-link class="bc-no-print" :to="{ name: 'ApprovalCycle', query: { from: 'toll-gates', project: record.projectId } }">Open existing Approval Cycle ↗</router-link>
+          <router-link class="bc-no-print" :to="{ name: 'ApprovalCycle', query: { from: 'business-case', project: record.projectId, request: record.migrationRequestId } }">Open existing Approval Cycle ↗</router-link>
         </div>
         <form v-if="!editable && ['submitted', 'approved', 'needs_review'].includes(record.status)" class="bc-no-print" @submit.prevent="revise">
           <p class="bc-note">Opening a revision requires authorisation and a reason. The server controls whether this action is available to you.</p>

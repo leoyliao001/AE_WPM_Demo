@@ -166,7 +166,7 @@ const ALL_COLUMNS = [
   { key: 'cost_rates', label: 'Cost Rates (Y/N)', width: 180 },
   { key: 'resources', label: 'Resources (Y/N)', width: 180 },
   { key: 'access_enablement', label: 'Access & Enablement (Y/N)', width: 230 },
-  { key: 'business_impact_analysis', label: 'Business Impact Analysis (Y/N)', width: 250 },
+  { key: 'business_impact_analysis', label: 'Safety & Resilience (Y/N)', width: 250 },
   { key: 'user_name_list', label: 'User Name List (Y/N)', width: 170 },
   { key: 'migration_team', label: 'Migration Team (Y/N)', width: 180 }
 ]

@@ -95,7 +95,7 @@
         </button>
         <nav v-if="userMenuOpen" class="admin-menu" aria-label="Personal menu" role="menu">
           <router-link
-            to="/approval-cycle"
+            :to="personalApprovalTo"
             class="admin-menu__item"
             role="menuitem"
             @click="closeUserMenu"
@@ -128,10 +128,26 @@ const isSuperAdmin = ref(false)
 const adminMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 
-const adminMenuItems = [
+const approvalReturnQuery = computed(() => {
+  if (route.path.startsWith('/approval-cycle')) {
+    const { scope, ...context } = route.query
+    return context
+  }
+  return { from: 'app-header', returnTo: route.fullPath }
+})
+
+const personalApprovalTo = computed(() => ({
+  path: '/approval-cycle',
+  query: approvalReturnQuery.value
+}))
+
+const adminMenuItems = computed(() => [
   { label: 'Project Attributes Database', to: '/project-attributes' },
-  { label: 'Approval Cycle', to: { path: '/approval-cycle', query: { scope: 'all' } } }
-]
+  {
+    label: 'Approval Cycle',
+    to: { path: '/approval-cycle', query: { ...approvalReturnQuery.value, scope: 'all' } }
+  }
+])
 
 const baseNavItems = [
   { label: 'Welcome', to: '/', icon: 'mi-house' },

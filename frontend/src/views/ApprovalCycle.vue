@@ -3,16 +3,14 @@
     <main class="ac-main">
       <!-- ===================== VIEW 1 — APPROVAL INBOX ===================== -->
       <section v-if="view === 'inbox'" class="ac-shell" aria-labelledby="ac-inbox-title">
-        <nav class="ac-crumbs" aria-label="Breadcrumb">
-          <router-link v-if="cameFromTollGates" :to="tollGatesBackTo">Toll Gates</router-link>
+        <nav v-if="showInboxBreadcrumb" class="ac-crumbs" aria-label="Breadcrumb">
+          <router-link v-if="returnContext.showParent" :to="returnContext.to">
+            {{ returnContext.breadcrumb }}
+          </router-link>
           <a v-else href="#" @click.prevent>Home</a>
           <span aria-hidden="true">/</span>
           <span class="ac-crumbs-current">Approvals</span>
         </nav>
-
-        <router-link v-if="cameFromTollGates" class="ac-back" :to="tollGatesBackTo">
-          &lsaquo; Back to toll gates
-        </router-link>
 
         <h1 id="ac-inbox-title" class="ac-title">Approvals</h1>
         <p class="ac-subtitle">
@@ -554,13 +552,49 @@ import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
 const route = useRoute()
 const router = useRouter()
 
-const cameFromTollGates = computed(() => route.query.from === 'toll-gates')
-const tollGatesBackTo = computed(() =>
-  route.query.project ? `/toll-gates?project=${route.query.project}` : '/toll-gates'
-)
+const safeInternalReturnTo = (candidate) => {
+  if (typeof candidate !== 'string' || !candidate.startsWith('/') || candidate.startsWith('//') || candidate.includes('\\')) {
+    return '/'
+  }
+  return router.resolve(candidate).matched.length ? candidate : '/'
+}
+
+const returnContext = computed(() => {
+  const source = route.query.from
+  const projectId = typeof route.query.project === 'string' ? route.query.project : ''
+  if (source === 'toll-gates') {
+    return {
+      showParent: true,
+      to: projectId ? `/toll-gates?project=${encodeURIComponent(projectId)}` : '/toll-gates',
+      label: 'Back to Project Phases',
+      breadcrumb: 'Project Phases'
+    }
+  }
+  if (source === 'business-case' && projectId) {
+    return {
+      showParent: true,
+      to: `/migration-dashboard/${encodeURIComponent(projectId)}/business-case`,
+      label: 'Back to Business Case',
+      breadcrumb: 'Business Case'
+    }
+  }
+  if (source === 'app-header') {
+    return {
+      showParent: true,
+      to: safeInternalReturnTo(route.query.returnTo),
+      label: 'Back to previous page',
+      breadcrumb: 'Previous page'
+    }
+  }
+  return { showParent: false, to: '/', label: 'Back to Welcome', breadcrumb: 'Home' }
+})
+const showInboxBreadcrumb = computed(() => route.query.from !== 'toll-gates')
 
 const isAdminHistory = computed(() => route.query.scope === 'all')
-useTopbarBackLink(computed(() => cameFromTollGates.value ? '' : '/'), 'Back to Welcome')
+useTopbarBackLink(
+  computed(() => returnContext.value.to),
+  computed(() => returnContext.value.label)
+)
 const view = ref('inbox')
 const loading = ref(false)
 const loadError = ref('')
@@ -971,15 +1005,22 @@ async function loadQueue() {
     const { data } = await axios.get(`/api/approval-cycle/queue/?scope=${scope}`)
     myEmail.value = data?.email || ''
     const mapped = groupFpoBatches((data?.rows || []).filter((r) => r.migration_request_id).map(toRow))
-    rows.value = mapped
+    const requestId = String(route.query.request || '')
+    const projectRows = requestId
+      ? mapped.filter((row) => String(row.migrationRequestId || row.id) === requestId)
+      : mapped
+    rows.value = projectRows
     activeTab.value = 'waiting'
     const fpoRequestId = Number(route.query.fpo_request)
     const fpoBatchId = String(route.query.fpo_batch || '')
     const requestedFpoRow = fpoRequestId
-      ? mapped.find((row) => row.fpoRequestIds.includes(fpoRequestId))
-      : fpoBatchId ? mapped.find((row) => row.fpoBatchId === fpoBatchId) : null
-    detail.value = requestedFpoRow || mapped[0] || null
-    view.value = requestedFpoRow ? 'details' : 'inbox'
+      ? projectRows.find((row) => row.fpoRequestIds.includes(fpoRequestId))
+      : fpoBatchId ? projectRows.find((row) => row.fpoBatchId === fpoBatchId) : null
+    const requestedProjectRow = requestId
+      ? projectRows.find((row) => row.requestKind !== 'fpo_catalogue') || projectRows[0] || null
+      : null
+    detail.value = requestedFpoRow || requestedProjectRow || (requestId ? null : mapped[0]) || null
+    view.value = requestedFpoRow || requestedProjectRow ? 'details' : 'inbox'
   } catch (e) {
     loadError.value = e?.response?.data?.error || 'Unable to load approval requests.'
     rows.value = []
@@ -1019,6 +1060,7 @@ const queueSummary = computed(() => isAdminHistory.value
   : `${waitingCount.value} requests waiting on you · ${breachingCount.value} breaching SLA`)
 
 const tabFilteredRows = computed(() => {
+  if (route.query.request) return filteredRows.value
   if (isAdminHistory.value) return filteredRows.value
   if (activeTab.value === 'waiting') return filteredRows.value.filter((row) => row.actionable && !row.completed)
   if (activeTab.value === 'delegated') return filteredRows.value.filter((row) => row.myRoles.length > 0 || row.approvedByMe)
@@ -1037,7 +1079,7 @@ const allVisibleSelected = computed(
 
 onMounted(loadQueue)
 
-watch(() => route.query.scope, () => {
+watch(() => [route.query.scope, route.query.request], () => {
   activeTab.value = 'waiting'
   loadQueue()
 })
@@ -1070,7 +1112,10 @@ function openDetails(row) {
 
 function openFinalReview(role) {
   const backendRole = role === 'gscHead' ? 'gsc_head' : role
-  router.push(`/approval-cycle/review/${detail.value.id}/${backendRole}`)
+  router.push({
+    path: `/approval-cycle/review/${detail.value.id}/${backendRole}`,
+    query: route.query
+  })
 }
 
 function approveSelected() {

@@ -1,7 +1,7 @@
 <template>
   <PageShell
     class="toll-gates-page-shell"
-    title="Toll Gates"
+    title="Project Phases"
     subtitle="Migration lifecycle grouped into the five PMI process groups — Initiating through Closing."
     :back-to="backTo"
     :back-label="backLabel"
@@ -76,11 +76,11 @@
       </span>
     </div>
 
-    <section class="artefact-board" aria-label="Artefact Delivery Dashboard">
+    <section class="artefact-board" aria-label="Artefact Status">
       <header class="artefact-board__head">
         <div>
           <p class="artefact-board__eyebrow">Project lifecycle</p>
-          <h2 class="artefact-board__title">Artefact Delivery Dashboard</h2>
+          <h2 class="artefact-board__title">Artefact Status</h2>
           <p class="artefact-board__sub">
             Five process groups · {{ artefactTotals.total }} key artefacts · live completion and RAG status
           </p>
@@ -219,53 +219,6 @@
       </p>
     </section>
 
-    <section class="quick-tools" aria-labelledby="quick-tools-title">
-      <header class="quick-tools__head">
-        <div>
-          <h2 id="quick-tools-title" class="quick-tools__title">Project Artefacts</h2>
-          <p class="quick-tools__sub">
-            Access the tools used to prepare, plan and govern this migration.
-          </p>
-        </div>
-      </header>
-
-      <div class="quick-cards" aria-label="Project artefact shortcuts">
-      <div
-        v-for="(card, cardIndex) in quickCards"
-        :key="card.id"
-        class="quick-card"
-        :class="[`quick-card--${stepState(card.id)}`, { 'quick-card--disabled': !canNavigate(card.id, 'tile') }]"
-        :style="{ '--card-accent': card.accent }"
-        :tabindex="canNavigate(card.id, 'tile') ? 0 : -1"
-        role="button"
-        :aria-disabled="!canNavigate(card.id, 'tile')"
-        @click="goToStep(card.id, 'tile')"
-        @keydown.enter.prevent="goToStep(card.id, 'tile')"
-        @keydown.space.prevent="goToStep(card.id, 'tile')"
-      >
-        <div class="quick-card__main">
-          <span class="quick-card__icon">
-            <mc-icon :icon="card.icon" size="22" />
-          </span>
-          <span class="quick-card__index">{{ String(cardIndex + 1).padStart(2, '0') }}</span>
-          <div class="quick-card__body">
-            <h3 class="quick-card__title">{{ card.title }}</h3>
-            <p class="quick-card__desc">{{ card.description }}</p>
-          </div>
-        </div>
-        <div class="quick-card__foot">
-          <span class="quick-card__status">
-            <mc-icon v-if="stepState(card.id) === 'complete'" icon="mi-check" size="14" />
-            <mc-icon v-else-if="stepState(card.id) === 'at_risk'" icon="mi-exclamation-triangle" size="14" />
-            <mc-icon v-else icon="mi-clock" size="14" />
-            {{ QUICK_STATUS_LABEL[stepState(card.id)] }}
-          </span>
-          <span class="quick-card__link">Open ›</span>
-        </div>
-      </div>
-      </div>
-    </section>
-
   </PageShell>
 </template>
 
@@ -275,6 +228,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
 import { formatStatusLabel } from '../utils/migrationDashboardProgress.js'
+import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-tag'
 import '@maersk-global/mds-components-core/mc-button'
@@ -410,12 +364,28 @@ const canNavigate = (stepId, kind) => {
   return true
 }
 
-const goToStep = (stepId, kind) => {
+const goToStep = async (stepId, kind) => {
   if (!canNavigate(stepId, kind)) return
   const id = selectedProjectId.value
   const to = kind === 'tile' ? TILE_ROUTES[stepId](id) : `/migration-dashboard/${id}/gantt`
+  const query = { from: 'toll-gates', project: id }
+  if (stepId === 'approvals') {
+    const selectedProject = projects.value.find((item) => String(item.id) === String(id))
+    if (!selectedProject?.migrationRequestId) {
+      projectError.value = 'Unable to identify this project for approval history.'
+      return
+    }
+
+    const access = await fetchMyAttributesAccess()
+    if (access.error) {
+      projectError.value = access.error
+      return
+    }
+    query.request = selectedProject.migrationRequestId
+    if (access.is_super_admin) query.scope = 'all'
+  }
   // `from` lets the destination page send the user back here instead of its default parent.
-  router.push({ path: to, query: { from: 'toll-gates', project: id } })
+  router.push({ path: to, query })
 }
 
 const ARTEFACT_LEGEND = [
@@ -428,17 +398,6 @@ const ARTEFACT_STATUS_LABEL = {
   secured: 'Secured',
   in_progress: 'In progress',
   not_started: 'Not started'
-}
-
-const expandedArtefactStages = ref(new Set())
-
-const isArtefactStageExpanded = (stageId) => expandedArtefactStages.value.has(stageId)
-
-const toggleArtefactStage = (stageId) => {
-  const expanded = new Set(expandedArtefactStages.value)
-  if (expanded.has(stageId)) expanded.delete(stageId)
-  else expanded.add(stageId)
-  expandedArtefactStages.value = expanded
 }
 
 // `source` links an artefact to an existing tracked step id; artefacts without a
@@ -460,7 +419,8 @@ const ARTEFACT_STAGES = [
       { label: 'People Consultation & Compliance', source: null },
       { label: 'Resources', source: 'resources' },
       { label: 'Access & Enablement Requirements', source: 'access_enablement' },
-      { label: 'Business Impact Analysis', source: 'business_impact_analysis' },
+      { label: 'Safety & Resilience', source: 'business_impact_analysis' },
+      { label: 'Approvals', source: 'approvals' },
       { label: 'Gantt', source: 'gantt' }
     ]
   },
@@ -522,6 +482,17 @@ const ARTEFACT_STAGES = [
   }
 ]
 
+const expandedArtefactStages = ref(new Set(ARTEFACT_STAGES.map((stage) => stage.id)))
+
+const isArtefactStageExpanded = (stageId) => expandedArtefactStages.value.has(stageId)
+
+const toggleArtefactStage = (stageId) => {
+  const expanded = new Set(expandedArtefactStages.value)
+  if (expanded.has(stageId)) expanded.delete(stageId)
+  else expanded.add(stageId)
+  expandedArtefactStages.value = expanded
+}
+
 const artefactStatus = (source) => {
   if (!source || !selectedProjectId.value) return 'not_started'
   const state = stepState(source)
@@ -555,45 +526,6 @@ const artefactTotals = computed(() => {
     atRiskStages: stages.filter((stage) => stage.rag !== 'green').length
   }
 })
-
-const QUICK_STATUS_LABEL = {
-  complete: 'Complete',
-  active: 'In progress',
-  at_risk: 'At risk',
-  pending: 'Not started'
-}
-
-// Ids reuse TILE_ROUTES so cards open the existing destination for each artefact.
-const quickCards = [
-  {
-    id: 'opportunity',
-    title: 'Opportunity Assessment',
-    description: 'Volume, task time and capacity analysis for the migration scope.',
-    icon: 'mi-chart-bars-vertical',
-    accent: '#0077B8'
-  },
-  {
-    id: 'business_case',
-    title: 'Business Case',
-    description: 'Generate the draft memo, review it, then upload the signed-off version.',
-    icon: 'mi-file',
-    accent: '#42B0D5'
-  },
-  {
-    id: 'gantt',
-    title: 'Gantt Chart',
-    description: 'Plan and track every migration task against the baseline schedule.',
-    icon: 'mi-calendar',
-    accent: '#F3880E'
-  },
-  {
-    id: 'approvals',
-    title: 'Approvals',
-    description: 'Area Head, PMO, BPM, FBP, WPM, ELT and GSC Head decision cycle.',
-    icon: 'mi-check-circle',
-    accent: '#6DAA28'
-  }
-]
 
 const loadProjects = async () => {
   loadingProjects.value = true
