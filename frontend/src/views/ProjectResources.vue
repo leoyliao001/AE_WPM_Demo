@@ -115,8 +115,11 @@
                   <p>For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
                 </div>
               </div>
-          <p v-else-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
-              <p v-else>HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
+          <p v-if="tab === 'execution' && generatedRowsPending && dirty" class="pa-feedback" role="status">
+            {{ generatedRowsPending }} blank resource position{{ generatedRowsPending === 1 ? '' : 's' }} prepared to match Scope FTE. Save draft to keep them.
+          </p>
+          <p v-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
+          <p v-else-if="tab === 'hr'">HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
               <p v-if="tab !== 'execution'" class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
           <div class="pa-toolbar">
             <input v-model="query" type="search" placeholder="Search positions, PID, APMM ID..." aria-label="Search resources" />
@@ -164,7 +167,7 @@
                   </tr>
                 </template>
               </template>
-              <tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : 'No positions yet. Import the Execution sheet from an exported workbook.' }}</td></tr>
+              <tr v-if="!visibleRows.length"><td :colspan="columns.length + 2" class="pa-empty">{{ record.rows.length ? 'No matching positions.' : record.source.ready ? 'No resource positions yet.' : 'Submit and lock the Scope Statement to prepare positions, or import the Execution sheet from an exported workbook.' }}</td></tr>
             </tbody>
           </table></div>
           <div class="pa-section-heading" style="margin-top: 18px"><span class="pa-note">{{ visibleRows.length }} visible · {{ selected.length }} selected · {{ record.rows.length }} total</span><a v-if="selected.length" class="pa-link" :href="reminderLink">Compose reminder for selected positions</a></div>
@@ -208,7 +211,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { read, utils } from 'xlsx'
 import PageShell from '../components/PageShell.vue'
 import { useProjectArtefact } from '../composables/useProjectArtefact.js'
@@ -220,7 +223,9 @@ import '@maersk-global/mds-components-core/mc-option'
 import '@maersk-global/mds-components-core/mc-dialog'
 import '../styles/projectArtefacts.css'
 
-const { record, projectId, backTo, backLabel, loading, busy, error, success, dirty, editable, load, save } = useProjectArtefact('resources')
+const { record, projectId, backTo, backLabel, loading, busy, error, success, dirty, editable, load, save: saveArtefact } = useProjectArtefact('resources')
+const generatedRowsPending = ref(0)
+const MAX_RESOURCE_ROWS = 1000
 const tab = ref('execution')
 const tabs = [{ id: 'execution', label: 'Execution' }, { id: 'area', label: 'Area' }, { id: 'hr', label: 'HR / TAA' }]
 const query = ref('')
@@ -237,8 +242,13 @@ const unlockReason = ref('')
 const unlockReasonError = ref('')
 const fileInput = ref(null)
 const activeHiringStatusId = ref('')
-const canEdit = computed(() => editable.value && record.value.permissions.edit)
-const canEditArea = computed(() => editable.value && record.value.permissions.area)
+const canEdit = computed(() => editable.value && Boolean(record.value?.permissions?.edit))
+const canEditArea = computed(() => editable.value && Boolean(record.value?.permissions?.area))
+async function save(action = 'save', extra = {}) {
+  const saved = await saveArtefact(action, extra)
+  if (saved) generatedRowsPending.value = 0
+  return saved
+}
 const sites = computed(() => [...new Set([...(record.value?.sites || []), ...(record.value?.rows || []).map(row => row.site)].filter(Boolean))])
 const resourceRows = computed(() => record.value?.rows || [])
 const executionRows = computed(() => resourceRows.value)
@@ -393,10 +403,15 @@ const submitBlockers = computed(() => {
       message: 'Submit and lock the Scope Statement before confirming Resources.',
       to: `/migration-dashboard/${projectId.value}/scope-statement`,
     })
+  } else if (current.source.population > MAX_RESOURCE_ROWS) {
+    blockers.push({
+      key: 'population-limit',
+      message: `Scope FTE is ${current.source.population}, but Resources supports a maximum of ${MAX_RESOURCE_ROWS} positions.`,
+    })
   } else if (current.rows.length !== current.source.population) {
     blockers.push({
       key: 'population',
-      message: `Resource positions: ${current.rows.length} of ${current.source.population}. Add or remove positions to match the locked Scope FTE.`,
+      message: `Resource positions: ${current.rows.length} of ${current.source.population}. ${current.rows.length < current.source.population ? 'Missing positions will be prepared automatically for an editor.' : 'Remove excess draft positions to match the locked Scope FTE.'}`,
     })
   }
 
@@ -472,6 +487,30 @@ function newRow() {
     ['areaLockedAt', ''], ['areaLockedBy', ''],
   ]))
 }
+
+watch(
+  () => [
+    record.value?.source?.ready,
+    record.value?.source?.population,
+    record.value?.rows?.length,
+    canEdit.value
+  ],
+  ([scopeReady, population, rowCount, canEditRows]) => {
+    const targetRows = Number(population)
+    if (!scopeReady || !canEditRows || !Number.isInteger(targetRows) || targetRows < 0) return
+    const rowsToCreate = Math.min(targetRows, MAX_RESOURCE_ROWS) - rowCount
+    if (rowsToCreate <= 0) return
+    for (let index = 0; index < rowsToCreate; index += 1) {
+      record.value.rows.push(newRow())
+    }
+    generatedRowsPending.value += rowsToCreate
+  },
+  { immediate: true }
+)
+watch(record, current => {
+  if (!current) generatedRowsPending.value = 0
+})
+
 function changeHiringType(row) {
   if (row.hiringType === 'Efficiency') {
     row.hiringStatus = 'Not Applicable'; row.requisitionId = ''; row.tentativeDoj = ''

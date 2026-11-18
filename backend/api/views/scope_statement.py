@@ -577,6 +577,8 @@ def save_scope_statement(request, project_id):
         if action == "lock":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
                 return Response({"error": "Manually confirm Migratable FTE before locking the page."}, status=400)
+            if statement.migratable_fte != statement.migratable_fte.to_integral_value():
+                return Response({"error": "Migratable FTE must be a whole number before locking the page."}, status=400)
             if len(all_lines) != len(JOB_LEVELS) or not statement.scope_text.strip() or any(
                 line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None
                 for line in all_lines
@@ -593,6 +595,8 @@ def save_scope_statement(request, project_id):
         elif action == "submit":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
                 return Response({"error": "Unlock the page and manually confirm Migratable FTE before submitting."}, status=400)
+            if statement.migratable_fte != statement.migratable_fte.to_integral_value():
+                return Response({"error": "Migratable FTE must be a whole number before submitting."}, status=400)
             if not statement.scope_text.strip():
                 return Response({"error": "High-level scope statement is required before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             if len(all_lines) != len(JOB_LEVELS) or any(line.locked_at is None for line in all_lines):
@@ -625,9 +629,7 @@ def save_scope_statement(request, project_id):
 
 def _apply_migratable_fte(statement, payload):
     if "migratableFte" in payload:
-        value = _number(payload["migratableFte"], "Migratable FTE", allow_none=True)
-        if value is not None and value.as_tuple().exponent < -4:
-            raise ValueError("Migratable FTE supports at most four decimal places.")
+        value = _number(payload["migratableFte"], "Migratable FTE", allow_none=True, whole=True)
         if value != statement.migratable_fte:
             statement.migratable_fte_confirmed = False
         statement.migratable_fte = value

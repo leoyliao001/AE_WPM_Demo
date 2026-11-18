@@ -56,7 +56,7 @@
                     <h3>FTE agreement and evidence rules</h3>
                     <ol>
                       <li>For each of <strong>JL1, JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
-                      <li>The system-wide Super Admin (temporarily treated as Migration Manager) enters and explicitly confirms the independent top-level <strong>Migratable FTE</strong> total. It is initially suggested from the agreed JL total; changing its value clears confirmation.</li>
+                      <li>The system-wide Super Admin (temporarily treated as Migration Manager) enters and explicitly confirms the independent top-level <strong>Migratable FTE</strong> as a whole number. It is initially suggested from the agreed JL total; changing its value clears confirmation.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
                       <li>Only assigned GSC Leaders and the Area POC can upload evidence or use the page-level <strong>Lock / Unlock</strong> control. The whole page, including FTE, scope text, assumptions, migration waves and uploads, is locked together; downloads remain available while locked.</li>
                     </ol>
@@ -104,9 +104,12 @@
             <article class="metric-card">
               <div class="metric-card__top"><span>Migratable FTE</span><mc-icon icon="mi-check" size="18" /></div>
               <div class="metric-card__value metric-card__manual">
-                <input v-model="migratableFte" aria-label="Migratable FTE" type="number" min="0" max="99999999.9999" step="0.0001" :disabled="!canEditMigratableFte || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
+                <input v-model="migratableFte" aria-label="Migratable FTE" aria-describedby="migratable-fte-hint" :aria-invalid="migratableFte !== '' && !validNumber(migratableFte, true)" type="number" min="0" max="99999999.9999" step="1" :disabled="!canEditMigratableFte || isBusy" @input="migratableFteConfirmed = false" /><span>FTE</span>
               </div>
-              <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEditMigratableFte || isBusy || !validNumber(migratableFte)" />I confirm this Migratable FTE</label>
+              <p id="migratable-fte-hint" :class="{ 'migratable-fte-error': migratableFte !== '' && !validNumber(migratableFte, true) }">
+                {{ migratableFte !== '' && !validNumber(migratableFte, true) ? 'Enter a whole number; decimals are not allowed.' : 'Enter a whole number.' }}
+              </p>
+              <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEditMigratableFte || isBusy || !validNumber(migratableFte, true)" />I confirm this Migratable FTE</label>
               <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Super Admin (Migration Manager) only · Suggested from JL total: {{ totalDisplay('agreedFte') }}</p>
             </article>
             <article class="metric-card metric-card--teal">
@@ -148,6 +151,20 @@
         <div v-else-if="canEditMigratableFte && !canEdit" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>You can enter and confirm Migratable FTE. Other Scope details are editable only by the locked GSC Leaders and Area POC assignments.</span>
         </div>
+        <section
+          v-if="submissionReminder"
+          class="notice notice--info scope-submission-reminder"
+          :class="{ 'scope-submission-reminder--complete': submissionReminder.complete }"
+          aria-live="polite"
+        >
+          <mc-icon :icon="submissionReminder.complete ? 'mi-check' : 'mi-information'" size="18" />
+          <div>
+            <strong>{{ submissionReminder.title }}</strong>
+            <ul>
+              <li v-for="(message, index) in submissionReminder.messages" :key="index">{{ message }}</li>
+            </ul>
+          </div>
+        </section>
         <div v-else-if="!canManage" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>Read-only view. Scope details are editable only by the locked GSC Leaders and Area POC assignments; Migratable FTE is editable only by the system-wide Super Admin (Migration Manager).</span>
         </div>
@@ -348,13 +365,91 @@ const finalTotal = computed(() => sumField('finalFte'))
 const allFinalEntered = computed(() => completeField('finalFte'))
 const coverage = computed(() => allFinalEntered.value && ambition.value > 0 ? Math.round(finalTotal.value / ambition.value * 100) : null)
 const totalVariance = computed(() => completeField('agreedFte') && allFinalEntered.value ? finalTotal.value - agreedTotal.value : null)
-const reconciliationGap = computed(() => validNumber(migratableFte.value) && completeField('notAgreedFte') ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
+const reconciliationGap = computed(() => validNumber(migratableFte.value, true) && completeField('notAgreedFte') ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
 const reconciled = computed(() => reconciliationGap.value !== null && Math.abs(reconciliationGap.value) < 0.00005)
-const ready = computed(() => lockedCount.value === 4 && Boolean(scopeText.value.trim()) && migratableFteConfirmed.value)
+const ready = computed(() => lockedCount.value === 4 && Boolean(scopeText.value.trim()) &&
+  validNumber(migratableFte.value, true) && migratableFteConfirmed.value)
 const statusKey = computed(() => statement.value?.reviewRequired ? 'draft' : isSubmitted.value ? 'submitted' : ready.value ? 'ready' : 'draft')
 const statusLabel = computed(() => statement.value?.reviewRequired ? 'Review required' : isSubmitted.value ? 'Submitted' : ready.value ? 'Ready to submit' : 'Draft')
 const aboveAgreed = computed(() => lines.value.filter((line) => variance(line) > 0).map((line) => line.jobLevel).join(', '))
 const dirty = computed(() => Boolean(statement.value) && (snapshot() !== savedSnapshot.value || !!revisionReason.value.trim()))
+const submissionReminder = computed(() => {
+  if (!statement.value) return null
+  if (isSubmitted.value) {
+    return statement.value.reviewRequired
+      ? {
+          title: 'Scope review is needed',
+          messages: ['Enter a revision reason, reopen Scope, review the changed Intake data, then save, lock and resubmit.']
+        }
+      : {
+          title: 'Scope is submitted',
+          complete: true,
+          messages: ['The Scope Statement is secured. Continue to the Business Case for the next project step.']
+        }
+  }
+  if (isBusy.value) {
+    return { title: 'Update in progress', messages: ['Wait for the current save to finish before continuing.'] }
+  }
+  if (!canManage.value) {
+    return {
+      title: 'Scope submission needs an assigned editor',
+      messages: [
+        canEditMigratableFte.value
+          ? 'You can enter and confirm Migratable FTE, but only assigned GSC Leaders or the Area POC can complete and submit Scope.'
+          : 'Ask an assigned GSC Leader or the Area POC to complete and submit this Scope Statement.'
+      ]
+    }
+  }
+
+  const messages = []
+  if (migratableFte.value !== '' && !validNumber(migratableFte.value, true)) {
+    messages.push('Migratable FTE must be a whole number; decimals are not accepted.')
+  } else if (!validNumber(migratableFte.value, true)) {
+    messages.push('A Super Admin must enter a valid Migratable FTE.')
+  } else if (!migratableFteConfirmed.value) {
+    messages.push('A Super Admin must confirm the Migratable FTE.')
+  }
+
+  if (!scopeText.value.trim()) messages.push('Complete the high-level Scope Statement.')
+
+  const incompleteLevels = lines.value
+    .filter((line) =>
+      !validNumber(line.agreedFte) ||
+      !validNumber(line.notAgreedFte) ||
+      !validNumber(line.finalFte, true)
+    )
+    .map((line) => line.jobLevel)
+  if (incompleteLevels.length) {
+    messages.push(`Complete agreed, exception and whole-number final FTE for ${incompleteLevels.join(', ')}.`)
+  }
+
+  const invalidWave = waves.value.some(wave =>
+    !wave.name.trim() ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
+    Number.isNaN(Date.parse(wave.date)) ||
+    new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
+    !validNumber(wave.fte, true)
+  )
+  if (invalidWave) {
+    messages.push('Complete or remove each unfinished wave; every wave needs a name, valid date and whole-number FTE.')
+  } else if (waves.value.length && allFinalEntered.value &&
+      waves.value.reduce((sum, wave) => sum + Number(wave.fte), 0) !== finalTotal.value) {
+    messages.push('Make the migration wave FTE total match the final project FTE.')
+  }
+
+  if (!pageLocked.value && canLockPage.value) {
+    messages.push('Select Lock at the top to lock the whole page before submitting.')
+  } else if (pageLocked.value && lockedCount.value !== 4) {
+    messages.push('Unlock the page, complete all four job levels, then lock it again.')
+  }
+
+  if (!messages.length) {
+    return ready.value
+      ? { title: 'Ready to submit', complete: true, messages: ['All submission requirements are met. Select Submit statement.'] }
+      : { title: 'Scope is being prepared', messages: ['Complete the submission requirements shown below.'] }
+  }
+  return { title: 'Next steps before submitting Scope', messages }
+})
 useUnsavedChanges(dirty, computed(() => isBusy.value || loading.value))
 
 function validNumber(value, whole = false) {
@@ -397,7 +492,7 @@ function exceptionPercentage(value) {
 
 const canLockPage = computed(() => completeField('agreedFte') && completeField('notAgreedFte') &&
   allFinalEntered.value && Boolean(scopeText.value.trim()) &&
-  validNumber(migratableFte.value) && migratableFteConfirmed.value)
+  validNumber(migratableFte.value, true) && migratableFteConfirmed.value)
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : ''
@@ -419,7 +514,9 @@ function applyResponse(data) {
     notAgreedFte: line.notAgreedFte === null ? '' : Number(line.notAgreedFte),
     finalFte: line.finalFte === null ? '' : line.finalFte
   }))
-  migratableFte.value = data.migratableFte ?? (completeField('agreedFte') ? sumField('agreedFte') : '')
+  migratableFte.value = data.migratableFte != null
+    ? String(Number(data.migratableFte))
+    : completeField('agreedFte') ? sumField('agreedFte') : ''
   migratableFteConfirmed.value = Boolean(data.migratableFteConfirmed)
   savedSnapshot.value = snapshot()
 }
@@ -472,8 +569,8 @@ async function persist(action, extra = {}) {
     applyResponse(data)
     return true
   }
-  if (migratableFte.value !== '' && !validNumber(migratableFte.value)) {
-    error.value = 'Enter a non-negative Migratable FTE within the permitted range.'
+  if (migratableFte.value !== '' && !validNumber(migratableFte.value, true)) {
+    error.value = 'Migratable FTE must be a non-negative whole number.'
     return false
   }
   if (canEdit.value && waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
@@ -635,6 +732,7 @@ h1 { font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp
 .metric-card__manual input { min-width: 0; width: 100%; padding: 3px 8px; border: 1px solid #c8dce7; border-radius: 6px; background: #fff; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
 .metric-card__manual input:focus { outline: 2px solid #42b0d5; outline-offset: 2px; }
 .metric-card__manual input:disabled { background: #f4f7f9; color: #6c8090; }
+.metric-card .migratable-fte-error { color: #ab4545; font-weight: 600; }
 .migratable-confirm { display: flex; align-items: flex-start; gap: 6px; margin-top: 12px; font-size: 11px; line-height: 1.5; color: #526c80; }
 .migratable-confirm input { margin: 2px 0 0; flex-shrink: 0; accent-color: #227fa4; }
 .metric-card p { margin: 8px 0 0; color: var(--scope-muted); font-size: 11px; line-height: 1.6; }
@@ -737,6 +835,11 @@ textarea:disabled { background: #f7f9fa; opacity: 1; color: #587083; }
 .notice--error { color: #ab4545; background: #fff7f6; border-color: #f3dbd7; }
 .notice--success { color: #247b68; background: #f1faf6; border-color: #d9eee4; }
 .notice--info { color: #4f738a; background: #f2f8fc; border-color: #dceaf3; }
+.scope-submission-reminder > div { min-width: 0; }
+.scope-submission-reminder strong { display: block; font-size: 12px; }
+.scope-submission-reminder ul { margin: 4px 0 0; padding-left: 18px; }
+.scope-submission-reminder li { margin-top: 3px; }
+.scope-submission-reminder--complete { color: #247b68; background: #f1faf6; border-color: #d9eee4; }
 .notice-dismiss { margin-left: auto; border: 0; background: none; color: inherit; cursor: pointer; font-size: 20px; }
 .state-panel { text-align: center; padding: 90px 24px; border: 1px solid var(--scope-line); border-radius: 14px; background: #f7f9fb; color: var(--scope-muted); }
 .state-panel h1 { font-size: 24px; color: var(--scope-navy); margin: 20px 0 10px; }

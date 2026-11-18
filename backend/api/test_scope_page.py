@@ -178,10 +178,10 @@ class ScopePageTests(TestCase):
         self.assertIn("missing from storage", str(response.data["detail"]))
         self.assertTrue(ScopeStatementEvidence.objects.filter(pk=item.pk).exists())
 
-    def test_manual_value_is_independent_and_confirmation_is_required(self):
+    def test_manual_whole_number_is_independent_and_confirmation_is_required(self):
         self.upload()
         payload = self.payload("lock")
-        payload["migratableFte"] = "9.5"
+        payload["migratableFte"] = "9"
         payload["migratableFteConfirmed"] = False
         response = self.save(payload)
         self.assertEqual(response.status_code, 400, response.data)
@@ -191,34 +191,34 @@ class ScopePageTests(TestCase):
         payload["migratableFteConfirmed"] = True
         response = self.save(payload)
         self.assertEqual(response.status_code, 200, response.data)
-        self.assertEqual(response.data["migratableFte"], "9.5000")
+        self.assertEqual(response.data["migratableFte"], "9.0000")
         self.assertTrue(response.data["migratableFteConfirmed"])
         self.assertEqual(self.save({"action": "submit"}).status_code, 200)
         from api.services.business_case import source_data
         from api.services.project_charter import build_charter_sources
         scope = source_data(self.project)[1]
-        self.assertEqual(scope["migratableFte"], "9.5000")
+        self.assertEqual(scope["migratableFte"], "9.0000")
         self.assertEqual(scope["finalProjectFte"], 6)
         self.assertTrue(scope["migratableFteConfirmed"])
         sources = build_charter_sources(self.project)[0]
         fact = next(fact for fact in sources["facts"] if fact["label"].startswith("Migratable FTE"))
-        self.assertEqual(fact["value"], "9.5000")
+        self.assertEqual(fact["value"], "9.0000")
 
     def test_manual_value_changes_clear_confirmation_and_jl_changes_do_not_override_it(self):
         self.assertEqual(self.save(self.payload()).status_code, 200)
-        response = self.save({"migratableFte": "8.25"})
+        response = self.save({"migratableFte": "8"})
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["migratableFteConfirmed"])
-        self.assertEqual(response.data["migratableFte"], "8.2500")
+        self.assertEqual(response.data["migratableFte"], "8.0000")
         response = self.save({"lines": [{"jobLevel": "JL2", "agreedFte": 50, "notAgreedFte": 0, "finalFte": 2}]})
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["migratableFte"], "8.2500")
+        self.assertEqual(response.data["migratableFte"], "8.0000")
         response = self.save({"migratableFteConfirmed": True})
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data["migratableFteConfirmed"])
 
     def test_invalid_manual_values_are_rejected_without_partial_saves(self):
-        for value in (-1, True, "NaN", "Infinity", "0.00001", "100000000"):
+        for value in (-1, True, "NaN", "Infinity", "0.5", "8.25", "0.00001", "100000000"):
             response = self.save({**self.payload(), "migratableFte": value})
             self.assertEqual(response.status_code, 400, response.data)
         self.assertEqual(self.save({"migratableFteConfirmed": "true"}).status_code, 400)
