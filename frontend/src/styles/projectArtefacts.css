@@ -315,6 +315,31 @@
 .pa-resources-page .pa-resource-table td > input:not([type="checkbox"]),
 .pa-resources-page .pa-resource-table td > mc-select {
   height: 30px;
+  font-size: 10px;
+}
+.pa-resources-page .pa-resource-table th,
+.pa-resources-page .pa-resource-table td,
+.pa-resources-page .pa-resource-table td > span,
+.pa-resources-page .pa-resource-table td > button,
+.pa-resources-page .pa-resource-table td > input:not([type="checkbox"]),
+.pa-resources-page .pa-resource-table td > select,
+.pa-resources-page .pa-resource-table mc-option,
+.pa-resources-page .pa-resource-table mc-select::part(input),
+.pa-resources-page .pa-resource-table mc-select::part(selected-option) {
+  font-size: 10px;
+}
+.pa-resources-page .pa-resource-table :is(
+  .pa-column--site,
+  .pa-column--hiringType,
+  .pa-column--language,
+  .pa-column--jobLevel
+) mc-select::part(input),
+.pa-resources-page .pa-resource-table :is(
+  .pa-column--site,
+  .pa-column--hiringType,
+  .pa-column--language,
+  .pa-column--jobLevel
+) mc-select::part(selected-option) {
   font-size: 12px;
 }
 .pa-resources-page .pa-resource-table td > input:not([type="checkbox"]) {

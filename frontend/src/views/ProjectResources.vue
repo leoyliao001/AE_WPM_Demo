@@ -115,6 +115,13 @@
                   <p>For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
                 </div>
               </div>
+          <div v-if="tab === 'execution' && record.gscSiteRequests?.length" class="pa-gsc-requests" aria-label="GSC Site requests">
+            <span v-for="request in record.gscSiteRequests" :key="request.id" class="pa-gsc-request" :class="`pa-gsc-request--${request.status}`">
+              <strong>{{ request.site }}</strong>
+              <span>{{ request.status }}</span>
+              <small v-if="request.decisionComment">{{ request.decisionComment }}</small>
+            </span>
+          </div>
           <p v-if="tab === 'execution' && generatedRowsPending && dirty" class="pa-feedback" role="status">
             {{ generatedRowsPending }} blank resource position{{ generatedRowsPending === 1 ? '' : 's' }} prepared to match Scope FTE. Save draft to keep them.
           </p>
@@ -158,7 +165,7 @@
                   }" :disabled="!canEdit || row.hiringType === 'Efficiency'" @click="editHiringStatus(row)">{{ row.hiringStatus }}</button>
                 </template>
                 <mc-select v-else-if="column.options && cellEditable(row, column.key)" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
-                  <mc-option value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :value="option" :disabled="column.key === 'jobLevel' && option === 'JL4' && !jl4Available">{{ option }}</mc-option>
+                  <mc-option value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :value="option" :disabled="column.key === 'jobLevel' && option === 'JL4' && !jl4Available">{{ option }}</mc-option><mc-option v-if="column.key === 'site'" class="gsc-apply-option" :value="GSC_SITE_REQUEST_OPTION" divider>Apply new</mc-option>
                 </mc-select>
                 <input v-else-if="cellEditable(row, column.key)" v-model="row[column.key]" :type="column.date ? 'date' : 'text'" :aria-label="column.label" maxlength="500" />
                 <span v-else>{{ row[column.key] || '—' }}</span>
@@ -201,9 +208,24 @@
           <textarea v-model="unlockReason" rows="4" maxlength="2000" required />
         </label>
         <p v-if="unlockReasonError" class="unlock-dialog__error" role="alert">{{ unlockReasonError }}</p>
-        <div class="unlock-dialog__actions">
+        <div class="unlock-dialog__actions gsc-request-dialog__actions">
           <mc-button type="button" appearance="neutral" variant="outlined" label="Cancel" :disabled="!!busy" @click="closeUnlockDialog" />
           <mc-button type="button" appearance="primary" label="Unlock Resources" :disabled="!!busy" @click="confirmUnlock" />
+        </div>
+      </mc-dialog>
+      <mc-dialog class="gsc-request-dialog" :open="gscRequestDialogOpen" heading="Request another GSC Site" dimension="small" showclosebutton @closing="closeGscRequestDialog">
+        <p>The request will be sent to the Migration Manager assigned to this project. The site becomes selectable after approval.</p>
+        <mc-multi-select class="gsc-site-request-select" label="GSC Site *" :value.prop="gscRequestSites" listsearch fit="medium" width="full-width" optionsheight="320px" placeholder="Select one or more GSC Sites" @optionselected="selectGscRequestSites">
+          <mc-option v-for="option in gscSiteRequestOptions" :key="option" :value="option">{{ option }}</mc-option>
+        </mc-multi-select>
+        <label class="unlock-dialog__field">
+          <span>Reason for request <span aria-hidden="true">*</span></span>
+          <textarea v-model="gscRequestReason" rows="4" maxlength="2000" required />
+        </label>
+        <p class="unlock-dialog__error gsc-request-dialog__error" role="alert">{{ gscRequestError }}</p>
+        <div class="unlock-dialog__actions gsc-request-dialog__actions">
+          <mc-button type="button" appearance="neutral" variant="outlined" fit="small" label="Cancel" :disabled="gscRequestBusy" @click="closeGscRequestDialog" />
+          <mc-button type="button" appearance="primary" fit="small" label="Submit request" :disabled="gscRequestBusy || !gscRequestSites.length || !gscRequestReason.trim()" @click="submitGscRequest" />
         </div>
       </mc-dialog>
     </div>
@@ -212,13 +234,16 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import axios from 'axios'
 import { read, utils } from 'xlsx'
 import PageShell from '../components/PageShell.vue'
 import { useProjectArtefact } from '../composables/useProjectArtefact.js'
+import { areaLocationMapping, customLocationStrategyOptions } from '../data/areaLocationStrategyMapping.js'
 import { exportArtefact } from '../utils/projectArtefactExport.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-select'
+import '@maersk-global/mds-components-core/mc-multi-select'
 import '@maersk-global/mds-components-core/mc-option'
 import '@maersk-global/mds-components-core/mc-dialog'
 import '../styles/projectArtefacts.css'
@@ -242,6 +267,26 @@ const unlockReason = ref('')
 const unlockReasonError = ref('')
 const fileInput = ref(null)
 const activeHiringStatusId = ref('')
+const GSC_SITE_REQUEST_OPTION = '__request_new_gsc_site__'
+const gscRequestDialogOpen = ref(false)
+const gscRequestSites = ref([])
+const gscRequestReason = ref('')
+const gscRequestError = ref('')
+const gscRequestBusy = ref(false)
+const intakeLocationOptions = list => list.map(value => String(value).trim()).filter(Boolean)
+const gscSiteRequestOptions = computed(() => {
+  const configured = record.value?.gscSiteRequestOptions || [
+    ...Object.values(areaLocationMapping).flatMap(area => area.supportingSites || []),
+    ...customLocationStrategyOptions,
+  ]
+  const available = new Set((record.value?.gscSiteOptions || record.value?.sites || []).map(value => String(value).trim()))
+  const requested = new Set(
+    (record.value?.gscSiteRequests || [])
+      .filter(request => ['pending', 'approved'].includes(request.status))
+      .map(request => request.site)
+  )
+  return [...new Set(intakeLocationOptions(configured))].filter(option => !available.has(option) && !requested.has(option))
+})
 const canEdit = computed(() => editable.value && Boolean(record.value?.permissions?.edit))
 const canEditArea = computed(() => editable.value && Boolean(record.value?.permissions?.area))
 async function save(action = 'save', extra = {}) {
@@ -319,7 +364,7 @@ const metricCards = {
 const metrics = computed(() => (metricCards[tab.value] || metricCards.execution)())
 const baseColumns = computed(() => [
   { key: 'cohort', label: 'Cohort' },
-  { key: 'site', label: 'GSC Site', options: [...new Set([...record.value.siteOptions, ...sites.value])] }, { key: 'hiringType', label: 'Hiring Type', options: record.value.hiringTypes },
+  { key: 'site', label: 'GSC Site', options: record.value.gscSiteOptions || record.value.sites }, { key: 'hiringType', label: 'Hiring Type', options: record.value.hiringTypes },
   { key: 'language', label: 'Language', options: record.value.languages }, { key: 'pidCreationDate', label: 'PID Creation Date', date: true },
   { key: 'gscPid', label: 'GSC PID' },
 ])
@@ -459,6 +504,11 @@ function auditChangeText(change) {
 }
 function selectCellOption(row, key, event) {
   const value = event.detail?.value ?? event.currentTarget.value
+  if (key === 'site' && value === GSC_SITE_REQUEST_OPTION) {
+    if (event.currentTarget) event.currentTarget.value = row.site
+    openGscRequestDialog()
+    return
+  }
   if (row[key] === value) return
   row[key] = value
   if (key === 'hiringType') changeHiringType(row)
@@ -657,6 +707,44 @@ function closeUnlockDialog() {
   unlockReason.value = ''
   unlockReasonError.value = ''
 }
+function openGscRequestDialog() {
+  gscRequestSites.value = []
+  gscRequestReason.value = ''
+  gscRequestError.value = ''
+  gscRequestDialogOpen.value = true
+}
+function closeGscRequestDialog() {
+  if (gscRequestBusy.value) return
+  gscRequestDialogOpen.value = false
+  gscRequestSites.value = []
+  gscRequestReason.value = ''
+  gscRequestError.value = ''
+}
+async function submitGscRequest() {
+  if (gscRequestBusy.value || !gscRequestSites.value.length || !gscRequestReason.value.trim()) return
+  gscRequestBusy.value = true
+  gscRequestError.value = ''
+  try {
+    await axios.post(`/api/migration-dashboard/projects/${projectId.value}/resources/gsc-site-requests/`, {
+      sites: gscRequestSites.value,
+      request_comment: gscRequestReason.value,
+    })
+    gscRequestDialogOpen.value = false
+    gscRequestSites.value = []
+    gscRequestReason.value = ''
+    await load()
+    success.value = 'GSC Site request submitted to the project Migration Manager.'
+  } catch (caught) {
+    gscRequestError.value = caught.response?.data?.error || 'Unable to submit the GSC Site request.'
+  } finally {
+    gscRequestBusy.value = false
+  }
+}
+function selectGscRequestSites(event) {
+  gscRequestSites.value = Array.isArray(event.detail)
+    ? event.detail.map(option => option.value)
+    : []
+}
 async function confirmUnlock() {
   const reason = unlockReason.value.trim()
   if (!reason) {
@@ -799,9 +887,24 @@ async function importData(event) {
 .pa-execution-guidance__note p { color: #526d7f; font-size: 12px; line-height: 1.55; margin: 0; }
 .unlock-dialog__field { color: #526d7f; display: flex; flex-direction: column; font-size: 12px; gap: 7px; margin-top: 18px; }
 .unlock-dialog__field textarea { border: 1px solid #cedce4; border-radius: 6px; box-sizing: border-box; color: var(--pa-ink); font: inherit; font-size: 13px; padding: 9px 10px; resize: vertical; width: 100%; }
+.unlock-dialog__field input { border: 1px solid #cedce4; border-radius: 6px; box-sizing: border-box; color: var(--pa-ink); font: inherit; font-size: 13px; padding: 9px 10px; width: 100%; }
+.unlock-dialog__field input:focus { outline: 2px solid #42b0d5; outline-offset: 1px; }
 .unlock-dialog__field textarea:focus { outline: 2px solid #42b0d5; outline-offset: 1px; }
+.gsc-site-request-select { display: block; margin-top: 18px; }
+.gsc-apply-option { color: #0073ab; font-weight: 600; }
+.gsc-site-request-select::part(field) { height: 46px; min-height: 46px; overflow: hidden; }
+.gsc-site-request-select::part(selected-option) { height: 44px; max-height: 44px; overflow: hidden; white-space: nowrap; }
+.gsc-request-dialog__error { min-height: 18px; }
 .unlock-dialog__error { color: #a3332c; font-size: 12px; margin: 8px 0 0; }
-.unlock-dialog__actions { display: flex; gap: 8px; justify-content: flex-end; }
+.unlock-dialog__actions { align-items: center; display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+.gsc-request-dialog__actions mc-button { --mc-button-height: 32px; min-width: 84px; }
+.pa-gsc-requests { display: flex; flex-wrap: wrap; gap: 7px; margin: -8px 0 18px; }
+.pa-gsc-request { align-items: center; background: #f7fafc; border: 1px solid #d9e3ea; border-radius: 6px; color: #526d7f; display: flex; gap: 7px; padding: 5px 8px; }
+.pa-gsc-request strong { color: #164b69; font-size: 11px; }
+.pa-gsc-request span { font-size: 10px; text-transform: capitalize; }
+.pa-gsc-request small { font-size: 10px; max-width: 280px; }
+.pa-gsc-request--approved { border-color: #83bda1; }
+.pa-gsc-request--rejected { border-color: #d9a19d; }
 .pa-audit-changes { min-width: 260px; }
 .pa-audit-changes summary { color: #0073ab; cursor: pointer; }
 .pa-audit-changes ul { margin: 6px 0; padding-left: 18px; }

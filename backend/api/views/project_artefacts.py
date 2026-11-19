@@ -17,6 +17,8 @@ from api.services.project_artefacts import (
     integer, migration_manager_emails, project_permissions, resource_audit_changes, resource_ready, resource_sites,
     rows_list, scope_source, text,
 )
+from api.views.gsc_site_requests import project_gsc_site_requests
+from api.services.intake_options import all_location_strategy_options
 
 
 def _resource_audit_history(audit_log):
@@ -63,7 +65,7 @@ def _serialize(project, record, kind, email):
         "migrationRequestId": project.migration_request_id, "requestor": project.requestor,
         "region": project.region, "areas": project.areas, "countries": project.countries,
         "products": project.products,
-        "sites": (project.default_location_strategies or []) + (project.custom_location_strategies or []),
+        "sites": resource_sites(project),
         "businessCase": business_case_source,
         "source": source, "sourceChanged": changed, "permissions": permissions,
         "saved": record is not None, "revision": record.revision if record else 0,
@@ -79,6 +81,9 @@ def _serialize(project, record, kind, email):
             "rows": rows, "ready": ready, "hiringTypes": HIRING_TYPES,
             "hiringStatuses": HIRING_STATUSES, "languages": LANGUAGES,
             "siteOptions": resource_sites(project),
+            "gscSiteOptions": resource_sites(project),
+            "gscSiteRequestOptions": all_location_strategy_options(),
+            "gscSiteRequests": project_gsc_site_requests(project),
             "migrationManagers": migration_manager_emails(project),
             "status": "needs_review" if changed and result["frozen"] else "confirmed" if result["frozen"] else "ready" if ready else "draft",
         })
@@ -409,7 +414,14 @@ def resource_projects(request):
             "projectId": project.pk, "projectName": project.project_name,
             "migrationRequestId": project.migration_request_id, "products": project.products,
             "region": project.region, "areas": project.areas,
-            "sites": (project.default_location_strategies or []) + (project.custom_location_strategies or []),
+            "sites": list(dict.fromkeys(project.default_location_strategies or []))
+            + list(
+                site
+                for site in (project.custom_location_strategies or [])
+                if site not in (project.default_location_strategies or [])
+            )
+            if not project.location_strategy_custom
+            else list(dict.fromkeys(project.custom_location_strategies or [])),
             "targetStartDate": project.target_start_date,
             "targetEndDate": project.target_end_date,
             "approvedFte": population if approved else None,

@@ -198,11 +198,46 @@
           </div>
           <div class="ac-detail-tags">
             <span class="ac-tag ac-tag-info">{{ detail.type }}</span>
-            <span v-if="detail.requestKind !== 'fpo_catalogue'" class="ac-tag" :class="budgetTagClass(detail)">
+            <span v-if="!['fpo_catalogue', 'gsc_site'].includes(detail.requestKind)" class="ac-tag" :class="budgetTagClass(detail)">
               {{ budgetLabel(detail) }}
             </span>
-            <span class="ac-tag ac-tag-neutral">{{ detail.requestKind === 'fpo_catalogue' ? `FPO ${detail.fpoStatus}` : detail.businessCaseBlocked ? 'Business Case blocked' : detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
+            <span class="ac-tag ac-tag-neutral">{{ detail.requestKind === 'fpo_catalogue' ? `FPO ${detail.fpoStatus}` : detail.requestKind === 'gsc_site' ? `GSC Site ${detail.gscStatus}` : detail.businessCaseBlocked ? 'Business Case blocked' : detail.actionable ? 'Waiting on you' : 'In progress' }}</span>
           </div>
+        </div>
+
+        <div v-if="detail.requestKind === 'gsc_site'" class="ac-detail-grid">
+          <div class="ac-detail-col">
+            <div class="ac-card">
+              <h2 class="ac-card-title">GSC Site addition request</h2>
+              <p class="ac-card-sub">Approval is project-specific. The GSC Site becomes selectable on Resources only after a Migration Manager approves it.</p>
+              <dl class="ac-defs">
+                <div><dt>Requested GSC Site</dt><dd>{{ detail.gscSite }}</dd></div>
+                <div><dt>Reason for request</dt><dd>{{ detail.gscRequestComment }}</dd></div>
+                <div><dt>Migration Request ID</dt><dd>{{ detail.migrationRequestId }}</dd></div>
+                <div><dt>Project</dt><dd>{{ detail.title }}</dd></div>
+                <div><dt>Requested by</dt><dd>{{ detail.requester }}</dd></div>
+                <div><dt>Assigned Migration Managers</dt><dd>{{ detail.gscApprovers.join(', ') || '—' }}</dd></div>
+                <div v-if="detail.gscDecidedBy"><dt>Reviewed by</dt><dd>{{ detail.gscDecidedBy }} · {{ detail.gscDecidedAt }}</dd></div>
+                <div v-if="detail.gscDecisionComment"><dt>Decision comment</dt><dd>{{ detail.gscDecisionComment }}</dd></div>
+              </dl>
+            </div>
+          </div>
+          <aside class="ac-decision-col">
+            <div class="ac-card ac-decision">
+              <h2 class="ac-card-title">Migration Manager decision</h2>
+              <p class="ac-card-sub">{{ detail.actionable ? 'Review the requested GSC Site for this project.' : detail.completed ? `Request ${detail.gscStatus}.` : 'This request is assigned to the project Migration Manager.' }}</p>
+              <template v-if="detail.actionable">
+                <textarea v-model="comment" class="ac-textarea" rows="4" placeholder="Comment (required when rejecting)" aria-label="GSC Site decision comment"></textarea>
+                <button class="ac-btn ac-btn-primary ac-btn-block" type="button" :disabled="gscSubmitting" @click="submitGscDecision('approved')">
+                  {{ gscSubmitting ? 'Saving…' : 'Approve GSC Site' }}
+                </button>
+                <button class="ac-btn ac-btn-danger ac-btn-block" type="button" :disabled="gscSubmitting" @click="submitGscDecision('rejected')">
+                  Reject
+                </button>
+              </template>
+              <p v-if="decisionMessage" class="ac-decision-msg" role="status">{{ decisionMessage }}</p>
+            </div>
+          </aside>
         </div>
 
         <div v-if="detail.requestKind === 'fpo_catalogue'" class="ac-detail-grid">
@@ -263,7 +298,7 @@
           </div>
         </div>
 
-        <div v-if="detail.requestKind !== 'fpo_catalogue'" class="ac-detail-grid">
+        <div v-if="!['fpo_catalogue', 'gsc_site'].includes(detail.requestKind)" class="ac-detail-grid">
           <div class="ac-detail-col">
             <!-- Slot 1 — approval chain -->
             <div class="ac-card">
@@ -607,6 +642,7 @@ const visibleCount = ref(4)
 const selected = ref(new Set())
 const comment = ref('')
 const fpoSubmitting = ref(false)
+const gscSubmitting = ref(false)
 const budgetChoice = ref('within')
 const parallelComment = ref({ elt: '', gscHead: '' })
 const decisionMessage = ref('')
@@ -618,7 +654,7 @@ const tabs = computed(() => [
   { key: 'completed', label: 'Completed', count: isAdminHistory.value ? null : completedCount.value }
 ])
 
-const typeOptions = ['All types', '1:1 Migration', 'Co-location', 'New business']
+const typeOptions = ['All types', '1:1 Migration', 'Co-location', 'New business', 'FPO Catalogue', 'GSC Site']
 const budgetOptions = ['Any budget status', 'Pending', 'Within budget', 'Beyond budget']
 
 // Approval flow is the same shape for every migration type: three sequential
@@ -638,7 +674,7 @@ const stepsFor = (beyondBudget) =>
 
 const sequentialLength = (beyondBudget) => (beyondBudget ? 5 : 4)
 
-const totalStepsFor = (row) => stepsFor(row.beyondBudget).length
+const totalStepsFor = (row) => ['fpo_catalogue', 'gsc_site'].includes(row.requestKind) ? 1 : stepsFor(row.beyondBudget).length
 
 const isParallelPhase = (row) => row.step > sequentialLength(row.beyondBudget)
 const businessCaseWarning = (row) => row.businessCaseStatus === 'needs_review'
@@ -647,6 +683,7 @@ const businessCaseWarning = (row) => row.businessCaseStatus === 'needs_review'
 
 const stageNameFor = (row) => {
   if (row.requestKind === 'fpo_catalogue') return 'FPO Review'
+  if (row.requestKind === 'gsc_site') return 'Migration Manager'
   const seqLen = sequentialLength(row.beyondBudget)
   if (row.step <= seqLen) return stepsFor(row.beyondBudget)[row.step - 1]
   return 'ELT & GSC Head'
@@ -845,6 +882,50 @@ const myRoleFor = (row, role) => (row?.myRoles || []).includes(role === 'gscHead
 // Server already computed step/beyondBudget/parallel/myRoles/actionable; this only
 // shapes the fields the template's business-case & summary sections read.
 const toRow = (r) => {
+  if (r.request_kind === 'gsc_site') {
+    const completed = !!r.completed
+    return {
+      id: `GSC-${r.gsc_request_id}`,
+      gscRequestId: r.gsc_request_id,
+      migrationRequestId: r.migration_request_id,
+      requestKind: 'gsc_site',
+      title: r.project_name || r.migration_request_id,
+      type: 'GSC Site',
+      requester: r.requestor || 'Unknown requester',
+      area: first(r.areas) || r.region || '—',
+      region: r.region || '—',
+      fte: 0,
+      scope: r.gscSite,
+      budgetStatus: 'pending',
+      beyondBudget: false,
+      currentRole: r.currentRole || '',
+      decisions: {},
+      responsibleApprovers: { migration_manager: r.gscApprovers || [] },
+      businessCaseSubmittedAt: r.requested_date,
+      businessCaseStatus: null,
+      businessCaseBlocked: false,
+      step: completed ? 2 : 1,
+      totalSteps: 1,
+      parallel: { elt: 'pending', gscHead: 'pending' },
+      completed,
+      myRoles: r.myRoles || [],
+      submittedByMe: !!r.submittedByMe,
+      approvedByMe: !!r.approvedByMe,
+      handledByMe: !!r.handledByMe,
+      actionable: !!r.actionable,
+      waiting: completed ? `GSC Site ${r.gscStatus}` : 'Awaiting Migration Manager',
+      waitingDetail: r.gscDecisionComment || 'A GSC Site request is pending Migration Manager approval.',
+      slaBreached: false,
+      submitted: formatDate(r.requested_date),
+      gscSite: r.gscSite,
+      gscRequestComment: r.gscRequestComment || '',
+      gscStatus: r.gscStatus,
+      gscDecisionComment: r.gscDecisionComment || '',
+      gscApprovers: r.gscApprovers || [],
+      gscDecidedBy: r.gscDecidedBy || '',
+      gscDecidedAt: r.gscDecidedAt || '',
+    }
+  }
   if (r.request_kind === 'fpo_catalogue') {
     const completed = !!r.completed
     return {
@@ -1016,11 +1097,15 @@ async function loadQueue() {
     const requestedFpoRow = fpoRequestId
       ? projectRows.find((row) => row.fpoRequestIds.includes(fpoRequestId))
       : fpoBatchId ? projectRows.find((row) => row.fpoBatchId === fpoBatchId) : null
-    const requestedProjectRow = requestId
-      ? projectRows.find((row) => row.requestKind !== 'fpo_catalogue') || projectRows[0] || null
+    const gscRequestId = Number(route.query.gsc_request)
+    const requestedGscRow = gscRequestId
+      ? projectRows.find((row) => row.gscRequestId === gscRequestId)
       : null
-    detail.value = requestedFpoRow || requestedProjectRow || (requestId ? null : mapped[0]) || null
-    view.value = requestedFpoRow || requestedProjectRow ? 'details' : 'inbox'
+    const requestedProjectRow = requestId
+      ? projectRows.find((row) => !['fpo_catalogue', 'gsc_site'].includes(row.requestKind)) || projectRows[0] || null
+      : null
+    detail.value = requestedFpoRow || requestedGscRow || requestedProjectRow || (requestId ? null : mapped[0]) || null
+    view.value = requestedFpoRow || requestedGscRow || requestedProjectRow ? 'details' : 'inbox'
   } catch (e) {
     loadError.value = e?.response?.data?.error || 'Unable to load approval requests.'
     rows.value = []
@@ -1079,7 +1164,7 @@ const allVisibleSelected = computed(
 
 onMounted(loadQueue)
 
-watch(() => [route.query.scope, route.query.request], () => {
+watch(() => [route.query.scope, route.query.request, route.query.gsc_request], () => {
   activeTab.value = 'waiting'
   loadQueue()
 })
@@ -1191,6 +1276,32 @@ async function submitFpoDecision(action) {
     decisionMessage.value = e?.response?.data?.error || 'Unable to record the FPO decision.'
   } finally {
     fpoSubmitting.value = false
+  }
+}
+
+async function submitGscDecision(action) {
+  if (action === 'rejected' && !comment.value.trim()) {
+    decisionMessage.value = 'A comment is required when rejecting a request.'
+    return
+  }
+  gscSubmitting.value = true
+  decisionMessage.value = ''
+  try {
+    const { data } = await axios.post(
+      `/api/approval-cycle/gsc-site-requests/${detail.value.gscRequestId}/decision/`,
+      { action, comment: comment.value }
+    )
+    const updated = toRow(data.row)
+    const index = rows.value.findIndex((row) => row.id === detail.value.id)
+    if (index === -1) rows.value.push(updated)
+    else rows.value[index] = updated
+    detail.value = updated
+    comment.value = ''
+    decisionMessage.value = `${updated.gscSite} ${action}.${data.notification_sent === false ? ' Applicant notification email could not be sent.' : ''}`
+  } catch (error) {
+    decisionMessage.value = error?.response?.data?.error || 'Unable to record the GSC Site decision.'
+  } finally {
+    gscSubmitting.value = false
   }
 }
 

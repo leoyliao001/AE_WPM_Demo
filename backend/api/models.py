@@ -608,6 +608,28 @@ class FpoCatalogueRequest(models.Model):
         ordering = ["-created_at", "id"]
 
 
+class GscSiteRequest(models.Model):
+    project = models.ForeignKey(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="gsc_site_requests",
+    )
+    site = models.CharField(max_length=128)
+    requested_by = models.CharField(max_length=255)
+    approver_emails = models.JSONField(default=list)
+    request_comment = models.TextField()
+    status = models.CharField(max_length=16, default="pending", db_index=True)
+    decision_comment = models.TextField(blank=True, default="")
+    decided_by = models.CharField(max_length=255, blank=True, default="")
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gsc_site_request"
+        ordering = ["-created_at", "id"]
+
+
 class WorkingHours(models.Model):
     """Area / GSC working hours reference data."""
 

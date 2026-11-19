@@ -6,6 +6,14 @@ with (Path(__file__).resolve().parent.parent / "data" / "intake_options.json").o
     INTAKE_OPTIONS = json.load(source)
 
 
+def all_location_strategy_options():
+    options = []
+    for mapping in INTAKE_OPTIONS["areaLocationMapping"].values():
+        options.extend(mapping.get("supportingSites", []))
+    options.extend(INTAKE_OPTIONS["customLocationStrategyOptions"])
+    return list(dict.fromkeys(value for value in options if value))
+
+
 def validate_intake_selections(project, changes):
     def options_for(mapping, parents):
         return {value for parent in parents for value in mapping.get(parent, [])}

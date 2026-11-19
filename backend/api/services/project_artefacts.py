@@ -4,7 +4,6 @@ from datetime import date
 
 from api.models import MigrationTeam, ScopeStatement, StakeholderRegistration
 from api.permissions.attributes_access import build_access_snapshot, normalize_email
-from api.services.intake_options import INTAKE_OPTIONS
 
 SYSTEM_CATALOGUE = [
     {"id": "salesforce", "label": "Salesforce"},
@@ -74,10 +73,17 @@ def resource_audit_changes(old, new):
 
 
 def resource_sites(project):
-    return sorted(set(
-        (project.default_location_strategies or []) + (project.custom_location_strategies or []) +
-        INTAKE_OPTIONS["customLocationStrategyOptions"] +
-        [site for area in INTAKE_OPTIONS["areaLocationMapping"].values() for site in area.get("supportingSites", [])]
+    selected = (
+        project.custom_location_strategies
+        if project.location_strategy_custom
+        else project.default_location_strategies
+    )
+    from api.views.gsc_site_requests import approved_project_gsc_sites
+
+    return list(dict.fromkeys(
+        site.strip()
+        for site in [*(selected or []), *approved_project_gsc_sites(project)]
+        if isinstance(site, str) and site.strip()
     ))
 
 

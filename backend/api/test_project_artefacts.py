@@ -103,6 +103,32 @@ class ProjectArtefactTests(TestCase):
         self.assertFalse(ProjectResources.objects.exists())
         self.assertFalse(AccessEnablement.objects.exists())
 
+    def test_resources_site_options_match_selected_intake_location_strategy(self):
+        self.project.default_location_strategies = ["Pune", "Pune", "Chennai"]
+        self.project.custom_location_strategies = ["Shanghai"]
+        self.project.location_strategy_custom = False
+        self.project.save(update_fields=[
+            "default_location_strategies", "custom_location_strategies", "location_strategy_custom",
+        ])
+
+        data = self.get("resources").data
+        self.assertEqual(data["sites"], ["Pune", "Chennai"])
+        self.assertEqual(data["siteOptions"], ["Pune", "Chennai"])
+        self.assertEqual(
+            self.post("resources", rows=[{**self.resource(), "site": "Shanghai"}]).status_code,
+            400,
+        )
+
+        self.project.location_strategy_custom = True
+        self.project.save(update_fields=["location_strategy_custom"])
+        data = self.get("resources").data
+        self.assertEqual(data["sites"], ["Shanghai"])
+        self.assertEqual(data["siteOptions"], ["Shanghai"])
+        self.assertEqual(
+            self.post("resources", rows=[{**self.resource(), "site": "Shanghai"}]).status_code,
+            200,
+        )
+
     def test_acl_unsigned_outsider_viewer_and_permissions(self):
         self.client.credentials()
         self.assertEqual(self.get("resources").status_code, 401)

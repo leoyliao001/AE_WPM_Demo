@@ -49,11 +49,13 @@ from api.views.stakeholder_registration import (
     save_stakeholder_registration,
 )
 from api.views.fpo_catalogue_requests import acknowledge_fpo_catalogue_request, submit_fpo_catalogue_request
+from api.views.gsc_site_requests import submit_gsc_site_request
 
 urlpatterns = [
     path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/", submit_fpo_catalogue_request, name="fpo-catalogue-request-submit"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/<int:request_id>/acknowledge/", acknowledge_fpo_catalogue_request, name="fpo-catalogue-request-acknowledge"),
+    path("projects/<int:project_id>/resources/gsc-site-requests/", submit_gsc_site_request, name="gsc-site-request-submit"),
     path("projects/<int:project_id>/business-impact-analysis/", business_impact_analysis, name="business-impact-analysis"),
     path(
         "projects/<int:project_id>/people-consultation-compliance/",
