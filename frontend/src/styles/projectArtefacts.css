@@ -300,7 +300,7 @@
 .pa-resources-page .pa-resource-table .pa-column--areaPid,
 .pa-resources-page .pa-resource-table .pa-column--areaApmmId { width: 125px; }
 .pa-resources-page .pa-resource-table .pa-column--deletedPid { width: 136px; }
-.pa-resources-page .pa-resource-table .pa-column--jobLevel { width: 64px; }
+.pa-resources-page .pa-resource-table .pa-column--jobLevel { width: 72px; }
 .pa-resources-page .pa-resource-table .pa-column--hiringStatus { width: 100px; }
 .pa-resources-page .pa-resource-table .pa-column--remarks { width: 130px; }
 .pa-resources-page .pa-resource-table .pa-column--tentativeDoj,
@@ -340,7 +340,45 @@
   .pa-column--language,
   .pa-column--jobLevel
 ) mc-select::part(selected-option) {
-  font-size: 12px;
+  font-size: 11px !important;
+}
+.pa-resources-page .pa-resource-table mc-select.pa-compact-select {
+  --mds_brand_typography_text_small_mobile_font-size: 11px;
+  --mds_brand_typography_text_small_desktop_font-size: 11px;
+  --mds_brand_typography_text_small_mobile_line-height: 16px;
+  --mds_brand_typography_text_small_desktop_line-height: 16px;
+  font-size: 11px !important;
+}
+.pa-resources-page .pa-resource-table mc-select.pa-compact-select::part(input),
+.pa-resources-page .pa-resource-table mc-select.pa-compact-select::part(selected-option) {
+  font-size: 11px !important;
+}
+.pa-resources-page .pa-resource-table mc-select.pa-status-select,
+.pa-resources-page .pa-resource-table mc-select.pa-status-select::part(input),
+.pa-resources-page .pa-resource-table mc-select.pa-status-select::part(selected-option),
+.pa-resources-page .pa-resource-table mc-option.pa-status-option {
+  font-size: 10px !important;
+}
+.pa-resources-page .pa-resource-table mc-select.pa-status-select,
+.pa-resources-page .pa-resource-table mc-option.pa-status-option {
+  --mds_brand_typography_text_small_mobile_font-size: 10px;
+  --mds_brand_typography_text_small_desktop_font-size: 10px;
+  --mds_brand_typography_text_medium_mobile_font-size: 10px;
+  --mds_brand_typography_text_medium_desktop_font-size: 10px;
+  --mds_brand_typography_text_small_mobile_line-height: 14px;
+  --mds_brand_typography_text_small_desktop_line-height: 14px;
+  --mds_brand_typography_text_medium_mobile_line-height: 14px;
+  --mds_brand_typography_text_medium_desktop_line-height: 14px;
+}
+.pa-resources-page .pa-resource-table mc-select.pa-job-level-select,
+.pa-resources-page .pa-resource-table mc-select.pa-job-level-select::part(input),
+.pa-resources-page .pa-resource-table mc-select.pa-job-level-select::part(selected-option),
+.pa-resources-page .pa-resource-table mc-option.pa-job-level-option {
+  --mds_brand_typography_text_small_mobile_font-size: 10px;
+  --mds_brand_typography_text_small_desktop_font-size: 10px;
+  --mds_brand_typography_text_medium_mobile_font-size: 10px;
+  --mds_brand_typography_text_medium_desktop_font-size: 10px;
+  font-size: 10px !important;
 }
 .pa-resources-page .pa-resource-table td > input:not([type="checkbox"]) {
   padding: 5px 7px;
