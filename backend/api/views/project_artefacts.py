@@ -1,4 +1,5 @@
 from copy import deepcopy
+import re
 
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
@@ -14,7 +15,7 @@ from api.services.business_case import approval_progress, build_business_case, c
 from api.services.project_artefacts import (
     AREA_FIELDS, BARRIER_TYPES, EXECUTION_FIELDS, HIRING_STATUSES, HIRING_TYPES, JOB_LEVELS,
     HR_FIELDS, IT_ITEMS, LANGUAGES, SYSTEM_CATALOGUE, access_summary, date_value,
-    integer, migration_manager_emails, project_permissions, resource_audit_changes, resource_ready, resource_sites,
+    integer, hiring_types_for_site, migration_manager_emails, project_permissions, resource_audit_changes, resource_ready, resource_sites,
     rows_list, scope_source, text,
 )
 from api.views.gsc_site_requests import project_gsc_site_requests
@@ -111,6 +112,28 @@ def _serialize(project, record, kind, email):
     return result
 
 
+RESOURCE_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z][0-9]+$")
+APMM_ID_PATTERN = re.compile(r"^[A-Za-z]{3}[0-9]{3}$")
+
+
+def _validate_resource_identifier(field, value, required=False):
+    if not value:
+        if required:
+            raise ValueError(f"{field} is required.")
+        return
+    if not RESOURCE_IDENTIFIER_PATTERN.fullmatch(value):
+        raise ValueError(f"{field} must start with one alphabet followed only by numbers (for example G101).")
+
+
+def _validate_apmm_id(value, required=False):
+    if not value:
+        if required:
+            raise ValueError("APMM ID is required.")
+        return
+    if not APMM_ID_PATTERN.fullmatch(value):
+        raise ValueError("APMM ID must contain exactly 3 letters followed by 3 numbers (for example ABC123).")
+
+
 def _resource_rows(payload, record, permissions, action, email, source):
     raw = rows_list(payload.get("rows", record.rows if record else []), "Resources")
     previous = {row["id"]: row for row in (record.rows if record else [])}
@@ -125,12 +148,24 @@ def _resource_rows(payload, record, permissions, action, email, source):
         for field in EXECUTION_FIELDS + AREA_FIELDS + HR_FIELDS:
             value = row.get(field, "")
             normalized[field] = date_value(value, field) if field.endswith("Date") or field.endswith("Doj") else text(value, field)
+        _validate_resource_identifier("GSC PID", normalized["gscPid"], required=True)
+        _validate_resource_identifier("Deleted PID for Efficiency", normalized["deletedPid"])
+        _validate_resource_identifier("Requisition ID", normalized["requisitionId"])
+        _validate_resource_identifier("Area PID", normalized["areaPid"])
+        if normalized["areaApmmId"] and not APMM_ID_PATTERN.fullmatch(normalized["areaApmmId"]):
+            raise ValueError("Area APMM ID must contain exactly 3 letters followed by 3 numbers (for example ABC123).")
+        _validate_apmm_id(
+            normalized["apmmId"],
+            required=normalized["hiringStatus"] == "Onboarded",
+        )
         if normalized["jobLevel"] and normalized["jobLevel"] not in JOB_LEVELS:
             raise ValueError("Choose JL1, JL2, JL3 or JL4 for each resource.")
         if normalized["jobLevel"] == "JL4" and not source["finalFteByLevel"].get("JL4") and old.get("jobLevel") != "JL4":
             raise ValueError("JL4 is unavailable because Scope has no positive JL4 final agreement.")
         if normalized["hiringType"] not in HIRING_TYPES:
-            raise ValueError("Choose Efficiency, Backfill, External or IJP for each resource.")
+            raise ValueError("Choose Efficiency, Backfill, External, IJP, Intern or Temporary for each resource.")
+        if normalized["hiringType"] == "Temporary" and normalized["site"].strip() in {"Mumbai", "Chennai", "Pune"}:
+            raise ValueError("Temporary is unavailable for Mumbai, Chennai and Pune.")
         if normalized["language"] and normalized["language"] not in LANGUAGES:
             raise ValueError("Choose a language from the catalogue.")
         if normalized["hiringStatus"] not in HIRING_STATUSES + ["Not Applicable"]:

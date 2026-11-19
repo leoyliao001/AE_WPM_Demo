@@ -1,33 +1,4 @@
+import languageOptionsJson from '../../../backend/api/data/languageOptions.json'
+
 /** Languages commonly required across Maersk global operations & GSC regions */
-export const languageOptions = [
-  'English',
-  'Mandarin Chinese',
-  'Cantonese',
-  'Japanese',
-  'Korean',
-  'Vietnamese',
-  'Thai',
-  'Indonesian',
-  'Malay',
-  'Filipino (Tagalog)',
-  'Hindi',
-  'Tamil',
-  'Bengali',
-  'Arabic',
-  'French',
-  'German',
-  'Dutch',
-  'Danish',
-  'Norwegian',
-  'Swedish',
-  'Spanish',
-  'Portuguese',
-  'Polish',
-  'Russian',
-  'Turkish',
-  'Italian',
-  'Greek',
-  'Czech',
-  'Romanian',
-  'Ukrainian'
-]
+export const languageOptions = languageOptionsJson

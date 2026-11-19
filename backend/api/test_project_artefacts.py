@@ -67,11 +67,11 @@ class ProjectArtefactTests(TestCase):
     def resource(self, efficiency=False):
         return {
             "id": "position-1", "cohort": "", "site": "Pune", "hiringType": "Efficiency" if efficiency else "External",
-            "language": "English", "pidCreationDate": "2026-01-01", "gscPid": "GSC-001",
-            "deletedPid": "DEL-1" if efficiency else "", "jobLevel": "", "region": "EUR", "area": "EME", "country": "Egypt",
-            "areaPid": "AREA-001", "areaApmmId": "A-001", "releaseDate": "2027-01-01",
-            "requisitionId": "REQ-1", "hiringStatus": "Onboarded", "remarks": "Ready",
-            "tentativeDoj": "2027-01-01", "actualDoj": "2027-01-02", "apmmId": "APMM-1",
+            "language": "English", "pidCreationDate": "2026-01-01", "gscPid": "G101",
+            "deletedPid": "D201" if efficiency else "", "jobLevel": "", "region": "EUR", "area": "EME", "country": "Egypt",
+            "areaPid": "A401", "areaApmmId": "ABC123", "releaseDate": "2027-01-01",
+            "requisitionId": "R301", "hiringStatus": "Onboarded", "remarks": "Ready",
+            "tentativeDoj": "2027-01-01", "actualDoj": "2027-01-02", "apmmId": "ABC123",
         }
 
     def system(self, secured=True):
@@ -192,7 +192,7 @@ class ProjectArtefactTests(TestCase):
         unlock_event = next(event for event in reversed(response.data["auditLog"]) if event["action"] == "reopen")
         self.assertEqual(unlock_event["reason"], "Change plan")
         self.assertEqual(unlock_event["unlockChanges"][-1]["changes"], [{
-            "type": "field_updated", "positionId": "position-1", "position": "GSC-001",
+            "type": "field_updated", "positionId": "position-1", "position": "G101",
             "field": "Remarks", "from": "Ready", "to": "Updated after unlock",
         }])
         record = ProjectResources.objects.get(project=self.project)
@@ -230,13 +230,13 @@ class ProjectArtefactTests(TestCase):
         response = self.post("resources", "submit_area")
         self.assertEqual(response.status_code, 200, response.data)
         row = response.data["rows"][0]
-        self.assertEqual(self.post("resources", rows=[{**row, "areaPid": "bypass"}]).status_code, 400)
-        self.assertEqual(self.post("resources", rows=[{**row, "gscPid": "bypass"}]).status_code, 403)
+        self.assertEqual(self.post("resources", rows=[{**row, "areaPid": "A999"}]).status_code, 400)
+        self.assertEqual(self.post("resources", rows=[{**row, "gscPid": "G999"}]).status_code, 403)
         self.assertEqual(self.post("resources", rows=[]).status_code, 403)
         response = self.post("resources", "reopen_area", reason="Correct area")
         self.assertEqual(response.status_code, 200)
         row = response.data["rows"][0]
-        self.assertEqual(self.post("resources", rows=[{**row, "areaPid": "corrected"}]).status_code, 200)
+        self.assertEqual(self.post("resources", rows=[{**row, "areaPid": "A999"}]).status_code, 200)
 
     def test_efficiency_does_not_require_recruitment_and_preserves_actual_doj(self):
         response = self.post("resources", rows=[self.resource(True)])
@@ -256,6 +256,96 @@ class ProjectArtefactTests(TestCase):
         self.assertEqual(row["hiringStatus"], "Not Applicable")
         self.assertEqual(row["requisitionId"], "")
         self.assertEqual(row["tentativeDoj"], "")
+
+    def test_resources_language_options_match_intake_language_catalogue(self):
+        data = self.get("resources").data
+        self.assertIn("Mandarin Chinese", data["languages"])
+        self.assertIn("Vietnamese", data["languages"])
+        self.assertNotIn("Other", data["languages"])
+        response = self.post(
+            "resources",
+            rows=[{**self.resource(), "language": "Mandarin Chinese"}],
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+
+    def test_intern_and_temporary_are_recruitment_hiring_types(self):
+        self.project.default_location_strategies = ["Chengdu"]
+        self.project.save(update_fields=["default_location_strategies"])
+        for hiring_type in ("Intern", "Temporary"):
+            response = self.post(
+                "resources",
+                rows=[{**self.resource(), "site": "Chengdu", "hiringType": hiring_type}],
+            )
+            self.assertEqual(response.status_code, 200, response.data)
+            row = response.data["rows"][0]
+            self.assertEqual(row["hiringStatus"], "Onboarded")
+            self.assertEqual(row["requisitionId"], "R301")
+
+    def test_temporary_is_unavailable_for_restricted_gsc_sites(self):
+        for site in ("Mumbai", "Chennai", "Pune"):
+            response = self.post(
+                "resources",
+                rows=[{**self.resource(), "site": site, "hiringType": "Temporary"}],
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("Temporary is unavailable", response.data["error"])
+
+    def test_resource_identifier_format_validation(self):
+        valid = self.resource()
+        self.assertEqual(self.post("resources", rows=[valid]).status_code, 200)
+        for field, value in (
+            ("gscPid", "GSC-001"),
+            ("gscPid", "12G"),
+            ("deletedPid", "DEMO"),
+            ("requisitionId", "R-301"),
+        ):
+            row = {**valid, field: value}
+            if field == "deletedPid":
+                row["hiringType"] = "Efficiency"
+            response = self.post("resources", rows=[row])
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("one alphabet followed only by numbers", response.data["error"])
+
+    def test_apmm_id_format_validation(self):
+        valid = self.resource()
+        self.assertEqual(self.post("resources", rows=[valid]).status_code, 200)
+        for invalid in ("LYL18", "LYL118A", "LYL-118", "AB123", "123ABC", "A B123"):
+            response = self.post(
+                "resources",
+                rows=[{**valid, "apmmId": invalid}],
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("3 letters followed by 3 numbers", response.data["error"])
+        response = self.post(
+            "resources",
+            rows=[{**valid, "apmmId": "ABC123"}],
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_area_tab_field_format_validation(self):
+        valid = self.resource()
+        invalid_cases = (
+            ("areaPid", "AREA-001"),
+            ("areaApmmId", "A-001"),
+            ("releaseDate", "2027/01/01"),
+        )
+        for field, value in invalid_cases:
+            response = self.post(
+                "resources",
+                rows=[{**valid, field: value}],
+            )
+            self.assertEqual(response.status_code, 400)
+
+        response = self.post(
+            "resources",
+            rows=[{
+                **valid,
+                "areaPid": "A401",
+                "areaApmmId": "ABC123",
+                "releaseDate": "2027-01-01",
+            }],
+        )
+        self.assertEqual(response.status_code, 200)
 
     def test_resource_validation_is_atomic_and_scope_required(self):
         self.assertEqual(self.post("resources", rows=[self.resource()]).status_code, 200)

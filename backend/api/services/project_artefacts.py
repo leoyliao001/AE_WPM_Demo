@@ -1,6 +1,7 @@
 import hashlib
 import json
 from datetime import date
+from pathlib import Path
 
 from api.models import MigrationTeam, ScopeStatement, StakeholderRegistration
 from api.permissions.attributes_access import build_access_snapshot, normalize_email
@@ -21,9 +22,18 @@ IT_ITEMS = [
     {"id": "mfa", "label": "MFA token / authenticator"},
 ]
 BARRIER_TYPES = ["Licensing", "Permissions", "Hardware", "Network", "Security", "Other"]
-HIRING_TYPES = ["Efficiency", "Backfill", "External", "IJP"]
+HIRING_TYPES = ["Efficiency", "Backfill", "External", "IJP", "Intern", "Temporary"]
+HR_HIRING_TYPES = {"External", "IJP", "Intern", "Temporary"}
+TEMPORARY_RESTRICTED_SITES = {"Mumbai", "Chennai", "Pune"}
+
+
+def hiring_types_for_site(site):
+    if str(site).strip() in TEMPORARY_RESTRICTED_SITES:
+        return [value for value in HIRING_TYPES if value != "Temporary"]
+    return list(HIRING_TYPES)
 HIRING_STATUSES = ["Pending", "In Progress", "At Risk", "Onboarded"]
-LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese", "Danish", "Dutch", "Other"]
+with (Path(__file__).resolve().parent.parent / "data" / "languageOptions.json").open(encoding="utf-8") as source:
+    LANGUAGES = json.load(source)
 JOB_LEVELS = ["JL1", "JL2", "JL3", "JL4"]
 EXECUTION_FIELDS = ["cohort", "site", "hiringType", "language", "pidCreationDate", "gscPid", "deletedPid", "jobLevel"]
 AREA_FIELDS = ["region", "area", "country", "areaPid", "areaApmmId", "releaseDate"]
@@ -193,9 +203,10 @@ def resource_ready(rows, source):
     return bool(source["ready"] and len(rows) == source["population"] and all(
         row.get("site") and row.get("language") and row.get("gscPid") and row.get("pidCreationDate")
         and row.get("areaLockedAt") and row.get("actualDoj") and row.get("apmmId")
+        and not (row.get("hiringType") == "Temporary" and row.get("site") in TEMPORARY_RESTRICTED_SITES)
         and (row.get("hiringType") == "Efficiency" and row.get("deletedPid")
              or row.get("hiringType") == "Backfill"
-             or row.get("hiringType") in {"External", "IJP"} and row.get("hiringStatus") == "Onboarded" and row.get("requisitionId"))
+             or row.get("hiringType") in HR_HIRING_TYPES and row.get("hiringStatus") == "Onboarded" and row.get("requisitionId"))
         for row in rows
     ))
 

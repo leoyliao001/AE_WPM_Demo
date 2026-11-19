@@ -126,7 +126,7 @@
             {{ generatedRowsPending }} blank resource position{{ generatedRowsPending === 1 ? '' : 's' }} prepared to match Scope FTE. Save draft to keep them.
           </p>
           <p v-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
-          <p v-else-if="tab === 'hr'">HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency and Backfill positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
+          <p v-else-if="tab === 'hr'">HR / TAA updates are saved to the same positions and reflected in Execution. External, IJP, Intern and Temporary positions require recruitment. Efficiency and Backfill positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
               <p v-if="tab !== 'execution'" class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
           <div class="pa-toolbar">
             <input v-model="query" type="search" placeholder="Search positions, PID, APMM ID..." aria-label="Search resources" />
@@ -164,9 +164,49 @@
                     'pa-status--not_applicable': row.hiringStatus === 'Not Applicable',
                   }" :disabled="!canEdit || !requiresRecruitment(row.hiringType)" @click="editHiringStatus(row)">{{ row.hiringStatus }}</button>
                 </template>
-                <mc-select v-else-if="column.options && cellEditable(row, column.key)" :key="column.key === 'hiringType' ? `hiring-type-${row.id}-${row.hiringType}-${hiringTypeSelectRevision}` : `${column.key}-${row.id}`" :class="{ 'pa-compact-select': ['site', 'hiringType', 'language'].includes(column.key), 'pa-job-level-select': column.key === 'jobLevel', 'pa-status-select': column.key === 'hiringStatus' }" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
-                  <mc-option :class="{ 'pa-status-option': column.key === 'hiringStatus', 'pa-job-level-option': column.key === 'jobLevel' }" value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :class="{ 'pa-status-option': column.key === 'hiringStatus', 'pa-job-level-option': column.key === 'jobLevel' }" :value="option" :disabled="column.key === 'jobLevel' && option === 'JL4' && !jl4Available">{{ option }}</mc-option><mc-option v-if="column.key === 'site'" class="gsc-apply-option" :value="GSC_SITE_REQUEST_OPTION" divider>Apply new</mc-option>
+                <mc-select v-else-if="column.options && cellEditable(row, column.key)" :key="column.key === 'hiringType' ? `hiring-type-${row.id}-${row.hiringType}-${hiringTypeSelectRevision}` : `${column.key}-${row.id}`" :class="{ 'pa-compact-select': ['site', 'hiringType', 'language'].includes(column.key), 'pa-job-level-select': column.key === 'jobLevel', 'pa-status-select': column.key === 'hiringStatus' }" :label="column.label" hiddenlabel fit="small" width="full-width" :listsearch="column.key !== 'hiringType'" optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
+                  <mc-option :class="{ 'pa-status-option': column.key === 'hiringStatus', 'pa-job-level-option': column.key === 'jobLevel' }" value="">Select</mc-option><mc-option v-for="option in (column.key === 'hiringType' ? hiringTypeOptionsForRow(row) : column.options)" :key="option" :class="{ 'pa-status-option': column.key === 'hiringStatus', 'pa-job-level-option': column.key === 'jobLevel' }" :value="option" :disabled="column.key === 'jobLevel' && option === 'JL4' && !jl4Available">{{ option }}</mc-option><mc-option v-if="column.key === 'site'" class="gsc-apply-option" :value="GSC_SITE_REQUEST_OPTION" divider>Apply new</mc-option>
                 </mc-select>
+                <input v-else-if="cellEditable(row, column.key) && column.date"
+                  :value="formatResourceDate(row[column.key])"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="dd/mm/yyyy"
+                  :aria-label="column.label"
+                  maxlength="10"
+                  @input="updateResourceDate(row, column.key, $event)" />
+                <input v-else-if="cellEditable(row, column.key) && ['gscPid', 'deletedPid', 'requisitionId'].includes(column.key)"
+                  v-model="row[column.key]"
+                  type="text"
+                  pattern="[A-Za-z][0-9]+"
+                  title="Start with one alphabet followed only by numbers, for example G101"
+                  :aria-label="column.label"
+                  maxlength="128"
+                  @input="validateResourceIdentifier(row, column.key, $event)" />
+                <input v-else-if="cellEditable(row, column.key) && column.key === 'apmmId'"
+                  v-model="row[column.key]"
+                  type="text"
+                  pattern="[A-Za-z]{3}[0-9]{3}"
+                  title="Enter exactly 3 letters followed by 3 numbers, for example ABC123"
+                  :aria-label="column.label"
+                  maxlength="6"
+                  @input="validateApmmId(row, column.key, $event)" />
+                <input v-else-if="cellEditable(row, column.key) && column.key === 'areaApmmId'"
+                  v-model="row[column.key]"
+                  type="text"
+                  pattern="[A-Za-z]{3}[0-9]{3}"
+                  title="Enter exactly 3 letters followed by 3 numbers, for example ABC123"
+                  :aria-label="column.label"
+                  maxlength="6"
+                  @input="validateApmmId(row, column.key, $event)" />
+                <input v-else-if="cellEditable(row, column.key) && column.key === 'areaPid'"
+                  v-model="row[column.key]"
+                  type="text"
+                  pattern="[A-Za-z][0-9]+"
+                  title="Start with one alphabet followed only by numbers, for example A101"
+                  :aria-label="column.label"
+                  maxlength="128"
+                  @input="validateResourceIdentifier(row, column.key, $event)" />
                 <input v-else-if="cellEditable(row, column.key)" v-model="row[column.key]" :type="column.date ? 'date' : 'text'" :aria-label="column.label" maxlength="500" />
                 <span v-else>{{ row[column.key] || '—' }}</span>
               </td>
@@ -317,7 +357,17 @@ const sites = computed(() => [...new Set([...(record.value?.sites || []), ...(re
 const resourceRows = computed(() => record.value?.rows || [])
 const executionRows = computed(() => resourceRows.value)
 const areaRows = computed(() => resourceRows.value)
-const requiresRecruitment = hiringType => !['Efficiency', 'Backfill'].includes(hiringType)
+const HR_HIRING_TYPES = ['External', 'IJP', 'Intern', 'Temporary']
+const requiresRecruitment = hiringType => HR_HIRING_TYPES.includes(hiringType)
+const TEMPORARY_RESTRICTED_SITES = ['Mumbai', 'Chennai', 'Pune']
+function hiringTypeOptionsForRow(row) {
+  if (!record.value) return []
+  const options = record.value.hiringTypes || []
+  if (TEMPORARY_RESTRICTED_SITES.includes(row.site)) {
+    return options.filter(option => option !== 'Temporary')
+  }
+  return options
+}
 const hrRows = computed(() => resourceRows.value.filter(row => requiresRecruitment(row.hiringType)))
 const scopeFtes = computed(() => record.value?.source?.ready ? record.value.source.population : null)
 const countRows = (rows, predicate) => rows.filter(predicate).length
@@ -365,8 +415,8 @@ const metricCards = {
   hr: () => [
     {
       label: 'Hiring Required',
-      value: `${countRows(executionRows.value, row => row.hiringType === 'External' || row.hiringType === 'IJP')} / ${record.value?.source?.population ?? '—'}`,
-      note: 'Execution rows with Hiring Type External or IJP / confirmed Scope population',
+      value: `${countRows(executionRows.value, row => HR_HIRING_TYPES.includes(row.hiringType))} / ${record.value?.source?.population ?? '—'}`,
+      note: 'Execution rows with Hiring Type External, IJP, Intern or Temporary / confirmed Scope population',
     },
     {
       label: 'Efficiency/Backfill FTEs',
@@ -375,8 +425,8 @@ const metricCards = {
     },
     {
       label: 'Onboarding Completed',
-      value: `${countRows(hrRows.value, row => row.hiringStatus === 'Onboarded')} / ${countRows(executionRows.value, row => row.hiringType === 'External' || row.hiringType === 'IJP')}`,
-      note: 'Non-Efficiency rows with Hiring Status Onboarded / Execution rows with Hiring Type External or IJP',
+      value: `${countRows(hrRows.value, row => row.hiringStatus === 'Onboarded')} / ${countRows(executionRows.value, row => HR_HIRING_TYPES.includes(row.hiringType))}`,
+      note: 'Recruitment rows with Hiring Status Onboarded / Execution rows with External, IJP, Intern or Temporary',
     },
     { label: 'AT Risk', value: atRisk(hrRows.value), note: 'Non-Efficiency rows with Hiring Status set to At Risk', risk: true },
   ],
@@ -405,7 +455,11 @@ const areaColumns = [
   { key: 'region', label: 'Region' }, { key: 'area', label: 'Area' }, { key: 'country', label: 'Country' },
   { key: 'areaPid', label: 'Area PID' }, { key: 'areaApmmId', label: 'Area APMM ID' }, { key: 'releaseDate', label: 'Release Date', date: true },
 ]
-const columns = computed(() => tab.value === 'area' ? areaColumns : tab.value === 'hr' ? [...baseColumns.value, ...hrColumns.value] : executionColumns.value)
+const columns = computed(() => tab.value === 'area'
+  ? areaColumns
+  : tab.value === 'hr'
+    ? [...baseColumns.value.filter(column => column.key !== 'hiringType'), ...hrColumns.value]
+    : executionColumns.value)
 const visibleRows = computed(() => (record.value?.rows || []).filter(row =>
   (tab.value !== 'hr' || requiresRecruitment(row.hiringType)) && (!siteFilter.value || row.site === siteFilter.value) &&
   (!statusFilter.value || row.hiringStatus === statusFilter.value) && Object.values(row).join(' ').toLowerCase().includes(query.value.toLowerCase())))
@@ -522,6 +576,56 @@ function auditChangeText(change) {
   if (change.type === 'position_removed') return `Removed position ${change.position} (${change.positionId})`
   return `${change.position} · ${change.field}: ${change.from || '—'} → ${change.to || '—'}`
 }
+function validateResourceIdentifier(row, key, event) {
+  const value = String(row[key] || '').trim()
+  const valid = !value || /^[A-Za-z][0-9]+$/.test(value)
+  event.target.setCustomValidity(valid ? '' : 'Start with one alphabet followed only by numbers, for example G101.')
+  if (!valid) event.target.reportValidity()
+}
+function validateApmmId(row, key, event) {
+  const value = String(row[key] || '').trim()
+  const valid = !value || /^[A-Za-z]{3}[0-9]{3}$/.test(value)
+  event.target.setCustomValidity(valid ? '' : 'APMM ID must contain exactly 3 letters followed by 3 numbers, for example ABC123.')
+  if (!valid) event.target.reportValidity()
+}
+function formatResourceDate(value) {
+  if (!value) return ''
+  const iso = String(value).trim()
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : ''
+}
+function updateResourceDate(row, key, event) {
+  const raw = String(event.target.value || '').trim()
+  if (!raw) {
+    row[key] = ''
+    return
+  }
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw)
+  if (!match) {
+    event.target.setCustomValidity('Enter date in dd/mm/yyyy format.')
+    event.target.reportValidity()
+    return
+  }
+  const [, day, month, year] = match
+  const iso = `${year}-${month}-${day}`
+  const parsed = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== iso) {
+    event.target.setCustomValidity('Enter a valid date.')
+    event.target.reportValidity()
+    return
+  }
+  event.target.setCustomValidity('')
+  row[key] = iso
+  event.target.value = `${day}/${month}/${year}`
+}
+function formatIsoFromDisplay(value) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(value).trim())
+  if (!match) return ''
+  const [, day, month, year] = match
+  const iso = `${year}-${month}-${day}`
+  const parsed = new Date(`${iso}T00:00:00`)
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== iso ? '' : iso
+}
 function selectCellOption(row, key, event) {
   const value = event.detail?.value ?? event.currentTarget.value
   if (key === 'site' && value === GSC_SITE_REQUEST_OPTION) {
@@ -530,6 +634,9 @@ function selectCellOption(row, key, event) {
     return
   }
   if (row[key] === value) return
+  if (key === 'site' && TEMPORARY_RESTRICTED_SITES.includes(value) && row.hiringType === 'Temporary') {
+    row.hiringType = ''
+  }
   if (key === 'hiringType' && ['Efficiency', 'Backfill'].includes(value)) {
     pendingHiringTypeChange.value = {
       row,
@@ -687,7 +794,7 @@ function cohortColor(index) {
   return cohortPalette[index % cohortPalette.length]
 }
 function cohortSummary(rows) {
-  const recruitmentRows = rows.filter(row => !['Efficiency', 'Backfill'].includes(row.hiringType))
+  const recruitmentRows = rows.filter(row => HR_HIRING_TYPES.includes(row.hiringType))
   const onboarded = recruitmentRows.filter(row => row.hiringStatus === 'Onboarded').length
   return `Onboarded ${onboarded} / ${recruitmentRows.length} · Efficiency / Backfill ${rows.length - recruitmentRows.length}`
 }
@@ -825,9 +932,9 @@ function exportData() {
   try {
     const execution = executionColumns.value
     exportArtefact(record.value, 'resources', [
-      ['Execution', [['Position ID', ...execution.map(column => column.label)], ...record.value.rows.map(row => [row.id, ...execution.map(column => row[column.key])])]],
-      ['Area', [['Position ID', ...areaColumns.map(column => column.label), 'Submitted at', 'Submitted by'], ...record.value.rows.map(row => [row.id, ...areaColumns.map(column => row[column.key]), row.areaLockedAt, row.areaLockedBy])]],
-      ['HR TAA', [['Position ID', ...hrColumns.value.map(column => column.label)], ...record.value.rows.filter(row => requiresRecruitment(row.hiringType)).map(row => [row.id, ...hrColumns.value.map(column => row[column.key])])]],
+      ['Execution', [['Position ID', ...execution.map(column => column.label)], ...record.value.rows.map(row => [row.id, ...execution.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key])])]],
+      ['Area', [['Position ID', ...areaColumns.map(column => column.label), 'Submitted at', 'Submitted by'], ...record.value.rows.map(row => [row.id, ...areaColumns.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key]), row.areaLockedAt, row.areaLockedBy])]],
+      ['HR TAA', [['Position ID', ...hrColumns.value.map(column => column.label)], ...record.value.rows.filter(row => requiresRecruitment(row.hiringType)).map(row => [row.id, ...hrColumns.value.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key])])]],
     ])
     success.value = 'Excel export generated. All resource positions are included.'
   } catch (caught) { error.value = `Unable to export: ${caught.message}` }
@@ -852,9 +959,16 @@ async function downloadImportTemplate() {
     worksheet.columns = [{ width: 38 }, ...importColumns.map(column => ({ width: columnWidths[column.key] || 20 }))]
     worksheet.addRows(Array.from({ length: 1000 }, () => Array(headers.length).fill(null)))
     const fieldColumnNumber = key => importColumns.findIndex(column => column.key === key) + 2
-    const dateColumnNumber = fieldColumnNumber('pidCreationDate')
-    if (dateColumnNumber === 1) throw new Error('Execution date column is unavailable.')
-    for (let row = 2; row <= 1001; row += 1) worksheet.getCell(row, dateColumnNumber).numFmt = 'yyyy-mm-dd'
+    for (const dateKey of ['pidCreationDate']) {
+      const dateColumnNumber = fieldColumnNumber(dateKey)
+      if (dateColumnNumber === 1) throw new Error(`Execution date column ${dateKey} is unavailable.`)
+      const dateLetter = worksheet.getColumn(dateColumnNumber).letter
+      for (let row = 2; row <= 1001; row += 1) worksheet.getCell(row, dateColumnNumber).numFmt = 'dd/mm/yyyy'
+      worksheet.dataValidations.add(`${dateLetter}2:${dateLetter}1001`, {
+        type: 'date', operator: 'between', formulae: [1, 2958465], allowBlank: true,
+        showErrorMessage: true, errorTitle: 'Invalid date', error: 'Enter a valid date in dd/mm/yyyy format.',
+      })
+    }
 
     const dropdownFields = [
       { key: 'site', name: 'GscSites' },
@@ -886,12 +1000,6 @@ async function downloadImportTemplate() {
       showErrorMessage: true, errorTitle: `Invalid ${label}`, error: `Select a ${label} from the dropdown list.`,
       })
     })
-    const dateLetter = worksheet.getColumn(dateColumnNumber).letter
-    worksheet.dataValidations.add(`${dateLetter}2:${dateLetter}1001`, {
-      type: 'date', operator: 'between', formulae: [1, 2958465], allowBlank: true,
-      showErrorMessage: true, errorTitle: 'Invalid date', error: 'Enter a valid date in yyyy-mm-dd format.',
-    })
-
     const buffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
@@ -931,10 +1039,34 @@ async function importData(event) {
       let row = updated.find(item => item.id === id)
       if (!row) { row = { ...newRow(), id }; updated.push(row) }
       for (const column of allowed) {
-        if (column.label in data) row[column.key] = String(data[column.label]).trim()
+        if (column.label in data) {
+          const value = String(data[column.label]).trim()
+          if (column.key === 'pidCreationDate') {
+            if (value.includes('/')) {
+              const iso = formatIsoFromDisplay(value)
+              if (!iso) throw new Error('PID Creation Date must be valid in dd/mm/yyyy format.')
+              row[column.key] = iso
+            } else {
+              row[column.key] = value
+            }
+          } else {
+            row[column.key] = value
+          }
+        }
       }
       if (!record.value.hiringTypes.includes(row.hiringType)) throw new Error('Invalid hiring type in workbook.')
+      if (row.hiringType === 'Temporary' && TEMPORARY_RESTRICTED_SITES.includes(row.site)) {
+        throw new Error('Temporary is unavailable for Mumbai, Chennai and Pune.')
+      }
       if (row.language && !record.value.languages.includes(row.language)) throw new Error('Invalid language in workbook.')
+      for (const [key, label] of [['gscPid', 'GSC PID'], ['deletedPid', 'Deleted PID for Efficiency'], ['requisitionId', 'Requisition ID']]) {
+        if (row[key] && !/^[A-Za-z][0-9]+$/.test(row[key])) {
+          throw new Error(`${label} must start with one alphabet followed only by numbers (for example G101).`)
+        }
+      }
+      if (row.apmmId && !/^[A-Za-z]{3}[0-9]{3}$/.test(row.apmmId)) {
+        throw new Error('APMM ID must contain exactly 3 letters followed by 3 numbers (for example ABC123).')
+      }
       if (row.jobLevel && !jobLevels.includes(row.jobLevel)) throw new Error('Invalid JL value in workbook. Choose JL1, JL2, JL3 or JL4.')
       if (row.jobLevel === 'JL4' && !jl4Available.value) throw new Error('JL4 cannot be imported because Scope has no positive JL4 final agreement.')
       changeHiringType(row)
