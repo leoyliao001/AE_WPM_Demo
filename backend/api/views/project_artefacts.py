@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import AccessEnablement, ApprovalWorkflow, BusinessCase, MigrationIntakeSubmission, ProjectResources, StakeholderRegistration
+from api.models import AccessEnablement, ApprovalWorkflow, BusinessCase, MigrationIntakeSubmission, MigrationTeam, ProjectResources, StakeholderRegistration
 from api.permissions.attributes_access import build_access_snapshot, get_request_email, normalize_email
 from api.services.business_case import approval_progress, build_business_case, case_status, online_case_is_approved
 from api.services.project_artefacts import (
@@ -78,6 +78,32 @@ def _serialize(project, record, kind, email):
     if kind == "resources":
         rows = record.rows if record else []
         ready = resource_ready(rows, source)
+        registration = StakeholderRegistration.objects.filter(project=project).first()
+        manager_details = []
+        if registration:
+            members_by_id = {
+                str(person.get("id") or ""): person
+                for person in (registration.team_members or [])
+                if isinstance(person, dict)
+            }
+            manager_directory = {
+                f"migration-team-{manager.pk}": {
+                    "fullName": normalize_email(manager.email).split("@", 1)[0].replace(".", " ").title(),
+                    "email": normalize_email(manager.email),
+                }
+                for manager in MigrationTeam.objects.filter(role="Manager")
+            }
+            assignment = (registration.assignments or {}).get("migration_manager", {})
+            if isinstance(assignment, dict):
+                assignment_locked = bool(assignment.get("lockedAt"))
+                for person_id in assignment.get("personIds", []) if isinstance(assignment.get("personIds"), list) else []:
+                    person = members_by_id.get(str(person_id)) or manager_directory.get(str(person_id))
+                    if person:
+                        manager_details.append({
+                            "name": str(person.get("fullName") or "").strip(),
+                            "email": normalize_email(person.get("email")),
+                            "locked": assignment_locked,
+                        })
         result.update({
             "rows": rows, "ready": ready, "hiringTypes": HIRING_TYPES,
             "hiringStatuses": HIRING_STATUSES, "languages": LANGUAGES,
@@ -86,6 +112,7 @@ def _serialize(project, record, kind, email):
             "gscSiteRequestOptions": all_location_strategy_options(),
             "gscSiteRequests": project_gsc_site_requests(project),
             "migrationManagers": migration_manager_emails(project),
+            "migrationManagerDetails": manager_details,
             "status": "needs_review" if changed and result["frozen"] else "confirmed" if result["frozen"] else "ready" if ready else "draft",
         })
     else:

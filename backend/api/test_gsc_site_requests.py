@@ -67,6 +67,9 @@ class GscSiteRequestTests(TestCase):
         self.assertNotIn("Brazil", resources["gscSiteOptions"])
         self.assertIn("Chengdu", resources["gscSiteRequestOptions"])
         self.assertIn("Brazil", resources["gscSiteRequestOptions"])
+        self.assertEqual(resources["migrationManagerDetails"][0]["name"], "Migration Manager")
+        self.assertEqual(resources["migrationManagerDetails"][0]["email"], "manager@example.com")
+        self.assertTrue(resources["migrationManagerDetails"][0]["locked"])
 
         response = self.create_request()
         request_id = response.data["gsc_request_id"]

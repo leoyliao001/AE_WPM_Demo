@@ -255,6 +255,20 @@
       </mc-dialog>
       <mc-dialog class="gsc-request-dialog" :open="gscRequestDialogOpen" heading="Request another GSC Site" dimension="small" showclosebutton @closing="closeGscRequestDialog">
         <p>The request will be sent to the Migration Manager assigned to this project. The site becomes selectable after approval.</p>
+        <div class="gsc-request-approvers" aria-label="Migration Manager approver">
+          <span class="gsc-request-approvers__label">Approve by</span>
+          <div v-if="record?.migrationManagerDetails?.length" class="gsc-request-approvers__list">
+            <div v-for="manager in record.migrationManagerDetails" :key="manager.email" class="gsc-request-approver">
+              <span class="gsc-request-approver__avatar">{{ manager.name ? manager.name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase() : 'MM' }}</span>
+              <span class="gsc-request-approver__identity">
+                <strong>{{ manager.name || 'Migration Manager' }}</strong>
+                <small>{{ manager.email }}</small>
+              </span>
+              <span v-if="manager.locked" class="gsc-request-approver__locked">Locked</span>
+            </div>
+          </div>
+          <p v-else class="gsc-request-approvers__empty">No locked Migration Manager is assigned.</p>
+        </div>
         <mc-multi-select class="gsc-site-request-select" label="GSC Site *" :value.prop="gscRequestSites" listsearch fit="medium" width="full-width" optionsheight="320px" placeholder="Select one or more GSC Sites" @optionselected="selectGscRequestSites">
           <mc-option v-for="option in gscSiteRequestOptions" :key="option" :value="option">{{ option }}</mc-option>
         </mc-multi-select>
@@ -1096,6 +1110,16 @@ async function importData(event) {
 .unlock-dialog__error { color: #a3332c; font-size: 12px; margin: 8px 0 0; }
 .unlock-dialog__actions { align-items: center; display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 .gsc-request-dialog__actions mc-button { --mc-button-height: 32px; min-width: 84px; }
+.gsc-request-approvers { background: #f5f9fb; border: 1px solid #dce9ef; border-radius: 8px; margin-top: 14px; padding: 10px 12px; }
+.gsc-request-approvers__label { color: #526d7f; display: block; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+.gsc-request-approvers__list { display: grid; gap: 7px; }
+.gsc-request-approver { align-items: center; background: #fff; border: 1px solid #e1eaee; border-radius: 7px; display: flex; gap: 8px; min-height: 42px; padding: 7px 8px; }
+.gsc-request-approver__avatar { align-items: center; background: #dff1f7; border-radius: 50%; color: #0073ab; display: flex; flex: 0 0 30px; height: 30px; justify-content: center; width: 30px; font-size: 10px; font-weight: 700; }
+.gsc-request-approver__identity { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.gsc-request-approver__identity strong { color: #173747; font-size: 11px; line-height: 1.25; }
+.gsc-request-approver__identity small { color: #607989; font-size: 10px; overflow-wrap: anywhere; }
+.gsc-request-approver__locked { background: #e5f4ed; border-radius: 10px; color: #176345; font-size: 9px; font-weight: 700; padding: 3px 7px; }
+.gsc-request-approvers__empty { color: #a3332c; font-size: 11px; margin: 0; }
 .hiring-type-change-dialog { align-items: flex-start; display: flex; gap: 12px; background: #f5f9fb; border: 1px solid #dce9ef; border-radius: 8px; color: #526d7f; margin-top: 14px; padding: 14px; }
 .hiring-type-change-dialog__icon { align-items: center; background: #dff1f7; border-radius: 50%; color: #0073ab; display: flex; flex: 0 0 36px; height: 36px; justify-content: center; width: 36px; }
 .hiring-type-change-dialog__content { min-width: 0; }
