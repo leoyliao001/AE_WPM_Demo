@@ -924,6 +924,7 @@ const toRow = (r) => {
       gscApprovers: r.gscApprovers || [],
       gscDecidedBy: r.gscDecidedBy || '',
       gscDecidedAt: r.gscDecidedAt || '',
+      gscReviewUrl: r.gscReviewUrl || '',
     }
   }
   if (r.request_kind === 'fpo_catalogue') {

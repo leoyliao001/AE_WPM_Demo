@@ -797,7 +797,11 @@ async function submitGscRequest() {
     await load()
     success.value = 'GSC Site request submitted to the project Migration Manager.'
   } catch (caught) {
-    gscRequestError.value = caught.response?.data?.error || 'Unable to submit the GSC Site request.'
+    const status = caught.response?.status
+    const detail = caught.response?.data?.error
+    gscRequestError.value = status === 404
+      ? 'GSC Site request service is not deployed yet. Contact the platform administrator.'
+      : detail || 'Unable to submit the GSC Site request.'
   } finally {
     gscRequestBusy.value = false
   }

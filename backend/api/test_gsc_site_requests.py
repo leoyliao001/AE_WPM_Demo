@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from api.models import (
@@ -153,3 +153,65 @@ class GscSiteRequestTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("Migration Intake", response.data["error"])
+
+    @override_settings(
+        SENDGRID_API_KEY="test-key",
+        DEFAULT_FROM_EMAIL="noreply@example.com",
+        DJANGO_PUBLIC_BASE_URL="https://wpmpulse.crb.apmoller.net",
+    )
+    def test_sendgrid_request_email_contains_direct_approval_links(self):
+        from unittest.mock import Mock, patch
+        from api.views.gsc_site_requests import _send_request_batch_email
+
+        response = self.create_request()
+        item = GscSiteRequest.objects.get(pk=response.data["gsc_request_id"])
+        with patch(
+            "api.views.gsc_site_requests.requests.post",
+            return_value=Mock(status_code=202),
+        ) as send:
+            _send_request_batch_email([item])
+
+        request = send.call_args.kwargs["json"]
+        direct_url = f"https://wpmpulse.crb.apmoller.net/approval-cycle?gsc_request={item.pk}"
+        self.assertEqual(
+            request["personalizations"][0]["to"],
+            [{"email": "manager@example.com"}],
+        )
+        self.assertIn(direct_url, request["content"][0]["value"])
+        self.assertIn(direct_url, request["content"][1]["value"])
+        self.assertIn("GSC Site approval required", request["content"][1]["value"])
+
+    @override_settings(
+        SENDGRID_API_KEY="test-key",
+        DEFAULT_FROM_EMAIL="noreply@example.com",
+        DJANGO_PUBLIC_BASE_URL="https://wpmpulse.crb.apmoller.net",
+    )
+    def test_sendgrid_decision_email_contains_direct_review_link(self):
+        from unittest.mock import Mock, patch
+        from api.views.gsc_site_requests import _send_decision_email
+
+        item = GscSiteRequest.objects.create(
+            project=self.project,
+            site="Brazil",
+            requested_by="owner@example.com",
+            approver_emails=["manager@example.com"],
+            request_comment="Need additional coverage.",
+            status="approved",
+            decision_comment="Approved for this project.",
+            decided_by="manager@example.com",
+        )
+        with patch(
+            "api.views.gsc_site_requests.requests.post",
+            return_value=Mock(status_code=202),
+        ) as send:
+            _send_decision_email(item)
+
+        request = send.call_args.kwargs["json"]
+        direct_url = f"https://wpmpulse.crb.apmoller.net/approval-cycle?gsc_request={item.pk}"
+        self.assertEqual(
+            request["personalizations"][0]["to"],
+            [{"email": "owner@example.com"}],
+        )
+        self.assertIn(direct_url, request["content"][0]["value"])
+        self.assertIn(direct_url, request["content"][1]["value"])
+        self.assertIn("Approved", request["content"][1]["value"])

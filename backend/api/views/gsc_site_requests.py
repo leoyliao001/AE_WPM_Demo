@@ -1,4 +1,5 @@
 from functools import lru_cache
+import logging
 
 from django.conf import settings
 from django.db import DatabaseError, connection, transaction
@@ -13,6 +14,8 @@ from api.models import GscSiteRequest, MigrationIntakeSubmission, StakeholderReg
 from api.permissions.attributes_access import get_request_email, is_super_admin, normalize_email
 from api.services.intake_options import all_location_strategy_options
 from api.services.project_artefacts import migration_manager_emails, project_permissions
+
+logger = logging.getLogger(__name__)
 
 SITE_LIMIT = 128
 COMMENT_LIMIT = 2000
@@ -41,6 +44,7 @@ def _serialize(item, email):
     ]
     completed = item.status in {"approved", "rejected"}
     normalized_email = normalize_email(email)
+    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "https://wpmpulse.crb.apmoller.net").rstrip("/")
     return {
         "request_kind": "gsc_site",
         "gsc_request_id": item.pk,
@@ -68,6 +72,7 @@ def _serialize(item, email):
         "gscApprovers": approvers,
         "gscDecidedBy": item.decided_by,
         "gscDecidedAt": item.decided_at.isoformat() if item.decided_at else "",
+        "gscReviewUrl": f"{base_url}/approval-cycle?gsc_request={item.pk}",
     }
 
 
@@ -104,7 +109,7 @@ def list_gsc_site_requests(email, scope):
         return []
     items = GscSiteRequest.objects.select_related("project").all()
     normalized_email = normalize_email(email)
-    if scope != "all":
+    if scope != "all" and not is_super_admin(email):
         items = [
             item
             for item in items
@@ -151,14 +156,29 @@ def _send_request_email(item):
 
 def _send_request_batch_email(items):
     item = items[0]
-    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "").rstrip("/")
-    review_url = f"{base_url}/approval-cycle?gsc_request={item.pk}"
+    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "https://wpmpulse.crb.apmoller.net").rstrip("/")
+    review_links = [
+        (entry.site, f"{base_url}/approval-cycle?gsc_request={entry.pk}")
+        for entry in items
+    ]
     subject = f"GSC Site approval requested for {item.project.migration_request_id}"
     site_names = [entry.site for entry in items]
     site_text = ", ".join(site_names)
     site_rows = "".join(
-        f"<tr><th align='left'>Requested GSC Site {index}</th><td>{escape(site)}</td></tr>"
-        for index, site in enumerate(site_names, start=1)
+        "<tr>"
+        "<th align='left' style='padding:8px 10px;border:1px solid #dce5e8;'>Requested GSC Site</th>"
+        f"<td style='padding:8px 10px;border:1px solid #dce5e8;'>{escape(site)}</td>"
+        "</tr>"
+        for site in site_names
+    )
+    review_rows = "".join(
+        "<tr>"
+        "<td style='padding:10px 0;'>"
+        f"<strong>{escape(site)}</strong><br>"
+        f"<a href='{escape(url)}' style='color:#0073ab;text-decoration:none;'>Open approval for {escape(site)}</a>"
+        "</td>"
+        "</tr>"
+        for site, url in review_links
     )
     text_body = "\n".join([
         "A project-specific GSC Site request requires Migration Manager review.",
@@ -169,28 +189,38 @@ def _send_request_batch_email(items):
         f"Requested by: {item.requested_by}",
         f"Reason: {item.request_comment}",
         "",
-        f"Review this request in Approval Cycle: {review_url}",
+        *[f"{site}: {url}" for site, url in review_links],
+        "",
         "The site will become available on the project Resources page only after approval.",
     ])
     html_body = f"""
-        <p>A project-specific GSC Site request requires Migration Manager review.</p>
-        <table>
-            <tr><th align="left">Project</th><td>{escape(item.project.project_name)}</td></tr>
-            <tr><th align="left">Migration Request ID</th><td>{escape(item.project.migration_request_id)}</td></tr>
-            {site_rows}
-            <tr><th align="left">Requested by</th><td>{escape(item.requested_by)}</td></tr>
-            <tr><th align="left">Reason</th><td>{escape(item.request_comment)}</td></tr>
-        </table>
-        <p><a href="{escape(review_url)}">Open Approval Cycle to review this request</a></p>
-        <p>The site will become available on the project Resources page only after approval.</p>
+        <div style="font-family:Segoe UI,Arial,sans-serif;color:#173747;background:#f5f8fa;padding:24px;">
+          <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #dce5e8;border-top:4px solid #42b0d5;border-radius:8px;">
+            <div style="padding:20px 24px;">
+              <h2 style="margin:0 0 8px;font-size:20px;color:#173747;">GSC Site approval required</h2>
+              <p style="margin:0 0 18px;font-size:14px;color:#526d7f;">A project-specific GSC Site request requires Migration Manager review.</p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+                <tr><th align="left" style="width:180px;padding:8px 10px;border:1px solid #dce5e8;">Project</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.project.project_name)}</td></tr>
+                <tr><th align="left" style="padding:8px 10px;border:1px solid #dce5e8;">Migration Request ID</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.project.migration_request_id)}</td></tr>
+                {site_rows}
+                <tr><th align="left" style="padding:8px 10px;border:1px solid #dce5e8;">Requested by</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.requested_by)}</td></tr>
+                <tr><th align="left" style="padding:8px 10px;border:1px solid #dce5e8;">Reason</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.request_comment)}</td></tr>
+              </table>
+              <table cellpadding="0" cellspacing="0" style="margin-top:18px;font-size:13px;">{review_rows}</table>
+              <p style="margin:16px 0 0;font-size:12px;color:#526d7f;">The site will become available on the project Resources page only after approval.</p>
+            </div>
+          </div>
+        </div>
     """
     _send_email(item.approver_emails, subject, text_body, html_body)
 
 
 def _send_decision_email(item):
-    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "").rstrip("/")
+    base_url = getattr(settings, "DJANGO_PUBLIC_BASE_URL", "https://wpmpulse.crb.apmoller.net").rstrip("/")
     review_url = f"{base_url}/approval-cycle?gsc_request={item.pk}"
     decision = "approved" if item.status == "approved" else "rejected"
+    status_color = "#176345" if item.status == "approved" else "#a3332c"
+    status_label = "Approved" if item.status == "approved" else "Rejected"
     subject = f"GSC Site request {decision} for {item.project.migration_request_id}"
     text_body = "\n".join([
         f"Your request to add {item.site} has been {decision}.",
@@ -202,7 +232,24 @@ def _send_decision_email(item):
         "",
         f"Open the request in Approval Cycle: {review_url}",
     ])
-    _send_email([item.requested_by], subject, text_body, text_body.replace("\n", "<br>"))
+    html_body = f"""
+        <div style="font-family:Segoe UI,Arial,sans-serif;color:#173747;background:#f5f8fa;padding:24px;">
+          <div style="max-width:640px;margin:auto;background:#fff;border:1px solid #dce5e8;border-top:4px solid #42b0d5;border-radius:8px;">
+            <div style="padding:20px 24px;">
+              <h2 style="margin:0 0 8px;font-size:20px;color:{status_color};">GSC Site request {status_label}</h2>
+              <p style="margin:0 0 18px;font-size:14px;color:#526d7f;">Your request to add <strong>{escape(item.site)}</strong> has been {decision}.</p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+                <tr><th align="left" style="width:180px;padding:8px 10px;border:1px solid #dce5e8;">Project</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.project.project_name)}</td></tr>
+                <tr><th align="left" style="padding:8px 10px;border:1px solid #dce5e8;">Migration Request ID</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.project.migration_request_id)}</td></tr>
+                <tr><th align="left" style="padding:8px 10px;border:1px solid #dce5e8;">Migration Manager comment</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.decision_comment or 'No additional comment.')}</td></tr>
+                <tr><th align="left" style="padding:8px 10px;border:1px solid #dce5e8;">Reviewed by</th><td style="padding:8px 10px;border:1px solid #dce5e8;">{escape(item.decided_by)}</td></tr>
+              </table>
+              <p style="margin:18px 0 0;"><a href="{escape(review_url)}" style="display:inline-block;background:#0073ab;color:#fff;border-radius:5px;padding:9px 14px;text-decoration:none;font-size:13px;">Open Approval Cycle</a></p>
+            </div>
+          </div>
+        </div>
+    """
+    _send_email([item.requested_by], subject, text_body, html_body)
 
 
 @api_view(["POST"])
@@ -341,6 +388,7 @@ def decide_gsc_site_request(request, request_id):
     notification_sent = True
     try:
         _send_decision_email(item)
-    except Exception:
+    except Exception as exc:
         notification_sent = False
+        logger.exception("GSC Site decision notification failed for request %s: %s", item.pk, exc)
     return Response({"status": "success", "row": row, "notification_sent": notification_sent})
