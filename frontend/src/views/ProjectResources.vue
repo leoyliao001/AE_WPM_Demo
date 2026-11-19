@@ -126,7 +126,7 @@
             {{ generatedRowsPending }} blank resource position{{ generatedRowsPending === 1 ? '' : 's' }} prepared to match Scope FTE. Save draft to keep them.
           </p>
           <p v-if="tab === 'area'">Intake location is prefilled for new positions. Enter Area PID, Area APMM ID and release date, then submit to secure the sending-area details.</p>
-          <p v-else-if="tab === 'hr'">HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
+          <p v-else-if="tab === 'hr'">HR / TAA updates are saved to the same positions and reflected in Execution. Efficiency and Backfill positions do not require recruitment; their Actual DOJ and APMM ID are maintained in Execution.</p>
               <p v-if="tab !== 'execution'" class="pa-note">Execution and HR / TAA editing: Requestor, locked WPM Focal or Resources administrator. Area editing: the same users or a locked Area POC. Other Project Team members have read-only access. Reminder links open an email draft to the project Requestor.</p>
           <div class="pa-toolbar">
             <input v-model="query" type="search" placeholder="Search positions, PID, APMM ID..." aria-label="Search resources" />
@@ -162,9 +162,9 @@
                     'pa-status--in_progress': row.hiringStatus === 'In Progress',
                     'pa-status--pending': row.hiringStatus === 'Pending',
                     'pa-status--not_applicable': row.hiringStatus === 'Not Applicable',
-                  }" :disabled="!canEdit || row.hiringType === 'Efficiency'" @click="editHiringStatus(row)">{{ row.hiringStatus }}</button>
+                  }" :disabled="!canEdit || !requiresRecruitment(row.hiringType)" @click="editHiringStatus(row)">{{ row.hiringStatus }}</button>
                 </template>
-                <mc-select v-else-if="column.options && cellEditable(row, column.key)" :class="{ 'pa-compact-select': ['site', 'hiringType', 'language'].includes(column.key), 'pa-job-level-select': column.key === 'jobLevel', 'pa-status-select': column.key === 'hiringStatus' }" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
+                <mc-select v-else-if="column.options && cellEditable(row, column.key)" :key="column.key === 'hiringType' ? `hiring-type-${row.id}-${row.hiringType}-${hiringTypeSelectRevision}` : `${column.key}-${row.id}`" :class="{ 'pa-compact-select': ['site', 'hiringType', 'language'].includes(column.key), 'pa-job-level-select': column.key === 'jobLevel', 'pa-status-select': column.key === 'hiringStatus' }" :label="column.label" hiddenlabel fit="small" width="full-width" listsearch optionsheight="260px" :value.prop="row[column.key]" :aria-label="column.label" @optionselected="selectCellOption(row, column.key, $event)">
                   <mc-option :class="{ 'pa-status-option': column.key === 'hiringStatus', 'pa-job-level-option': column.key === 'jobLevel' }" value="">Select</mc-option><mc-option v-for="option in column.options" :key="option" :class="{ 'pa-status-option': column.key === 'hiringStatus', 'pa-job-level-option': column.key === 'jobLevel' }" :value="option" :disabled="column.key === 'jobLevel' && option === 'JL4' && !jl4Available">{{ option }}</mc-option><mc-option v-if="column.key === 'site'" class="gsc-apply-option" :value="GSC_SITE_REQUEST_OPTION" divider>Apply new</mc-option>
                 </mc-select>
                 <input v-else-if="cellEditable(row, column.key)" v-model="row[column.key]" :type="column.date ? 'date' : 'text'" :aria-label="column.label" maxlength="500" />
@@ -228,12 +228,28 @@
           <mc-button type="button" appearance="primary" fit="small" label="Submit request" :disabled="gscRequestBusy || !gscRequestSites.length || !gscRequestReason.trim()" @click="submitGscRequest" />
         </div>
       </mc-dialog>
+      <mc-dialog class="hiring-type-change-dialog" :open="hiringTypeChangeDialogOpen" heading="No recruitment required" dimension="small" showclosebutton @closing="cancelHiringTypeChange">
+        <div class="hiring-type-change-dialog">
+          <div class="hiring-type-change-dialog__icon">
+            <mc-icon icon="mi-information" size="24" />
+          </div>
+          <div class="hiring-type-change-dialog__content">
+            <strong class="hiring-type-change-dialog__title">{{ pendingHiringTypeChange?.value }} does not require recruitment</strong>
+            <p>The position will be removed from HR / TAA.</p>
+            <p>Requisition ID, Tentative DOJ and Hiring Status will be cleared.</p>
+          </div>
+        </div>
+        <div class="unlock-dialog__actions hiring-type-change-actions">
+          <mc-button type="button" appearance="neutral" variant="outlined" fit="small" label="Cancel" @click="cancelHiringTypeChange" />
+          <mc-button type="button" appearance="primary" fit="small" label="Confirm change" @click="confirmHiringTypeChange" />
+        </div>
+      </mc-dialog>
     </div>
   </PageShell>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import axios from 'axios'
 import { read, utils } from 'xlsx'
 import PageShell from '../components/PageShell.vue'
@@ -273,6 +289,9 @@ const gscRequestSites = ref([])
 const gscRequestReason = ref('')
 const gscRequestError = ref('')
 const gscRequestBusy = ref(false)
+const hiringTypeChangeDialogOpen = ref(false)
+const pendingHiringTypeChange = ref(null)
+const hiringTypeSelectRevision = ref(0)
 const intakeLocationOptions = list => list.map(value => String(value).trim()).filter(Boolean)
 const gscSiteRequestOptions = computed(() => {
   const configured = record.value?.gscSiteRequestOptions || [
@@ -298,7 +317,8 @@ const sites = computed(() => [...new Set([...(record.value?.sites || []), ...(re
 const resourceRows = computed(() => record.value?.rows || [])
 const executionRows = computed(() => resourceRows.value)
 const areaRows = computed(() => resourceRows.value)
-const hrRows = computed(() => resourceRows.value.filter(row => row.hiringType !== 'Efficiency'))
+const requiresRecruitment = hiringType => !['Efficiency', 'Backfill'].includes(hiringType)
+const hrRows = computed(() => resourceRows.value.filter(row => requiresRecruitment(row.hiringType)))
 const scopeFtes = computed(() => record.value?.source?.ready ? record.value.source.population : null)
 const countRows = (rows, predicate) => rows.filter(predicate).length
 const onboarded = rows => countRows(rows, row => row.actualDoj && row.apmmId)
@@ -387,7 +407,7 @@ const areaColumns = [
 ]
 const columns = computed(() => tab.value === 'area' ? areaColumns : tab.value === 'hr' ? [...baseColumns.value, ...hrColumns.value] : executionColumns.value)
 const visibleRows = computed(() => (record.value?.rows || []).filter(row =>
-  (tab.value !== 'hr' || row.hiringType !== 'Efficiency') && (!siteFilter.value || row.site === siteFilter.value) &&
+  (tab.value !== 'hr' || requiresRecruitment(row.hiringType)) && (!siteFilter.value || row.site === siteFilter.value) &&
   (!statusFilter.value || row.hiringStatus === statusFilter.value) && Object.values(row).join(' ').toLowerCase().includes(query.value.toLowerCase())))
 const cohorts = computed(() => {
   const groupedRows = new Map()
@@ -427,7 +447,7 @@ const tableGroups = computed(() => {
 const cohortPalette = ['#0073ab', '#7c3aed', '#16a34a', '#f59e0b', '#dc2626', '#0f766e']
 const ready = computed(() => record.value?.source.ready && record.value.rows.length === record.value.source.population &&
   record.value.rows.every(row => row.site && row.language && row.gscPid && row.pidCreationDate && row.areaLockedAt && row.actualDoj && row.apmmId &&
-    (row.hiringType === 'Efficiency' ? row.deletedPid : row.hiringStatus === 'Onboarded' && row.requisitionId)))
+    (row.hiringType === 'Efficiency' ? row.deletedPid : requiresRecruitment(row.hiringType) ? row.hiringStatus === 'Onboarded' && row.requisitionId : true)))
 const submitBlockers = computed(() => {
   const current = record.value
   if (!current) return []
@@ -483,7 +503,7 @@ const submitBlockers = computed(() => {
   addMissingFieldBlocker('apmm-id', 'APMM ID', row => !row.apmmId)
   addMissingFieldBlocker('efficiency-pid', 'Deleted PID for Efficiency', row => row.hiringType === 'Efficiency' && !row.deletedPid)
   addMissingFieldBlocker('onboarded', 'Hiring Status Onboarded and Requisition ID', row =>
-    row.hiringType !== 'Efficiency' && (row.hiringStatus !== 'Onboarded' || !row.requisitionId))
+    requiresRecruitment(row.hiringType) && (row.hiringStatus !== 'Onboarded' || !row.requisitionId))
 
   return blockers
 })
@@ -510,8 +530,49 @@ function selectCellOption(row, key, event) {
     return
   }
   if (row[key] === value) return
+  if (key === 'hiringType' && ['Efficiency', 'Backfill'].includes(value)) {
+    pendingHiringTypeChange.value = {
+      row,
+      key,
+      value,
+      previousValue: row[key],
+      control: event.currentTarget,
+    }
+    hiringTypeChangeDialogOpen.value = true
+    hiringTypeSelectRevision.value += 1
+    void nextTick(() => {
+      const current = pendingHiringTypeChange.value
+      if (current?.control) current.control.value = current.previousValue
+    })
+    return
+  }
   row[key] = value
   if (key === 'hiringType') changeHiringType(row)
+}
+function cancelHiringTypeChange() {
+  const pending = pendingHiringTypeChange.value
+  if (!pending) return
+  pending.row[pending.key] = pending.previousValue
+  if (pending.control) pending.control.value = pending.previousValue
+  pendingHiringTypeChange.value = null
+  hiringTypeChangeDialogOpen.value = false
+  hiringTypeSelectRevision.value += 1
+  void nextTick(() => {
+    if (pending.control) pending.control.value = pending.previousValue
+  })
+}
+function confirmHiringTypeChange() {
+  const pending = pendingHiringTypeChange.value
+  if (!pending) return
+  pending.row[pending.key] = pending.value
+  changeHiringType(pending.row)
+  if (pending.control) pending.control.value = pending.value
+  pendingHiringTypeChange.value = null
+  hiringTypeChangeDialogOpen.value = false
+  hiringTypeSelectRevision.value += 1
+  void nextTick(() => {
+    pending.control.value = pending.value
+  })
 }
 function cellEditable(row, key) {
   if (key === 'cohort') return false
@@ -521,10 +582,11 @@ function cellEditable(row, key) {
   return baseColumns.value.some(column => column.key === key) || key === 'jobLevel' || key === 'hiringStatus' ||
     key === 'remarks' ||
     (row.hiringType === 'Efficiency' && ['deletedPid', 'actualDoj', 'apmmId'].includes(key)) ||
-    (row.hiringType !== 'Efficiency' && ['requisitionId', 'tentativeDoj', 'actualDoj', 'apmmId'].includes(key))
+    (!requiresRecruitment(row.hiringType) && row.hiringType === 'Backfill' && ['actualDoj', 'apmmId'].includes(key)) ||
+    (requiresRecruitment(row.hiringType) && ['requisitionId', 'tentativeDoj', 'actualDoj', 'apmmId'].includes(key))
 }
 function editHiringStatus(row) {
-  if (canEdit.value && row.hiringType !== 'Efficiency') activeHiringStatusId.value = row.id
+  if (canEdit.value && requiresRecruitment(row.hiringType)) activeHiringStatusId.value = row.id
 }
 function newRow() {
   return Object.fromEntries([
@@ -562,7 +624,7 @@ watch(record, current => {
 })
 
 function changeHiringType(row) {
-  if (row.hiringType === 'Efficiency') {
+  if (!requiresRecruitment(row.hiringType)) {
     row.hiringStatus = 'Not Applicable'; row.requisitionId = ''; row.tentativeDoj = ''
   } else if (row.hiringStatus === 'Not Applicable') row.hiringStatus = 'Pending'
 }
@@ -761,7 +823,7 @@ function exportData() {
     exportArtefact(record.value, 'resources', [
       ['Execution', [['Position ID', ...execution.map(column => column.label)], ...record.value.rows.map(row => [row.id, ...execution.map(column => row[column.key])])]],
       ['Area', [['Position ID', ...areaColumns.map(column => column.label), 'Submitted at', 'Submitted by'], ...record.value.rows.map(row => [row.id, ...areaColumns.map(column => row[column.key]), row.areaLockedAt, row.areaLockedBy])]],
-      ['HR TAA', [['Position ID', ...hrColumns.value.map(column => column.label)], ...record.value.rows.filter(row => row.hiringType !== 'Efficiency').map(row => [row.id, ...hrColumns.value.map(column => row[column.key])])]],
+      ['HR TAA', [['Position ID', ...hrColumns.value.map(column => column.label)], ...record.value.rows.filter(row => requiresRecruitment(row.hiringType)).map(row => [row.id, ...hrColumns.value.map(column => row[column.key])])]],
     ])
     success.value = 'Excel export generated. All resource positions are included.'
   } catch (caught) { error.value = `Unable to export: ${caught.message}` }
@@ -898,6 +960,13 @@ async function importData(event) {
 .unlock-dialog__error { color: #a3332c; font-size: 12px; margin: 8px 0 0; }
 .unlock-dialog__actions { align-items: center; display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 .gsc-request-dialog__actions mc-button { --mc-button-height: 32px; min-width: 84px; }
+.hiring-type-change-dialog { align-items: flex-start; display: flex; gap: 12px; background: #f5f9fb; border: 1px solid #dce9ef; border-radius: 8px; color: #526d7f; margin-top: 14px; padding: 14px; }
+.hiring-type-change-dialog__icon { align-items: center; background: #dff1f7; border-radius: 50%; color: #0073ab; display: flex; flex: 0 0 36px; height: 36px; justify-content: center; width: 36px; }
+.hiring-type-change-dialog__content { min-width: 0; }
+.hiring-type-change-dialog__title { color: #173747; display: block; font-size: 13px; line-height: 1.35; margin-bottom: 6px; }
+.hiring-type-change-dialog p { font-size: 12px; line-height: 1.5; margin: 0 0 4px; }
+.hiring-type-change-dialog p:last-child { margin-bottom: 0; }
+.hiring-type-change-actions { border-top: 1px solid #edf1f3; margin-top: 16px; padding-top: 12px; }
 .pa-gsc-requests { display: flex; flex-wrap: wrap; gap: 7px; margin: -8px 0 18px; }
 .pa-gsc-request { align-items: center; background: #f7fafc; border: 1px solid #d9e3ea; border-radius: 6px; color: #526d7f; display: flex; gap: 7px; padding: 5px 8px; }
 .pa-gsc-request strong { color: #164b69; font-size: 11px; }

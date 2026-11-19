@@ -143,7 +143,7 @@ def _resource_rows(payload, record, permissions, action, email, source):
             raise ValueError("Reopen Area details before changing submitted Area fields.")
         for key in ("areaLockedAt", "areaLockedBy"):
             normalized[key] = old.get(key, "")
-        if normalized["hiringType"] == "Efficiency":
+        if normalized["hiringType"] in {"Efficiency", "Backfill"}:
             normalized.update({"hiringStatus": "Not Applicable", "requisitionId": "", "tentativeDoj": ""})
         elif normalized["hiringStatus"] == "Not Applicable":
             raise ValueError("Not Applicable is reserved for Efficiency resources.")

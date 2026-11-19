@@ -252,6 +252,10 @@ class ProjectArtefactTests(TestCase):
     def test_backfill_is_a_valid_hiring_type(self):
         response = self.post("resources", rows=[{**self.resource(), "hiringType": "Backfill"}])
         self.assertEqual(response.status_code, 200, response.data)
+        row = response.data["rows"][0]
+        self.assertEqual(row["hiringStatus"], "Not Applicable")
+        self.assertEqual(row["requisitionId"], "")
+        self.assertEqual(row["tentativeDoj"], "")
 
     def test_resource_validation_is_atomic_and_scope_required(self):
         self.assertEqual(self.post("resources", rows=[self.resource()]).status_code, 200)

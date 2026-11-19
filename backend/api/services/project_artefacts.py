@@ -194,7 +194,8 @@ def resource_ready(rows, source):
         row.get("site") and row.get("language") and row.get("gscPid") and row.get("pidCreationDate")
         and row.get("areaLockedAt") and row.get("actualDoj") and row.get("apmmId")
         and (row.get("hiringType") == "Efficiency" and row.get("deletedPid")
-             or row.get("hiringType") != "Efficiency" and row.get("hiringStatus") == "Onboarded" and row.get("requisitionId"))
+             or row.get("hiringType") == "Backfill"
+             or row.get("hiringType") in {"External", "IJP"} and row.get("hiringStatus") == "Onboarded" and row.get("requisitionId"))
         for row in rows
     ))
 
