@@ -82,6 +82,9 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import axios from 'axios'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
+
+useTopbarBackLink('/migration-success-partners', 'Back to Partners Hub')
 
 const today = new Date()
 const projects = ref([])

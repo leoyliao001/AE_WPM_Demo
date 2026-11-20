@@ -4,6 +4,7 @@
     title="Migration Manager Portfolio"
     subtitle="Select a migration manager to review assigned projects, delivery health, and key milestones."
     tag="Migration Portfolio"
+    back-link-to-topbar
     full-width
   >
     <div class="portfolio-content">
