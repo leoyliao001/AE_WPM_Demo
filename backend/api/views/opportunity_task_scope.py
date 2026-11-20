@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope, ServiceCatalogue, StakeholderRegistration
 from api.permissions.attributes_access import get_request_email
+from api.services.intake_options import INTAKE_OPTIONS
 from api.views.opportunity_assessment import _build_setup_context, _deny_unless_requestor, _get_project, _parse_number
 from api.views.fpo_catalogue_requests import catalogue_request_reminders
 from api.views.stakeholder_registration import _assigned_role_emails
@@ -29,6 +30,15 @@ OPTIONS = {
     "freq": {"", *FREQUENCIES}, "mgsc": {"", "Yes", "No"},
     "exc": {"", "Language Barrier", "Legal Issues", "Already in GSC"},
 }
+
+
+def _catalogue_countries(project):
+    mapping = INTAKE_OPTIONS["areaCountryMapping"]
+    return list(dict.fromkeys(
+        country
+        for area in (project.areas or [])
+        for country in mapping.get(area, [])
+    ))
 
 
 @lru_cache(maxsize=1)
@@ -78,19 +88,20 @@ def _validate_state(raw, project):
     if not isinstance(state.get("seq"), int) or isinstance(state["seq"], bool) or state["seq"] < 1:
         raise ValueError("Invalid task sequence.")
     catalogue = _catalogue()
-    countries = set(project.countries or [])
-    for method in ("cat", "task"):
-        rows = state.get(method)
-        if method == "cat" and rows is None:
-            continue
-        if not isinstance(rows, list) or len(rows) > 20000:
-            raise ValueError("Invalid scope rows.")
+    countries = set(_catalogue_countries(project)) | set(project.countries or [])
+    all_ids = set()
+
+    def validate_rows(rows, allow_shared_refs=False):
         ids = set()
         refs = set()
+        if not isinstance(rows, list) or len(rows) > 20000:
+            raise ValueError("Invalid scope rows.")
         for row in rows:
-            if not isinstance(row, dict) or not isinstance(row.get("id"), str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", row["id"]) or row["id"] in ids:
+            row_id = row.get("id") if isinstance(row, dict) else None
+            if not isinstance(row_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", row_id) or row_id in all_ids:
                 raise ValueError("Missing or duplicate row ID.")
-            ids.add(row["id"])
+            all_ids.add(row_id)
+            ids.add(row_id)
             legacy = row.get("legacy_fields", {})
             if not isinstance(legacy, dict):
                 raise ValueError("Invalid legacy task details.")
@@ -101,7 +112,7 @@ def _validate_state(raw, project):
                     raise ValueError(f"Invalid legacy {field}.")
             ref = row.get("ref")
             if ref is not None:
-                if not isinstance(ref, int) or isinstance(ref, bool) or ref < 0 or ref >= len(catalogue) or ref in refs:
+                if not isinstance(ref, int) or isinstance(ref, bool) or ref < 0 or ref >= len(catalogue) or (ref in refs and not allow_shared_refs):
                     raise ValueError("Invalid or duplicate catalogue reference.")
                 refs.add(ref)
                 item = catalogue[ref]
@@ -130,6 +141,45 @@ def _validate_state(raw, project):
             factor = FREQUENCIES.get(row["freq"])
             row["hrs"] = 140
             row["fte"] = f"{volume * minutes * factor / 60 / 140:.4f}" if volume and minutes and factor else ""
+
+    task_rows = state.get("task")
+    if task_rows is None:
+        task_rows = []
+        state["task"] = task_rows
+    validate_rows(task_rows)
+
+    groups = state.get("catGroups")
+    if groups is not None:
+        if not isinstance(groups, list) or len(groups) > len(countries):
+            raise ValueError("Invalid catalogue country groups.")
+        group_ids = set()
+        grouped_countries = set()
+        for group in groups:
+            if not isinstance(group, dict):
+                raise ValueError("Invalid catalogue country group.")
+            group_id = group.get("id")
+            label = group.get("label")
+            selected = group.get("countries")
+            group_rows = group.get("rows")
+            if (not isinstance(group_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", group_id)
+                    or group_id in group_ids or not isinstance(label, str) or not label.strip()
+                    or len(label) > 200 or not isinstance(selected, list) or not selected
+                    or any(not isinstance(country, str) or country not in countries for country in selected)
+                    or len(set(selected)) != len(selected) or grouped_countries.intersection(selected)):
+                raise ValueError("Invalid catalogue country group.")
+            group_ids.add(group_id)
+            grouped_countries.update(selected)
+            validate_rows(group_rows)
+            country_value = "; ".join(selected)
+            for row in group_rows:
+                row["ctry"] = country_value
+        active_id = state.get("activeCatGroup") or ""
+        if active_id and active_id not in group_ids:
+            raise ValueError("Invalid active catalogue country group.")
+        active = next((group for group in groups if group["id"] == active_id), groups[0] if groups else None)
+        state["cat"] = active["rows"] if active else []
+    elif state.get("cat") is not None:
+        validate_rows(state["cat"])
     if state.get("mode") == "cat" and state.get("cat") is None:
         raise ValueError("Catalogue data is missing.")
     return state
@@ -143,7 +193,11 @@ def _sync_rows(project, state, setup):
     updates = []
     creates = []
     mode = state.get("mode")
-    for row in (state.get(mode) or []) if mode else []:
+    if mode == "cat" and isinstance(state.get("catGroups"), list):
+        active_rows = [row for group in state["catGroups"] for row in (group.get("rows") or [])]
+    else:
+        active_rows = (state.get(mode) or []) if mode else []
+    for row in active_rows:
         item = by_key.get((mode, row["id"])) or by_id.get(row.get("legacy_id"))
         if item is None:
             item = OpportunityAssessment(migration_request_id=project.migration_request_id)
@@ -213,7 +267,8 @@ def opportunity_task_scope(request, project_id):
         "intake": {"region": project.region, "area": ", ".join(project.areas or []),
                    "product": ", ".join(project.products or []), "products": project.products or [],
                    "catalogue_products": [re.sub(r"^General\s+", "", product, flags=re.IGNORECASE).strip() for product in (project.products or [])],
-                   "owner": setup["owner_default"], "countries": project.countries or []},
+                   "owner": setup["owner_default"], "countries": project.countries or [],
+                   "catalogue_countries": _catalogue_countries(project)},
         "locations": list(dict.fromkeys([*setup["location_options"], "Manila", "Pune", "Mumbai", "Chengdu", "Ho Chi Minh City"])),
         "default_location": setup["location_options"][0] if setup["location_options"] else "Manila",
     })

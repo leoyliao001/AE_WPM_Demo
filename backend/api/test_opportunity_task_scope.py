@@ -97,6 +97,39 @@ class OpportunityTaskScopeTests(TestCase):
         state["task"] = [self.row(), self.row()]
         self.assertEqual(self.save(state).status_code, 400)
 
+    def test_catalogue_groups_keep_independent_country_sheets(self):
+        groups = [
+            {"id": "group_1", "label": "Group 1", "countries": ["Singapore"], "rows": [self.row(0, "g1_0")]},
+            {"id": "group_2", "label": "Malaysia", "countries": ["Malaysia"], "rows": [self.row(1, "g2_1")]},
+        ]
+        state = {
+            "cat": groups[0]["rows"],
+            "catGroups": groups,
+            "activeCatGroup": "group_1",
+            "catGroupSeq": 2,
+            "task": [],
+            "seq": 1,
+            "mode": "cat",
+        }
+        response = self.save(state)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(OpportunityAssessment.objects.count(), 2)
+        self.assertEqual(response.data["state"]["catGroups"][1]["rows"][0]["ctry"], "Malaysia")
+
+        state = response.data["state"]
+        state["catGroups"] = state["catGroups"][:1]
+        state["activeCatGroup"] = "group_1"
+        response = self.save(state, revision=1)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(OpportunityAssessment.objects.count(), 1)
+        self.assertEqual(OpportunityAssessment.objects.get().scope_details["row_id"], "g1_0")
+
+    def test_catalogue_country_options_include_all_countries_for_selected_area(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Indonesia", response.data["intake"]["catalogue_countries"])
+        self.assertNotIn("Indonesia", response.data["intake"]["countries"])
+
     def test_stale_save_cannot_overwrite_and_delete_is_persisted(self):
         state = {"cat": None, "task": [self.row()], "seq": 2, "mode": "task"}
         self.assertEqual(self.save(state).status_code, 200)

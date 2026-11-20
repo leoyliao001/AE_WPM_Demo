@@ -1,4 +1,12 @@
-from api.models import BusinessCase, MigrationIntakeSubmission, OpportunityAssessment, ProjectCharter
+from django.db.models import Q
+
+from api.models import (
+    BusinessCase,
+    MigrationIntakeSubmission,
+    OpportunityAssessment,
+    ProductOwnership,
+    ProjectCharter,
+)
 
 
 def _join_preview(values, limit=3):
@@ -64,6 +72,12 @@ def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
         )
     except Exception:
         owner = ""
+    if not owner:
+        ownership = ProductOwnership.objects.filter(region=submission.region)
+        areas = submission.areas or []
+        if areas:
+            ownership = ownership.filter(Q(area__in=areas) | Q(area=""))
+        owner = ownership.exclude(migration_manager="").order_by("id").values_list("migration_manager", flat=True).first() or ""
     site = _primary_site(submission)
 
     return {
@@ -73,6 +87,8 @@ def serialize_project_overview(submission: MigrationIntakeSubmission) -> dict:
         "requestor": submission.requestor,
         "owner": owner,
         "requestedDate": submission.requested_date,
+        "targetStartDate": submission.target_start_date,
+        "targetEndDate": submission.target_end_date,
         "status": submission.status,
         "region": submission.region,
         "migrationType": submission.migration_type,

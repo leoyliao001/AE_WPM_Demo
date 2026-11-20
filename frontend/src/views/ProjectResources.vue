@@ -980,7 +980,7 @@ async function downloadImportTemplate() {
       for (let row = 2; row <= 1001; row += 1) worksheet.getCell(row, dateColumnNumber).numFmt = 'dd/mm/yyyy'
       worksheet.dataValidations.add(`${dateLetter}2:${dateLetter}1001`, {
         type: 'date', operator: 'between', formulae: [1, 2958465], allowBlank: true,
-        showErrorMessage: true, errorTitle: 'Invalid date', error: 'Enter a valid date in dd/mm/yyyy format.',
+        showErrorMessage: true, errorStyle: 'stop', errorTitle: 'Invalid date', error: 'Enter a valid date in dd/mm/yyyy format.',
       })
     }
 
@@ -996,6 +996,19 @@ async function downloadImportTemplate() {
       const values = column.options.filter(option => field.key !== 'jobLevel' || option !== 'JL4' || jl4Available.value)
       return { ...field, label: column.label, values }
     })
+    optionLists.push({
+      key: 'hiringTypeRestricted',
+      name: 'HiringTypesNoTemporary',
+      label: 'Hiring Type',
+      values: record.value.hiringTypes.filter(option => option !== 'Temporary'),
+    })
+    optionLists.push({
+      key: 'siteNoTemporary',
+      name: 'GscSitesNoTemporary',
+      label: 'GSC Site',
+      values: optionLists.find(list => list.key === 'site').values
+        .filter(option => !TEMPORARY_RESTRICTED_SITES.includes(option)),
+    })
     const optionSheet = workbook.addWorksheet('Options')
     optionSheet.state = 'hidden'
     optionLists.forEach((list, index) => {
@@ -1005,15 +1018,50 @@ async function downloadImportTemplate() {
       values.forEach((value, row) => { optionSheet.getCell(row + 2, index + 1).value = value })
       workbook.definedNames.add(`Options!$${column}$2:$${column}$${values.length + 1}`, list.name)
     })
-    optionLists.forEach(({ key, name, label }) => {
+    const siteColumnNumber = fieldColumnNumber('site')
+    if (siteColumnNumber === 1) throw new Error('Execution dropdown column is unavailable for site.')
+    const siteCell = `${worksheet.getColumn(siteColumnNumber).letter}2`
+    const restrictedSiteConditions = TEMPORARY_RESTRICTED_SITES.map(site => `${siteCell}="${site}"`).join(',')
+    const hiringTypeColumnNumber = fieldColumnNumber('hiringType')
+    if (hiringTypeColumnNumber === 1) throw new Error('Execution dropdown column is unavailable for hiringType.')
+    const hiringTypeCell = `${worksheet.getColumn(hiringTypeColumnNumber).letter}2`
+    optionLists.filter(list => !['hiringTypeRestricted', 'siteNoTemporary'].includes(list.key)).forEach(({ key, name, label }) => {
       const columnNumber = fieldColumnNumber(key)
       if (columnNumber === 1) throw new Error(`Execution dropdown column is unavailable for ${key}.`)
       const letter = worksheet.getColumn(columnNumber).letter
       worksheet.dataValidations.add(`${letter}2:${letter}1001`, {
-      type: 'list', allowBlank: true, formulae: [`=${name}`],
-      showErrorMessage: true, errorTitle: `Invalid ${label}`, error: `Select a ${label} from the dropdown list.`,
+        type: 'list',
+        allowBlank: true,
+        formulae: [key === 'hiringType'
+          ? `=INDIRECT(IF(OR(${restrictedSiteConditions}),"HiringTypesNoTemporary","${name}"))`
+          : key === 'site'
+            ? `=INDIRECT(IF(${hiringTypeCell}="Temporary","GscSitesNoTemporary","${name}"))`
+            : `=${name}`],
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: `Invalid ${label}`,
+        error: key === 'hiringType'
+          ? 'Select a Hiring Type from the dropdown. Temporary is unavailable for Mumbai, Chennai and Pune.'
+          : `Select a ${label} from the dropdown list.`,
       })
     })
+    for (const key of ['gscPid', 'deletedPid']) {
+      const columnNumber = fieldColumnNumber(key)
+      if (columnNumber === 1) throw new Error(`Execution identifier column is unavailable for ${key}.`)
+      const letter = worksheet.getColumn(columnNumber).letter
+      worksheet.getColumn(columnNumber).numFmt = '@'
+      const cell = `${letter}2`
+      const digitCount = `SUMPRODUCT(--ISNUMBER(SEARCH(MID(${cell},ROW(INDIRECT("2:"&MAX(2,LEN(${cell})))),1),"0123456789")))`
+      worksheet.dataValidations.add(`${letter}2:${letter}1001`, {
+        type: 'custom',
+        allowBlank: true,
+        formulae: [`=IF(${cell}="",TRUE,AND(LEN(${cell})>=2,LEN(${cell})<=128,CODE(UPPER(LEFT(${cell},1)))>=65,CODE(UPPER(LEFT(${cell},1)))<=90,${digitCount}=LEN(${cell})-1))`],
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: 'Invalid Position ID',
+        error: 'Start with one alphabet followed only by numbers, for example G101 (maximum 128 characters).',
+      })
+    }
     const buffer = await workbook.xlsx.writeBuffer()
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)

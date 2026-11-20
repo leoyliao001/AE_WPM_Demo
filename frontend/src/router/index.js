@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Welcome from '../views/Welcome.vue'
 import MigrationIntake from '../views/MigrationIntake.vue'
 import MigrationDashboard from '../views/MigrationDashboard.vue'
+import MigrationPortfolio from '../views/MigrationPortfolio.vue'
 import MigrationDashboard2 from '../views/MigrationDashboard2.vue'
 import MigrationChatbot from '../views/MigrationChatbot.vue'
 import FpoMapping from '../views/FpoMapping.vue'
@@ -126,8 +127,7 @@ const routes = [
     name: 'BusinessCase',
     component: BusinessCase
   },
-  // Project: current user's submitted projects only (?mine=1)
-  { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationDashboard },
+  { path: '/project-dashboard', name: 'ProjectDashboard', component: MigrationPortfolio },
   { path: '/project-dashboard/:section', redirect: '/project-dashboard' },
   { path: '/migration-chatbot', name: 'MigrationChatbot', component: MigrationChatbot },
   { path: '/toll-gates', name: 'TollGates', component: TollGates },

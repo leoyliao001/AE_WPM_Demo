@@ -292,8 +292,8 @@ function render(){
   $("rowChip").textContent=rows().length+" rows";tiles(v);
 }
 function onEdit(e){const el=e.target,r=rows().find(x=>x.id===el.dataset.id);r[el.dataset.k]=el.value;
-  if(el.dataset.k==="exc")tiles(view());if(["vol","tpu","freq"].includes(el.dataset.k)){const x=fte(r);el.closest("tr").querySelector("td.calc").textContent=x==null?"–":x.toFixed(2);tiles(view())}setDirty(true)}
-function tiles(v){let t=0,ex=0;v.forEach(r=>{const x=fte(r);if(x!=null){t+=x;if(r.exc)ex+=x}});
+  if(["exc","mgsc"].includes(el.dataset.k))tiles(view());if(["vol","tpu","freq"].includes(el.dataset.k)){const x=fte(r);el.closest("tr").querySelector("td.calc").textContent=x==null?"–":x.toFixed(2);tiles(view())}setDirty(true)}
+function tiles(v){let t=0,ex=0;const totals=mode==="cat"&&typeof catalogueGroups==="function"?catalogueGroups().flatMap(g=>g.rows||[]):v;totals.forEach(r=>{const x=fte(r);if(x==null)return;if(mode==="cat"){if(r.mgsc==="Yes")t+=x;else if(r.mgsc==="No")ex+=x}else{t+=x;if(r.exc)ex+=x}});
   $("t1").textContent=v.length;$("t1c").textContent=v.length===rows().length?"All rows":`Filtered from ${rows().length}`;
   $("t2").textContent=new Set(v.map(r=>r.p+"|"+r.l2+"|"+r.l3)).size;
   $("t3").textContent=v.filter(r=>r.mig==="GSC").length;$("t4").textContent=v.filter(r=>r.mig==="Area").length;
