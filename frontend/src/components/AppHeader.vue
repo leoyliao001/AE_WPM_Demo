@@ -7,19 +7,33 @@
       <router-link slot="link" class="home-link" to="/" aria-label="Home" />
 
       <nav slot="actions" class="app-nav" aria-label="Main navigation">
-        <router-link
-          v-if="topbarBackLink"
-          class="topbar-back-link"
-          :to="topbarBackLink.to"
-        >
-          <mc-button
-            appearance="neutral"
-            variant="plain"
-            fit="small"
-            :label="topbarBackLink.label"
-            icon="mi-arrow-left"
-          />
-        </router-link>
+        <div v-if="topbarBackLink || topbarNotice" class="topbar-leading-actions">
+          <router-link
+            v-if="topbarBackLink"
+            class="topbar-back-link"
+            :to="topbarBackLink.to"
+          >
+            <mc-button
+              appearance="neutral"
+              variant="plain"
+              fit="small"
+              :label="topbarBackLink.label"
+              icon="mi-arrow-left"
+            />
+          </router-link>
+          <button
+            v-if="topbarNotice"
+            class="topbar-notice-trigger"
+            type="button"
+            aria-label="Open resource guidance"
+            data-tooltip="Click to see reminder"
+            aria-haspopup="dialog"
+            :aria-expanded="noticeDialogOpen"
+            @click="openNoticeDialog"
+          >
+            <mc-icon icon="mi-exclamation-circle-solid" color="#d8899b" size="24" />
+          </button>
+        </div>
         <template v-for="item in navItems" :key="item.to">
           <div
             v-if="item.label === 'Admin'"
@@ -72,6 +86,33 @@
         </template>
       </nav>
     </mc-top-bar>
+    <mc-dialog
+      :open="noticeDialogOpen"
+      :heading="topbarNotice?.heading || 'Resource guidance'"
+      dimension="medium"
+      showclosebutton
+      @closing="closeNoticeDialog"
+    >
+      <div v-if="topbarNotice" class="topbar-notice-content">
+        <section v-if="topbarNotice.blockers?.length" class="topbar-notice-section">
+          <h3>Why resources cannot be confirmed</h3>
+          <ul>
+            <li v-for="blocker in topbarNotice.blockers" :key="blocker.key">
+              {{ blocker.message }}
+              <router-link v-if="blocker.to" class="topbar-notice-link" :to="blocker.to" @click="closeNoticeDialog">
+                Open Scope
+              </router-link>
+            </li>
+          </ul>
+        </section>
+        <section v-if="topbarNotice.warnings?.length" class="topbar-notice-section">
+          <h3>Needs attention</h3>
+          <ul>
+            <li v-for="warning in topbarNotice.warnings" :key="warning.key">{{ warning.message }}</li>
+          </ul>
+        </section>
+      </div>
+    </mc-dialog>
     <div class="app-user-panel" aria-live="polite">
       <span
         v-if="azureAuthState.status === 'loading' || azureAuthState.status === 'redirecting'"
@@ -119,14 +160,25 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-top-bar'
 import '@maersk-global/mds-components-core/mc-icon'
+import '@maersk-global/mds-components-core/mc-dialog'
 import { azureAuthState } from '../auth/azureAuth.js'
 import { topbarBackLink } from '../composables/useTopbarBackLink.js'
+import { topbarNotice } from '../composables/useTopbarNotice.js'
 import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 
 const route = useRoute()
 const isSuperAdmin = ref(false)
 const adminMenuOpen = ref(false)
 const userMenuOpen = ref(false)
+const noticeDialogOpen = ref(false)
+
+const openNoticeDialog = () => {
+  noticeDialogOpen.value = true
+}
+
+const closeNoticeDialog = () => {
+  noticeDialogOpen.value = false
+}
 
 const approvalReturnQuery = computed(() => {
   if (route.path.startsWith('/approval-cycle')) {
@@ -242,6 +294,13 @@ watch(
     refreshSuperAdmin()
   }
 )
+watch(
+  () => route.fullPath,
+  closeNoticeDialog
+)
+watch(topbarNotice, (notice) => {
+  if (!notice) closeNoticeDialog()
+})
 </script>
 
 <style scoped>
@@ -276,12 +335,116 @@ watch(
   align-items: center;
   display: inline-flex;
   flex: 0 0 auto;
+  text-decoration: none;
+}
+
+.topbar-leading-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
   left: 140px;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  text-decoration: none;
   z-index: 1;
+}
+
+.topbar-notice-trigger {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: #d8899b;
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 auto;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  position: relative;
+  width: 40px;
+}
+
+.topbar-notice-trigger mc-icon {
+  animation: topbar-notice-fade 3s ease-in-out infinite;
+}
+
+.topbar-notice-trigger:hover {
+  color: #c96e83;
+}
+
+.topbar-notice-trigger:focus-visible {
+  color: #c96e83;
+  outline: 2px solid #d8899b;
+  outline-offset: 1px;
+}
+
+.topbar-notice-trigger::after {
+  background: #263c4d;
+  border-radius: 4px;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  left: 50%;
+  opacity: 0;
+  padding: 6px 8px;
+  pointer-events: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  transition: opacity 0.05s linear;
+  white-space: nowrap;
+  z-index: 1101;
+}
+
+.topbar-notice-trigger:hover::after,
+.topbar-notice-trigger:focus-visible::after {
+  opacity: 1;
+}
+
+.topbar-notice-content {
+  color: #344b5e;
+  font-size: 14px;
+  line-height: 1.55;
+  max-height: min(60vh, 520px);
+  overflow: auto;
+}
+
+.topbar-notice-section + .topbar-notice-section {
+  border-top: 1px solid #d9e1e6;
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.topbar-notice-section h3 {
+  color: #263c4d;
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.topbar-notice-section ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.topbar-notice-section li + li {
+  margin-top: 8px;
+}
+
+.topbar-notice-link {
+  color: var(--mds_brand_appearance_primary_default_link-color, #0077b8);
+  display: inline-block;
+  margin-left: 6px;
+}
+
+@keyframes topbar-notice-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.08; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar-notice-trigger mc-icon {
+    animation-duration: 3.4s;
+  }
 }
 
 .app-nav {

@@ -78,28 +78,6 @@
             </div>
           </div>
         </section>
-        <section v-if="!record.frozen && submitBlockers.length" class="pa-submit-readiness" aria-live="polite">
-          <strong>Resources cannot be confirmed yet</strong>
-          <ul>
-            <li v-for="blocker in submitBlockers" :key="blocker.key">
-              {{ blocker.message }}
-              <router-link v-if="blocker.to" :to="blocker.to" class="pa-link">Open Scope</router-link>
-            </li>
-          </ul>
-        </section>
-        <div v-if="record.sourceChanged" class="pa-feedback">Scope changed since the last save. Reconcile resource positions with the current locked FTE before confirming.</div>
-        <div v-if="record.frozen" class="pa-feedback pa-feedback--error">
-          <template v-if="record.migrationManagers.length">
-            Submitted Resources are locked. Contact this project's assigned Migration Manager
-            <template v-for="(manager, index) in record.migrationManagers" :key="manager">
-              <a class="pa-link" :href="`mailto:${manager}`">{{ manager }}</a>{{ index < record.migrationManagers.length - 1 ? ', ' : '' }}
-            </template>
-            or a platform administrator to request an unlock.
-          </template>
-          <template v-else>
-            Submitted Resources are locked. No Migration Manager is assigned to this project. Contact a platform administrator to request an unlock.
-          </template>
-        </div>
         <section class="pa-panel">
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
@@ -109,12 +87,12 @@
               <mc-button v-if="tab === 'area' && canEditArea" appearance="primary" label="Submit Area details" :disabled="!record.rows.length" @click="save('submit_area')" />
             </div>
           </div>
-              <div v-if="tab === 'execution'" class="pa-execution-guidance">
-                <div class="pa-execution-guidance__note" role="note">
-                  <strong>Note</strong>
-                  <p>For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
-                </div>
-              </div>
+          <div v-if="tab === 'execution'" class="pa-execution-guidance">
+            <div class="pa-execution-guidance__note" role="note">
+              <strong>Note</strong>
+              <p>For Backfill and Efficiency, Actual DOJ should be the date the FTE was associated to the new PID or onboarded onto the project.</p>
+            </div>
+          </div>
           <div v-if="tab === 'execution' && record.gscSiteRequests?.length" class="pa-gsc-requests" aria-label="GSC Site requests">
             <span v-for="request in record.gscSiteRequests" :key="request.id" class="pa-gsc-request" :class="`pa-gsc-request--${request.status}`">
               <strong>{{ request.site }}</strong>
@@ -308,6 +286,7 @@ import axios from 'axios'
 import { read, utils } from 'xlsx'
 import PageShell from '../components/PageShell.vue'
 import { useProjectArtefact } from '../composables/useProjectArtefact.js'
+import { useTopbarNotice } from '../composables/useTopbarNotice.js'
 import { areaLocationMapping, customLocationStrategyOptions } from '../data/areaLocationStrategyMapping.js'
 import { exportArtefact } from '../utils/projectArtefactExport.js'
 import '@maersk-global/mds-components-core/mc-button'
@@ -575,6 +554,30 @@ const submitBlockers = computed(() => {
 
   return blockers
 })
+const resourceNotice = computed(() => {
+  const current = record.value
+  if (!current) return null
+
+  const blockers = current.frozen ? [] : submitBlockers.value
+  const warnings = current.sourceChanged
+    ? [{
+        key: 'source-changed',
+        message: 'Scope changed since the last save. Reconcile resource positions with the current locked FTE before confirming.',
+      }]
+    : []
+  if (current.frozen) {
+    const managers = current.migrationManagers || []
+    warnings.push({
+      key: 'frozen',
+      message: managers.length
+        ? `Submitted Resources are locked. Contact this project's assigned Migration Manager (${managers.join(', ')}) or a platform administrator to request an unlock.`
+        : 'Submitted Resources are locked. No Migration Manager is assigned to this project. Contact a platform administrator to request an unlock.',
+    })
+  }
+  if (!blockers.length && !warnings.length) return null
+  return { heading: 'Resources need attention', blockers, warnings }
+})
+useTopbarNotice(resourceNotice)
 const reminderLink = computed(() => `mailto:${encodeURIComponent(record.value?.requestor || '')}?subject=${encodeURIComponent(`Resource update: ${record.value?.migrationRequestId}`)}&body=${encodeURIComponent(`Please review these ${selected.value.length} resource positions:\n${record.value?.rows.filter(row => selected.value.includes(row.id)).map(row => `${row.gscPid || row.id} - ${row.site} - ${row.hiringType}`).join('\n')}\n${location.href}`)}`)
 const dateTime = value => new Date(value).toLocaleString('en-GB')
 const auditActionLabel = action => ({

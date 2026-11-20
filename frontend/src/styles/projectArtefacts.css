@@ -70,9 +70,6 @@
 .pa-feedback { border-radius: 8px; padding: 14px 18px; margin-top: 16px; font-size: 13px; line-height: 1.6; background: #eef7fc; color: #225d77; }
 .pa-feedback--error { color: #a3332c; background: #fff0ed; }
 .pa-feedback--success { color: #176345; background: #e8f6ee; }
-.pa-submit-readiness { background: #fff8ed; border: 1px solid #ffd198; border-radius: 8px; color: #704b16; font-size: 13px; line-height: 1.6; margin-top: 16px; padding: 14px 18px; }
-.pa-submit-readiness ul { margin: 8px 0 0; padding-left: 20px; }
-.pa-submit-readiness li + li { margin-top: 4px; }
 .pa-link { color: #00789e; text-decoration: none; font-weight: 600; }
 .pa-text-button { background: transparent; border: 0; color: #00789e; padding: 6px; font: inherit; font-size: 12px; cursor: pointer; }
 .pa-text-button:disabled { color: #91a1ab; cursor: not-allowed; }
