@@ -4,6 +4,7 @@
     subtitle="Ask questions about migration processes, approvals, risks, and documentation."
     tag="Migration Chatbot"
     back-label="Back to Welcome"
+    back-link-to-topbar
     full-width
   >
     <section class="chat-layout">

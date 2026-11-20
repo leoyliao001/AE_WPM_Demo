@@ -3,16 +3,6 @@
     <div class="intake-scroll">
       <div class="page-content">
         <header class="page-header">
-          <router-link class="back-link" to="/">
-            <mc-button
-              appearance="neutral"
-              variant="plain"
-              fit="small"
-              label="Back to Welcome"
-              icon="mi-arrow-left"
-            />
-          </router-link>
-
         <div class="header-main">
           <mc-tag appearance="info" fit="small" label="Migration Request" />
           <h1 class="page-title">Migration Project Intake Form</h1>
@@ -850,6 +840,7 @@ import {
   previewSections
 } from '../utils/migrationIntakeSubmit'
 import { getCurrentUserEmail } from '../auth/azureAuth.js'
+import { useTopbarBackLink } from '../composables/useTopbarBackLink.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-tag'
@@ -861,6 +852,8 @@ import '@maersk-global/mds-components-core/mc-checkbox-group'
 import '@maersk-global/mds-components-core/mc-textarea'
 import '@maersk-global/mds-components-core/mc-notification'
 import '@maersk-global/mds-components-core/mc-dialog'
+
+useTopbarBackLink('/', 'Back to Welcome')
 
 const DRAFT_KEY = 'ae-wpm-migration-intake-draft'
 const router = useRouter()
@@ -1600,12 +1593,6 @@ onMounted(loadDraft)
   position: relative;
   width: 100%;
   z-index: 1;
-}
-
-.back-link {
-  display: inline-block;
-  margin-bottom: 20px;
-  text-decoration: none;
 }
 
 .header-main {
