@@ -101,7 +101,7 @@ const exploreCards = [
     tags: ['Portfolio health', 'Site capacity', 'Benefits'],
     actions: [{ label: 'Open Dashboards', route: '/migration-dashboard' }],
     icon: 'mi-chart-bars-vertical',
-    image: '/ocean-freight-shipping.jpeg'
+    image: '/c05f31e9-c833-4481-8bfa-754f8317ebcf.webp'
   },
   {
     layout: 'migration',
@@ -188,6 +188,7 @@ const go = (route) => router.push(route)
 .explore-card:hover { box-shadow: 0 12px 24px rgba(18, 50, 75, .14); }
 .explore-card__visual { position: relative; }
 .explore-card__image { background-position: center; background-size: cover; height: 96px; }
+.explore-card--leadership .explore-card__image { background-position: center 65%; }
 .explore-card__icon { align-items: center; background: #edf7fb; border: 4px solid #fff; border-radius: 50%; bottom: -17px; color: var(--blue); display: flex; height: 38px; justify-content: center; left: 16px; position: absolute; width: 38px; }
 .explore-card__body { display: flex; flex: 1; flex-direction: column; padding: 14px 16px 8px; }
 .card-kicker { font-size: 10px; letter-spacing: .08em; }
@@ -224,7 +225,7 @@ const go = (route) => router.push(route)
   .hero-highlight small { font-size: 10px; line-height: 1.3; margin-top: 2px; }
   .hub-section { display: flex; flex: 1 0 auto; flex-direction: column; justify-content: flex-start; min-height: 0; padding-bottom: 0; }
   .section-heading { margin-bottom: 10px; }
-  .explore-grid { flex: 0 0 auto; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); grid-template-rows: repeat(2, minmax(118px, 1fr)); height: clamp(250px, 31vh, 310px); }
+  .explore-grid { flex: 0 0 auto; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); grid-template-rows: repeat(2, minmax(118px, 1fr)); height: clamp(290px, 36vh, 350px); }
   .hub-principles { margin-top: auto; margin-bottom: 24px; }
   .explore-card { display: flex; flex-direction: column; height: 100%; min-height: 0; position: relative; }
   .explore-card__visual { inset: 0; position: absolute; }
@@ -237,7 +238,7 @@ const go = (route) => router.push(route)
   .explore-card h3 { font-size: 17px; line-height: 1.2; margin: 3px 0 5px; }
   .explore-card--migration h3 { font-size: 27px; line-height: 1.12; }
   .explore-card p:not(.card-kicker) { font-size: 12px; line-height: 1.42; min-height: 0; }
-  .explore-card--migration p:not(.card-kicker) { font-size: 13px; line-height: 1.45; }
+  .explore-card--migration p:not(.card-kicker) { font-size: 13px; line-height: 1.45; max-width: 90%; }
   .card-actions { align-self: flex-start; border: 0; margin-top: 9px; padding: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
