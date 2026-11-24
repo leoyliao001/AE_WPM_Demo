@@ -4,13 +4,13 @@
       <section class="hero-section">
         <div class="hero-copy">
           <h1 class="hero-title">WPM Pulse <span>-</span> Digital Hub</h1>
-          <h2 class="hero-slogan">Right Work | Right Place | Right Ownership</h2>
+          <h2 class="hero-slogan">Right Work · Right Place · Right Ownership</h2>
           <p class="hero-description">
-            From location decision to realised value, in one governed workflow
+            From decision to delivered value, one governed lifecycle.
           </p>
           <div class="hero-actions">
             <button type="button" class="button button--primary" @click="go('/migration-intake')">
-              Start a migration <span aria-hidden="true">&#8594;</span>
+              Start a Migration <span aria-hidden="true">&#8594;</span>
             </button>
           </div>
         </div>
@@ -23,7 +23,7 @@
             <p class="eyebrow eyebrow--dark">Explore the hub</p>
             <h2 id="explore-heading">Everything you need, in one place</h2>
           </div>
-          <p class="section-note">From the location decision to stable run — plan, govern, deliver and measure every migration.</p>
+          <p class="section-note">Qualify, place, migrate and prove value: every migration, one standard.</p>
         </div>
 
         <div class="explore-carousel">
@@ -40,7 +40,6 @@
               <span class="explore-card__icon"><mc-icon :icon="card.icon" size="18" /></span>
             </div>
             <div class="explore-card__body">
-              <p class="card-kicker">{{ card.kicker }}</p>
               <h3>{{ card.title }}</h3>
               <p>{{ card.description }}</p>
               <ul class="card-tags" :aria-label="`${card.title} topics`">
@@ -97,27 +96,24 @@ const router = useRouter()
 const exploreCards = [
   {
     layout: 'leadership',
-    kicker: 'Leadership & stakeholders',
     title: 'Leadership Hub',
-    description: 'Executive dashboards to track portfolio health, migration progress, risks and KPIs in one view.',
+    description: 'Portfolio health, tollgate status, risks and benefits realised against the business case, in one view.',
     tags: ['Portfolio health', 'Site capacity', 'Benefits'],
     actions: [{ label: 'Open Dashboards', route: '/migration-dashboard' }],
     icon: 'mi-chart-bars-vertical',
-    image: '/aefc68e4-4be4-4ebf-a3b1-38b9915c8db7.webp'
+    image: '/ocean-freight-shipping.jpeg'
   },
   {
     layout: 'migration',
-    kicker: 'Active migration teams',
     title: 'Migration Hub',
-    description: 'Workspace for teams running an active migration: plans, tasks, trackers and status.',
+    description: 'Run your migration through every phase and tollgate: plans, RAID, readiness and evidence in one place.',
     tags: ['Intake', 'Project plan', 'RAID', 'Readiness'],
-    actions: [{ label: 'My migrations', route: '/project-dashboard' }],
+    actions: [{ label: 'My Migrations', route: '/project-dashboard' }],
     icon: 'mi-file-arrows-square',
     image: '/port-twilight.webp'
   },
   {
     layout: 'partners',
-    kicker: 'MSP workspace',
     title: 'Migration Success Partners Hub',
     description: 'Workspace for MSPs to guide, support and follow up on the migrations they partner on.',
     tags: ['Focal points', 'RASCI', 'Forums'],
@@ -167,9 +163,9 @@ const go = (route) => router.push(route)
 .hero-slogan { color: var(--blue); font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 0; line-height: 1.4; margin: 0 0 24px; text-wrap: balance; }
 .hero-description { color: #60758a; font-size: 15px; line-height: 1.55; margin: 0; max-width: 460px; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
-.button { border: 1px solid var(--navy); border-radius: 3px; cursor: pointer; font: 700 12px 'Maersk Text', sans-serif; padding: 11px 16px; transition: transform .2s ease, box-shadow .2s ease; }
-.button:hover { box-shadow: 0 5px 12px rgba(11, 43, 75, .16); transform: translateY(-2px); }
-.button--primary { background: var(--navy); color: #fff; }
+.button, .card-link { border: 1px solid var(--navy); border-radius: 3px; cursor: pointer; font: 700 12px 'Maersk Text', sans-serif; padding: 11px 16px; transition: transform .2s ease, box-shadow .2s ease; }
+.button:hover, .card-link:hover { box-shadow: 0 5px 12px rgba(11, 43, 75, .16); transform: translateY(-2px); }
+.button--primary, .card-link { background: var(--navy); color: #fff; }
 .button--secondary { background: #fff; color: var(--navy); }
 .button span, .card-link span { margin-left: 7px; }
 .hero-highlights { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px; }
@@ -189,7 +185,7 @@ const go = (route) => router.push(route)
 .explore-grid { display: grid; gap: 12px; grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(290px, auto); overflow-x: auto; overscroll-behavior-inline: contain; padding: 4px 0 8px; scroll-snap-type: x proximity; scrollbar-width: none; }
 .explore-grid::-webkit-scrollbar { display: none; }
 .explore-card { animation: reveal .55s ease both; animation-delay: var(--card-delay); background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 5px 14px rgba(18, 50, 75, .05); display: flex; flex-direction: column; overflow: hidden; scroll-snap-align: start; transition: box-shadow .2s ease, transform .2s ease; }
-.explore-card:hover { box-shadow: 0 12px 24px rgba(18, 50, 75, .14); transform: translateY(-3px); }
+.explore-card:hover { box-shadow: 0 12px 24px rgba(18, 50, 75, .14); }
 .explore-card__visual { position: relative; }
 .explore-card__image { background-position: center; background-size: cover; height: 96px; }
 .explore-card__icon { align-items: center; background: #edf7fb; border: 4px solid #fff; border-radius: 50%; bottom: -17px; color: var(--blue); display: flex; height: 38px; justify-content: center; left: 16px; position: absolute; width: 38px; }
@@ -201,11 +197,8 @@ const go = (route) => router.push(route)
 .card-tags li { background: #f4f7f9; border: 1px solid #dfe8ed; border-radius: 999px; color: #29445d; font-size: 10px; line-height: 1.4; padding: 2px 8px; white-space: nowrap; }
 .card-actions { align-items: stretch; border-top: 1px solid #e6edf1; display: flex; gap: 16px; margin-top: auto; padding-top: 7px; }
 .card-actions--split { gap: 10px; }
-.card-link { align-items: center; background: transparent; border: 0; border-radius: 0; color: var(--navy); cursor: pointer; display: flex; flex: 1 1 0; font: 700 12px 'Maersk Text', sans-serif; justify-content: space-between; margin: 0; min-height: 44px; min-width: 0; padding: 0; text-align: left; text-decoration: none; transition: color .2s ease; }
+.card-link { align-items: center; border-radius: 999px; display: inline-flex; flex: 0 0 auto; justify-content: center; min-width: 0; padding: 9px 14px; text-align: center; text-decoration: none; }
 .card-link--unavailable { color: var(--muted); cursor: not-allowed; opacity: .72; }
-.card-link span { align-items: center; border: 1px solid #d6e3e9; border-radius: 50%; color: var(--blue); display: inline-flex; height: 26px; justify-content: center; transition: background .2s ease, border-color .2s ease, color .2s ease; width: 26px; }
-.card-link:hover { color: var(--blue); }
-.card-link:hover span { background: #eaf5fa; border-color: #b9dce9; }
 .card-link:focus-visible { border-radius: 3px; outline: 3px solid color-mix(in srgb, var(--blue) 35%, white); outline-offset: 2px; }
 .hub-principles { border-top: 1px solid #d6e3e9; display: grid; flex: 0 0 auto; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0 clamp(24px, 2vw, 32px); padding-top: 14px; }
 .hub-principle { align-items: center; background: linear-gradient(145deg, #fff 0%, #f8fbfc 100%); border: 1px solid #e1ebef; border-radius: 10px; box-shadow: 0 3px 10px rgba(18, 50, 75, .045); display: flex; gap: 11px; min-width: 0; padding: 12px; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
@@ -246,10 +239,6 @@ const go = (route) => router.push(route)
   .explore-card p:not(.card-kicker) { font-size: 12px; line-height: 1.42; min-height: 0; }
   .explore-card--migration p:not(.card-kicker) { font-size: 13px; line-height: 1.45; }
   .card-actions { align-self: flex-start; border: 0; margin-top: 9px; padding: 0; }
-  .card-link { background: var(--navy); border-radius: 999px; color: #fff; flex: 0 0 auto; justify-content: center; min-height: 34px; padding: 0 18px; }
-  .card-link span { display: none; }
-  .card-link:hover { background: var(--blue); color: #fff; }
-  .explore-card--leadership .card-link, .explore-card--partners .card-link { min-height: 30px; }
 }
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
 @media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-auto-flow: column; grid-template-columns: none; grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
@@ -263,7 +252,7 @@ const go = (route) => router.push(route)
   .hero-slogan { font-size: 20px; line-height: 1.4; margin-bottom: 20px; }
   .hero-description { font-size: 14px; line-height: 1.5; }
   .hero-actions { margin-top: 18px; }
-  .button { padding: 8px 12px; }
+  .button, .card-link { padding: 8px 12px; }
   .hero-highlights { gap: 8px; margin-top: 10px; }
   .hero-highlight { gap: 4px; }
   .hero-highlight__icon { height: 26px; width: 26px; }
@@ -284,8 +273,6 @@ const go = (route) => router.push(route)
   .card-tags { gap: 3px; margin: 4px 0 5px; }
   .card-tags li { font-size: 8px; padding: 1px 6px; }
   .card-actions { padding-top: 3px; }
-  .card-link { font-size: 10px; min-height: 32px; }
-  .card-link span { height: 22px; width: 22px; }
   .hub-principles { margin-top: auto; }
   .hub-principles { gap: 8px; }
   .hub-principle { gap: 8px; padding: 9px; }
@@ -300,7 +287,7 @@ const go = (route) => router.push(route)
   .hero-slogan { font-size: 18px; line-height: 1.35; margin-bottom: 16px; }
   .hero-description { font-size: 13px; line-height: 1.45; }
   .hero-actions { margin-top: 16px; }
-  .button { padding: 6px 10px; }
+  .button, .card-link { padding: 6px 10px; }
   .hero-highlights { gap: 6px; margin-top: 7px; }
   .hero-highlight { gap: 2px; }
   .hero-highlight__icon { height: 22px; width: 22px; }
@@ -322,8 +309,6 @@ const go = (route) => router.push(route)
   .card-tags { gap: 2px; margin: 3px 0 4px; }
   .card-tags li { font-size: 7px; padding: 1px 4px; }
   .card-actions { padding-top: 2px; }
-  .card-link { font-size: 10px; min-height: 34px; }
-  .card-link span { height: 18px; width: 18px; }
   .hub-principles { margin-top: auto; }
   .hub-principle { gap: 8px; padding: 8px; }
   .hub-principle__icon { flex-basis: 26px; height: 26px; width: 26px; }

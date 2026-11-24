@@ -36,7 +36,14 @@
         </div>
         <template v-for="item in navItems" :key="item.to">
           <div
-            v-if="item.label === 'Admin'"
+            v-if="item.disabled"
+            class="nav-link nav-link--placeholder"
+            aria-disabled="true"
+          >
+            {{ item.label }}
+          </div>
+          <div
+            v-else-if="item.label === 'Admin'"
             class="nav-admin"
           >
             <button
@@ -202,11 +209,12 @@ const adminMenuItems = computed(() => [
 ])
 
 const baseNavItems = [
-  { label: 'Welcome', to: '/', icon: 'mi-house' },
+  { label: 'Home', to: '/', icon: 'mi-house' },
   // Hidden for now: Future Service Model, Final CI Review
-  { label: 'Intake', to: '/migration-intake', icon: 'mi-file-arrows-square' },
+  { label: 'Start a Migration', to: '/migration-intake', icon: 'mi-file-arrows-square' },
   { label: 'Dashboard', to: '/migration-dashboard', icon: 'mi-chart-bars-vertical' },
-  { label: 'Chatbot', to: '/migration-chatbot', icon: 'mi-chatbot' }
+  { label: 'Pulse Assistant', to: '/migration-chatbot', icon: 'mi-chatbot' },
+  { label: 'Playbook&Toolkit', disabled: true }
 ]
 
 const databaseNavItem = {
@@ -610,6 +618,11 @@ watch(topbarNotice, (notice) => {
 
 .nav-link--active mc-icon {
   color: inherit;
+}
+
+.nav-link--placeholder {
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  cursor: default;
 }
 
 @media (max-width: 900px) {
