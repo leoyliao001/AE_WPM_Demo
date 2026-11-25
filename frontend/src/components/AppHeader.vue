@@ -6,91 +6,127 @@
     >
       <router-link slot="link" class="home-link" to="/" aria-label="Home" />
 
-      <nav slot="actions" class="app-nav" aria-label="Main navigation">
-        <div v-if="topbarBackLink || topbarNotice" class="topbar-leading-actions">
-          <router-link
-            v-if="topbarBackLink"
-            class="topbar-back-link"
-            :to="topbarBackLink.to"
-          >
-            <mc-button
-              appearance="neutral"
-              variant="plain"
-              fit="small"
-              :label="topbarBackLink.label"
-              icon="mi-arrow-left"
-            />
-          </router-link>
-          <button
-            v-if="topbarNotice"
-            class="topbar-notice-trigger"
-            type="button"
-            aria-label="Open resource guidance"
-            data-tooltip="Click to see reminder"
-            aria-haspopup="dialog"
-            :aria-expanded="noticeDialogOpen"
-            @click="openNoticeDialog"
-          >
-            <mc-icon icon="mi-exclamation-circle-solid" color="#d8899b" size="24" />
-          </button>
-        </div>
-        <template v-for="item in navItems" :key="item.to">
-          <div
-            v-if="item.disabled"
-            class="nav-link nav-link--placeholder"
-            aria-disabled="true"
-          >
-            {{ item.label }}
-          </div>
-          <div
-            v-else-if="item.label === 'Admin'"
-            class="nav-admin"
-          >
-            <button
-              v-if="isSuperAdmin"
-              class="nav-link nav-admin__trigger"
-              :class="{ 'nav-link--active': isActive(item) }"
-              type="button"
-              aria-haspopup="menu"
-              :aria-expanded="adminMenuOpen"
-              @click="toggleAdminMenu"
-              @keydown.esc="closeAdminMenu"
-            >
-              <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
-              <span>{{ item.label }}</span>
-            </button>
-            <router-link
-              v-else
-              :to="item.to"
-              class="nav-link"
-              :class="{ 'nav-link--active': isActive(item) }"
-            >
-              <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
-              <span>{{ item.label }}</span>
-            </router-link>
-            <nav v-if="isSuperAdmin && adminMenuOpen" class="admin-menu" aria-label="Admin menu" role="menu">
+      <nav
+        slot="actions"
+        class="app-nav"
+        :class="{ 'app-nav--scrollable': navHasOverflow }"
+        aria-label="Main navigation"
+      >
+        <button
+          v-if="navHasOverflow"
+          class="app-nav__scroll-button"
+          type="button"
+          aria-label="Scroll navigation left"
+          :disabled="!navCanScrollLeft"
+          @click="scrollNav(-1)"
+        >
+          <span class="app-nav__scroll-arrow app-nav__scroll-arrow--left" aria-hidden="true" />
+        </button>
+        <div
+          ref="navScroller"
+          class="app-nav__scroller"
+          tabindex="0"
+          aria-label="Navigation items"
+          @scroll="updateNavScrollState"
+        >
+          <div ref="navItemsContainer" class="app-nav__items">
+            <div v-if="topbarBackLink || topbarNotice" class="topbar-leading-actions">
               <router-link
-                v-for="adminItem in adminMenuItems"
-                :key="adminItem.to"
-                :to="adminItem.to"
-                class="admin-menu__item"
-                role="menuitem"
-                @click="closeAdminMenu"
+                v-if="topbarBackLink"
+                class="topbar-back-link"
+                :to="topbarBackLink.to"
+                :aria-label="topbarBackLink.label"
               >
-                {{ adminItem.label }}
+                <mc-button
+                  appearance="neutral"
+                  variant="plain"
+                  fit="small"
+                  :label="topbarBackLink.label"
+                  icon="mi-arrow-left"
+                />
               </router-link>
-            </nav>
+              <button
+                v-if="topbarNotice"
+                class="topbar-notice-trigger"
+                type="button"
+                aria-label="Open resource guidance"
+                data-tooltip="Click to see reminder"
+                aria-haspopup="dialog"
+                :aria-expanded="noticeDialogOpen"
+                @click="openNoticeDialog"
+              >
+                <mc-icon icon="mi-exclamation-circle-solid" color="#d8899b" size="24" />
+              </button>
+            </div>
+            <template v-for="item in navItems" :key="item.to">
+              <div
+                v-if="item.disabled"
+                class="nav-link nav-link--placeholder"
+                aria-disabled="true"
+              >
+                {{ item.label }}
+              </div>
+              <div
+                v-else-if="item.label === 'Admin'"
+                class="nav-admin"
+              >
+                <button
+                  v-if="isSuperAdmin"
+                  class="nav-link nav-admin__trigger"
+                  :class="{ 'nav-link--active': isActive(item) }"
+                  type="button"
+                  aria-haspopup="menu"
+                  :aria-expanded="adminMenuOpen"
+                  @click="toggleAdminMenu"
+                  @keydown.esc="closeAdminMenu"
+                >
+                  <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
+                  <span>{{ item.label }}</span>
+                </button>
+                <router-link
+                  v-else
+                  :to="item.to"
+                  class="nav-link"
+                  :class="{ 'nav-link--active': isActive(item) }"
+                >
+                  <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
+                  <span>{{ item.label }}</span>
+                </router-link>
+                <nav v-if="isSuperAdmin && adminMenuOpen" class="admin-menu" aria-label="Admin menu" role="menu">
+                  <router-link
+                    v-for="adminItem in adminMenuItems"
+                    :key="adminItem.to"
+                    :to="adminItem.to"
+                    class="admin-menu__item"
+                    role="menuitem"
+                    @click="closeAdminMenu"
+                  >
+                    {{ adminItem.label }}
+                  </router-link>
+                </nav>
+              </div>
+              <router-link
+                v-else
+                :to="item.to"
+                class="nav-link"
+                :class="{ 'nav-link--active': isActive(item) }"
+              >
+                <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
+                <span>{{ item.label }}</span>
+              </router-link>
+            </template>
           </div>
-          <router-link
-            v-else
-            :to="item.to"
-            class="nav-link"
-            :class="{ 'nav-link--active': isActive(item) }"
-          >
-            <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
-            <span>{{ item.label }}</span>
-          </router-link>
-        </template>
+        </div>
+        <button
+          v-if="navHasOverflow"
+          class="app-nav__scroll-button"
+          type="button"
+          aria-label="Scroll navigation right"
+          :disabled="!navCanScrollRight"
+          @click="scrollNav(1)"
+        >
+          <span class="app-nav__scroll-arrow app-nav__scroll-arrow--right" aria-hidden="true" />
+        </button>
       </nav>
     </mc-top-bar>
     <mc-dialog
@@ -163,7 +199,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import '@maersk-global/mds-components-core/mc-top-bar'
 import '@maersk-global/mds-components-core/mc-icon'
@@ -178,6 +214,12 @@ const isSuperAdmin = ref(false)
 const adminMenuOpen = ref(false)
 const userMenuOpen = ref(false)
 const noticeDialogOpen = ref(false)
+const navScroller = ref(null)
+const navItemsContainer = ref(null)
+const navHasOverflow = ref(false)
+const navCanScrollLeft = ref(false)
+const navCanScrollRight = ref(false)
+let navResizeObserver
 
 const openNoticeDialog = () => {
   noticeDialogOpen.value = true
@@ -245,6 +287,30 @@ const navItems = computed(() => {
   return [...baseNavItems, databaseNavItem]
 })
 
+const updateNavScrollState = () => {
+  const scroller = navScroller.value
+  if (!scroller) return
+
+  const hasOverflow = scroller.scrollWidth > scroller.clientWidth + 1
+  if (navHasOverflow.value !== hasOverflow) {
+    navHasOverflow.value = hasOverflow
+    nextTick(updateNavScrollState)
+    return
+  }
+
+  navCanScrollLeft.value = scroller.scrollLeft > 1
+  navCanScrollRight.value = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1
+}
+
+const scrollNav = (direction) => {
+  const scroller = navScroller.value
+  if (!scroller) return
+  scroller.scrollBy({
+    left: direction * Math.max(160, scroller.clientWidth * 0.75),
+    behavior: 'smooth'
+  })
+}
+
 const refreshSuperAdmin = async () => {
   const access = await fetchMyAttributesAccess({ force: true })
   isSuperAdmin.value = !!access?.is_super_admin
@@ -291,11 +357,27 @@ onMounted(() => {
   refreshSuperAdmin()
   document.addEventListener('click', closeAdminMenuOnOutsideClick)
   document.addEventListener('keydown', closeAdminMenuOnEscape)
+  window.addEventListener('resize', updateNavScrollState)
+  nextTick(() => {
+    updateNavScrollState()
+    if (typeof ResizeObserver !== 'undefined') {
+      navResizeObserver = new ResizeObserver(updateNavScrollState)
+      if (navScroller.value) navResizeObserver.observe(navScroller.value)
+      if (navItemsContainer.value) navResizeObserver.observe(navItemsContainer.value)
+    }
+  })
 })
 onUnmounted(() => {
   document.removeEventListener('click', closeAdminMenuOnOutsideClick)
   document.removeEventListener('keydown', closeAdminMenuOnEscape)
+  window.removeEventListener('resize', updateNavScrollState)
+  navResizeObserver?.disconnect()
 })
+watch(navItems, () => nextTick(updateNavScrollState))
+watch(
+  () => route.fullPath,
+  () => nextTick(updateNavScrollState)
+)
 watch(
   () => azureAuthState.user?.username || azureAuthState.user?.name || azureAuthState.status,
   () => {
@@ -349,12 +431,8 @@ watch(topbarNotice, (notice) => {
 .topbar-leading-actions {
   align-items: center;
   display: flex;
+  flex: 0 0 auto;
   gap: 8px;
-  left: 140px;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1;
 }
 
 .topbar-notice-trigger {
@@ -457,11 +535,83 @@ watch(topbarNotice, (notice) => {
 
 .app-nav {
   align-items: center;
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
+  height: 100%;
+  max-width: calc(100vw - 155px);
+  min-width: 0;
+  padding: 0 220px 0 8px;
+  width: calc(100vw - 155px);
+}
+
+.app-nav__scroller {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  height: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.app-nav__scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.app-nav__items {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
   gap: 4px 16px;
   height: 100%;
-  padding: 0 220px 0 8px;
+  white-space: nowrap;
+}
+
+.app-nav__scroll-button {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--mds_brand_appearance_neutral_weak_border-color, #d9dee3);
+  border-radius: 4px;
+  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
+  cursor: pointer;
+  display: grid;
+  flex: 0 0 28px;
+  height: 32px;
+  justify-items: center;
+  padding: 0;
+}
+
+.app-nav__scroll-button:hover:not(:disabled),
+.app-nav__scroll-button:focus-visible {
+  color: var(--mds_brand_appearance_primary_default_link-color, #0077b8);
+}
+
+.app-nav__scroll-button:focus-visible {
+  outline: 2px solid var(--mds_brand_appearance_primary_default_link-color, #0077b8);
+  outline-offset: 1px;
+}
+
+.app-nav__scroll-button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.app-nav__scroll-arrow {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  height: 7px;
+  width: 7px;
+}
+
+.app-nav__scroll-arrow--left {
+  transform: translateX(2px) rotate(135deg);
+}
+
+.app-nav__scroll-arrow--right {
+  transform: translateX(-2px) rotate(-45deg);
 }
 
 .app-user-panel {
@@ -562,6 +712,12 @@ watch(topbarNotice, (notice) => {
   z-index: 1001;
 }
 
+.app-nav--scrollable .admin-menu {
+  position: fixed;
+  right: 12px;
+  top: 64px;
+}
+
 .admin-menu__item {
   border-left: 2px solid transparent;
   border-radius: 2px;
@@ -627,15 +783,14 @@ watch(topbarNotice, (notice) => {
 
 @media (max-width: 900px) {
   .app-nav {
-    gap: 4px 10px;
     padding-right: 150px;
   }
 
-  .nav-link span {
-    display: none;
+  .app-nav__items {
+    gap: 4px 10px;
   }
 
-  .nav-link {
+  .app-nav__items .nav-link {
     padding: 8px;
   }
 
