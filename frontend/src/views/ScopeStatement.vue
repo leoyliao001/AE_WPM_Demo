@@ -55,7 +55,7 @@
                   <section>
                     <h3>FTE agreement and evidence rules</h3>
                     <ol>
-                      <li>For each of <strong>JL1, JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
+                      <li>For each of <strong>JL1, JL2, JL3 and JL4</strong>, enter agreed FTE and final FTE. Exception FTE and exception reasons are summarized automatically from Opportunity Assessment tasks marked No.</li>
                       <li>The system-wide Super Admin (temporarily treated as Migration Manager) enters and explicitly confirms the independent top-level <strong>Migratable FTE</strong> as a whole number. It is initially suggested from the agreed JL total; changing its value clears confirmation.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
                       <li>Only assigned GSC Leaders and the Area POC can upload evidence or use the page-level <strong>Lock / Unlock</strong> control. The whole page, including FTE, scope text, assumptions and uploads, is locked together; downloads remain available while locked.</li>
@@ -123,9 +123,9 @@
               <p>{{ pageLocked ? 'Page locked for editing' : 'Page open for editing' }}</p>
             </article>
             <article class="metric-card">
-              <div class="metric-card__top"><span>Not agreed</span><mc-icon icon="mi-file" size="18" /></div>
-              <div class="metric-card__value">{{ totalDisplay('notAgreedFte') }}<span>FTE</span></div>
-              <p>Exceptions retained in scope review</p>
+              <div class="metric-card__top"><span>Exception FTE</span><mc-icon icon="mi-file" size="18" /></div>
+              <div class="metric-card__value">{{ formatNumber(exceptionTotal) }}<span>FTE</span></div>
+              <p>Calculated from Opportunity Assessment tasks marked No</p>
             </article>
             <article class="metric-card">
               <div class="metric-card__top"><span>Final vs. ambition</span><mc-icon icon="mi-chart-pie" size="18" /></div>
@@ -179,7 +179,7 @@
               <span class="section-icon"><mc-icon icon="mi-shield" size="22" /></span>
               <div><p class="eyebrow">Headcount agreement</p><h2 id="agreement-title">Define the final commitment</h2></div>
             </div>
-            <span class="source-badge"><span /> Manually maintained</span>
+            <span class="source-badge"><span /> Migratable and final FTE manually maintained</span>
           </header>
           <div class="agreement-intro">
             <p>Confirm all FTE values and Scope text, then use Lock at the top to secure the whole page.</p>
@@ -243,7 +243,7 @@
           </div>
           <footer class="agreement-note">
             <mc-icon icon="mi-file" size="16" />
-            <span>Migratable FTE and exception figures are entered manually. The Migratable FTE total cannot exceed Intake ambition. Final agreement is entered separately. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
+            <span>Migratable FTE and Final agreement are entered manually. Exception FTE is calculated from Opportunity Assessment tasks marked No. The Migratable FTE total cannot exceed Intake ambition. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
           </footer>
           <p v-if="aboveAgreed" class="agreement-warning">Final FTE exceeds the agreed figure for {{ aboveAgreed }}. Review the variance before submitting.</p>
         </section>
@@ -252,24 +252,49 @@
           <section class="detail-card exception-card" aria-labelledby="exceptions-title">
             <header class="detail-heading">
               <div><p class="eyebrow">Scope reconciliation</p><h2 id="exceptions-title">Exceptions to migration</h2></div>
-              <span class="count-badge">{{ totalDisplay('notAgreedFte') }} <small>FTE</small></span>
+              <span class="count-badge">{{ formatNumber(exceptionTotal) }} <small>FTE</small></span>
             </header>
-            <p class="section-description">Record the capacity not agreed for migration.</p>
-            <table class="exception-table">
-              <thead><tr><th scope="col">Job level</th><th scope="col">Not agreed · FTE</th><th scope="col">% of ambition</th></tr></thead>
-              <tbody>
-                <tr v-for="line in lines" :key="line.jobLevel">
-                  <th scope="row">Job level {{ line.jobLevel.slice(2) }}</th>
-                  <td><input v-model="line.notAgreedFte" :aria-label="`${line.jobLevel} exception FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999.9999" step="0.0001" placeholder="0" class="number-input" /></td>
-                  <td>{{ exceptionPercentage(line.notAgreedFte) }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="exception-overview">
+              <span><strong>{{ exceptionGroups.length }}</strong> L2/L3 groups in scope</span>
+              <span class="exception-overview__separator" aria-hidden="true">·</span>
+              <span><strong>{{ exceptionTaskCount }}</strong> distinct tasks</span>
+              <small>All saved Opportunity Assessment rows (all Catalogue groups) · Migratable to GSC = No</small>
+            </div>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Exceptions to migration by L2 and L3">
+              <table class="exception-table">
+                <thead>
+                  <tr><th scope="col">L2</th><th scope="col">L3</th><th scope="col">Tasks</th><th scope="col">Exception FTE</th><th scope="col">Exceptions</th></tr>
+                </thead>
+                <tbody>
+                  <tr v-for="group in exceptionGroups" :key="`${group.l2}::${group.l3}`">
+                    <td>{{ group.l2 || '—' }}</td>
+                    <td class="exception-l3">{{ group.l3 || '—' }}</td>
+                    <td>{{ group.tasks }}</td>
+                    <td><span :class="{ 'exception-fte': Number(group.exceptionFte) > 0 }">{{ Number(group.exceptionFte) > 0 ? formatNumber(Number(group.exceptionFte)) : '—' }}</span></td>
+                    <td>
+                      <div v-if="exceptionLabels(group).length" class="exception-tags">
+                        <span v-for="label in exceptionLabels(group)" :key="label" class="exception-tag">{{ label }}</span>
+                      </div>
+                      <span v-else class="exception-dash">—</span>
+                    </td>
+                  </tr>
+                  <tr v-if="!exceptionGroups.length"><td colspan="5" class="exception-empty">No Opportunity Assessment tasks are marked No.</td></tr>
+                </tbody>
+                <tfoot v-if="exceptionGroups.length">
+                  <tr>
+                    <th scope="row" colspan="2">Total</th>
+                    <td>{{ exceptionTaskCount }}</td>
+                    <td><span :class="{ 'exception-fte': exceptionTotal > 0 }">{{ exceptionTotal > 0 ? formatNumber(exceptionTotal) : '—' }}</span></td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
             <div class="reconciliation" :class="{ 'reconciliation--balanced': reconciled, 'reconciliation--gap': reconciliationGap !== null && !reconciled }">
               <mc-icon :icon="reconciled ? 'mi-check' : 'mi-chart-pie'" size="18" />
               <div>
                 <strong>{{ reconciled ? 'Ambition fully reconciled' : reconciliationGap === null ? 'Complete the headcount picture' : `${formatNumber(Math.abs(reconciliationGap))} FTE ${reconciliationGap > 0 ? 'above' : 'below'} ambition` }}</strong>
-                <span>{{ reconciliationGap === null ? 'Enter Migratable FTE and exception figures for all job levels.' : `${formatNumber(migratableFte)} migratable + ${formatNumber(exceptionTotal)} exceptions / ${formatNumber(ambition)} ambition` }}</span>
+                <span>{{ reconciliationGap === null ? 'Enter Migratable FTE; exception FTE is calculated from Opportunity Assessment.' : `${formatNumber(migratableFte)} migratable + ${formatNumber(exceptionTotal)} exceptions / ${formatNumber(ambition)} ambition` }}</span>
               </div>
             </div>
             <router-link class="text-action oa-link" :to="{ path: `/migration-dashboard/${projectId}/opportunity-assessment`, query: { from: 'toll-gates', project: projectId } }">View Opportunity Assessment <span aria-hidden="true">↗</span></router-link>
@@ -375,6 +400,8 @@ const opportunityAssessmentFte = computed(() => {
   const number = Number(value)
   return Number.isFinite(number) ? number : null
 })
+const exceptionGroups = computed(() => statement.value?.exceptionGroups || [])
+const exceptionTaskCount = computed(() => exceptionGroups.value.reduce((sum, group) => sum + Number(group.tasks || 0), 0))
 const lockedCount = computed(() => lines.value.filter((line) => line.lockedAt).length)
 const lockedTotal = computed(() => lines.value.filter((line) => line.lockedAt).reduce((sum, line) => sum + Number(line.finalFte), 0))
 const attachments = computed(() => statement.value?.attachments || [])
@@ -383,14 +410,14 @@ const agreedTotal = computed(() => sumField('agreedFte'))
 const agreedFteHasFraction = computed(() => lines.value.some((line) => line.agreedFte !== '' && !validNumber(line.agreedFte, true)))
 const agreedFteExceedsAmbition = computed(() => agreedTotal.value > ambition.value)
 const agreedFteWithinAmbition = computed(() => !agreedFteHasFraction.value && !agreedFteExceedsAmbition.value)
-const exceptionTotal = computed(() => sumField('notAgreedFte'))
+const exceptionTotal = computed(() => exceptionGroups.value.reduce((sum, group) => sum + Number(group.exceptionFte || 0), 0))
 const finalTotal = computed(() => sumField('finalFte'))
 const finalTotalExceedsMigratableFte = computed(() => migratableFteConfirmed.value &&
   validNumber(migratableFte.value, true) && finalTotal.value > Number(migratableFte.value))
 const allFinalEntered = computed(() => completeField('finalFte'))
 const coverage = computed(() => allFinalEntered.value && ambition.value > 0 ? Math.round(finalTotal.value / ambition.value * 100) : null)
 const totalVariance = computed(() => completeField('agreedFte') && allFinalEntered.value ? finalTotal.value - agreedTotal.value : null)
-const reconciliationGap = computed(() => validNumber(migratableFte.value, true) && completeField('notAgreedFte') ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
+const reconciliationGap = computed(() => validNumber(migratableFte.value, true) ? Number(migratableFte.value) + exceptionTotal.value - ambition.value : null)
 const reconciled = computed(() => reconciliationGap.value !== null && Math.abs(reconciliationGap.value) < 0.00005)
 const ready = computed(() => lockedCount.value === 4 && Boolean(scopeText.value.trim()) &&
   validNumber(migratableFte.value, true) && migratableFteConfirmed.value)
@@ -440,12 +467,11 @@ const submissionReminder = computed(() => {
   const incompleteLevels = lines.value
     .filter((line) =>
       !validNumber(line.agreedFte) ||
-      !validNumber(line.notAgreedFte) ||
       !validNumber(line.finalFte, true)
     )
     .map((line) => line.jobLevel)
   if (incompleteLevels.length) {
-    messages.push(`Complete agreed, exception and whole-number final FTE for ${incompleteLevels.join(', ')}.`)
+    messages.push(`Complete agreed and whole-number final FTE for ${incompleteLevels.join(', ')}.`)
   }
 
   if (!pageLocked.value && canLockPage.value) {
@@ -478,6 +504,10 @@ function sumField(key) {
 
 function formatNumber(value) {
   return Number(value).toLocaleString('en-GB', { maximumFractionDigits: 4 })
+}
+
+function exceptionLabels(group) {
+  return String(group.exceptions || '').split(',').map((label) => label.trim()).filter(Boolean)
 }
 
 function totalDisplay(key) {
@@ -522,11 +552,7 @@ function varianceText(line) {
   return value === null ? '—' : signedNumber(value)
 }
 
-function exceptionPercentage(value) {
-  return validNumber(value) && ambition.value > 0 ? `${(Number(value) / ambition.value * 100).toFixed(1)}%` : '—'
-}
-
-const canLockPage = computed(() => completeField('agreedFte') && agreedFteWithinAmbition.value && completeField('notAgreedFte') &&
+const canLockPage = computed(() => completeField('agreedFte') && agreedFteWithinAmbition.value &&
   allFinalEntered.value && Boolean(scopeText.value.trim()) &&
   validNumber(migratableFte.value, true) && migratableFteConfirmed.value)
 
@@ -535,7 +561,7 @@ function formatDate(value) {
 }
 
 function snapshot() {
-  return JSON.stringify({ text: scopeText.value, migratableFte: migratableFte.value, migratableFteConfirmed: migratableFteConfirmed.value, outOfScope: outOfScope.value, assumptions: assumptions.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
+  return JSON.stringify({ text: scopeText.value, migratableFte: migratableFte.value, migratableFteConfirmed: migratableFteConfirmed.value, outOfScope: outOfScope.value, assumptions: assumptions.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.finalFte]) })
 }
 
 function applyResponse(data) {
@@ -625,7 +651,7 @@ async function persist(action, extra = {}) {
     return false
   }
   const editableLines = canEdit.value ? lines.value.filter((line) => !line.lockedAt) : []
-  if (canEdit.value && editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
+  if (canEdit.value && editableLines.some((line) => ['agreedFte', 'finalFte'].some((key) =>
     line[key] !== '' && !validNumber(line[key], key === 'finalFte' || key === 'agreedFte')
   ))) {
     error.value = 'Enter non-negative FTE values. Migratable FTE and Final agreement must be whole numbers.'
@@ -654,7 +680,6 @@ async function persist(action, extra = {}) {
       lines: editableLines.map((line) => ({
         jobLevel: line.jobLevel,
         agreedFte: line.agreedFte === '' ? null : line.agreedFte,
-        notAgreedFte: line.notAgreedFte === '' ? null : line.notAgreedFte,
         finalFte: line.finalFte === '' ? null : line.finalFte
       })),
     })
@@ -851,16 +876,34 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 .agreement-warning { margin: 0; padding: 10px 24px; border-top: 1px solid #f2e7cf; background: #fffbf2; color: #99752f; font-size: 11px; }
 .details-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 20px; margin-top: 22px; }
 .detail-card { padding: 24px; }
+.exception-card, .narrative-card { grid-column: 1 / -1; }
 .detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .detail-heading .eyebrow { margin-bottom: 6px; font-size: 9px; }
 .section-description { color: var(--scope-muted); font-size: 12px; line-height: 1.7; margin: 12px 0 18px; }
 .count-badge { padding: 7px 10px; background: #f1f5f8; border: 1px solid #e8eef3; border-radius: 7px; font-size: 17px; font-weight: 600; white-space: nowrap; }
 .count-badge small { color: #8797a2; font-size: 9px; font-weight: 400; margin-left: 2px; }
-.exception-table thead th { background: #f5f8fa; font-size: 10px; font-weight: 500; color: #7d909f; padding: 10px; }
-.exception-table thead th:last-child, .exception-table tbody td:last-child { text-align: right; }
-.exception-table tbody th, .exception-table tbody td { padding: 10px; border-bottom: 1px solid #edf2f5; font-size: 12px; font-weight: 400; }
-.exception-table tbody td:last-child { color: #6f8596; font-variant-numeric: tabular-nums; }
-.exception-table .number-input { height: 31px; width: 90px; font-size: 11px; }
+.exception-overview { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 18px 0 14px; color: #42586b; font-size: 12px; }
+.exception-overview strong { color: #173a53; font-size: 14px; }
+.exception-overview__separator { color: #a7b3bd; }
+.exception-overview small { margin-left: auto; color: #8293a1; font-size: 10px; }
+.exception-card .table-scroll { max-height: 420px; overflow: auto; overscroll-behavior: contain; }
+.exception-table { width: 100%; min-width: 720px; border-collapse: separate; border-spacing: 0; }
+.exception-table thead th { position: sticky; top: 0; z-index: 1; background: #f2f5f8; color: #64788a; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 11px 14px; text-align: left; text-transform: uppercase; }
+.exception-table thead th:first-child { border-radius: 7px 0 0 7px; }
+.exception-table thead th:last-child { border-radius: 0 7px 7px 0; }
+.exception-table tbody td, .exception-table tfoot th, .exception-table tfoot td { padding: 12px 14px; border-bottom: 1px solid #e9eef2; color: #33495b; font-size: 12px; text-align: left; vertical-align: middle; }
+.exception-table tbody tr:hover { background: #fafcfd; }
+.exception-table .exception-l3 { color: #183c56; font-weight: 650; }
+.exception-table th:nth-child(3), .exception-table td:nth-child(3) { text-align: center; width: 90px; }
+.exception-table th:nth-child(4), .exception-table td:nth-child(4) { text-align: right; width: 140px; font-variant-numeric: tabular-nums; }
+.exception-table tfoot th, .exception-table tfoot td { background: #f2f5f8; border-bottom: 0; color: #173a53; font-weight: 700; }
+.exception-table tfoot th:first-child { border-radius: 0 0 0 7px; text-align: left; }
+.exception-table tfoot td:last-child { border-radius: 0 0 7px 0; }
+.exception-table .exception-fte { color: #bd3227; font-weight: 700; }
+.exception-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.exception-tag { display: inline-flex; padding: 4px 9px; border: 1px solid #f1d2cf; border-radius: 999px; background: #fff3f1; color: #ad3026; font-size: 11px; font-weight: 600; line-height: 1.25; }
+.exception-dash { color: #8797a2; }
+.exception-empty { color: #8493a0 !important; padding: 24px 14px !important; text-align: center !important; }
 .reconciliation { display: flex; align-items: center; gap: 10px; background: #f5f8fa; border: 1px solid #e7edf2; border-radius: 7px; padding: 12px; margin-top: 16px; color: #6b8395; }
 .reconciliation strong { display: block; font-size: 11px; font-weight: 600; }
 .reconciliation span { display: block; font-size: 10px; line-height: 1.6; margin-top: 4px; }

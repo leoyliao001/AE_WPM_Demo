@@ -123,6 +123,55 @@ def _opportunity_assessment_fte(project):
     return calculate_migratable_fte(state)
 
 
+def _opportunity_assessment_exception_groups(project):
+    rows = OpportunityAssessment.objects.filter(
+        migration_request_id=project.migration_request_id
+    ).only("l2", "l3", "task_name", "fte_calculation", "scope_details").order_by("l2", "l3", "pk")
+    groups = {}
+    for row in rows:
+        details = row.scope_details if isinstance(row.scope_details, dict) else {}
+        if str(details.get("mgsc") or "").strip().casefold() != "no":
+            continue
+        l2 = (row.l2 or "").strip()
+        l3 = (row.l3 or "").strip()
+        key = (l2, l3)
+        group = groups.setdefault(key, {
+            "taskNames": set(),
+            "exceptionFte": Decimal("0"),
+            "exceptions": {},
+        })
+
+        task_name = (row.task_name or "").strip()
+        if task_name:
+            group["taskNames"].add(task_name.casefold())
+
+        fte_value = (row.fte_calculation or "").strip()
+        if fte_value:
+            try:
+                fte = Decimal(fte_value)
+            except InvalidOperation as exc:
+                raise ValueError(f"Opportunity Assessment row {row.pk} has an invalid FTE Calculation value.") from exc
+            if not fte.is_finite():
+                raise ValueError(f"Opportunity Assessment row {row.pk} has an invalid FTE Calculation value.")
+            group["exceptionFte"] += fte
+
+        exception = details.get("exc")
+        if isinstance(exception, str) and exception.strip():
+            exception = exception.strip()
+            group["exceptions"].setdefault(exception.casefold(), exception)
+
+    return [
+        {
+            "l2": l2,
+            "l3": l3,
+            "tasks": len(group["taskNames"]),
+            "exceptionFte": format(group["exceptionFte"], "f"),
+            "exceptions": ", ".join(sorted(group["exceptions"].values(), key=str.casefold)),
+        }
+        for (l2, l3), group in sorted(groups.items(), key=lambda item: (item[0][0].casefold(), item[0][1].casefold()))
+    ]
+
+
 def _number(value, label, *, allow_none=False, whole=False):
     if value in (None, ""):
         if allow_none:
@@ -182,6 +231,7 @@ def _serialize_statement(project, statement, email):
         "assumptions": statement.assumptions if statement else "",
         "ambitionFte": str(statement.ambition_fte) if statement and statement.ambition_fte is not None else str(project.fte_number or "0"),
         "opportunityAssessmentFte": str(_opportunity_assessment_fte(project)),
+        "exceptionGroups": _opportunity_assessment_exception_groups(project),
         "finalProjectFte": statement.final_project_fte if statement else None,
         "migratableFte": str(statement.migratable_fte) if statement and statement.migratable_fte is not None else None,
         "migratableFteConfirmed": statement.migratable_fte_confirmed if statement else False,
@@ -585,7 +635,8 @@ def save_scope_statement(request, project_id):
                 line = next(line for line in all_lines if line.job_level == job_level)
                 try:
                     line.agreed_fte = _number(row.get("agreedFte"), f"{job_level} Migratable FTE", allow_none=True, whole=True)
-                    line.not_agreed_fte = _number(row.get("notAgreedFte"), f"{job_level} exception FTE", allow_none=True)
+                    if "notAgreedFte" in row:
+                        line.not_agreed_fte = _number(row["notAgreedFte"], f"{job_level} exception FTE", allow_none=True)
                     final_fte = _number(row.get("finalFte"), f"{job_level} final FTE", allow_none=True, whole=True)
                     final_fte_changed = final_fte_changed or final_fte != line.final_fte
                     line.final_fte = final_fte
@@ -614,10 +665,11 @@ def save_scope_statement(request, project_id):
         if action == "lock":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
                 return Response({"error": "Manually confirm Migratable FTE before locking the page."}, status=400)
-            if statement.migratable_fte != statement.migratable_fte.to_integral_value():
+            confirmed_migratable_fte = Decimal(str(statement.migratable_fte))
+            if confirmed_migratable_fte != confirmed_migratable_fte.to_integral_value():
                 return Response({"error": "Migratable FTE must be a whole number before locking the page."}, status=400)
             if len(all_lines) != len(JOB_LEVELS) or not statement.scope_text.strip() or any(
-                line.agreed_fte is None or line.not_agreed_fte is None or line.final_fte is None
+                line.agreed_fte is None or line.final_fte is None
                 for line in all_lines
             ):
                 return Response({"error": "Complete Scope text and all job-level values before locking the page."}, status=400)
@@ -630,7 +682,8 @@ def save_scope_statement(request, project_id):
         elif action == "submit":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:
                 return Response({"error": "Unlock the page and manually confirm Migratable FTE before submitting."}, status=400)
-            if statement.migratable_fte != statement.migratable_fte.to_integral_value():
+            confirmed_migratable_fte = Decimal(str(statement.migratable_fte))
+            if confirmed_migratable_fte != confirmed_migratable_fte.to_integral_value():
                 return Response({"error": "Migratable FTE must be a whole number before submitting."}, status=400)
             if not statement.scope_text.strip():
                 return Response({"error": "High-level scope statement is required before submitting."}, status=status.HTTP_400_BAD_REQUEST)

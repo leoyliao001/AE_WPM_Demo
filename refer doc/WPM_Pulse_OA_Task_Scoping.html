@@ -61,6 +61,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
 .own{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11.5px;font-weight:700}
 .own.GSC{background:#e1effa;color:#0b5cad}.own.Area{background:#fff0cf;color:#9a6200}.own.both{background:#ece3fb;color:#5b2bb5}
 .empty{padding:40px;text-align:center;color:var(--mut)}
+.catalogue-actions{display:flex;justify-content:flex-end;margin-top:8px}
 .pager{display:flex;align-items:center;gap:8px;margin-top:10px}.pager button{height:30px;min-width:30px;border:1px solid var(--l);border-radius:6px;background:#fff;cursor:pointer}.pager button:disabled{opacity:.4}
 .foot{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-top:1px solid var(--l);z-index:5}
 .dirty{color:var(--warn);font-weight:600}
@@ -145,6 +146,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--b);cursor:pointer
     <button class="btn pri" id="bulkApply">Apply to selected</button><span class="spacer"></span><button class="btn" id="clearSel">Clear selection</button></div>
 
   <div class="grid"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+  <div class="catalogue-actions"><button type="button" class="btn danger hidden" id="restoreCatDefaults">Restore defaults</button></div>
   <div class="pager"><span id="count"></span><span class="spacer"></span><button id="prev">‹</button><span id="pg"></span><button id="next">›</button></div>
 </div>
 </main>

@@ -68,6 +68,36 @@
         @click="closeModeSwitch(true)"
       />
     </mc-dialog>
+    <mc-dialog
+      :open="restoreCatalogueOpen"
+      heading="Restore catalogue defaults?"
+      dimension="small"
+      showclosebutton
+      hasfooterslot
+      @closing="closeRestoreCatalogue(false)"
+    >
+      <div class="oa-dialog-copy">
+        <p>Continue restoring <strong>{{ restoreCatalogueGroup }}</strong> to the default catalogue?</p>
+        <p>All assessment data entered for this country group will be cleared. This action cannot be undone.</p>
+        <p>The reset will be saved to the database only when you click Save.</p>
+      </div>
+      <mc-button
+        slot="secondaryAction"
+        appearance="neutral"
+        variant="outlined"
+        fit="medium"
+        label="Cancel"
+        @click="closeRestoreCatalogue(false)"
+      />
+      <mc-button
+        slot="primaryAction"
+        appearance="error"
+        variant="filled"
+        fit="medium"
+        label="Restore defaults"
+        @click="closeRestoreCatalogue(true)"
+      />
+    </mc-dialog>
   </section>
 </template>
 
@@ -95,8 +125,11 @@ const deleteGroupCountries = ref('')
 const modeSwitchOpen = ref(false)
 const modeSwitchFrom = ref('')
 const modeSwitchTo = ref('')
+const restoreCatalogueOpen = ref(false)
+const restoreCatalogueGroup = ref('')
 let frameDialogRequest = null
 let frameModeSwitchRequest = null
+let frameRestoreCatalogueRequest = null
 let revision = 0
 let loadSequence = 0
 const endpoint = computed(() => `/api/migration-dashboard/projects/${route.params.id}/opportunity-assessment/task-scope/`)
@@ -206,6 +239,7 @@ function syncActiveCatalogueRows(){
 }
 function updateCatalogueVisibility(){
   const show=mode==="cat"&&!!activeCatalogueGroup();
+  $("restoreCatDefaults").classList.toggle("hidden",!show);
   const countryBulkOption=[...$("bulkField").options].find(option=>option.value==="ctry");
   if(countryBulkOption){countryBulkOption.hidden=mode==="cat";if(mode==="cat"&&$("bulkField").value==="ctry"&&BULK[0]){$("bulkField").value=BULK[0].k;fillBulk()}}
   document.querySelector(".gfilters")?.classList.toggle("hidden",mode==="cat"&&!show);
@@ -260,6 +294,29 @@ $("catCountryBtn").onclick=event=>{
   const available=availableCatalogueCountries();
   if(!available.length)return toast("All countries have already been added");
   openCountryAddPicker(event.currentTarget,available,selected=>commitCatalogueCountries(selected));
+};
+$("restoreCatDefaults").onclick=async()=>{
+  const group=mode==="cat"?activeCatalogueGroup():null;
+  if(!group)return;
+  try{
+    const confirmed=await requestParent("confirm-restore-catalogue",{label:group.label,countries:group.countries});
+    if(!confirmed)return;
+    const countries=(group.countries||[]).join("; ");
+    const resetRows=(group.rows||[]).map(row=>{
+      const ref=Number(row.ref);
+      if(!Number.isInteger(ref)||!CAT[ref])throw new Error("Catalogue defaults are unavailable for one or more rows.");
+      return {...row,...rowFromCat(ref),id:row.id,ctry:countries};
+    });
+    const changed=group.rows.some((row,index)=>Object.keys(resetRows[index]).some(key=>row[key]!==resetRows[index][key]));
+    group.rows=resetRows;
+    syncActiveCatalogueRows();
+    sel.clear();
+    clearFilters(false);
+    page=1;
+    render();
+    if(changed)setDirty(true);
+    toast(changed?"Current country group restored to catalogue defaults":"This country group is already at its defaults");
+  }catch(error){toast(error.message||"Unable to restore catalogue defaults.")}
 };
 const originalSetMode=setMode;
 setMode=function(value){
@@ -426,6 +483,24 @@ function closeModeSwitch(confirmed) {
   }, location.origin)
 }
 
+function openRestoreCatalogue(message) {
+  frameRestoreCatalogueRequest = { target: message.target, id: message.id }
+  restoreCatalogueGroup.value = message.payload?.label || 'the current country group'
+  restoreCatalogueOpen.value = true
+}
+
+function closeRestoreCatalogue(confirmed) {
+  const pending = frameRestoreCatalogueRequest
+  frameRestoreCatalogueRequest = null
+  restoreCatalogueOpen.value = false
+  if (!pending) return
+  pending.target.postMessage({
+    type: 'oa-scope-response',
+    id: pending.id,
+    data: Boolean(confirmed)
+  }, location.origin)
+}
+
 async function loadAssessment() {
   const sequence = ++loadSequence
   loading.value = true
@@ -460,6 +535,10 @@ async function onMessage(event) {
   }
   if (message.action === 'confirm-mode-switch') {
     openModeSwitch({ ...message, target })
+    return
+  }
+  if (message.action === 'confirm-restore-catalogue') {
+    openRestoreCatalogue({ ...message, target })
     return
   }
   try {

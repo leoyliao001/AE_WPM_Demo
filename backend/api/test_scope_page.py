@@ -365,6 +365,60 @@ class ScopePageTests(TestCase):
         self.assertFalse(response.data["migratableFteConfirmed"])
         self.assertNotIn("migratableFte", source_data(self.project)[1])
 
+    def test_exceptions_are_grouped_from_non_migratable_rows_across_catalogue_groups(self):
+        rows = [
+            ("Order Management", "Create Order", "Create order", "0.5000", "Legal Issues", "No", "GSC", "group_1"),
+            ("Order Management", "Create Order", "Create order", "1.2500", "Legal Issues", "No", "Area", "group_2"),
+            ("Order Management", "Create Order", "Amend order", "0.2500", "Already in GSC", "No", "GSC", "group_2"),
+            ("Billing & Invoicing", "Invoice Check", "Check invoice", "0.7500", "Language Barrier", "No", "GSC", "group_1"),
+            ("Claims", "Claims Intake", "Review claim", "5.0000", "Legal Issues", "Yes", "No", "group_2"),
+        ]
+        for index, (l2, l3, task_name, fte, exception, is_migratable, catalogue_ownership, group_id) in enumerate(rows):
+            OpportunityAssessment.objects.create(
+                migration_request_id=self.project.migration_request_id,
+                l2=l2,
+                l3=l3,
+                task_name=task_name,
+                migratable_to_gsc=catalogue_ownership,
+                fte_calculation=fte,
+                scope_details={
+                    "method": "cat",
+                    "row_id": f"{group_id}_{index}",
+                    "mgsc": is_migratable,
+                    "exc": exception,
+                },
+            )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["exceptionGroups"], [
+            {
+                "l2": "Billing & Invoicing",
+                "l3": "Invoice Check",
+                "tasks": 1,
+                "exceptionFte": "0.7500",
+                "exceptions": "Language Barrier",
+            },
+            {
+                "l2": "Order Management",
+                "l3": "Create Order",
+                "tasks": 2,
+                "exceptionFte": "2.0000",
+                "exceptions": "Already in GSC, Legal Issues",
+            },
+        ])
+
+    def test_lock_does_not_require_manual_not_agreed_fte_values(self):
+        payload = self.payload("lock")
+        for line in payload["lines"]:
+            line.pop("notAgreedFte")
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["pageLocked"])
+
     def test_page_lock_blocks_narrative_fte_upload_and_admin_updates(self):
         self.upload()
         self.assertEqual(self.save(self.payload("lock")).status_code, 200)
