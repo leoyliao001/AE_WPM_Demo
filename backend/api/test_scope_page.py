@@ -73,7 +73,7 @@ class ScopePageTests(TestCase):
             "lines": [
                 {"jobLevel": "JL1", "agreedFte": 1, "notAgreedFte": 0, "finalFte": 1},
                 {"jobLevel": "JL2", "agreedFte": 2, "notAgreedFte": 0, "finalFte": 2},
-                {"jobLevel": "JL3", "agreedFte": 3, "notAgreedFte": 0, "finalFte": 3},
+                {"jobLevel": "JL3", "agreedFte": 2, "notAgreedFte": 0, "finalFte": 3},
                 {"jobLevel": "JL4", "agreedFte": 1, "notAgreedFte": 0, "finalFte": 1},
             ],
         }
@@ -85,7 +85,59 @@ class ScopePageTests(TestCase):
         self.assertTrue(response.data["migratableFteConfirmed"])
         self.assertEqual(len(response.data["lines"]), 4)
         self.assertEqual(sum(line["finalFte"] for line in response.data["lines"]), 7)
+        self.assertEqual(sum(float(line["agreedFte"]) for line in response.data["lines"]), 6)
         self.assertNotIn("waves", response.data)
+
+    def test_migratable_fte_lines_require_whole_numbers(self):
+        payload = self.payload()
+        payload["lines"][0]["agreedFte"] = "0.5"
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn("whole number", response.data["error"])
+
+    def test_migratable_fte_total_cannot_exceed_intake_ambition(self):
+        payload = self.payload()
+        payload["lines"][0]["agreedFte"] = 1
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertIn("cannot exceed Intake ambition", response.data["error"])
+        self.assertTrue(all(line.agreed_fte is None for line in self.statement.lines.all()))
+
+    def test_migratable_fte_total_uses_the_displayed_intake_ambition(self):
+        self.statement.ambition_fte = "8"
+        self.statement.save(update_fields=["ambition_fte"])
+        payload = self.payload()
+        payload["lines"][0]["agreedFte"] = 1
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 200, response.data)
+
+    def test_final_agreement_changes_sync_unconfirmed_migratable_fte(self):
+        payload = self.payload()
+        payload["migratableFte"] = "3"
+        payload["migratableFteConfirmed"] = False
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["migratableFte"], "6.0000")
+        self.assertFalse(response.data["migratableFteConfirmed"])
+
+    def test_final_agreement_changes_preserve_confirmed_migratable_fte(self):
+        payload = self.payload()
+        payload["migratableFte"] = "5"
+        payload["migratableFteConfirmed"] = True
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["migratableFte"], "5.0000")
+        self.assertTrue(response.data["migratableFteConfirmed"])
 
     def test_legacy_wave_payload_is_ignored(self):
         payload = self.payload()
@@ -287,7 +339,7 @@ class ScopePageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["migratableFteConfirmed"])
         self.assertEqual(response.data["migratableFte"], "8.0000")
-        response = self.save({"lines": [{"jobLevel": "JL2", "agreedFte": 50, "notAgreedFte": 0, "finalFte": 2}]})
+        response = self.save({"lines": [{"jobLevel": "JL2", "agreedFte": 1, "notAgreedFte": 0, "finalFte": 2}]})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["migratableFte"], "8.0000")
         response = self.save({"migratableFteConfirmed": True})

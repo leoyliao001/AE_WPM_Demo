@@ -574,6 +574,7 @@ def save_scope_statement(request, project_id):
 
         lines_payload = payload.get("lines")
         changed_lines = []
+        final_fte_changed = False
         if isinstance(lines_payload, list):
             seen = set()
             for row in lines_payload:
@@ -583,14 +584,32 @@ def save_scope_statement(request, project_id):
                 seen.add(job_level)
                 line = next(line for line in all_lines if line.job_level == job_level)
                 try:
-                    line.agreed_fte = _number(row.get("agreedFte"), f"{job_level} agreed FTE", allow_none=True)
+                    line.agreed_fte = _number(row.get("agreedFte"), f"{job_level} Migratable FTE", allow_none=True, whole=True)
                     line.not_agreed_fte = _number(row.get("notAgreedFte"), f"{job_level} exception FTE", allow_none=True)
-                    line.final_fte = _number(row.get("finalFte"), f"{job_level} final FTE", allow_none=True, whole=True)
+                    final_fte = _number(row.get("finalFte"), f"{job_level} final FTE", allow_none=True, whole=True)
+                    final_fte_changed = final_fte_changed or final_fte != line.final_fte
+                    line.final_fte = final_fte
                 except ValueError as exc:
                     return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
                 changed_lines.append(line)
         elif lines_payload is not None:
             return Response({"error": "Lines must be a list."}, status=400)
+
+        if any(
+            line.agreed_fte is not None
+            and Decimal(str(line.agreed_fte)) != Decimal(str(line.agreed_fte)).to_integral_value()
+            for line in all_lines
+        ):
+            return Response({"error": "Each Migratable FTE value must be a whole number."}, status=400)
+        agreed_total = sum((line.agreed_fte or Decimal("0")) for line in all_lines)
+        displayed_ambition = statement.ambition_fte
+        if displayed_ambition is None:
+            displayed_ambition = project.fte_number or 0
+        intake_ambition = Decimal(str(displayed_ambition))
+        if agreed_total > intake_ambition:
+            return Response({"error": "The Migratable FTE total cannot exceed Intake ambition."}, status=400)
+        if final_fte_changed and not statement.migratable_fte_confirmed:
+            statement.migratable_fte = Decimal(sum(int(line.final_fte or 0) for line in all_lines))
 
         if action == "lock":
             if statement.migratable_fte is None or not statement.migratable_fte_confirmed:

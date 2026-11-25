@@ -115,7 +115,7 @@
                 {{ migratableFte !== '' && !validNumber(migratableFte, true) ? 'Enter a whole number; decimals are not allowed.' : 'Enter a whole number.' }}
               </p>
               <label class="migratable-confirm"><input v-model="migratableFteConfirmed" type="checkbox" :disabled="!canEditMigratableFte || isBusy || !validNumber(migratableFte, true)" />I confirm this Migratable FTE</label>
-              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Super Admin (Migration Manager) only · Suggested from JL total: {{ totalDisplay('agreedFte') }}</p>
+              <p>{{ migratableFteConfirmed ? 'Manually confirmed · independent of JL totals' : 'Manual confirmation required' }} · Super Admin (Migration Manager) only · Suggested from Final agreement total: {{ formatNumber(finalTotal) }}</p>
             </article>
             <article class="metric-card metric-card--teal">
               <div class="metric-card__top"><span>Locked final FTE</span><mc-icon icon="mi-shield" size="18" /></div>
@@ -190,16 +190,26 @@
               <thead>
                 <tr>
                   <th scope="col">Job level</th>
-                  <th scope="col">Migratable FTE <span>User input · FTE</span></th>
+                  <th scope="col">Migratable FTE <span>Manual whole numbers · total ≤ Intake ambition</span></th>
                   <th scope="col">Final agreement <span>Whole numbers · FTE</span></th>
                   <th scope="col">Variance <span>Final − agreed</span></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="line in lines" :key="line.jobLevel" :class="{ 'agreement-row--locked': line.lockedAt }">
-                  <th scope="row"><span class="job-level">Job level {{ line.jobLevel.slice(2) }}</span><span class="cell-caption">{{ line.jobLevel }}</span></th>
-                  <td><input v-model="line.agreedFte" :aria-label="`${line.jobLevel} agreed FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999.9999" step="0.0001" placeholder="0" class="number-input" /></td>
-                  <td><input v-model="line.finalFte" :aria-label="`${line.jobLevel} final FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999" step="1" placeholder="0" class="number-input number-input--final" /></td>
+                  <th scope="row"><span class="job-level">{{ line.jobLevel }}</span></th>
+                  <td>
+                    <div class="agreement-input-wrap">
+                      <input v-model="line.agreedFte" :aria-label="`${line.jobLevel} Migratable FTE`" :aria-invalid="line.agreedFte !== '' && (!validNumber(line.agreedFte, true) || agreedFteExceedsAmbition)" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" :max="maxAgreedFte(line)" step="1" placeholder="0" class="number-input" @focus="activeAgreedFteJobLevel = line.jobLevel" @input="activeAgreedFteJobLevel = line.jobLevel" @blur="clearActiveAgreedFteJobLevel(line.jobLevel)" />
+                      <span v-if="activeAgreedFteJobLevel === line.jobLevel && agreedFteExceedsAmbition" class="agreement-inline-validation" role="alert">Total exceeds the Intake ambition of {{ formatNumber(ambition) }} FTE.</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="agreement-input-wrap">
+                      <input v-model="line.finalFte" :aria-label="`${line.jobLevel} final FTE`" :disabled="!canEdit || isBusy || !!line.lockedAt" type="number" min="0" max="99999999" step="1" placeholder="0" class="number-input number-input--final" @focus="activeFinalFteJobLevel = line.jobLevel" @input="handleFinalFteInput(line, $event)" @blur="clearActiveFinalFteJobLevel(line.jobLevel)" />
+                      <span v-if="activeFinalFteJobLevel === line.jobLevel && finalTotalExceedsMigratableFte" class="agreement-inline-validation" role="alert">Final agreement total exceeds confirmed Migratable FTE of {{ formatNumber(migratableFte) }} FTE. Uncheck “I confirm this Migratable FTE” to increase it.</span>
+                    </div>
+                  </td>
                   <td><span class="variance" :class="{ 'variance--negative': variance(line) < 0, 'variance--positive': variance(line) > 0 }">{{ varianceText(line) }}</span></td>
                 </tr>
               </tbody>
@@ -213,6 +223,9 @@
               </tfoot>
             </table>
           </div>
+          <p v-if="agreedFteHasFraction" class="agreement-validation" role="alert">Each Migratable FTE value must be a non-negative whole number.</p>
+          <p v-else-if="agreedFteExceedsAmbition && !activeAgreedFteJobLevel" class="agreement-validation" role="alert">The Migratable FTE total cannot exceed the Intake ambition of {{ formatNumber(ambition) }} FTE.</p>
+          <p v-if="finalTotalExceedsMigratableFte && !activeFinalFteJobLevel" class="agreement-validation" role="alert">Final agreement total exceeds confirmed Migratable FTE of {{ formatNumber(migratableFte) }} FTE. Uncheck “I confirm this Migratable FTE” to increase it.</p>
           <div class="scope-attachments">
             <div class="scope-attachments__heading">
               <div><h3>Attachement</h3><p class="section-description">Shared files for the entire headcount agreement. Existing attachment records are retained in this list.</p></div>
@@ -230,7 +243,7 @@
           </div>
           <footer class="agreement-note">
             <mc-icon icon="mi-file" size="16" />
-            <span>Migratable FTE and exception figures are entered manually. The JL total is only a suggested starting value; review or change it, then confirm Migratable FTE. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
+            <span>Migratable FTE and exception figures are entered manually. The Migratable FTE total cannot exceed Intake ambition. Final agreement is entered separately. Attachement: PDF, DOCX, MSG or XLSX · up to 20 MB per file.</span>
           </footer>
           <p v-if="aboveAgreed" class="agreement-warning">Final FTE exceeds the agreed figure for {{ aboveAgreed }}. Review the variance before submitting.</p>
         </section>
@@ -335,6 +348,8 @@ const lines = ref([])
 const scopeText = ref('')
 const migratableFte = ref('')
 const migratableFteConfirmed = ref(false)
+const activeAgreedFteJobLevel = ref('')
+const activeFinalFteJobLevel = ref('')
 const outOfScope = ref('')
 const assumptions = ref('')
 const revisionReason = ref('')
@@ -365,8 +380,13 @@ const lockedTotal = computed(() => lines.value.filter((line) => line.lockedAt).r
 const attachments = computed(() => statement.value?.attachments || [])
 const evidenceCount = computed(() => attachments.value.length)
 const agreedTotal = computed(() => sumField('agreedFte'))
+const agreedFteHasFraction = computed(() => lines.value.some((line) => line.agreedFte !== '' && !validNumber(line.agreedFte, true)))
+const agreedFteExceedsAmbition = computed(() => agreedTotal.value > ambition.value)
+const agreedFteWithinAmbition = computed(() => !agreedFteHasFraction.value && !agreedFteExceedsAmbition.value)
 const exceptionTotal = computed(() => sumField('notAgreedFte'))
 const finalTotal = computed(() => sumField('finalFte'))
+const finalTotalExceedsMigratableFte = computed(() => migratableFteConfirmed.value &&
+  validNumber(migratableFte.value, true) && finalTotal.value > Number(migratableFte.value))
 const allFinalEntered = computed(() => completeField('finalFte'))
 const coverage = computed(() => allFinalEntered.value && ambition.value > 0 ? Math.round(finalTotal.value / ambition.value * 100) : null)
 const totalVariance = computed(() => completeField('agreedFte') && allFinalEntered.value ? finalTotal.value - agreedTotal.value : null)
@@ -449,7 +469,7 @@ function validNumber(value, whole = false) {
 }
 
 function completeField(key) {
-  return lines.value.length === 4 && lines.value.every((line) => validNumber(line[key], key === 'finalFte'))
+  return lines.value.length === 4 && lines.value.every((line) => validNumber(line[key], key === 'finalFte' || key === 'agreedFte'))
 }
 
 function sumField(key) {
@@ -462,6 +482,31 @@ function formatNumber(value) {
 
 function totalDisplay(key) {
   return completeField(key) ? formatNumber(sumField(key)) : '—'
+}
+
+function maxAgreedFte(line) {
+  const otherTotal = lines.value.reduce((sum, item) => item === line || !validNumber(item.agreedFte) ? sum : sum + Number(item.agreedFte), 0)
+  return Math.max(0, Math.floor(ambition.value - otherTotal))
+}
+
+function clearActiveAgreedFteJobLevel(jobLevel) {
+  if (activeAgreedFteJobLevel.value === jobLevel) activeAgreedFteJobLevel.value = ''
+}
+
+function handleFinalFteInput(line, event) {
+  activeFinalFteJobLevel.value = line.jobLevel
+  if (migratableFteConfirmed.value) return
+
+  const inputValue = event.target.value
+  const total = lines.value.reduce((sum, item) => {
+    const value = item === line ? inputValue : item.finalFte
+    return sum + (validNumber(value, true) ? Number(value) : 0)
+  }, 0)
+  migratableFte.value = String(total)
+}
+
+function clearActiveFinalFteJobLevel(jobLevel) {
+  if (activeFinalFteJobLevel.value === jobLevel) activeFinalFteJobLevel.value = ''
 }
 
 function signedNumber(value) {
@@ -481,7 +526,7 @@ function exceptionPercentage(value) {
   return validNumber(value) && ambition.value > 0 ? `${(Number(value) / ambition.value * 100).toFixed(1)}%` : '—'
 }
 
-const canLockPage = computed(() => completeField('agreedFte') && completeField('notAgreedFte') &&
+const canLockPage = computed(() => completeField('agreedFte') && agreedFteWithinAmbition.value && completeField('notAgreedFte') &&
   allFinalEntered.value && Boolean(scopeText.value.trim()) &&
   validNumber(migratableFte.value, true) && migratableFteConfirmed.value)
 
@@ -506,7 +551,7 @@ function applyResponse(data) {
   }))
   migratableFte.value = data.migratableFte != null
     ? String(Number(data.migratableFte))
-    : completeField('agreedFte') ? sumField('agreedFte') : ''
+    : String(sumField('finalFte'))
   migratableFteConfirmed.value = Boolean(data.migratableFteConfirmed)
   savedSnapshot.value = snapshot()
 }
@@ -581,9 +626,15 @@ async function persist(action, extra = {}) {
   }
   const editableLines = canEdit.value ? lines.value.filter((line) => !line.lockedAt) : []
   if (canEdit.value && editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
-    line[key] !== '' && !validNumber(line[key], key === 'finalFte')
+    line[key] !== '' && !validNumber(line[key], key === 'finalFte' || key === 'agreedFte')
   ))) {
-    error.value = 'Enter non-negative FTE values. Final FTE must be a whole number.'
+    error.value = 'Enter non-negative FTE values. Migratable FTE and Final agreement must be whole numbers.'
+    return false
+  }
+  if (canEdit.value && !agreedFteWithinAmbition.value) {
+    error.value = agreedFteHasFraction.value
+      ? 'Each Migratable FTE value must be a non-negative whole number.'
+      : `The Migratable FTE total cannot exceed the Intake ambition of ${formatNumber(ambition.value)} FTE.`
     return false
   }
   const payload = {
@@ -688,6 +739,9 @@ watch(projectId, loadData, { immediate: true })
 .scope-boundaries button:disabled { opacity: .5; cursor: not-allowed; }
 .scope-reopen-dialog__error { color: #b42318; font-size: 13px; }
 .scope-reopen-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.agreement-validation { margin: 8px 0 0; color: #b42318; font-size: 13px; }
+.agreement-input-wrap { display: flex; align-items: center; gap: 8px; }
+.agreement-inline-validation { max-width: 190px; color: #b42318; font-size: 11px; line-height: 1.35; }
 .scope-page {
   --scope-navy: #10314f;
   --scope-muted: #6f8292;
@@ -756,10 +810,9 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 .agreement-table thead th { padding: 13px 18px; font-size: 11px; color: #526c80; font-weight: 600; white-space: nowrap; }
 .agreement-table thead th > span { display: block; font-size: 10px; font-weight: 400; color: #8796a3; margin-top: 4px; }
 .agreement-table thead th:first-child, .agreement-table tbody th, .agreement-table tfoot th { padding-left: 24px; }
-.agreement-table tbody th, .agreement-table tbody td { border-bottom: 1px solid #edf1f4; padding: 19px 18px; vertical-align: middle; }
+.agreement-table tbody th, .agreement-table tbody td { border-bottom: 1px solid #edf1f4; padding: 12px 18px; vertical-align: middle; }
 .agreement-table tbody th { width: 145px; }
 .job-level { display: block; font-weight: 600; font-size: 13px; white-space: nowrap; }
-.cell-caption { display: block; font-size: 10px; color: #81929f; margin-top: 5px; font-weight: 400; line-height: 1.5; }
 .number-input { box-sizing: border-box; width: 104px; max-width: 100%; height: 36px; border: 1px solid #dce5ec; border-radius: 6px; padding: 6px 10px; background: #fff; font-family: inherit; font-size: 12px; color: var(--scope-navy); font-variant-numeric: tabular-nums; transition: border-color .15s, box-shadow .15s; }
 .number-input--final { font-weight: 600; background: #fbfdff; }
 .number-input::placeholder { color: #afbbc5; }

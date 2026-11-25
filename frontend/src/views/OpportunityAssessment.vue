@@ -35,6 +35,39 @@
         @click="closeDeleteGroup(true)"
       />
     </mc-dialog>
+    <mc-dialog
+      :open="modeSwitchOpen"
+      heading="Switch scoping method?"
+      dimension="small"
+      showclosebutton
+      hasfooterslot
+      @closing="closeModeSwitch(false)"
+    >
+      <div class="oa-dialog-copy">
+        <p>Only one method can be selected for an Opportunity Assessment.</p>
+        <p>
+          Continue with <strong>{{ modeSwitchTo }}</strong>? When you save, its assessment rows will replace the current active rows.
+          Data from <strong>{{ modeSwitchFrom }}</strong> will not be included in the active submission.
+        </p>
+        <p>Your changes will not be saved to the database until you click Save.</p>
+      </div>
+      <mc-button
+        slot="secondaryAction"
+        appearance="neutral"
+        variant="outlined"
+        fit="medium"
+        label="Cancel"
+        @click="closeModeSwitch(false)"
+      />
+      <mc-button
+        slot="primaryAction"
+        appearance="primary"
+        variant="filled"
+        fit="medium"
+        label="Continue"
+        @click="closeModeSwitch(true)"
+      />
+    </mc-dialog>
   </section>
 </template>
 
@@ -59,7 +92,11 @@ const dirty = ref(false)
 const deleteGroupOpen = ref(false)
 const deleteGroupLabel = ref('')
 const deleteGroupCountries = ref('')
+const modeSwitchOpen = ref(false)
+const modeSwitchFrom = ref('')
+const modeSwitchTo = ref('')
 let frameDialogRequest = null
+let frameModeSwitchRequest = null
 let revision = 0
 let loadSequence = 0
 const endpoint = computed(() => `/api/migration-dashboard/projects/${route.params.id}/opportunity-assessment/task-scope/`)
@@ -233,6 +270,26 @@ setMode=function(value){
   render();setDirty(true);
 };
 if(S.mode){originalSetMode(S.mode);$("catCountry").classList.toggle("show",S.mode==="cat");if(S.mode==="cat"){syncActiveCatalogueRows();renderCatalogueGroups()}render();document.querySelectorAll(".mcard").forEach(button=>{const on=button.dataset.mode===S.mode;button.classList.toggle("on",on);button.setAttribute("aria-checked",String(on))});setDirty(false)}
+let modeSwitchPending=false;
+document.querySelectorAll(".mcard").forEach(card=>card.onclick=async()=>{
+if(modeSwitchPending)return;
+const nextMode=card.dataset.mode;
+if(nextMode===mode)return;
+if(mode){
+  modeSwitchPending=true;
+  try{
+    const confirmed=await requestParent("confirm-mode-switch",{from:mode,to:nextMode});
+    if(!confirmed)return;
+  }catch(error){toast(error.message);return}
+  finally{modeSwitchPending=false}
+}
+document.querySelectorAll(".mcard").forEach(button=>{
+  const on=button===card;
+  button.classList.toggle("on",on);
+  button.setAttribute("aria-checked",String(on));
+});
+setMode(nextMode);
+});
 $("save").onclick=async()=>{if(!dirty)return;document.body.inert=true;try{S.mode=mode;const result=await requestParent("save",{migration_request_id:MIGRATION_ID,state:S});S=result.state;setDirty(false);render();const queued=pendingCatalogueRows;pendingCatalogueRows=[];await acknowledgeCatalogueRows(queued);toast("Saved to database")}catch(error){toast(error.message)}finally{document.body.inert=false}};
 $("reload").onclick=async()=>{if(dirty&&!confirm("Discard unsaved changes?"))return;document.body.inert=true;try{await requestParent("reload")}catch(error){document.body.inert=false;toast(error.message)}};
 document.querySelectorAll(".mcard").forEach(button=>{button.setAttribute("aria-label",button.querySelector("b").textContent)});
@@ -346,6 +403,29 @@ function closeDeleteGroup(confirmed) {
   respondToFrameDialog(Boolean(confirmed))
 }
 
+function modeLabel(mode) {
+  return mode === 'cat' ? 'Select Complete Catalogue' : 'Add at Task level'
+}
+
+function openModeSwitch(message) {
+  frameModeSwitchRequest = { target: message.target, id: message.id }
+  modeSwitchFrom.value = modeLabel(message.payload?.from)
+  modeSwitchTo.value = modeLabel(message.payload?.to)
+  modeSwitchOpen.value = true
+}
+
+function closeModeSwitch(confirmed) {
+  const pending = frameModeSwitchRequest
+  frameModeSwitchRequest = null
+  modeSwitchOpen.value = false
+  if (!pending) return
+  pending.target.postMessage({
+    type: 'oa-scope-response',
+    id: pending.id,
+    data: Boolean(confirmed)
+  }, location.origin)
+}
+
 async function loadAssessment() {
   const sequence = ++loadSequence
   loading.value = true
@@ -376,6 +456,10 @@ async function onMessage(event) {
   const target = event.source
   if (message.action === 'confirm-delete-catalogue-group') {
     openDeleteGroup({ ...message, target })
+    return
+  }
+  if (message.action === 'confirm-mode-switch') {
+    openModeSwitch({ ...message, target })
     return
   }
   try {
