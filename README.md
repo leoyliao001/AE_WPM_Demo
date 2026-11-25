@@ -116,8 +116,10 @@ python manage.py loaddata scripts\api_data_dump.json
 
 Production does not use `backend/db.sqlite3`. After pulling a revision that
 contains new Django migration files, run the migration against SQL Server from
-an elevated PowerShell session on the deployment server. The production
-service uses the repository virtual environment at `E:\AE_WPM_Demo\.venv`.
+an elevated PowerShell session on the application server
+`SCRBAEXDEFRM249`. The production service uses the repository virtual
+environment at `E:\AE_WPM_Demo\.venv` and connects to SQL Server on
+`SCRBAEXDEFRM259`.
 
 ```powershell
 Set-Location E:\AE_WPM_Demo\backend
@@ -141,6 +143,13 @@ service environment variables, including `DJANGO_DB_NAME`, `DJANGO_DB_HOST`,
 the local SQLite database or commit secrets to the repository. The account
 running the command must have the same SQL Server permissions as the `AE_WPM`
 service, which normally uses Windows Trusted Connection.
+
+L&D Knowledge Transfer plans, process entries and scores are stored per project
+in SQL Server (`learning_capability_record`). Evidence file contents use the
+configured Django media storage; their project association and metadata are
+stored in SQL Server. Only the Migration Manager assigned in Stakeholder
+Registration or a Platform Super Admin can save L&D records. TAA Resources
+continues to use the existing project `ProjectResources` database record.
 
 If the migration command reports a historical migration-record or schema
 inconsistency, inspect the database before making manual changes. The
@@ -224,8 +233,9 @@ python manage.py runserver
 Backend URL: **http://127.0.0.1:8001**
 
 > **Ports are split between dev and production — do not share 8000.**
-> On the deployment server `SCRBAEXDEFRM217`, the Windows service **AE_WPM**
-> (Waitress + MSSQL) permanently owns `127.0.0.1:8000`. Windows lets a second
+> On the application server `SCRBAEXDEFRM249`, the Windows service **AE_WPM**
+> (Waitress) permanently owns `127.0.0.1:8000` and connects to SQL Server on
+> `SCRBAEXDEFRM259`. Windows lets a second
 > process bind a port that is already listening *without any error*, so a
 > `runserver` on 8000 would silently run alongside the service and requests
 > would be split at random between two backends using two different databases.
@@ -421,11 +431,12 @@ npm run preview
 ## Port policy
 
 Development and production are deliberately kept on **separate ports** on the
-deployment server `SCRBAEXDEFRM217`. Never run both on the same one.
+application server `SCRBAEXDEFRM249`. Never run both on the same one. Its
+production database is hosted separately on SQL Server `SCRBAEXDEFRM259`.
 
 | Port | Owner | Process | Database |
 |------|-------|---------|----------|
-| `127.0.0.1:8000` | **production** | Windows service **AE_WPM** (NSSM → Waitress), runs as `LocalSystem` | MSSQL `WPM Project` (`DJANGO_DB_ENGINE=mssql`) |
+| `127.0.0.1:8000` | **production** | Windows service **AE_WPM** (NSSM → Waitress), runs as `LocalSystem` | MSSQL `WPM Project` on `SCRBAEXDEFRM259` (`DJANGO_DB_ENGINE=mssql`) |
 | `127.0.0.1:8001` | **development** | your own `manage.py runserver` | SQLite `backend/db.sqlite3` |
 | `127.0.0.1:3002` | **development** | Vite dev server (`npm run dev`) | proxies `/api` → 8001 by default |
 | `0.0.0.0:80` | **production** | Windows service **AE_Front_All** (Apache), serves `frontend/dist` and proxies `/api` → 8000 | — |

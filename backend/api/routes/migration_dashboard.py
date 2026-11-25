@@ -1,6 +1,7 @@
 from django.urls import path
 from api.views.opportunity_task_scope import opportunity_task_scope
 from api.views.business_impact_analysis import business_impact_analysis
+from api.views.learning_capability import download_learning_evidence, learning_capability
 from api.views.project_artefacts import project_artefact, resource_projects
 from api.views.people_consultation import (
     download_consultation_evidence,
@@ -53,6 +54,8 @@ from api.views.gsc_site_requests import submit_gsc_site_request
 
 urlpatterns = [
     path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),
+    path("projects/<int:project_id>/learning-capability/", learning_capability, name="learning-capability"),
+    path("projects/<int:project_id>/learning-capability/evidence/", download_learning_evidence, name="learning-capability-evidence"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/", submit_fpo_catalogue_request, name="fpo-catalogue-request-submit"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/<int:request_id>/acknowledge/", acknowledge_fpo_catalogue_request, name="fpo-catalogue-request-acknowledge"),
     path("projects/<int:project_id>/resources/gsc-site-requests/", submit_gsc_site_request, name="gsc-site-request-submit"),

@@ -455,7 +455,9 @@ class ProjectArtefactTests(TestCase):
         self.project.target_start_date = "2026-11-01"
         self.project.target_end_date = "2027-02-01"
         self.project.save(update_fields=["target_start_date", "target_end_date"])
-        ProjectResources.objects.create(project=self.project, rows=[self.resource()])
+        first_resource = self.resource()
+        first_resource["cohort"] = "Wave 1"
+        ProjectResources.objects.create(project=self.project, rows=[first_resource])
 
         response = self.client.get("/api/migration-dashboard/resources/")
 
@@ -463,6 +465,7 @@ class ProjectArtefactTests(TestCase):
         row = response.data["rows"][0]
         self.assertEqual(row["targetStartDate"], "2026-11-01")
         self.assertEqual(row["targetEndDate"], "2027-02-01")
+        self.assertEqual(row["resourceSummary"]["cohorts"], 1)
         self.assertEqual(row["resourceSummary"]["hiringStatusCounts"]["Onboarded"], 1)
         self.assertEqual(row["resourceSummary"]["pidCreated"], 1)
         self.assertEqual(row["resourceSummary"]["requisitionsRaised"], 1)

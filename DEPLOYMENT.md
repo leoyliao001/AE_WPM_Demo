@@ -18,7 +18,7 @@ service environment variables, and logs outside Git.
 | Database | SQL Server via `mssql-django` and ODBC | `SCRBAEXDEFRM259`, database `WPM` |
 
 Current server names include `wpmpulse.crb.apmoller.net` (primary, TLS
-certificate CN), `wpmworkflow.crb.apmoller.net`, `SCRBAEXDEFRM217.crb.apmoller.net`,
+certificate CN), `wpmworkflow.crb.apmoller.net`, `SCRBAEXDEFRM259.crb.apmoller.net`,
 and `10.176.115.28`. Use the production DNS name in user-facing links; do not
 make port 8000 reachable from the network.
 

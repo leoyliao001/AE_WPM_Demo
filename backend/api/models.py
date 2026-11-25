@@ -128,6 +128,30 @@ class ProjectResources(models.Model):
         db_table = "project_resources"
 
 
+class LearningCapabilityRecord(models.Model):
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="learning_capability",
+    )
+    state = models.JSONField(default=dict)
+    evidence = models.FileField(
+        upload_to="learning_capability_evidence/%Y/%m/",
+        max_length=255,
+        null=True,
+        blank=True,
+    )
+    evidence_name = models.CharField(max_length=255, blank=True, default="")
+    evidence_size = models.PositiveIntegerField(null=True, blank=True)
+    evidence_type = models.CharField(max_length=128, blank=True, default="")
+    revision = models.PositiveIntegerField(default=0)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "learning_capability_record"
+
+
 class AccessEnablement(models.Model):
     project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="access_enablement")
     systems = models.JSONField(default=list)

@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from api.models import AccessEnablement, ApprovalWorkflow, BusinessCase, MigrationIntakeSubmission, MigrationTeam, ProjectResources, StakeholderRegistration
+from api.models import AccessEnablement, ApprovalWorkflow, BusinessCase, LearningCapabilityRecord, MigrationIntakeSubmission, MigrationTeam, ProjectResources, StakeholderRegistration
 from api.permissions.attributes_access import build_access_snapshot, get_request_email, normalize_email
 from api.services.business_case import approval_progress, build_business_case, case_status, online_case_is_approved
 from api.services.project_artefacts import (
@@ -20,6 +20,7 @@ from api.services.project_artefacts import (
 )
 from api.views.gsc_site_requests import project_gsc_site_requests
 from api.services.intake_options import all_location_strategy_options
+from api.services.learning_capability import learning_progress_summary
 
 
 def _resource_audit_history(audit_log):
@@ -426,7 +427,9 @@ def resource_projects(request):
     email = normalize_email(get_request_email(request))
     if not email:
         return Response({"error": "Sign in required."}, status=401)
-    projects = MigrationIntakeSubmission.objects.select_related("resources", "scope_statement").prefetch_related("scope_statement__lines")
+    projects = MigrationIntakeSubmission.objects.select_related(
+        "resources", "scope_statement", "learning_capability",
+    ).prefetch_related("scope_statement__lines")
     if not build_access_snapshot(email)["tables"]["resources"]:
         member_projects = [
             registration.project_id for registration in StakeholderRegistration.objects.only("project_id", "team_members")
@@ -458,6 +461,10 @@ def resource_projects(request):
             resource = project.resources
         except ProjectResources.DoesNotExist:
             resource = None
+        try:
+            learning_record = project.learning_capability
+        except LearningCapabilityRecord.DoesNotExist:
+            learning_record = None
         resource_rows = resource.rows if resource else []
         hiring_status_counts = {status: 0 for status in HIRING_STATUSES + ["Not Applicable"]}
         pid_creation_months = {}
@@ -492,6 +499,7 @@ def resource_projects(request):
             "businessCase": business_case,
             "resourceSummary": {
                 "total": len(resource_rows),
+                "cohorts": len({str(row.get("cohort") or "").strip() for row in resource_rows if str(row.get("cohort") or "").strip()}),
                 "hiringStatusCounts": hiring_status_counts,
                 "pidCreated": sum(bool(row.get("gscPid")) for row in resource_rows),
                 "requisitionsRaised": sum(bool(row.get("requisitionId")) for row in resource_rows),
@@ -502,6 +510,10 @@ def resource_projects(request):
                 "pidCreationMonths": pid_creation_months,
                 "tentativeDojMonths": tentative_doj_months,
             },
+            "learningSummary": learning_progress_summary(
+                learning_record.state if learning_record else {},
+                bool(learning_record and learning_record.evidence),
+            ),
             "saved": bool(resource),
             "status": ("confirmed" if resource.source_version == source["version"] else "needs_review")
                       if resource and resource.status == "confirmed" else "draft" if resource else "not_started",

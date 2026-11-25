@@ -12,9 +12,9 @@
         <article class="metric"><span class="metric-icon metric-icon--blue">▦</span><div><strong>Active Migrations</strong><b>{{ activeMigrations }}</b><small>Approved or pipeline projects</small></div></article>
         <article class="metric"><span class="metric-icon metric-icon--green">♙</span><div><strong>Approved FTEs</strong><b>{{ approvedFtes }}</b><small>{{ regionsInView }} project regions in view</small></div></article>
         <article class="metric metric--amber"><span class="metric-icon metric-icon--amber">◷</span><div><strong>Pipeline FTEs</strong><b>{{ pipelineFtes }}</b><small>Awaiting approval - plan ahead</small></div></article>
-        <article class="metric"><span class="metric-ring metric-ring--empty"><span>—</span></span><div><strong>Avg. L&amp;D Readiness</strong><small>Not tracked in project data</small></div></article>
-        <article class="metric"><span class="metric-icon metric-icon--red">△</span><div><strong>Capability Gaps</strong><b>—</b><small>Not tracked in project data</small></div></article>
-        <article class="metric"><span class="metric-icon metric-icon--violet">▣</span><div><strong>Approved Target Ends</strong><b>{{ upcomingTargetEnds }}</b><small>Next 90 days</small></div></article>
+        <article class="metric"><span class="metric-ring" :style="{ '--value': `${averageReadiness}%` }"><span>{{ averageReadiness }}%</span></span><div><strong>Avg. L&amp;D Readiness</strong><small>Expected by today: {{ averageExpectedReadiness }}%</small></div></article>
+        <article class="metric"><span class="metric-icon metric-icon--red">△</span><div><strong>Capability Gaps</strong><b>{{ capabilityGaps }}</b><small>L3s the Area cannot train</small></div></article>
+        <article class="metric"><span class="metric-icon metric-icon--violet">▣</span><div><strong>Upcoming Go-Lives</strong><b>{{ upcomingTargetEnds }}</b><small>Next 90 days</small></div></article>
       </section>
 
       <section class="chart-grid" aria-label="Learning and development portfolio charts">
@@ -43,7 +43,9 @@
 
         <article class="panel readiness-panel">
           <h2>L&amp;D Readiness by Stage</h2>
-          <p class="untracked-state">Not tracked in the project database.</p>
+          <div class="readiness-stages">
+            <div v-for="stage in readinessStages" :key="stage.name" class="stage-row"><span>{{ stage.name }}</span><span class="bar-track"><i :class="`stage-fill stage-fill--${stage.index}`" :style="{ width: `${stage.percent}%` }" /></span><b>{{ stage.percent }}%</b></div>
+          </div>
         </article>
 
         <article class="panel status-panel">
@@ -64,13 +66,14 @@
 
       <div class="data-table-wrap">
         <table class="data-table">
-          <thead><tr><th>Project</th><th>Product</th><th>Region</th><th>Area</th><th>GSC Site</th><th>Approved FTE</th><th>Pipeline FTE</th><th>Cohorts</th><th>Target Start</th><th>Target End</th><th>L&amp;D Readiness</th><th>Status</th></tr></thead>
+          <thead><tr><th>Project</th><th>Product</th><th>Region</th><th>Area</th><th>GSC Site</th><th>Approved FTE</th><th>Pipeline FTE</th><th>Cohorts</th><th>Target Start</th><th>Target End</th><th>L&amp;D Readiness</th><th>Status</th><th>Action</th></tr></thead>
           <tbody>
-            <tr v-for="project in paginatedProjects" :key="project.id">
-              <td><strong>{{ project.name }}</strong><small>{{ project.id }}</small></td><td>{{ project.products.join(', ') }}</td><td>{{ project.region }}</td><td>{{ project.areas.join(', ') }}</td><td>{{ project.sites.join(', ') }}</td><td>{{ project.fte ?? '—' }}</td><td>{{ project.pipe ?? '—' }}</td><td>—</td><td>{{ formatDate(project.start) }}</td><td>{{ formatDate(project.go) }}</td>
-              <td>Not tracked</td><td><span class="status-label" :class="`status-label--${projectStatus(project).key}`"><i />{{ projectStatus(project).label }}</span></td>
+            <tr v-for="project in paginatedProjects" :key="project.projectId">
+              <td><strong>{{ project.name }}</strong><small>{{ project.id }}</small></td><td>{{ project.products.join(', ') }}</td><td>{{ project.region }}</td><td>{{ project.areas.join(', ') }}</td><td>{{ project.sites.join(', ') }}</td><td>{{ project.approvedFte ?? '—' }}</td><td>{{ project.pipelineFte ?? '—' }}</td><td>{{ project.cohorts ?? '—' }}</td><td>{{ formatDate(project.start) }}</td><td>{{ formatDate(project.go) }}</td>
+              <td><span class="readiness-value">{{ project.readiness }}%</span><span class="readiness-track"><i :style="{ width: `${project.readiness}%`, background: readinessColor(project.readiness) }" /></span></td><td><span class="status-label" :class="`status-label--${projectStatus(project).key}`"><i />{{ projectStatus(project).label }}</span></td>
+              <td><RouterLink class="view-link" :to="{ name: 'LearningCapabilityProject', params: { id: project.projectId }, query: { approvedFte: project.approvedFte, project: project.id } }" :aria-label="`View learning and capability details for ${project.name}`">View ›</RouterLink></td>
             </tr>
-            <tr v-if="!filteredProjects.length"><td class="empty-state" colspan="12">No projects match these filters.</td></tr>
+            <tr v-if="!filteredProjects.length"><td class="empty-state" colspan="13">No projects match these filters.</td></tr>
           </tbody>
         </table>
       </div>
@@ -92,7 +95,8 @@ const loading = ref(false)
 const error = ref('')
 const currentPage = ref(1)
 const pageSize = 10
-const statusColors = { Approved: '#16a34a', Pipeline: '#f59e0b', 'Not locked': '#98a5b3' }
+const statusColors = { 'On Track': '#16a34a', 'At Risk': '#f59e0b', Delayed: '#dc2626' }
+const readinessStageNames = ['Foundational plan', 'KT plan (Area)', 'Training material', 'Scores captured', 'Evidence uploaded']
 const filters = reactive({ search: '', region: '', product: '', area: '', status: '' })
 const regions = computed(() => [...new Set(projects.value.map(project => project.region).filter(Boolean))].sort())
 const products = computed(() => [...new Set(projects.value.flatMap(project => project.products))].sort())
@@ -110,6 +114,16 @@ const approvedFtes = computed(() => filteredProjects.value.reduce((sum, project)
 const pipelineFtes = computed(() => filteredProjects.value.reduce((sum, project) => sum + (project.pipelineFte ?? 0), 0))
 const regionsInView = computed(() => new Set(filteredProjects.value.map((project) => project.region)).size)
 const activeMigrations = computed(() => filteredProjects.value.filter(project => ['Approved', 'Pipeline'].includes(project.approvalStatus)).length)
+const averageReadiness = computed(() => filteredProjects.value.length ? Math.round(filteredProjects.value.reduce((sum, project) => sum + project.readiness, 0) / filteredProjects.value.length) : 0)
+const averageExpectedReadiness = computed(() => filteredProjects.value.length ? Math.round(filteredProjects.value.reduce((sum, project) => sum + project.expectedReadiness, 0) / filteredProjects.value.length) : 0)
+const capabilityGaps = computed(() => filteredProjects.value.reduce((sum, project) => sum + project.capabilityGaps, 0))
+const readinessStages = computed(() => readinessStageNames.map((name, index) => ({
+  name,
+  index,
+  percent: filteredProjects.value.length
+    ? Math.round(filteredProjects.value.reduce((sum, project) => sum + project.readinessStages[index], 0) / filteredProjects.value.length)
+    : 0
+})))
 const timelineProjects = computed(() => filteredProjects.value.filter(project => project.start || project.go))
 const timelineGroups = computed(() => {
   const siteGroups = new Map()
@@ -164,8 +178,29 @@ const timelineStart = new Date(today.getFullYear(), today.getMonth() - 2, 1)
 const timelineEnd = new Date(today.getFullYear(), today.getMonth() + 4, 1)
 
 function projectStatus(project) {
-  const label = project.approvalStatus
+  const difference = project.expectedReadiness - project.readiness
+  const label = difference <= 10 ? 'On Track' : difference <= 25 ? 'At Risk' : 'Delayed'
   return { label, key: label.toLowerCase().replace(' ', '-') }
+}
+function readinessColor(value) {
+  return value >= 75 ? '#16a34a' : value >= 60 ? '#f59e0b' : '#dc2626'
+}
+function getLearningProgress(summary) {
+  const empty = { stages: [0, 0, 0, 0, 0], gaps: 0, cohorts: 0 }
+  if (!summary || typeof summary !== 'object') return empty
+  return {
+    stages: Array.isArray(summary.stages) && summary.stages.length === 5 ? summary.stages : empty.stages,
+    gaps: Number(summary.gaps) || 0,
+    cohorts: Number(summary.cohorts) || 0
+  }
+}
+function expectedReadiness(project) {
+  if (!project.start || !project.go) return 0
+  const start = new Date(`${project.start}T00:00:00`)
+  start.setDate(start.getDate() - 45)
+  const end = new Date(`${project.go}T00:00:00`)
+  const span = end.getTime() - start.getTime()
+  return span > 0 ? Math.max(0, Math.min(100, (today.getTime() - start.getTime()) / span * 100)) : 0
 }
 function groupValues(values, fallback) {
   const uniqueValues = [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))]
@@ -182,7 +217,7 @@ function formatDate(value) { return value ? new Date(`${value}T00:00:00`).toLoca
 function clearFilters() { Object.assign(filters, { search: '', region: '', product: '', area: '', status: '' }) }
 function exportProjects() {
   const headings = ['Project', 'Project ID', 'Product', 'Region', 'Area', 'GSC Site', 'Approved FTE', 'Pipeline FTE', 'Cohorts', 'Target Start', 'Target End', 'L&D Readiness', 'Status']
-  const rows = filteredProjects.value.map((project) => [project.name, project.id, project.products.join(', '), project.region, project.areas.join(', '), project.sites.join(', '), project.approvedFte ?? '', project.pipelineFte ?? '', 'Not tracked', project.start, project.go, 'Not tracked', projectStatus(project).label])
+  const rows = filteredProjects.value.map((project) => [project.name, project.id, project.products.join(', '), project.region, project.areas.join(', '), project.sites.join(', '), project.approvedFte ?? '', project.pipelineFte ?? '', project.cohorts ?? '', project.start, project.go, project.readiness, projectStatus(project).label])
   const csv = [headings, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\r\n')
   const link = document.createElement('a')
   link.href = URL.createObjectURL(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }))
@@ -196,8 +231,12 @@ async function loadProjects() {
   error.value = ''
   try {
     const response = await axios.get('/api/migration-dashboard/resources/')
-    projects.value = response.data.rows.map(row => ({
+    projects.value = response.data.rows.map(row => {
+      const progress = getLearningProgress(row.learningSummary)
+      const readiness = Math.round(progress.stages.reduce((sum, value) => sum + value, 0) / progress.stages.length)
+      const project = {
       id: row.migrationRequestId || row.projectId,
+      projectId: row.projectId,
       name: row.projectName,
       products: row.products || [],
       region: row.region || '',
@@ -209,7 +248,14 @@ async function loadProjects() {
       targetEndDate: row.targetEndDate,
       start: row.targetStartDate,
       go: row.targetEndDate,
-    }))
+      readiness,
+      readinessStages: progress.stages,
+      capabilityGaps: progress.gaps,
+      cohorts: row.resourceSummary?.cohorts ?? progress.cohorts
+      }
+      project.expectedReadiness = Math.round(expectedReadiness(project))
+      return project
+    })
   } catch (caught) {
     error.value = caught.response?.data?.error || 'Unable to load project portfolio.'
   } finally {
@@ -275,9 +321,9 @@ onMounted(loadProjects)
 .status-dot--not-locked { background: #98a5b3; }
 .timeline-track { grid-column: 2 / -1; }
 .bar-track, .readiness-track { background: #edf0f2; border-radius: 5px; display: block; height: 8px; overflow: hidden; }.stage-fill { border-radius: inherit; display: block; height: 100%; }.stage-fill--0 { background: #42b0d5; }.stage-fill--1 { background: #37a8c9; }.stage-fill--2 { background: #4ab6d1; }.stage-fill--3 { background: #3ca9c8; }.stage-fill--4 { background: #6bc1d6; }
-.status-dot--pipeline, .status-label--pipeline i { background: #f59e0b; }.status-dot--not-locked, .status-label--not-locked i { background: #98a5b3; }
+.status-dot--pipeline, .status-label--pipeline i, .status-dot--at-risk, .status-label--at-risk i { background: #f59e0b; }.status-dot--not-locked, .status-label--not-locked i { background: #98a5b3; }.status-dot--on-track, .status-label--on-track i { background: #16a34a; }.status-dot--delayed, .status-label--delayed i { background: #dc2626; }
 .table-tools { align-items: end; display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0 7px; }.search-field { width: 205px; }.table-tools .select-field { width: 128px; }.tool-button { background: #fff; border: 1px solid #c8d1d9; border-radius: 5px; color: #344054; cursor: pointer; font: 600 10px 'Maersk Text', sans-serif; height: 29px; padding: 0 10px; }.tool-button:hover { background: #f3f8fa; border-color: #8cbcd0; }.tool-spacer { flex: 1; }.tool-button--export { min-width: 70px; }
-.data-table-wrap { border: 1px solid #dfe5eb; border-radius: 7px; overflow: auto; }.data-table { border-collapse: collapse; font-size: 9px; min-width: 1020px; width: 100%; }.data-table th { background: #f4f7fa; border-bottom: 1px solid #dfe5eb; color: #344054; font-size: 9px; font-weight: 700; padding: 8px 7px; text-align: left; white-space: nowrap; }.data-table td { border-bottom: 1px solid #edf0f3; height: 39px; padding: 5px 7px; white-space: nowrap; }.data-table tbody tr:last-child td { border-bottom: 0; }.data-table td strong, .data-table td small { display: block; }.data-table td strong { color: #154d71; font-size: 9px; }.data-table td small { color: var(--muted); font-size: 8px; margin-top: 2px; }.readiness-value { display: inline-block; font-weight: 700; margin-right: 8px; width: 30px; }.readiness-track { display: inline-block; height: 6px; vertical-align: middle; width: 62px; }.readiness-track i { background: #16a34a; border-radius: inherit; display: block; height: 100%; }.status-label { align-items: center; display: inline-flex; gap: 5px; }.status-label--at-risk i { background: #f59e0b; }.status-label--delayed i { background: #dc2626; }.empty-state { color: var(--muted); height: 60px !important; text-align: center; }.table-summary { color: var(--muted); font-size: 9px; margin: 6px 0 0; }
+.data-table-wrap { border: 1px solid #dfe5eb; border-radius: 7px; overflow: auto; }.data-table { border-collapse: collapse; font-size: 9px; min-width: 1020px; width: 100%; }.data-table th { background: #f4f7fa; border-bottom: 1px solid #dfe5eb; color: #344054; font-size: 9px; font-weight: 700; padding: 8px 7px; text-align: left; white-space: nowrap; }.data-table td { border-bottom: 1px solid #edf0f3; height: 39px; padding: 5px 7px; white-space: nowrap; }.data-table tbody tr:last-child td { border-bottom: 0; }.data-table td strong, .data-table td small { display: block; }.data-table td strong { color: #154d71; font-size: 9px; }.data-table td small { color: var(--muted); font-size: 8px; margin-top: 2px; }.readiness-value { display: inline-block; font-weight: 700; margin-right: 8px; width: 30px; }.readiness-track { display: inline-block; height: 6px; vertical-align: middle; width: 62px; }.readiness-track i { border-radius: inherit; display: block; height: 100%; }.status-label { align-items: center; display: inline-flex; gap: 5px; }.status-label i { border-radius: 50%; display: inline-block; height: 7px; width: 7px; }.status-label--at-risk i { background: #f59e0b; }.status-label--delayed i { background: #dc2626; }.status-label--on-track i { background: #16a34a; }.view-link { color: var(--blue); font-weight: 700; text-decoration: none; }.view-link:hover { text-decoration: underline; }.empty-state { color: var(--muted); height: 60px !important; text-align: center; }.table-summary { color: var(--muted); font-size: 9px; margin: 6px 0 0; }
 @media (max-width: 1050px) { .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }.chart-grid { grid-template-columns: 1fr 1fr; }.timeline-panel { grid-column: 1 / -1; } }
 @media (max-width: 700px) { .partner-top { gap: 8px; padding: 0 10px; }.brand-name { font-size: 11px; }.product-name { padding-left: 8px; }.partner-role { font-size: 9px; }.partner-user { font-size: 0; }.dashboard-content { padding: 12px 10px 24px; }.page-heading { align-items: start; flex-direction: column; }.region-field { width: 100%; }.metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.chart-grid { grid-template-columns: 1fr; }.timeline-panel { grid-column: auto; }.table-tools { align-items: stretch; }.search-field, .table-tools .select-field { flex: 1 1 140px; width: auto; }.tool-spacer { display: none; }.status-panel { min-height: 175px; } }
 .readiness-panel { display: flex; flex-direction: column; }

@@ -40,6 +40,7 @@ import AccessEnablement from '../views/AccessEnablement.vue'
 import BusinessImpactAnalysis from '../views/BusinessImpactAnalysis.vue'
 import MigrationSuccessPartnersHub from '../views/MigrationSuccessPartnersHub.vue'
 import LearningCapabilityReadiness from '../views/LearningCapabilityReadiness.vue'
+import LearningCapabilityProject from '../views/LearningCapabilityProject.vue'
 import TaaPartnerView from '../views/TaaPartnerView.vue'
 import PeopleConsultationCompliance from '../views/PeopleConsultationCompliance.vue'
 import {
@@ -72,6 +73,7 @@ const ATTRIBUTE_ROUTE_KEYS = {
 const routes = [
   { path: '/migration-success-partners', name: 'MigrationSuccessPartnersHub', component: MigrationSuccessPartnersHub },
   { path: '/migration-success-partners/learning-development', name: 'LearningCapabilityReadiness', component: LearningCapabilityReadiness },
+  { path: '/migration-success-partners/learning-development/:id', name: 'LearningCapabilityProject', component: LearningCapabilityProject },
   { path: '/migration-success-partners/talent-acquisition', name: 'TaaPartnerView', component: TaaPartnerView },
   { path: '/migration-dashboard/:id/business-impact-analysis', name: 'BusinessImpactAnalysis', component: BusinessImpactAnalysis },
   {
