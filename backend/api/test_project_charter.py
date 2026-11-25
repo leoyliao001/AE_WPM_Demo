@@ -50,7 +50,7 @@ class ProjectCharterTests(TestCase):
         self.assertEqual(ProjectCharter.objects.count(), 0)
         self.assertIsNone(response.data["sources"]["facts"][3]["value"])
         self.assertIsNone(response.data["sources"]["facts"][5]["value"])
-        self.assertEqual(response.data["sources"]["fteTimeline"], [])
+        self.assertNotIn("fteTimeline", response.data["sources"])
         self.assertEqual(len(response.data["sources"]["deliverables"]), 5)
         self.assertTrue(all(not item["complete"] for item in response.data["sources"]["completeness"]))
 

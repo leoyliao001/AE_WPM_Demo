@@ -35,12 +35,7 @@ ALL_FIELDS = [
     ("products", "Products"),
     ("proposed_scope", "Proposed Scope"),
     ("language_dependencies", "Language Dependencies"),
-    ("fte_number", "FTE Number"),
-    ("jl2", "JL2"),
-    ("jl3", "JL3"),
-    ("jl4", "JL4"),
-    ("job_level_total", "Job Level Total"),
-    ("risks", "Risks"),
+    ("fte_number", "Migration Ambition"),
     ("business_owner", "Business Owner"),
     ("target_start_date", "Target Start Date"),
     ("target_end_date", "Target End Date"),
@@ -58,7 +53,7 @@ LIST_FIELDS = {
 
 PAIR_FIELD = "area_country_pairs"
 BOOL_FIELDS = {"location_strategy_custom"}
-INT_FIELDS = {"custom_approval_file_size", "job_level_total"}
+INT_FIELDS = {"custom_approval_file_size"}
 
 
 def _join_list(values) -> str:
@@ -113,11 +108,6 @@ def _serialize_row(item: MigrationIntakeSubmission) -> dict:
         "proposed_scope": item.proposed_scope or "",
         "language_dependencies": _join_list(item.language_dependencies),
         "fte_number": item.fte_number or "",
-        "jl2": item.jl2 or "0",
-        "jl3": item.jl3 or "0",
-        "jl4": item.jl4 or "0",
-        "job_level_total": str(item.job_level_total or 0),
-        "risks": item.risks or "",
         "business_owner": item.business_owner,
         "target_start_date": item.target_start_date,
         "target_end_date": item.target_end_date,

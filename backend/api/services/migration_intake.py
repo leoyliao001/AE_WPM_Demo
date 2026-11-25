@@ -75,11 +75,6 @@ def create_submission_from_payload(payload: dict, files=None) -> MigrationIntake
             _as_list(payload.get("languageDependencies"))
         ),
         fte_number=str(payload.get("fteNumber", "")),
-        jl2=str(payload.get("jl2", "0")),
-        jl3=str(payload.get("jl3", "0")),
-        jl4=str(payload.get("jl4", "0")),
-        job_level_total=int(payload.get("jobLevelTotal") or 0),
-        risks=payload.get("risks", ""),
     )
 
     for uploaded_file in (files or []):

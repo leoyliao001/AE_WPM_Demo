@@ -36,7 +36,6 @@ def source_data(project):
         "scopeText": statement.scope_text if statement else "",
         "outOfScope": statement.out_of_scope if statement else "",
         "assumptions": statement.assumptions if statement else "",
-        "waves": statement.waves if statement else [],
         "status": statement.status if statement else "missing",
         "reviewRequired": statement.review_required if statement else False,
         "revision": statement.revision if statement else 0,
@@ -145,7 +144,7 @@ def _calculate_financials(intake, scope, inputs):
                 warnings.append("Benefit percentage is undefined because current annual cost is zero.")
             if gross <= 0:
                 warnings.append("There is no positive annual benefit; a payback period cannot be calculated.")
-    warnings.append("First-year benefit follows the specified full run-rate formula; it is not prorated by migration waves.")
+    warnings.append("First-year benefit follows the specified full run-rate formula.")
     return {"ready": not errors, "errors": errors, "warnings": warnings, "currency": "USD",
             "metrics": metrics, "rows": rows, "rateBasis": rates}
 
@@ -159,7 +158,9 @@ def build_business_case(project, record=None):
     intake, scope = source_data(project)
     inputs = record.financial_inputs if record else {}
     financials = calculate_financials(intake, scope, inputs)
-    return intake, scope, financials, source_fingerprint(intake, scope, financials)
+    # Preserve the former empty field in hashes so existing no-wave cases stay current.
+    fingerprint_scope = {**scope, "waves": []}
+    return intake, scope, financials, source_fingerprint(intake, fingerprint_scope, financials)
 
 
 def approval_progress(project):

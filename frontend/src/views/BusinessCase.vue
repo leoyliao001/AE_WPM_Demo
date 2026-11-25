@@ -96,16 +96,9 @@
         <div class="bc-capacity"><span>Final project headcount</span><strong>{{ record.scope?.finalProjectFte ?? '—' }} <small>FTE</small></strong><span>Owned and locked in Scope</span></div>
         <div class="bc-capacity"><span>Migratable FTE</span><strong>{{ record.scope?.migratableFteConfirmed ? record.scope.migratableFte : '—' }} <small>FTE</small></strong><span>{{ record.scope?.migratableFteConfirmed ? 'Manually confirmed in Scope' : 'Manual confirmation pending in Scope' }}</span></div>
         <p class="bc-note">Migratable FTE is an independently confirmed Scope total. Financial calculations continue to use locked Final FTE by job level.</p>
-        <div class="bc-plan-grid">
         <div class="bc-scroll"><table><caption>Locked Scope headcount</caption><thead><tr><th>Job level</th><th>Final FTE</th><th>Locked at</th></tr></thead>
           <tbody><tr v-for="line in record.scope?.lines || []" :key="line.jobLevel"><th>{{ line.jobLevel }}</th><td>{{ line.finalFte ?? '—' }}</td><td>{{ line.lockedAt ? date(line.lockedAt) : 'Not locked' }}</td></tr></tbody>
         </table></div>
-        <div class="bc-scroll"><table><caption>Migration waves</caption><thead><tr><th>Wave</th><th>Date</th><th>FTE</th></tr></thead>
-          <tbody><tr v-for="(wave, index) in record.scope?.waves || []" :key="index"><td>{{ wave.name }}</td><td>{{ wave.date }}</td><td>{{ wave.fte }}</td></tr>
-            <tr v-if="!record.scope?.waves?.length"><td colspan="3">No waves defined in Scope.</td></tr>
-          </tbody>
-        </table></div>
-        </div>
         <details class="bc-no-print"><summary>Scope audit log</summary><pre>{{ JSON.stringify(record.scope?.auditLog || [], null, 2) }}</pre></details>
       </section>
 

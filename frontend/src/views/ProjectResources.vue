@@ -10,7 +10,6 @@
             <div><p class="pa-eyebrow">Initiate / People &amp; capacity</p><h1>Resources</h1><span class="pa-status" :class="`pa-status--${record.status}`">{{ record.status.replaceAll('_', ' ') }}</span></div>
             <div class="pa-actions">
               <router-link class="pa-link" to="/resources">All resource projects</router-link>
-              <mc-button appearance="neutral" variant="outlined" label="Export" :disabled="!!busy" @click="exportData" />
               <mc-button v-if="record.frozen && record.permissions.reopen" appearance="primary" label="Unlock Resources" :disabled="!!busy" @click="openUnlockDialog" />
               <mc-button v-if="!record.frozen && (record.permissions.edit || record.permissions.area)" appearance="neutral" variant="outlined" label="Save draft" :disabled="!!busy || cohortMode" @click="save()" />
               <mc-button v-if="!record.frozen && record.permissions.edit" appearance="primary" label="Confirm resources" :disabled="!!busy || cohortMode || !ready" @click="save('submit')" />
@@ -81,6 +80,7 @@
         <section class="pa-panel">
           <div class="pa-section-heading"><div><p class="pa-eyebrow">{{ tab === 'execution' ? 'Project coordination' : tab === 'area' ? 'Sending area' : 'Recruitment & onboarding' }}</p><h2>{{ tabs.find(item => item.id === tab).label }}</h2></div>
             <div class="pa-actions">
+              <mc-button appearance="neutral" variant="outlined" label="Export" :disabled="!!busy || !visibleRows.length" @click="exportData" />
               <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Download Import Template" :disabled="cohortMode" @click="downloadImportTemplate" />
               <mc-button v-if="tab === 'execution' && canEdit" appearance="neutral" variant="outlined" label="Import Excel" :disabled="cohortMode" @click="fileInput.click()" />
               <input ref="fileInput" type="file" accept=".xlsx" hidden @change="importData" />
@@ -283,12 +283,11 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import axios from 'axios'
-import { read, utils } from 'xlsx'
+import { read, utils, writeFile } from 'xlsx'
 import PageShell from '../components/PageShell.vue'
 import { useProjectArtefact } from '../composables/useProjectArtefact.js'
 import { useTopbarNotice } from '../composables/useTopbarNotice.js'
 import { areaLocationMapping, customLocationStrategyOptions } from '../data/areaLocationStrategyMapping.js'
-import { exportArtefact } from '../utils/projectArtefactExport.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
 import '@maersk-global/mds-components-core/mc-select'
@@ -946,14 +945,28 @@ async function confirmUnlock() {
 }
 function exportData() {
   error.value = ''
+  success.value = ''
   try {
-    const execution = executionColumns.value
-    exportArtefact(record.value, 'resources', [
-      ['Execution', [['Position ID', ...execution.map(column => column.label)], ...record.value.rows.map(row => [row.id, ...execution.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key])])]],
-      ['Area', [['Position ID', ...areaColumns.map(column => column.label), 'Submitted at', 'Submitted by'], ...record.value.rows.map(row => [row.id, ...areaColumns.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key]), row.areaLockedAt, row.areaLockedBy])]],
-      ['HR TAA', [['Position ID', ...hrColumns.value.map(column => column.label)], ...record.value.rows.filter(row => requiresRecruitment(row.hiringType)).map(row => [row.id, ...hrColumns.value.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key])])]],
-    ])
-    success.value = 'Excel export generated. All resource positions are included.'
+    const activeTab = tabs.find(item => item.id === tab.value)
+    const exportColumns = columns.value
+    const extraHeaders = tab.value === 'area' ? ['Submitted at', 'Submitted by'] : []
+    const rows = [
+      ['Position ID', ...exportColumns.map(column => column.label), ...extraHeaders],
+      ...visibleRows.value.map(row => [
+        row.id,
+        ...exportColumns.map(column => column.date ? formatResourceDate(row[column.key]) : row[column.key]),
+        ...(tab.value === 'area' ? [row.areaLockedAt, row.areaLockedBy] : []),
+      ]),
+    ]
+    const workbook = utils.book_new()
+    const sheet = utils.aoa_to_sheet(rows)
+    sheet['!cols'] = rows[0].map(() => ({ wch: 28 }))
+    sheet['!autofilter'] = { ref: sheet['!ref'] }
+    utils.book_append_sheet(workbook, sheet, activeTab.label === 'HR / TAA' ? 'HR TAA' : activeTab.label)
+    const projectRef = record.value.migrationRequestId || projectId.value
+    const filename = `${projectRef}-resources-${tab.value}`.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    writeFile(workbook, `${filename}.xlsx`, { compression: true })
+    success.value = `Excel export generated for ${activeTab.label}; ${visibleRows.value.length} positions included.`
   } catch (caught) { error.value = `Unable to export: ${caught.message}` }
 }
 async function downloadImportTemplate() {

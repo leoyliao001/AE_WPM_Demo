@@ -1,5 +1,4 @@
 import json
-from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
@@ -14,11 +13,14 @@ from rest_framework.response import Response
 
 from api.models import (
     MigrationIntakeSubmission,
+    OpportunityAssessment,
+    OpportunityAssessmentScope,
     ScopeStatement,
     ScopeStatementEvidence,
     ScopeStatementLine,
     StakeholderRegistration,
 )
+from api.services.opportunity_assessment_fte import calculate_migratable_fte
 from api.permissions.attributes_access import (
     can_access_table,
     get_request_email,
@@ -103,6 +105,24 @@ def _statement_for_project(project, *, for_update=False):
     return statements.prefetch_related("lines__evidence", "attachments").first()
 
 
+def _opportunity_assessment_fte(project):
+    scope = OpportunityAssessmentScope.objects.filter(project=project).only("state").first()
+    if scope:
+        state = scope.state or {}
+    else:
+        legacy_rows = OpportunityAssessment.objects.filter(
+            migration_request_id=project.migration_request_id
+        ).only("volume_monthly", "task_time_per_unit_min", "task_frequency")
+        state = {
+            "mode": "task",
+            "task": [
+                {"vol": row.volume_monthly, "tpu": row.task_time_per_unit_min, "freq": row.task_frequency}
+                for row in legacy_rows
+            ],
+        }
+    return calculate_migratable_fte(state)
+
+
 def _number(value, label, *, allow_none=False, whole=False):
     if value in (None, ""):
         if allow_none:
@@ -159,8 +179,8 @@ def _serialize_statement(project, statement, email):
         "scopeText": statement.scope_text if statement else "",
         "outOfScope": statement.out_of_scope if statement else "",
         "assumptions": statement.assumptions if statement else "",
-        "waves": statement.waves if statement else [],
         "ambitionFte": str(statement.ambition_fte) if statement and statement.ambition_fte is not None else str(project.fte_number or "0"),
+        "opportunityAssessmentFte": str(_opportunity_assessment_fte(project)),
         "finalProjectFte": statement.final_project_fte if statement else None,
         "migratableFte": str(statement.migratable_fte) if statement and statement.migratable_fte is not None else None,
         "migratableFteConfirmed": statement.migratable_fte_confirmed if statement else False,
@@ -185,7 +205,6 @@ SCOPE_STATEMENT_DATABASE_COLUMNS = [
     {"key": "scope_text", "label": "Scope Statement", "editable": True},
     {"key": "out_of_scope", "label": "Out of Scope", "editable": True},
     {"key": "assumptions", "label": "Assumptions", "editable": True},
-    {"key": "waves", "label": "Migration Waves (JSON)", "editable": True},
     {"key": "scope_status", "label": "Scope Status"},
     {"key": "revision", "label": "Revision"},
     {"key": "ambition_fte", "label": "Ambition FTE"},
@@ -237,7 +256,6 @@ def list_scope_statement_database(_request):
             "scope_text": statement.scope_text,
             "out_of_scope": statement.out_of_scope,
             "assumptions": statement.assumptions,
-            "waves": json.dumps(statement.waves),
             "scope_status": statement.status,
             "revision": statement.revision,
             "ambition_fte": str(statement.ambition_fte) if statement.ambition_fte is not None else str(project.fte_number or "0"),
@@ -330,7 +348,6 @@ def save_scope_statement_database(request):
                 _apply_scope_extensions(statement, {
                     "outOfScope": item.get("out_of_scope", statement.out_of_scope),
                     "assumptions": item.get("assumptions", statement.assumptions),
-                    "waves": item.get("waves", statement.waves),
                 })
 
                 for job_level in JOB_LEVELS:
@@ -475,7 +492,7 @@ def save_scope_statement(request, project_id):
     can_edit_fte = _can_edit_migratable_fte(email)
     if not can_edit_details and action != "save":
         return Response({"error": "Only assigned GSC Leaders or the Area POC can manage Scope details."}, status=403)
-    if not can_edit_details and any(key in payload for key in ("scopeText", "outOfScope", "assumptions", "waves", "lines")):
+    if not can_edit_details and any(key in payload for key in ("scopeText", "outOfScope", "assumptions", "lines")):
         return Response({"error": "Only assigned GSC Leaders or the Area POC can edit Scope details."}, status=403)
     if not can_edit_fte and any(key in payload for key in ("migratableFte", "migratableFteConfirmed")):
         return Response({"error": "Only a Super Admin can enter or confirm Migratable FTE."}, status=403)
@@ -540,7 +557,7 @@ def save_scope_statement(request, project_id):
         if page_locked:
             expected = {
                 "scopeText": statement.scope_text, "outOfScope": statement.out_of_scope,
-                "assumptions": statement.assumptions, "waves": statement.waves,
+                "assumptions": statement.assumptions,
             }
             if "migratableFte" in payload or "migratableFteConfirmed" in payload:
                 return Response({"error": "Unlock the page before changing Migratable FTE."}, status=409)
@@ -585,8 +602,6 @@ def save_scope_statement(request, project_id):
             ):
                 return Response({"error": "Complete Scope text and all job-level values before locking the page."}, status=400)
             total = sum(line.final_fte for line in all_lines)
-            if statement.waves and sum(wave["fte"] for wave in statement.waves) != total:
-                return Response({"error": "Migration wave FTE must equal the final project FTE."}, status=400)
             now = timezone.now()
             for line in all_lines:
                 line.locked_at = now
@@ -603,9 +618,6 @@ def save_scope_statement(request, project_id):
                 return Response({"error": "Lock the whole page before submitting."}, status=status.HTTP_400_BAD_REQUEST)
             statement.ambition_fte = Decimal(str(project.fte_number or 0))
             statement.final_project_fte = sum(int(line.final_fte or 0) for line in all_lines)
-            if statement.waves and sum(wave["fte"] for wave in statement.waves) != statement.final_project_fte:
-                transaction.set_rollback(True)
-                return Response({"error": "Migration wave FTE must equal the locked final project FTE."}, status=400)
             statement.status = "submitted"
             statement.review_required = False
             statement.submitted_at = timezone.now()
@@ -649,29 +661,6 @@ def _apply_scope_extensions(statement, payload):
             if not isinstance(value, str) or len(value) > 10000:
                 raise ValueError(f"{key} must be text of at most 10000 characters.")
             setattr(statement, field, value.strip())
-    if "waves" not in payload:
-        return
-    waves = payload["waves"]
-    if isinstance(waves, str):
-        try:
-            waves = json.loads(waves)
-        except ValueError:
-            raise ValueError("Migration waves must be a JSON list.")
-    if not isinstance(waves, list) or len(waves) > 100:
-        raise ValueError("At most 100 migration waves are allowed.")
-    cleaned = []
-    for wave in waves:
-        if not isinstance(wave, dict) or set(wave) - {"name", "date", "fte"}:
-            raise ValueError("Each wave needs a name, date and FTE.")
-        name = wave.get("name")
-        if not isinstance(name, str) or not name.strip() or len(name) > 255:
-            raise ValueError("Wave name is required and must be at most 255 characters.")
-        try:
-            day = date.fromisoformat(wave.get("date", "")).isoformat()
-        except (ValueError, TypeError):
-            raise ValueError("Wave date must be YYYY-MM-DD.")
-        cleaned.append({"name": name.strip(), "date": day, "fte": _number(wave.get("fte"), "Wave FTE", whole=True)})
-    statement.waves = cleaned
 
 
 @api_view(["POST"])

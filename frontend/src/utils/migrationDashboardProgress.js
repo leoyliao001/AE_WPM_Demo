@@ -199,19 +199,8 @@ export const buildDetailSections = (project) => [
         label: 'Language dependency',
         value: (project.languageDependencies ?? []).join(', ') || '—'
       },
-      { label: 'FTE number', value: project.fteNumber },
-      { label: 'JL2', value: project.jl2 },
-      { label: 'JL3', value: project.jl3 },
-      { label: 'JL4', value: project.jl4 },
-      { label: 'Job level total', value: String(project.jobLevelTotal ?? '—') }
+      { label: 'Migration Ambition', value: project.fteNumber }
     ]
-  },
-  {
-    id: 'risk',
-    title: 'Risk Assessment',
-    accent: '#F3880E',
-    icon: 'mi-exclamation-triangle',
-    items: [{ label: 'Risks', value: project.risks || '—', multiline: true }]
   },
   {
     id: 'attachments',

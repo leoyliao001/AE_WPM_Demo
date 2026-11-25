@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from api.models import MigrationIntakeSubmission, OpportunityAssessment, OpportunityAssessmentScope, ServiceCatalogue, StakeholderRegistration
 from api.permissions.attributes_access import get_request_email
+from api.services.opportunity_assessment_fte import FREQUENCIES, calculate_task_fte
 from api.services.intake_options import INTAKE_OPTIONS
 from api.views.opportunity_assessment import _build_setup_context, _deny_unless_requestor, _get_project, _parse_number
 from api.views.fpo_catalogue_requests import catalogue_request_reminders
@@ -23,7 +24,6 @@ FIELD_MAP = {
     "cx": "complexity", "sop": "sop_iop_exists", "freq": "task_frequency",
     "uom": "unit_of_measure", "vol": "volume_monthly", "tpu": "task_time_per_unit_min",
 }
-FREQUENCIES = {"Daily": 21, "Weekly": 4.33, "Monthly": 1, "Quarterly": 1 / 3, "Yearly": 1 / 12, "Ad hoc": 1}
 LEGACY_FIELDS = ("upstream", "downstream", "risks_related", "training_time_needed", "recommended_handoff_duration")
 OPTIONS = {
     "cx": {"", "Low", "Medium", "High"}, "sop": {"", "Y", "N"},
@@ -137,10 +137,9 @@ def _validate_state(raw, project):
             for key in ("vol", "tpu"):
                 if row[key] and (_parse_number(row[key]) is None or _parse_number(row[key]) < 0):
                     raise ValueError("Volume and task time must be finite non-negative numbers.")
-            volume, minutes = _parse_number(row["vol"]), _parse_number(row["tpu"])
-            factor = FREQUENCIES.get(row["freq"])
             row["hrs"] = 140
-            row["fte"] = f"{volume * minutes * factor / 60 / 140:.4f}" if volume and minutes and factor else ""
+            row_fte = calculate_task_fte(row)
+            row["fte"] = f"{row_fte:.4f}" if row_fte is not None else ""
 
     task_rows = state.get("task")
     if task_rows is None:

@@ -103,11 +103,7 @@ export const collectValidationErrors = ({
 
   if (!form.languageDependencies.length) missing.push('Language dependency')
 
-  if (!String(form.jl2 ?? '').trim()) missing.push('JL2')
-
-  if (!String(form.jl3 ?? '').trim()) missing.push('JL3')
-
-  if (!String(form.jl4 ?? '').trim()) missing.push('JL4')
+  if (!String(form.fteNumber ?? '').trim()) missing.push('Migration Ambition')
 
 
 
@@ -202,16 +198,6 @@ export const buildSubmissionPreview = ({
     languageDependencies: [...form.languageDependencies],
 
     fteNumber: form.fteNumber,
-
-    jl2: form.jl2 || '0',
-
-    jl3: form.jl3 || '0',
-
-    jl4: form.jl4 || '0',
-
-    jobLevelTotal: Number(form.jl2 || 0) + Number(form.jl3 || 0) + Number(form.jl4 || 0),
-
-    risks: form.risks.trim(),
 
     attachments: (selectedAttachments || []).map((file) => ({
 
@@ -357,43 +343,7 @@ export const previewSections = (preview) => [
 
       { label: 'Language dependency', value: preview.languageDependencies.join(', ') },
 
-      { label: 'JL2', value: preview.jl2 },
-
-      { label: 'JL3', value: preview.jl3 },
-
-      { label: 'JL4', value: preview.jl4 },
-
-      { label: 'FTE number', value: preview.fteNumber },
-
-      {
-
-        label: 'Job level total',
-
-        value: String(preview.jobLevelTotal)
-
-      }
-
-    ]
-
-  },
-
-  {
-
-    id: 'risk',
-
-    title: 'Risk Assessment',
-
-    items: [
-
-      {
-
-        label: 'Risks',
-
-        value: preview.risks || '—',
-
-        multiline: true
-
-      }
+      { label: 'Migration Ambition', value: preview.fteNumber }
 
     ]
 

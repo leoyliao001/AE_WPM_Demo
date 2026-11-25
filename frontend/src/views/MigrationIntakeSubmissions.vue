@@ -160,12 +160,7 @@ const ALL_COLUMNS = [
   { key: 'products', label: 'Products', width: 180 },
   { key: 'proposed_scope', label: 'Proposed Scope', width: 240 },
   { key: 'language_dependencies', label: 'Language Dependencies', width: 160 },
-  { key: 'fte_number', label: 'FTE Number', width: 100 },
-  { key: 'jl2', label: 'JL2', width: 70 },
-  { key: 'jl3', label: 'JL3', width: 70 },
-  { key: 'jl4', label: 'JL4', width: 70 },
-  { key: 'job_level_total', label: 'Job Level Total', width: 120 },
-  { key: 'risks', label: 'Risks', width: 220 },
+  { key: 'fte_number', label: 'Migration Ambition', width: 160 },
   { key: 'attachment_names', label: 'Attachments', width: 200 }
 ]
 

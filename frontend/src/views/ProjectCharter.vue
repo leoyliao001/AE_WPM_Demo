@@ -99,18 +99,8 @@
           <h3>Risks</h3><p class="charter-preserve">{{ charter.sources.risks || 'Source not provided. Maintain risks in the online Business Case.' }}</p>
           <h3>Dependencies</h3><p class="charter-preserve">{{ charter.sources.dependencies || 'Source not provided. Maintain dependencies in the online Business Case.' }}</p>
         </section>
-        <section class="charter-panel" aria-labelledby="charter-fte">
-          <div class="charter-section-head"><h2 id="charter-fte"><span class="charter-number">7</span>FTE timeline</h2></div>
-          <RouterLink :to="sourceLink('scope-statement')" class="charter-source">From Scope waves · read-only</RouterLink>
-          <div v-if="charter.sources.fteTimeline?.length" class="charter-table-scroll">
-            <table><caption>Migration waves from Scope Statement</caption><thead><tr><th>Wave</th><th>Date</th><th>FTE</th></tr></thead>
-              <tbody><tr v-for="(wave, index) in charter.sources.fteTimeline" :key="index"><td>{{ wave.name }}</td><td>{{ wave.date }}</td><td>{{ wave.fte }}</td></tr></tbody>
-            </table>
-          </div>
-          <p v-else class="charter-muted">No migration waves provided. Maintain the actual wave names, dates and FTE in Scope Statement.</p>
-        </section>
         <section class="charter-panel" aria-labelledby="charter-criteria">
-          <div class="charter-section-head"><h2 id="charter-criteria"><span class="charter-number">8</span>Success criteria &amp; sign-off</h2></div>
+          <div class="charter-section-head"><h2 id="charter-criteria"><span class="charter-number">7</span>Success criteria &amp; sign-off</h2></div>
           <span class="charter-source charter-source--editable">Auto + add-only</span>
           <ul><li v-for="criterion in charter.sources.autoCriteria" :key="criterion">{{ criterion }} <small>(automatic)</small></li>
             <li v-for="(criterion, index) in criteria" :key="index">{{ criterion }}</li></ul>

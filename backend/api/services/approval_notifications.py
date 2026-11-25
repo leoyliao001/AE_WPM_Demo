@@ -52,7 +52,7 @@ def send_next_stage_notification(submission: MigrationIntakeSubmission, role: st
                 f"Product(s): {', '.join(submission.products or []) or '-'}",
                 f"Function: {submission.function_name}",
                 f"Region / Area: {submission.region} / {', '.join(submission.areas or []) or '-'}",
-                f"FTE in Scope: {submission.fte_number}",
+                f"Migration Ambition: {submission.fte_number}",
                 f"Proposed Scope: {submission.proposed_scope}",
         "",
                 f"Open Migration Approval: {approval_url}",
@@ -87,7 +87,7 @@ def send_next_stage_notification(submission: MigrationIntakeSubmission, role: st
                             <tr><td style="padding:12px 4px;color:#5d6b76;border-bottom:1px solid #edf0f2;">Product(s)</td><td style="padding:12px 4px;font-weight:600;border-bottom:1px solid #edf0f2;">{escape(', '.join(submission.products or []) or '-')}</td></tr>
                             <tr><td style="padding:12px 4px;color:#5d6b76;border-bottom:1px solid #edf0f2;">Function</td><td style="padding:12px 4px;font-weight:600;border-bottom:1px solid #edf0f2;">{escape(submission.function_name)}</td></tr>
                             <tr><td style="padding:12px 4px;color:#5d6b76;border-bottom:1px solid #edf0f2;">Region / Area</td><td style="padding:12px 4px;font-weight:600;border-bottom:1px solid #edf0f2;">{escape(submission.region)} / {escape(', '.join(submission.areas or []) or '-')}</td></tr>
-                            <tr><td style="padding:12px 4px;color:#5d6b76;border-bottom:1px solid #edf0f2;">FTE in Scope</td><td style="padding:12px 4px;font-weight:600;border-bottom:1px solid #edf0f2;">{escape(submission.fte_number)}</td></tr>
+                            <tr><td style="padding:12px 4px;color:#5d6b76;border-bottom:1px solid #edf0f2;">Migration Ambition</td><td style="padding:12px 4px;font-weight:600;border-bottom:1px solid #edf0f2;">{escape(submission.fte_number)}</td></tr>
                             <tr><td style="padding:12px 4px;color:#5d6b76;vertical-align:top;">Proposed Scope</td><td style="padding:12px 4px;font-weight:600;line-height:1.45;">{escape(submission.proposed_scope)}</td></tr>
                         </table>
                     </td></tr>

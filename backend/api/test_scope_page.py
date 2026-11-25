@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 
 from api.models import (
     MigrationIntakeSubmission,
+    OpportunityAssessment,
+    OpportunityAssessmentScope,
     ProjectAttributesAccess,
     ScopeStatement,
     ScopeStatementEvidence,
@@ -47,7 +49,6 @@ class ScopePageTests(TestCase):
             "action": action, "scopeText": "Transfer support operations.",
             "migratableFte": "6", "migratableFteConfirmed": True,
             "outOfScope": "Sales", "assumptions": "Systems remain available",
-            "waves": [{"name": "First wave", "date": "2027-01-01", "fte": 6}],
             "lines": [
                 {"jobLevel": "JL1", "agreedFte": 0, "notAgreedFte": 0, "finalFte": 0},
                 *[
@@ -69,7 +70,6 @@ class ScopePageTests(TestCase):
             "migratableFteConfirmed": True,
             "outOfScope": "Demo data: local statutory, tax and non-Ocean activities remain with the originating teams.",
             "assumptions": "Demo data: source procedures and sample records are available; Chengdu capacity is planned for a six-FTE pilot.",
-            "waves": [],
             "lines": [
                 {"jobLevel": "JL1", "agreedFte": 1, "notAgreedFte": 0, "finalFte": 1},
                 {"jobLevel": "JL2", "agreedFte": 2, "notAgreedFte": 0, "finalFte": 2},
@@ -85,6 +85,72 @@ class ScopePageTests(TestCase):
         self.assertTrue(response.data["migratableFteConfirmed"])
         self.assertEqual(len(response.data["lines"]), 4)
         self.assertEqual(sum(line["finalFte"] for line in response.data["lines"]), 7)
+        self.assertNotIn("waves", response.data)
+
+    def test_legacy_wave_payload_is_ignored(self):
+        payload = self.payload()
+        payload["waves"] = [{"name": "Legacy", "date": "invalid", "fte": -1}]
+
+        response = self.save(payload)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertNotIn("waves", response.data)
+
+    def test_scope_summary_uses_opportunity_assessment_migratable_fte(self):
+        OpportunityAssessmentScope.objects.create(
+            project=self.project,
+            state={
+                "mode": "cat",
+                "catGroups": [
+                    {"rows": [
+                        {"vol": "120", "tpu": "8", "freq": "Monthly", "mgsc": "Yes"},
+                        {"vol": "15", "tpu": "25", "freq": "Weekly", "mgsc": "Yes"},
+                    ]},
+                    {"rows": [
+                        {"vol": "6", "tpu": "40", "freq": "Quarterly", "mgsc": "Yes"},
+                        {"vol": "1000", "tpu": "60", "freq": "Daily", "mgsc": "No"},
+                        {"vol": "", "tpu": "60", "freq": "Monthly", "mgsc": "Yes"},
+                    ]},
+                ],
+                "task": [],
+            },
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["opportunityAssessmentFte"], "0.32")
+
+    def test_scope_summary_falls_back_to_legacy_opportunity_assessment_rows(self):
+        OpportunityAssessment.objects.create(
+            migration_request_id=self.project.migration_request_id,
+            volume_monthly="400",
+            task_time_per_unit_min="2",
+            task_frequency="Daily",
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["opportunityAssessmentFte"], "2.00")
+
+    def test_scope_summary_matches_task_method_total(self):
+        OpportunityAssessmentScope.objects.create(
+            project=self.project,
+            state={
+                "mode": "task",
+                "task": [
+                    {"vol": "400", "tpu": "2", "freq": "Daily", "mgsc": "No", "exc": "Language Barrier"},
+                    {"vol": "60", "tpu": "60", "freq": "Monthly", "mgsc": "", "exc": ""},
+                ],
+                "catGroups": [{"rows": [{"vol": "1000", "tpu": "60", "freq": "Daily", "mgsc": "Yes"}]}],
+            },
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["opportunityAssessmentFte"], "2.43")
 
     def test_scope_role_and_super_admin_have_separate_edit_permissions(self):
         StakeholderRegistration.objects.filter(project=self.project).update(
@@ -165,9 +231,10 @@ class ScopePageTests(TestCase):
             "job_level", "agreed_fte", "not_agreed_fte", "final_fte",
         )), saved_lines)
         payload = self.payload("lock")
-        payload["waves"][0]["fte"] = 5
-        self.assertEqual(self.save(payload).status_code, 400)
-        self.assertFalse(self.statement.lines.filter(locked_at__isnull=False).exists())
+        payload["waves"] = [{"name": "Legacy wave", "date": "2027-01-01", "fte": 5}]
+        response = self.save(payload)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertNotIn("waves", response.data)
 
     def test_missing_stored_file_returns_explicit_error_without_removing_record(self):
         self.upload()

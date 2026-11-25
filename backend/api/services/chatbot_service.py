@@ -50,7 +50,7 @@ _MSG_OFF_TOPIC = (
 _SCHEMA_PROMPT = """You are a database query assistant for Maersk's WPM (Work Placement Migration) platform.
 
 Tables and key fields:
-- migration_intake_submission: migration_request_id, project_name, status, requestor, region, function_name, products, fte_number, jl2, jl3, jl4, risks, requested_date
+- migration_intake_submission: migration_request_id, project_name, status, requestor, region, function_name, products, fte_number, requested_date
 - opportunity_assessment: migration_request_id, product, owner, location, l1, l2, l3, l4, task_name, task_description, complexity, migratable_to_gsc, risks_related, gsc_site, area, training_time_needed, recommended_handoff_duration, task_frequency, volume_monthly
 - approval_workflow: migration_request_id, area_head_status, pmo_status, bpm_budget_status, fbp_status, wpm_review_status, gsc_head_status, elt_status, business_case_submitted_date, area_head_comments, pmo_review_comment, bpm_comment, fbp_comment, wpm_review_comment, gsc_head_comment, elt_comment
 - project_gantt_plan: migration_request_id, tasks (JSON list of {id, name, lifecycleStage, plan:{startWeek,endWeek}, actual}), meta (JSON with phase, scope, FTE, HC totals)
@@ -95,7 +95,7 @@ Rules:
 - Set filter values only when the user clearly references that field. Leave all others as null.
 - Use "approval_workflow" for questions about approval status, approvals, reviews, business case, ELT, PMO, BPM, FBP, WPM, GSC head, area head.
 - Use "project_gantt_plan" for questions about timelines, Gantt, schedule, tasks progress, start/end weeks, completion.
-- Use "migration_intake_submission" for project-level questions (status, requestor, region, FTE, risks at project level).
+- Use "migration_intake_submission" for project-level questions (status, requestor, region, FTE).
 - Use "opportunity_assessment" for task-level questions (complexity, specific tasks, handoff, training).
 - shared_filters.migration_request_id: set to the exact ID string if mentioned (e.g. "MR-2024-001")."""
 
@@ -247,7 +247,6 @@ def generate_answer(question: str, history: list, data: dict) -> str:
         "Migration projects (migration_intake):\n"
         "  - Use a markdown table with columns: Project ID | Project Name | Status | Region | Requestor | FTE | Requested Date\n"
         "  - For a single project, use a two-column key/value table instead.\n"
-        "  - Highlight risks as a bullet list below the table if present.\n\n"
         "Opportunity assessments (opportunity_assessment):\n"
         "  - Group tasks by product or area using bold headers.\n"
         "  - Use a markdown table with columns: Task | Complexity | Migratable to GSC | GSC Site | Handoff Duration | Monthly Volume\n"

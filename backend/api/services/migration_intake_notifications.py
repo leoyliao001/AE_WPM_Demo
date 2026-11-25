@@ -156,12 +156,7 @@ def _render_submission_email_html(submission: MigrationIntakeSubmission) -> str:
         _row("Location Strategy", location_strategy),
         _row("Custom Strategy Justification", submission.custom_location_strategy_justification or ""),
         _row("Proposed Scope", submission.proposed_scope),
-        _row("Risks", submission.risks or ""),
-        _row("FTE Number", submission.fte_number),
-        _row("JL2 / JL3 / JL4",
-             f"{submission.jl2} / {submission.jl3} / {submission.jl4}"
-             if any([submission.jl2, submission.jl3, submission.jl4]) else ""),
-        _row("Job Level Total", str(submission.job_level_total) if submission.job_level_total else ""),
+        _row("Migration Ambition", submission.fte_number),
         _row("Status", submission.status.title() if submission.status else ""),
         _row("Requestor", submission.requestor),
     ])
@@ -267,10 +262,7 @@ def _render_submission_email_text(submission: MigrationIntakeSubmission) -> str:
         f"Language Dependencies: {_csv(submission.language_dependencies)}",
         f"Location Strategy    : {_csv(submission.custom_location_strategies if submission.location_strategy_custom else submission.default_location_strategies)}",
         f"Proposed Scope       : {submission.proposed_scope}",
-        f"Risks                : {submission.risks or '-'}",
-        f"FTE Number           : {submission.fte_number}",
-        f"JL2 / JL3 / JL4     : {submission.jl2} / {submission.jl3} / {submission.jl4}",
-        f"Job Level Total      : {submission.job_level_total}",
+        f"Migration Ambition   : {submission.fte_number}",
     ]
     return "\n".join(lines)
 

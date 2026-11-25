@@ -260,7 +260,7 @@ Required environment variables for backend process:
 Notes:
 
 - Email subject includes migration ID, for example: `Migration Request MIR-20260808-001 - New Submission`.
-- Email body includes submitted intake details (project, scope, products, countries, location strategy, FTE/job levels, risks, and more).
+- Email body includes submitted intake details (project, scope, products, countries, location strategy, Migration Ambition, and more).
 
 **Window 2 — Frontend:**
 
@@ -276,7 +276,7 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
 - Toll Gates > Initiate > Project Charter opens `/migration-dashboard/:id/project-charter`.
 - The charter reads Intake, locked Stakeholder Registration people, Scope Statement,
   saved Gantt dates/task completion and Business Case approval state live. Missing
-  structured benefits, risks, scope waves, out-of-scope and assumptions are labelled
+  structured benefits, risks, out-of-scope and assumptions are labelled
   unavailable; uploaded Business Case documents are not parsed or replaced by sample data.
 - The `project_charter` table stores only charter-owned vision wording, phase notes,
   add-only additional success criteria, source fingerprint and draft revision/audit metadata.
@@ -334,8 +334,8 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
 - `business_case` stores draft details, one-time costs/adjustments, revisions,
   audit events and immutable calculation/source snapshots. Editing Intake here
   updates the original `migration_intake_submission` record. Scope-owned data
-  stays in `scope_statement` and its job-level lines; out-of-scope, assumptions
-  and dated migration waves are maintained there, not in Business Case.
+  stays in `scope_statement` and its job-level lines; out-of-scope and assumptions
+  are maintained there, not in Business Case.
 - Admin has separate Business Case and Business Case Cost Rates maintenance cards,
   controlled by the `business_case` and `cost_rates` Access Control permissions.
   Administration uses record forms, not the presentation page. The project
@@ -350,7 +350,7 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
   gross and recurring benefit = current minus future; benefit percentage =
   gross/current; net first-year benefit = gross minus adjusted one-time cost;
   payback months = adjusted one-time cost/(gross/12). The first-year formula is
-  full run-rate, not prorated by waves. Zero current cost has no percentage;
+  full run-rate. Zero current cost has no percentage;
   non-positive benefit has no payback period. These cases display explanations.
 - A nonzero manual adjustment requires a reason and never overwrites the baseline.
   Source, rate and financial histories retain the basis used at each save/refresh/
@@ -529,8 +529,8 @@ reconciliation against intake ambition, and submission readiness.
 
 Authorised editors can save drafts and use a single **Lock / Unlock** control
 at the top of the page. Lock requires complete agreed, exception and final FTE
-for all levels, manually confirmed Migratable FTE, Scope text (maximum 2,000 characters), a shared attachment and
-matching wave totals when provided. It freezes all editable page fields and
+for all levels, manually confirmed Migratable FTE, Scope text (maximum 2,000 characters) and a shared attachment.
+It freezes all editable page fields and
 uploads, including Admin edits, while downloads remain available. Existing
 partially locked statements are treated as page-locked and can be unlocked in
 one action. All three underlying level locks are still recorded for Business
@@ -546,8 +546,8 @@ Drafts may be saved before confirmation, but Lock and Submit require confirmatio
 The saved manual value is never replaced by subsequent JL changes. Reconciliation
 uses this manual total plus exceptions against Intake ambition. Business Case and
 Charter read the confirmed manual total from Scope; new Business Case snapshots
-include its value and confirmation state. Final FTE by JL remains the cost model,
-wave allocation and final delivery commitment basis. Changing either the manual
+include its value and confirmation state. Final FTE by JL remains the cost model
+and final delivery commitment basis. Changing either the manual
 value or its confirmation invalidates the Business Case source version and
 triggers the existing review workflow. Existing records are not auto-confirmed
 or backfilled; untouched historical approvals and saved snapshots stay intact.

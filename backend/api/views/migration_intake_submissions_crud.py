@@ -117,18 +117,6 @@ def _parse_int(value, *, allow_null: bool = False):
         raise ValueError(f"Invalid number: {value}") from exc
 
 
-def _jl_total(jl2: str, jl3: str, jl4: str, explicit) -> int:
-    if _normalize_text(explicit) != "":
-        return max(0, _parse_int(explicit))
-    total = 0
-    for value in (jl2, jl3, jl4):
-        try:
-            total += max(0, int(float(str(value or "0").strip() or "0")))
-        except (TypeError, ValueError):
-            continue
-    return total
-
-
 def _extract_payload(item: dict) -> dict:
     payload: dict = {}
     for field in WRITABLE_FIELDS:
@@ -141,22 +129,11 @@ def _extract_payload(item: dict) -> dict:
             payload[field] = _parse_bool(raw)
         elif field == "custom_approval_file_size":
             payload[field] = _parse_int(raw, allow_null=True)
-        elif field == "job_level_total":
-            continue
         else:
             payload[field] = _normalize_text(raw)
 
-    payload["job_level_total"] = _jl_total(
-        payload.get("jl2", "0"),
-        payload.get("jl3", "0"),
-        payload.get("jl4", "0"),
-        item.get("job_level_total"),
-    )
     if not payload.get("status"):
         payload["status"] = "new"
-    for jl_key in ("jl2", "jl3", "jl4"):
-        if not payload.get(jl_key):
-            payload[jl_key] = "0"
     return payload
 
 

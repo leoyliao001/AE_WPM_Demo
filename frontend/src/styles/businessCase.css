@@ -109,7 +109,6 @@ ul.bc-error, ul.bc-warning { padding-left: 34px; }
 .bc-workspace .bc-capacity > span:last-child { margin-left: auto; font-size: 12px; }
 .bc-workspace .bc-capacity strong { color: var(--bc-blue-ink); font-size: 32px; font-weight: 400; font-variant-numeric: tabular-nums; }
 .bc-workspace .bc-capacity small { font-size: 14px; font-weight: 400; color: var(--bc-muted); }
-.bc-workspace .bc-plan-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
 .bc-workspace .bc-scroll { min-width: 0; }
 .bc-workspace table { font-size: 14px; }
 .bc-workspace th { background: #f5f7f9; color: #536574; font-size: 12px; font-weight: 500; }
@@ -153,7 +152,7 @@ ul.bc-error, ul.bc-warning { padding-left: 34px; }
   .bc-workspace .bc-hero { padding: 8px 0 0; }
   .bc-workspace .bc-updated { margin-left: 0; width: 100%; }
   .bc-workspace .bc-summary, .bc-workspace .bc-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .bc-workspace .bc-fields, .bc-workspace .bc-fields--columns, .bc-workspace .bc-scope-grid, .bc-workspace .bc-plan-grid { grid-template-columns: minmax(0, 1fr); }
+  .bc-workspace .bc-fields, .bc-workspace .bc-fields--columns, .bc-workspace .bc-scope-grid { grid-template-columns: minmax(0, 1fr); }
   .bc-workspace .bc-capacity { flex-wrap: wrap; gap: 10px; }
   .bc-workspace .bc-capacity > span:last-child { margin-left: 0; width: 100%; }
   .bc-workspace .bc-project-identity span { display: block; margin: 8px 0 0; padding: 0; border: 0; }

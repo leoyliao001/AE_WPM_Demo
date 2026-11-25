@@ -47,7 +47,7 @@
                     <h3>Draft, submitted and review-required states</h3>
                     <p>Current state: <strong>{{ isSubmitted ? 'Submitted - read-only' : 'Draft' }}</strong><template v-if="statement.reviewRequired">; <strong>Scope review required</strong></template>.</p>
                     <ul>
-                      <li>In a draft, assigned GSC Leaders and the Area POC can update scope text, out-of-scope items, assumptions, job-level FTE and migration waves, then select <strong>Save draft</strong>.</li>
+                      <li>In a draft, assigned GSC Leaders and the Area POC can update scope text, out-of-scope items, assumptions and job-level FTE, then select <strong>Save draft</strong>.</li>
                       <li>A submitted statement is read-only for everyone, including Super Admins. Enter a revision reason (maximum 2,000 characters) and select <strong>Reopen for revision</strong> before editing.</li>
                       <li>Reopening preserves attachments and the page lock. Use the single page-level <strong>Unlock</strong> control before editing; reopening alone does not unlock the page.</li>
                     </ul>
@@ -58,7 +58,7 @@
                       <li>For each of <strong>JL1, JL2, JL3 and JL4</strong>, enter agreed FTE, not-agreed / exception FTE and final FTE. Values must be non-negative; final FTE must be a whole number. Enter zero explicitly where applicable.</li>
                       <li>The system-wide Super Admin (temporarily treated as Migration Manager) enters and explicitly confirms the independent top-level <strong>Migratable FTE</strong> as a whole number. It is initially suggested from the agreed JL total; changing its value clears confirmation.</li>
                       <li>Optionally upload shared files in <strong>Attachement</strong>. Accepted formats: <strong>PDF, DOCX, MSG, XLSX</strong>; each file must be non-empty and no larger than <strong>20 MB</strong>.</li>
-                      <li>Only assigned GSC Leaders and the Area POC can upload evidence or use the page-level <strong>Lock / Unlock</strong> control. The whole page, including FTE, scope text, assumptions, migration waves and uploads, is locked together; downloads remain available while locked.</li>
+                      <li>Only assigned GSC Leaders and the Area POC can upload evidence or use the page-level <strong>Lock / Unlock</strong> control. The whole page, including FTE, scope text, assumptions and uploads, is locked together; downloads remain available while locked.</li>
                     </ol>
                   </section>
                   <section>
@@ -67,7 +67,6 @@
                       <li>Submission requires non-empty scope text (maximum 2,000 characters), manually confirmed Migratable FTE and the whole page locked.</li>
                       <li>Business Case and Charter read the manual Migratable FTE total. Financial calculations and final delivery commitments continue to use Final FTE by job level.</li>
                       <li>Final project FTE is the sum of the three final FTE values; Intake ambition is retained as the baseline, not a required matching total.</li>
-                      <li>Waves are optional. If provided, each needs a name, valid date and non-negative whole-number FTE; the wave FTE total must equal final project FTE.</li>
                       <li>Assigned GSC Leaders and the Area POC can submit or reopen Scope; this is not limited to the Requestor. Submitted Scope without a review flag is shown as <strong>Secured</strong> on the Artefact Delivery Dashboard.</li>
                       <li>Changes to relevant Intake sources can require Scope review. Reopen, review and resubmit. Changes to Scope can also mark an existing submitted Business Case for review and block further approval until it is reviewed and resubmitted.</li>
                       <li>Save, lock, unlock, evidence upload, submission and revision actions are recorded in the audit history, including the acting user and time; reopening also records the reason.</li>
@@ -100,6 +99,11 @@
               <div class="metric-card__top"><span>Intake ambition</span><mc-icon icon="mi-flag" size="18" /></div>
               <div class="metric-card__value">{{ formatNumber(ambition) }}<span>FTE</span></div>
               <p>Original migration baseline</p>
+            </article>
+            <article class="metric-card">
+              <div class="metric-card__top"><span>Opportunity Assessment FTE</span><mc-icon icon="mi-chart-pie" size="18" /></div>
+              <div class="metric-card__value">{{ opportunityAssessmentFte === null ? '—' : opportunityAssessmentFte.toFixed(2) }}<span>FTE</span></div>
+              <p>{{ opportunityAssessmentFte === null ? 'Opportunity Assessment total unavailable' : 'Calculated total from Opportunity Assessment' }}</p>
             </article>
             <article class="metric-card">
               <div class="metric-card__top"><span>Migratable FTE</span><mc-icon icon="mi-check" size="18" /></div>
@@ -146,7 +150,7 @@
           <span>Submitted {{ formatDate(statement.submittedAt) }} by {{ statement.submittedBy }}. This statement is now read-only.</span>
         </div>
         <div v-else-if="pageLocked" class="notice notice--info">
-          <mc-icon icon="mi-shield" size="18" /><span>The whole page is locked. Use Unlock at the top to edit project boundaries, FTE, migration waves or attachments.</span>
+          <mc-icon icon="mi-shield" size="18" /><span>The whole page is locked. Use Unlock at the top to edit project boundaries, FTE or attachments.</span>
         </div>
         <div v-else-if="canEditMigratableFte && !canEdit" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>You can enter and confirm Migratable FTE. Other Scope details are editable only by the locked GSC Leaders and Area POC assignments.</span>
@@ -174,7 +178,7 @@
           <label class="scope-revision-reason">Revision reason (required, maximum 2,000 characters)
             <textarea v-model="revisionReason" :disabled="isBusy" maxlength="2000" rows="2" required />
           </label>
-          <button type="submit" class="scope-add-wave" :disabled="!canManage || isBusy || !revisionReason.trim()">Reopen for revision</button>
+          <button type="submit" class="scope-revision-submit" :disabled="!canManage || isBusy || !revisionReason.trim()">Reopen for revision</button>
         </form>
 
         <section class="agreement-card" aria-labelledby="agreement-title">
@@ -282,23 +286,11 @@
         </div>
 
         <section class="detail-card scope-boundaries" aria-labelledby="scope-plan-title">
-          <header class="detail-heading"><div><p class="eyebrow">Source record for Business Case and Charter</p><h2 id="scope-plan-title">Boundaries and migration waves</h2></div></header>
+          <header class="detail-heading"><div><p class="eyebrow">Source record for Business Case and Charter</p><h2 id="scope-plan-title">Project boundaries</h2></div></header>
           <div class="scope-boundary-fields">
             <label>Out of scope<textarea v-model="outOfScope" :disabled="!canEdit || isBusy" rows="3" /></label>
             <label>Assumptions<textarea v-model="assumptions" :disabled="!canEdit || isBusy" rows="3" /></label>
           </div>
-          <p class="section-description">Maintain actual migration waves here. Dates use YYYY-MM-DD and FTE must be a non-negative whole number. If waves are provided, their total must match final project FTE before submission. These source values are read-only in Business Case.</p>
-          <div class="table-scroll">
-            <table class="exception-table"><thead><tr><th>Wave name</th><th>Date (YYYY-MM-DD)</th><th>FTE</th><th>Action</th></tr></thead>
-              <tbody><tr v-for="(wave, index) in waves" :key="index">
-                <td><input v-model="wave.name" :aria-label="`Wave ${index + 1} name`" :disabled="!canEdit || isBusy" /></td>
-                <td><input v-model="wave.date" type="date" :aria-label="`Wave ${index + 1} date`" :disabled="!canEdit || isBusy" /></td>
-                <td><input v-model="wave.fte" type="number" min="0" step="1" :aria-label="`Wave ${index + 1} FTE`" :disabled="!canEdit || isBusy" /></td>
-                <td><button type="button" :disabled="!canEdit || isBusy" :aria-label="`Remove wave ${index + 1}`" @click="waves.splice(index, 1)">Remove</button></td>
-              </tr><tr v-if="!waves.length"><td colspan="4">No migration waves defined.</td></tr></tbody>
-            </table>
-          </div>
-          <button type="button" class="scope-add-wave" :disabled="!canEdit || isBusy || waves.length >= 100" @click="waves.push({ name: '', date: '', fte: '' })">Add wave</button>
         </section>
 
         <footer class="readiness-bar">
@@ -340,7 +332,6 @@ const migratableFte = ref('')
 const migratableFteConfirmed = ref(false)
 const outOfScope = ref('')
 const assumptions = ref('')
-const waves = ref([])
 const revisionReason = ref('')
 const loading = ref(true)
 const busy = ref('')
@@ -355,6 +346,12 @@ const canEdit = computed(() => canManage.value && !pageLocked.value)
 const canEditMigratableFte = computed(() => Boolean(statement.value?.canEditMigratableFte) && !isSubmitted.value && !pageLocked.value)
 const canSave = computed(() => canEdit.value || canEditMigratableFte.value)
 const ambition = computed(() => Number(statement.value?.ambitionFte || 0))
+const opportunityAssessmentFte = computed(() => {
+  const value = statement.value?.opportunityAssessmentFte
+  if (value === null || value === undefined || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+})
 const lockedCount = computed(() => lines.value.filter((line) => line.lockedAt).length)
 const lockedTotal = computed(() => lines.value.filter((line) => line.lockedAt).reduce((sum, line) => sum + Number(line.finalFte), 0))
 const attachments = computed(() => statement.value?.attachments || [])
@@ -423,20 +420,6 @@ const submissionReminder = computed(() => {
     messages.push(`Complete agreed, exception and whole-number final FTE for ${incompleteLevels.join(', ')}.`)
   }
 
-  const invalidWave = waves.value.some(wave =>
-    !wave.name.trim() ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
-    Number.isNaN(Date.parse(wave.date)) ||
-    new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
-    !validNumber(wave.fte, true)
-  )
-  if (invalidWave) {
-    messages.push('Complete or remove each unfinished wave; every wave needs a name, valid date and whole-number FTE.')
-  } else if (waves.value.length && allFinalEntered.value &&
-      waves.value.reduce((sum, wave) => sum + Number(wave.fte), 0) !== finalTotal.value) {
-    messages.push('Make the migration wave FTE total match the final project FTE.')
-  }
-
   if (!pageLocked.value && canLockPage.value) {
     messages.push('Select Lock at the top to lock the whole page before submitting.')
   } else if (pageLocked.value && lockedCount.value !== 4) {
@@ -499,7 +482,7 @@ function formatDate(value) {
 }
 
 function snapshot() {
-  return JSON.stringify({ text: scopeText.value, migratableFte: migratableFte.value, migratableFteConfirmed: migratableFteConfirmed.value, outOfScope: outOfScope.value, assumptions: assumptions.value, waves: waves.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
+  return JSON.stringify({ text: scopeText.value, migratableFte: migratableFte.value, migratableFteConfirmed: migratableFteConfirmed.value, outOfScope: outOfScope.value, assumptions: assumptions.value, lines: lines.value.map((line) => [line.jobLevel, line.agreedFte, line.notAgreedFte, line.finalFte]) })
 }
 
 function applyResponse(data) {
@@ -507,7 +490,6 @@ function applyResponse(data) {
   scopeText.value = data.scopeText
   outOfScope.value = data.outOfScope ?? ''
   assumptions.value = data.assumptions ?? ''
-  waves.value = (data.waves || []).map(wave => ({ name: wave.name, date: wave.date, fte: wave.fte }))
   lines.value = data.lines.map((line) => ({
     ...line,
     agreedFte: line.agreedFte === null ? '' : Number(line.agreedFte),
@@ -573,12 +555,6 @@ async function persist(action, extra = {}) {
     error.value = 'Migratable FTE must be a non-negative whole number.'
     return false
   }
-  if (canEdit.value && waves.value.some(wave => !wave.name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(wave.date) ||
-      Number.isNaN(Date.parse(wave.date)) || new Date(wave.date).toISOString().slice(0, 10) !== wave.date ||
-      !validNumber(wave.fte, true))) {
-    error.value = 'Each wave needs a name, valid YYYY-MM-DD date and non-negative integer FTE. Complete or remove unfinished rows before saving.'
-    return false
-  }
   const editableLines = canEdit.value ? lines.value.filter((line) => !line.lockedAt) : []
   if (canEdit.value && editableLines.some((line) => ['agreedFte', 'notAgreedFte', 'finalFte'].some((key) =>
     line[key] !== '' && !validNumber(line[key], key === 'finalFte')
@@ -600,7 +576,6 @@ async function persist(action, extra = {}) {
       scopeText: scopeText.value,
       outOfScope: outOfScope.value,
       assumptions: assumptions.value,
-      waves: waves.value.map(wave => ({ name: wave.name.trim(), date: wave.date, fte: Number(wave.fte) })),
       lines: editableLines.map((line) => ({
         jobLevel: line.jobLevel,
         agreedFte: line.agreedFte === '' ? null : line.agreedFte,
@@ -687,7 +662,7 @@ watch(projectId, loadData, { immediate: true })
 .scope-boundaries td input { width: 100%; min-width: 90px; padding: 8px; border: 1px solid #bdcbd5; border-radius: 5px; font: inherit; }
 .scope-boundaries button { padding: 8px 12px; border: 1px solid #bdcbd5; border-radius: 5px; background: white; color: #17364b; cursor: pointer; }
 .scope-boundaries button:disabled { opacity: .5; cursor: not-allowed; }
-.scope-add-wave { margin-top: 16px; }
+.scope-revision-submit { margin-top: 16px; }
 .scope-page {
   --scope-navy: #10314f;
   --scope-muted: #6f8292;
@@ -722,7 +697,7 @@ h1 { font-family: 'Maersk Headline', 'Maersk Text', sans-serif; font-size: clamp
 .project-identity strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .project-id { font-size: 10px; font-weight: 600; color: #526f83; border: 1px solid #d9e3eb; padding: 5px 8px; border-radius: 5px; background: #fff9; overflow-wrap: anywhere; }
 .project-owner { text-align: right; font-size: 11px; color: #526f83; overflow-wrap: anywhere; }
-.metrics-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
 .metric-card { background: white; border: 1px solid var(--scope-line); border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 3px #10314f03; }
 .metric-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #8093a3; }
 .metric-card__top > span { color: #677d8e; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }

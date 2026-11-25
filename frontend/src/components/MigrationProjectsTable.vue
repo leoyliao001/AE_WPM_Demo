@@ -119,7 +119,7 @@ const columns = [
   { id: 'migrationType', label: 'Migration type', sortKey: 'migrationType', type: 'string' },
   { id: 'products', label: 'Product', sortKey: 'productsLabel', type: 'string' },
   { id: 'areas', label: 'Areas', sortKey: 'areasLabel', type: 'string' },
-  { id: 'fteNumber', label: 'FTE', sortKey: 'fteNumber', type: 'number' },
+  { id: 'fteNumber', label: 'Migration Ambition', sortKey: 'fteNumber', type: 'number' },
   { id: 'requestor', label: 'Requestor', sortKey: 'requestor', type: 'string' },
   { id: 'requestedDate', label: 'Requested', sortKey: 'requestedDate', type: 'string' },
   { id: 'progress', label: 'Progress', sortKey: 'progress', type: 'number' }

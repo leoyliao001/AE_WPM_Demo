@@ -7,7 +7,7 @@
           <mc-tag appearance="info" fit="small" label="Migration Request" />
           <h1 class="page-title">Migration Project Intake Form</h1>
           <p class="page-subtitle">
-            Capture project details, scope, workforce requirements, and risks — then submit to the Project Attributes Database.
+            Capture project details, scope, and workforce requirements — then submit to the Project Attributes Database.
           </p>
         </div>
 
@@ -475,110 +475,32 @@
                 <div class="workforce-sizing-head">
                   <span class="workforce-sizing-title">Workforce sizing</span>
                   <p class="workforce-sizing-desc">
-                    Enter JL2–JL4 counts. FTE number is calculated automatically and may change during scoping.
+                    Enter the total Migration Ambition. This value may change during scoping.
                   </p>
                 </div>
 
-                <div class="job-level-grid">
-                  <mc-input
-                    class="field-required"
-                    label="JL2"
-                    placeholder="Count"
-                    hint="Job Level 2"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    maxlength="3"
-                    :value="form.jl2"
-                    width="full-width"
-                    @keydown="onNumericKeydown('jl2', $event)"
-                    @beforeinput="onBeforeNumericInput('jl2', $event)"
-                    @paste="onNumericPaste('jl2', $event)"
-                    @compositionstart="blockNumericComposition"
-                    @input="onNumericInput('jl2', $event)"
-                  />
-                  <mc-input
-                    class="field-required"
-                    label="JL3"
-                    placeholder="Count"
-                    hint="Job Level 3"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    maxlength="3"
-                    :value="form.jl3"
-                    width="full-width"
-                    @keydown="onNumericKeydown('jl3', $event)"
-                    @beforeinput="onBeforeNumericInput('jl3', $event)"
-                    @paste="onNumericPaste('jl3', $event)"
-                    @compositionstart="blockNumericComposition"
-                    @input="onNumericInput('jl3', $event)"
-                  />
-                  <mc-input
-                    class="field-required"
-                    label="JL4"
-                    placeholder="Count"
-                    hint="Job Level 4"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    maxlength="3"
-                    :value="form.jl4"
-                    width="full-width"
-                    @keydown="onNumericKeydown('jl4', $event)"
-                    @beforeinput="onBeforeNumericInput('jl4', $event)"
-                    @paste="onNumericPaste('jl4', $event)"
-                    @compositionstart="blockNumericComposition"
-                    @input="onNumericInput('jl4', $event)"
-                  />
-                </div>
-
                 <mc-input
-                  class="fte-total-input"
-                  label="FTE number"
-                  hint="Auto-calculated from JL2 + JL3 + JL4"
+                  class="field-required workforce-ambition-input"
+                  label="Migration Ambition"
+                  placeholder="Enter total FTE"
+                  hint="Estimated total FTE for this migration."
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="3"
                   :value="form.fteNumber"
-                  disabled
                   width="full-width"
+                  @keydown="onNumericKeydown('fteNumber', $event)"
+                  @beforeinput="onBeforeNumericInput('fteNumber', $event)"
+                  @paste="onNumericPaste('fteNumber', $event)"
+                  @compositionstart="blockNumericComposition"
+                  @input="onNumericInput('fteNumber', $event)"
                 />
-
-                <div v-if="hasWorkforceInput" class="workforce-balance-tracker">
-                  <span>
-                    FTE =
-                    <strong>{{ form.fteNumber || 0 }}</strong>
-                    ({{ form.jl2 || 0 }} + {{ form.jl3 || 0 }} + {{ form.jl4 || 0 }})
-                  </span>
-                </div>
               </aside>
             </div>
           </div>
         </section>
 
         <!-- Section 4 -->
-        <section class="form-section form-section--optional" :style="{ '--section-accent': '#F3880E' }">
-          <div class="section-head">
-            <span class="section-icon"><mc-icon icon="mi-shield" size="24" /></span>
-            <div>
-              <div class="section-title-row">
-                <h2 class="section-title">Risk Assessment</h2>
-                <mc-tag appearance="neutral" fit="small" label="Optional" />
-              </div>
-              <p class="section-desc">Potential issues, challenges, and identified risks.</p>
-            </div>
-          </div>
-
-          <div class="section-body">
-            <mc-textarea
-              ref="risksRef"
-              label="Risks"
-              placeholder="Describe potential issues, challenges, and what could go wrong..."
-              hint="Describe potential issues, challenges."
-              rows="4"
-              width="full-width"
-              :value="form.risks"
-              @input="onTextInput('risks', $event)"
-            />
-          </div>
-        </section>
-
-        <!-- Section 5 -->
         <section class="form-section form-section--optional" :style="{ '--section-accent': '#0077B8' }">
           <div class="section-head">
             <span class="section-icon"><mc-icon icon="mi-paperclip" size="24" /></span>
@@ -887,22 +809,6 @@ const defaultLocationStrategiesCheckboxValue = computed(() =>
   form.locationStrategyCustom ? [] : [...form.defaultLocationStrategies]
 )
 
-const jobLevelTotal = computed(
-  () => Number(form.jl2 || 0) + Number(form.jl3 || 0) + Number(form.jl4 || 0)
-)
-
-const hasWorkforceInput = computed(() =>
-  Boolean(form.jl2 || form.jl3 || form.jl4)
-)
-
-const syncFteFromJobLevels = () => {
-  if (!form.jl2 && !form.jl3 && !form.jl4) {
-    form.fteNumber = ''
-    return
-  }
-  form.fteNumber = String(jobLevelTotal.value)
-}
-
 const previewSectionGroups = computed(() =>
   submissionPreview.value ? previewSections(submissionPreview.value) : []
 )
@@ -937,14 +843,8 @@ const form = reactive({
   function: '',
   proposedScope: '',
   languageDependencies: [],
-  fteNumber: '',
-  jl2: '',
-  jl3: '',
-  jl4: '',
-  risks: ''
+  fteNumber: ''
 })
-
-watch(() => [form.jl2, form.jl3, form.jl4], syncFteFromJobLevels)
 
 const elevatedSection = ref(null)
 const openDropdownCount = ref(0)
@@ -1364,11 +1264,7 @@ const loadDraft = () => {
       function: functions.includes(saved.function) ? saved.function : '',
       proposedScope: saved.proposedScope ?? '',
       languageDependencies: [],
-      fteNumber: sanitizeNumericInput(saved.fteNumber ?? ''),
-      jl2: sanitizeNumericInput(saved.jl2 ?? ''),
-      jl3: sanitizeNumericInput(saved.jl3 ?? ''),
-      jl4: sanitizeNumericInput(saved.jl4 ?? ''),
-      risks: saved.risks ?? ''
+      fteNumber: sanitizeNumericInput(saved.fteNumber ?? '')
     })
     customApprovalFileMeta.name = ''
     customApprovalFileMeta.size = 0
@@ -2232,9 +2128,11 @@ onMounted(loadDraft)
   background: rgba(109, 170, 40, 0.06);
   border: 1px solid rgba(109, 170, 40, 0.18);
   border-radius: 12px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 308px;
   padding: 16px 18px;
 }
 
@@ -2257,30 +2155,9 @@ onMounted(loadDraft)
   margin: 0;
 }
 
-.job-level-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.fte-total-input {
-  margin-top: 4px;
-}
-
-.workforce-balance-tracker {
-  background: rgba(22, 22, 22, 0.03);
-  border-radius: 8px;
-  color: var(--mds_brand_appearance_neutral_weak_text-color, #6c757d);
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 12px;
-  gap: 6px;
-  line-height: 1.5;
-  padding: 8px 10px;
-}
-
-.workforce-balance-tracker strong {
-  color: var(--mds_brand_appearance_neutral_default_text-color, #161616);
+.workforce-ambition-input {
+  margin-bottom: auto;
+  margin-top: auto;
 }
 
 .validation-dialog-body,
@@ -2474,10 +2351,6 @@ onMounted(loadDraft)
   }
 
   .workforce-language-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .job-level-grid {
     grid-template-columns: 1fr;
   }
 

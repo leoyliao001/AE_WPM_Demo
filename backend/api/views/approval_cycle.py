@@ -174,10 +174,6 @@ def _serialize_row(
         "products": _join_list(submission.products),
         "proposed_scope": submission.proposed_scope,
         "fte_number": submission.fte_number,
-        "jl2": submission.jl2,
-        "jl3": submission.jl3,
-        "jl4": submission.jl4,
-        "job_level_total": submission.job_level_total,
         "requested_date": submission.requested_date,
         "businessCaseSubmittedAt": (
             getattr(workflow, "business_case_submitted_date", None)

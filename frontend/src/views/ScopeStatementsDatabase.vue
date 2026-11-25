@@ -86,12 +86,11 @@
             </td>
             <td v-for="column in columns" :key="column.key" :title="rawCell(row[column.key])">
               <textarea
-                v-if="['scope_text', 'out_of_scope', 'assumptions', 'waves'].includes(column.key) && canEditCell(row, column)"
+                v-if="['scope_text', 'out_of_scope', 'assumptions'].includes(column.key) && canEditCell(row, column)"
                 v-model="row[column.key]"
                 rows="2"
                 :maxlength="column.key === 'scope_text' ? 2000 : undefined"
                 :aria-label="column.label"
-                :placeholder="column.key === 'waves' ? '[{&quot;name&quot;:&quot;Wave name&quot;,&quot;date&quot;:&quot;YYYY-MM-DD&quot;,&quot;fte&quot;:0}]' : undefined"
               />
               <input
                 v-else-if="canEditCell(row, column)"
@@ -220,8 +219,7 @@ function buildSavePayload(row) {
     migration_request_id: row.migration_request_id,
     scope_text: row.scope_text,
     out_of_scope: row.out_of_scope ?? '',
-    assumptions: row.assumptions ?? '',
-    waves: row.waves || '[]'
+    assumptions: row.assumptions ?? ''
   }
   for (const level of ['jl2', 'jl3', 'jl4']) {
     payload[`${level}_agreed_fte`] = row[`${level}_agreed_fte`]

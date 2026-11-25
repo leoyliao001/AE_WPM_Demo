@@ -376,15 +376,7 @@
                 <div><dt>Product</dt><dd>{{ detail.product }}</dd></div>
                 <div><dt>Function</dt><dd>{{ detail.functionName }}</dd></div>
                 <div><dt>Region</dt><dd>{{ detail.region }}</dd></div>
-                <div>
-                  <dt>No of PIDs to be added in GSC along with Job level detail</dt>
-                  <dd>
-                    <span>Total {{ detail.pidsAdded }} PID</span>
-                    <span v-for="jl in detail.jobLevels" :key="jl.label" class="ac-jl">
-                      {{ jl.label }} – {{ jl.count }} PID
-                    </span>
-                  </dd>
-                </div>
+                <div><dt>Migration Ambition</dt><dd>{{ detail.migrationAmbition }} FTE</dd></div>
                 <div><dt>No of PIDs to be released from Area</dt><dd>{{ detail.pidsReleased }}</dd></div>
               </dl>
             </div>
@@ -1020,15 +1012,8 @@ const toRow = (r) => {
     product: first(r.products) || '—',
     functionName: r.function_name || '—',
     businessCaseDoc: null,
-    pidsAdded: Number(r.job_level_total) || Math.round(fte),
+    migrationAmbition: fte,
     pidsReleased: Math.round(fte),
-    jobLevels: [
-      { label: 'JL1', count: 0 },
-      { label: 'JL2', count: Number(r.jl2) || 0 },
-      { label: 'JL3', count: Number(r.jl3) || 0 },
-      { label: 'JL4', count: Number(r.jl4) || 0 },
-      { label: 'JL5', count: 0 }
-    ],
     businessCase: [
       { label: 'Annualised saving', value: money(annualSaving), note: 'Net of GSC delivery cost' },
       { label: 'Transition cost', value: money(transitionCost), note: 'One-off, incl. knowledge transfer' },

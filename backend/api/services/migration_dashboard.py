@@ -125,11 +125,6 @@ def serialize_project_detail(submission: MigrationIntakeSubmission) -> dict:
             "proposedScope": submission.proposed_scope,
             "projectCharterSaved": ProjectCharter.objects.filter(project=submission).exists(),
             "languageDependencies": submission.language_dependencies or [],
-            "jl2": submission.jl2,
-            "jl3": submission.jl3,
-            "jl4": submission.jl4,
-            "jobLevelTotal": submission.job_level_total,
-            "risks": submission.risks,
             "businessCaseSubmissionDate": (
                 submission.business_case_submission_date.isoformat()
                 if submission.business_case_submission_date

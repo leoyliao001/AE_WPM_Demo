@@ -136,7 +136,6 @@ def build_charter_sources(project):
         "deliverables": deliverables,
         "risks": online.details.get("risks") if online else None,
         "dependencies": online.details.get("dependencies") if online else None,
-        "fteTimeline": scope.waves if scope else [],
         "autoCriteria": criteria,
         "draftVision": vision[:10000],
         "completeness": [

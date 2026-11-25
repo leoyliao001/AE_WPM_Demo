@@ -1,38 +1,16 @@
 <template>
   <PageShell
     class="portfolio-page"
-    title="Migration Manager Portfolio"
-    subtitle="Select a migration manager to review assigned projects, delivery health, and key milestones."
-    tag="Migration Portfolio"
+    title="Portfolio overview"
     back-link-to-topbar
     full-width
   >
     <div class="portfolio-content">
       <div class="portfolio-title-row">
-        <div>
-          <p class="portfolio-subtitle">Portfolio overview</p>
-        </div>
         <button class="portfolio-button" type="button" :disabled="!filteredProjects.length" @click="exportCsv">
           ↓ Export
         </button>
       </div>
-
-      <section class="manager-card" aria-label="Migration manager selection">
-        <div class="manager-left">
-          <div class="manager-avatar" aria-hidden="true">{{ managerInitials }}</div>
-          <div class="manager-copy">
-            <label for="manager-select">Migration Manager</label>
-            <select id="manager-select" v-model="selectedManager">
-              <option value="all">All managers</option>
-              <option v-for="manager in managers" :key="manager" :value="manager">{{ manager }}</option>
-            </select>
-          </div>
-        </div>
-        <div class="manager-meta">
-          <div><strong>{{ managerProjects.length }}</strong><span>Assigned projects</span></div>
-          <div><strong>{{ managerRegion }}</strong><span>Primary region</span></div>
-        </div>
-      </section>
 
       <div v-if="loadError" class="portfolio-error" role="alert">
         <span>{{ loadError }}</span>
@@ -108,7 +86,7 @@
                 <th>Migration Type</th>
                 <th>RAG</th>
                 <th>Phase</th>
-                <th>FTE</th>
+                <th>Migration Ambition</th>
                 <th>Progress</th>
                 <th>Request ID</th>
               </tr>
@@ -142,7 +120,7 @@
         </div>
         <footer class="table-footer">
           <span><strong>Open a project:</strong> click any row to view details and track progress.</span>
-          <span>Showing {{ filteredProjects.length }} of {{ managerProjects.length }} projects</span>
+          <span>Showing {{ filteredProjects.length }} of {{ projects.length }} projects</span>
         </footer>
       </section>
     </div>
@@ -160,25 +138,16 @@ const router = useRouter()
 const projects = ref([])
 const loading = ref(false)
 const loadError = ref('')
-const selectedManager = ref('all')
 const search = ref('')
 const statusFilter = ref('')
 const phaseFilter = ref('')
 const regionFilter = ref('')
 const phases = ['Initiate', 'Plan', 'Execute', 'Monitor & Control', 'Close & Realize Value']
 
-const managers = computed(() => {
-  const values = new Set(projects.value.map(project => project.owner).filter(Boolean))
-  if (projects.value.some(project => !project.owner)) values.add('Unassigned')
-  return [...values].sort((a, b) => a.localeCompare(b))
-})
-const managerProjects = computed(() => selectedManager.value === 'all'
-  ? projects.value
-  : projects.value.filter(project => (project.owner || 'Unassigned') === selectedManager.value))
-const regions = computed(() => [...new Set(managerProjects.value.map(project => project.region).filter(Boolean))].sort())
+const regions = computed(() => [...new Set(projects.value.map(project => project.region).filter(Boolean))].sort())
 const filteredProjects = computed(() => {
   const query = search.value.trim().toLowerCase()
-  return managerProjects.value.filter(project => {
+  return projects.value.filter(project => {
     if (statusFilter.value && ragLabel(project) !== statusFilter.value) return false
     if (phaseFilter.value && phaseLabel(project) !== phaseFilter.value) return false
     if (regionFilter.value && project.region !== regionFilter.value) return false
@@ -187,39 +156,27 @@ const filteredProjects = computed(() => {
 })
 
 const metrics = computed(() => {
-  const totalFte = managerProjects.value.reduce((sum, project) => sum + projectFte(project), 0)
-  const onTrack = managerProjects.value.filter(project => ragLabel(project) === 'On Track').length
+  const totalFte = projects.value.reduce((sum, project) => sum + projectFte(project), 0)
+  const onTrack = projects.value.filter(project => ragLabel(project) === 'On Track').length
   const now = new Date()
   const deadline = new Date(now)
   deadline.setDate(deadline.getDate() + 90)
-  const upcomingGoLives = managerProjects.value.filter(project => {
+  const upcomingGoLives = projects.value.filter(project => {
     const raw = project.targetEndDate
     if (!raw) return false
     const date = new Date(`${raw}T00:00:00`)
     return !Number.isNaN(date.getTime()) && date >= new Date(now.toDateString()) && date <= deadline
   }).length
   return {
-    projectCount: managerProjects.value.length,
-    activeCount: managerProjects.value.filter(project => project.status !== 'completed').length,
+    projectCount: projects.value.length,
+    activeCount: projects.value.filter(project => project.status !== 'completed').length,
     totalFte,
-    averageFte: managerProjects.value.length ? totalFte / managerProjects.value.length : 0,
+    averageFte: projects.value.length ? totalFte / projects.value.length : 0,
     onTrack,
-    onTrackPercent: managerProjects.value.length ? Math.round(onTrack / managerProjects.value.length * 100) : 0,
-    atRisk: managerProjects.value.filter(project => ragLabel(project) === 'At Risk').length,
+    onTrackPercent: projects.value.length ? Math.round(onTrack / projects.value.length * 100) : 0,
+    atRisk: projects.value.filter(project => ragLabel(project) === 'At Risk').length,
     upcomingGoLives
   }
-})
-
-const managerInitials = computed(() => {
-  const name = selectedManager.value === 'all' ? 'All Managers' : selectedManager.value
-  return name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'MM'
-})
-const managerRegion = computed(() => {
-  const counts = new Map()
-  managerProjects.value.forEach(project => {
-    if (project.region) counts.set(project.region, (counts.get(project.region) || 0) + 1)
-  })
-  return [...counts].sort((left, right) => right[1] - left[1])[0]?.[0] || '—'
 })
 
 function projectFte(project) {
@@ -274,7 +231,7 @@ function openProject(id) {
 }
 
 function exportCsv() {
-  const columns = ['Request ID', 'Project Name', 'Region', 'Areas', 'Migration Type', 'RAG', 'Phase', 'FTE', 'Progress', 'Product']
+  const columns = ['Request ID', 'Project Name', 'Region', 'Areas', 'Migration Type', 'RAG', 'Phase', 'Migration Ambition', 'Progress', 'Product']
   const rows = filteredProjects.value.map(project => [
     project.migrationRequestId, project.projectName, project.region, displayAreas(project),
     project.migrationType, ragLabel(project), phaseLabel(project), projectFte(project),
@@ -309,18 +266,8 @@ onMounted(loadProjects)
 <style scoped>
 .portfolio-content { width: 100%; max-width: none; margin: 0; color: #15232d; font: 13px Arial, Helvetica, sans-serif; }
 .portfolio-title-row { display: flex; justify-content: space-between; align-items: flex-end; margin: 0 0 14px; }
-.portfolio-subtitle { margin: 0; color: #667985; }
 .portfolio-button { height: 34px; padding: 0 14px; border: 1px solid #bfd0d8; border-radius: 6px; background: #fff; color: #20333f; font-weight: 700; cursor: pointer; }
 .portfolio-button:disabled { opacity: .5; cursor: not-allowed; }
-.manager-card { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border: 1px solid #dfe5e8; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(0,31,51,.04); }
-.manager-left { display: flex; align-items: center; gap: 13px; }
-.manager-avatar { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: #dff2f8; color: #006d93; font-size: 15px; font-weight: 800; }
-.manager-copy label { display: block; color: #667985; font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
-.manager-copy select { display: block; max-width: min(460px, 60vw); margin-top: 3px; border: 0; background: transparent; color: #15232d; font-size: 17px; font-weight: 700; }
-.manager-meta { display: flex; gap: 34px; }
-.manager-meta strong, .manager-meta span { display: block; }
-.manager-meta strong { font-size: 14px; }
-.manager-meta span { margin-top: 3px; color: #667985; font-size: 11px; }
 .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
 .metric { position: relative; min-height: 92px; padding: 15px 16px; border: 1px solid #dfe5e8; border-radius: 10px; background: #fff; }
 .metric::before { position: absolute; top: 15px; bottom: 15px; left: 0; width: 3px; border-radius: 3px; background: #42b0d5; content: ''; }
@@ -359,7 +306,7 @@ tbody tr:hover, tbody tr:focus-visible { background: #f4fbfd; outline: none; }
 .table-footer strong { color: #15232d; }
 .empty-state { padding: 36px 20px; color: #667985; text-align: center; }
 .portfolio-error { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #f0b4ae; border-radius: 8px; color: #b42318; }
-@media (max-width: 1000px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .manager-meta { display: none; } }
-@media (max-width: 700px) { .toolbar { align-items: stretch; flex-wrap: wrap; } .search-field { flex-basis: 100%; } .toolbar select { flex: 1; max-width: none; min-width: 130px; } .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .table-footer { align-items: flex-start; flex-direction: column; gap: 8px; } .manager-copy select { max-width: calc(100vw - 130px); } }
+@media (max-width: 1000px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .toolbar { align-items: stretch; flex-wrap: wrap; } .search-field { flex-basis: 100%; } .toolbar select { flex: 1; max-width: none; min-width: 130px; } .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .table-footer { align-items: flex-start; flex-direction: column; gap: 8px; } }
 @media (max-width: 420px) { .metrics { grid-template-columns: 1fr; } }
 </style>

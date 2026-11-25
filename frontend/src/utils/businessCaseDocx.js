@@ -310,7 +310,7 @@ const makePurposeOfRequest = (project) => {
 const makeCurrentStateRows = (project) => [
   ['Current operating model', `${project.migrationType || 'N/A'} for the ${project.function || 'N/A'} function.`],
   ['Current ownership/location', `${listToText(project.areas)} (${listToText(project.countries)})`],
-  ['Existing challenges', project.risks || 'No specific challenges recorded in the intake submission.'],
+  ['Existing challenges', 'No specific challenges were captured in the intake submission.'],
   [
     'Why change is required now',
     `Requested by ${project.requestor || 'N/A'} on ${project.requestedDate || '—'}, ` +
@@ -332,14 +332,7 @@ const makeScopeRows = (project) => {
   return rows
 }
 
-const makeRiskRows = (project) => {
-  const items = (project.risks || '')
-    .split(/\r?\n|;/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-  if (!items.length) return DEFAULT_RISK_ROWS
-  return items.map((item) => [item, ''])
-}
+const makeRiskRows = () => DEFAULT_RISK_ROWS
 
 const makeAssumptions = (project) => [
   project.migrationTypeValue === '1:1-transfer'
@@ -545,7 +538,7 @@ export async function generateBusinessCaseDocx(project) {
 
           // ── 5. Risks & Considerations ─────────────────────────────────
           sectionTitle('5. Risks & Considerations'),
-          dataTable(['Risk / Consideration', 'Mitigation'], makeRiskRows(project)),
+          dataTable(['Risk / Consideration', 'Mitigation'], makeRiskRows()),
           spacer(90),
 
           // ── 6. Assumptions ─────────────────────────────────────────────

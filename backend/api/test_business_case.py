@@ -429,7 +429,7 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertFalse(charter["sources"]["completeness"][1]["complete"])
         self.assertEqual(self.client.get(self.url).data["status"], "needs_review")
 
-    def test_scope_extensions_persist_only_in_scope_and_reopening_flags_review(self):
+    def test_scope_boundaries_persist_only_in_scope_and_reopening_flags_review(self):
         self.rates()
         self.save(action="submit")
         scope_url = f"/api/migration-dashboard/projects/{self.project.pk}/scope-statement/"
@@ -441,13 +441,12 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         response = self.client.post(scope_url + "save/", {
             "outOfScope": "Customer escalations", "assumptions": "English only",
-            "waves": [{"name": "Wave 1", "date": "2027-02-01", "fte": 98}],
+            "waves": [{"name": "Legacy wave", "date": "2027-02-01", "fte": 98}],
         }, format="json")
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(self.client.get(self.url).data["scope"]["outOfScope"], "Customer escalations")
-        self.assertEqual(self.client.get(self.url).data["scope"]["waves"][0]["fte"], 98)
-        for waves in ([{"name": "Invalid", "date": "bad", "fte": 1}], [{"name": "", "date": "2027-02-01", "fte": -1}]):
-            self.assertEqual(self.client.post(scope_url + "save/", {"waves": waves}, format="json").status_code, 400)
+        self.assertEqual(self.client.get(self.url).data["scope"]["assumptions"], "English only")
+        self.assertNotIn("waves", self.client.get(self.url).data["scope"])
 
     def test_scope_input_edits_flag_submitted_scope_for_review(self):
         response = self.save(intake={"target_start_date": "2027-03-01"})
