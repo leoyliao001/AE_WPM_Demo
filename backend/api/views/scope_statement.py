@@ -174,6 +174,7 @@ def _serialize_statement(project, statement, email):
         "reviewRequired": statement.review_required if statement else False,
         "saved": bool(statement),
         "canEdit": bool(email and _can_edit_scope_details(project, email)) and not (statement and statement.status == "submitted"),
+        "canReopen": bool(email and _can_edit_scope_details(project, email)) and bool(statement and statement.status == "submitted"),
         "canEditMigratableFte": bool(email and _can_edit_migratable_fte(email)) and not (statement and statement.status == "submitted"),
         "revision": statement.revision if statement else 0,
         "scopeText": statement.scope_text if statement else "",

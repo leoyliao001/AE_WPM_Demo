@@ -96,6 +96,16 @@ class ScopePageTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertNotIn("waves", response.data)
 
+    def test_submitted_scope_can_be_reopened_by_assigned_editor(self):
+        self.statement.status = "submitted"
+        self.statement.save(update_fields=["status"])
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["canEdit"])
+        self.assertTrue(response.data["canReopen"])
+
     def test_scope_summary_uses_opportunity_assessment_migratable_fte(self):
         OpportunityAssessmentScope.objects.create(
             project=self.project,
@@ -347,6 +357,8 @@ class ScopePageTests(TestCase):
         response = self.save({"action": "submit"})
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["status"], "submitted")
+        self.assertFalse(response.data["canEdit"])
+        self.assertTrue(response.data["canReopen"])
         self.assertEqual(response.data["finalProjectFte"], 6)
         self.assertEqual(self.save({"action": "unlock"}).status_code, 409)
         self.assertEqual(self.upload().status_code, 409)

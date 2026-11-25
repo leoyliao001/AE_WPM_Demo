@@ -75,6 +75,7 @@
                 </PermissionsRulesHelp>
                 <mc-button appearance="neutral" variant="outlined" fit="small" label="Save draft" :disabled="!canSave || isBusy" :loading="busy === 'save'" @click="saveData('save')" />
                 <mc-button appearance="primary" fit="small" label="Submit statement" :disabled="!canManage || isBusy || !ready" :loading="busy === 'submit'" @click="saveData('submit')" />
+                <mc-button v-if="isSubmitted && canReopen" appearance="neutral" variant="outlined" fit="small" label="Reopen" :disabled="isBusy" @click="openReopenDialog" />
               </div>
             </div>
           </div>
@@ -172,15 +173,6 @@
         <div v-else-if="!canManage" class="notice notice--info">
           <mc-icon icon="mi-shield" size="18" /><span>Read-only view. Scope details are editable only by the locked GSC Leaders and Area POC assignments; Migratable FTE is editable only by the system-wide Super Admin (Migration Manager).</span>
         </div>
-        <form v-if="isSubmitted" class="detail-card scope-boundaries" @submit.prevent="reopenScope">
-          <h2>Reopen for revision</h2>
-          <p class="section-description">Authorised editors can reopen this submitted Scope as a draft. Existing locks and attachments are preserved; use the page Unlock control before editing.</p>
-          <label class="scope-revision-reason">Revision reason (required, maximum 2,000 characters)
-            <textarea v-model="revisionReason" :disabled="isBusy" maxlength="2000" rows="2" required />
-          </label>
-          <button type="submit" class="scope-revision-submit" :disabled="!canManage || isBusy || !revisionReason.trim()">Reopen for revision</button>
-        </form>
-
         <section class="agreement-card" aria-labelledby="agreement-title">
           <header class="section-heading">
             <div class="section-heading__main">
@@ -307,6 +299,18 @@
             <span :class="{ 'readiness-step--done': scopeText.trim() }"><span>{{ scopeText.trim() ? '✓' : '○' }}</span>Scope text</span>
           </div>
         </footer>
+        <mc-dialog :open="reopenDialogOpen" heading="Reopen Scope for revision" dimension="small" showclosebutton @closing="closeReopenDialog">
+          <p>Enter a reason to reopen this submitted Scope as a draft. Existing locks and attachments are preserved. You will need to Unlock the page before editing.</p>
+          <label class="scope-reopen-dialog__field">
+            <span>Revision reason <span aria-hidden="true">*</span></span>
+            <textarea v-model="revisionReason" :disabled="isBusy" maxlength="2000" rows="4" required />
+          </label>
+          <p v-if="reopenError" class="scope-reopen-dialog__error" role="alert">{{ reopenError }}</p>
+          <div class="scope-reopen-dialog__actions">
+            <mc-button type="button" appearance="neutral" variant="outlined" label="Cancel" :disabled="isBusy" @click="closeReopenDialog" />
+            <mc-button type="button" appearance="primary" label="Reopen" :disabled="!canReopen || isBusy || !revisionReason.trim()" :loading="busy === 'revise'" @click="reopenScope" />
+          </div>
+        </mc-dialog>
       </template>
     </div>
   </PageShell>
@@ -321,6 +325,7 @@ import PermissionsRulesHelp from '../components/PermissionsRulesHelp.vue'
 import { useUnsavedChanges } from '../composables/useUnsavedChanges.js'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-icon'
+import '@maersk-global/mds-components-core/mc-dialog'
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id))
@@ -333,6 +338,8 @@ const migratableFteConfirmed = ref(false)
 const outOfScope = ref('')
 const assumptions = ref('')
 const revisionReason = ref('')
+const reopenDialogOpen = ref(false)
+const reopenError = ref('')
 const loading = ref(true)
 const busy = ref('')
 const error = ref('')
@@ -341,6 +348,7 @@ const savedSnapshot = ref('')
 const isBusy = computed(() => Boolean(busy.value))
 const isSubmitted = computed(() => statement.value?.status === 'submitted')
 const canManage = computed(() => Boolean(statement.value?.canEdit) && !isSubmitted.value)
+const canReopen = computed(() => Boolean(statement.value?.canReopen) && isSubmitted.value)
 const pageLocked = computed(() => Boolean(statement.value?.pageLocked))
 const canEdit = computed(() => canManage.value && !pageLocked.value)
 const canEditMigratableFte = computed(() => Boolean(statement.value?.canEditMigratableFte) && !isSubmitted.value && !pageLocked.value)
@@ -508,22 +516,38 @@ function errorMessage(caught, fallback) {
 }
 
 async function reopenScope() {
-  if (!isSubmitted.value || isBusy.value || !revisionReason.value.trim()) return
+  if (!canReopen.value || isBusy.value || !revisionReason.value.trim()) return
   busy.value = 'revise'
   error.value = ''
+  reopenError.value = ''
   success.value = ''
   try {
     const { data } = await axios.post(`/api/migration-dashboard/projects/${projectId.value}/scope-statement/save/`, {
       action: 'revise', revision: statement.value.revision, reason: revisionReason.value.trim()
     })
     applyResponse(data)
+    reopenDialogOpen.value = false
     revisionReason.value = ''
     success.value = 'Scope reopened as a draft. Use Unlock at the top to edit the page. Attachments are preserved.'
   } catch (caught) {
-    error.value = errorMessage(caught, 'Unable to reopen Scope. Your reason is retained; reload if another editor has changed the record.')
+    reopenError.value = errorMessage(caught, 'Unable to reopen Scope. Your reason is retained; reload if another editor has changed the record.')
+    error.value = reopenError.value
   } finally {
     busy.value = ''
   }
+}
+
+function openReopenDialog() {
+  revisionReason.value = ''
+  reopenError.value = ''
+  reopenDialogOpen.value = true
+}
+
+function closeReopenDialog() {
+  if (isBusy.value) return
+  reopenDialogOpen.value = false
+  revisionReason.value = ''
+  reopenError.value = ''
 }
 
 async function loadData() {
@@ -657,12 +681,13 @@ watch(projectId, loadData, { immediate: true })
 <style scoped>
 .scope-boundaries { margin-top: 24px; }
 .scope-boundary-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-.scope-boundary-fields label, .scope-revision-reason { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
-.scope-boundary-fields textarea, .scope-revision-reason textarea { width: 100%; padding: 12px; border: 1px solid #bdcbd5; border-radius: 6px; font: inherit; resize: vertical; }
+.scope-boundary-fields label, .scope-reopen-dialog__field { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.scope-boundary-fields textarea, .scope-reopen-dialog__field textarea { width: 100%; padding: 12px; border: 1px solid #bdcbd5; border-radius: 6px; font: inherit; resize: vertical; }
 .scope-boundaries td input { width: 100%; min-width: 90px; padding: 8px; border: 1px solid #bdcbd5; border-radius: 5px; font: inherit; }
 .scope-boundaries button { padding: 8px 12px; border: 1px solid #bdcbd5; border-radius: 5px; background: white; color: #17364b; cursor: pointer; }
 .scope-boundaries button:disabled { opacity: .5; cursor: not-allowed; }
-.scope-revision-submit { margin-top: 16px; }
+.scope-reopen-dialog__error { color: #b42318; font-size: 13px; }
+.scope-reopen-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .scope-page {
   --scope-navy: #10314f;
   --scope-muted: #6f8292;
