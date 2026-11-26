@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import Q
 from django.http import FileResponse
 from django.utils import timezone
 from rest_framework.decorators import api_view
@@ -24,6 +25,7 @@ from api.permissions.attributes_access import (
     get_request_email,
     normalize_email,
 )
+from api.services.project_artefacts import migration_manager_emails
 
 DEFAULT_ITEMS = [
     ("hr_team_informed", "HR team informed"),
@@ -73,6 +75,7 @@ def _authorize(request, project):
     if (
         email != normalize_email(project.requestor)
         and email not in team_emails
+        and email not in migration_manager_emails(project, registration)
         and not can_access_table(email, "stakeholder_registration")
     ):
         return "", Response(
@@ -80,6 +83,18 @@ def _authorize(request, project):
             status=403,
         )
     return email, None
+
+
+def _is_migration_manager(project, email, registration=None):
+    return email in migration_manager_emails(project, registration)
+
+
+def _can_manage_owners(project, email, registration=None):
+    return (
+        _is_migration_manager(project, email, registration)
+        or email == normalize_email(project.requestor)
+        or can_access_table(email, "stakeholder_registration")
+    )
 
 
 def _get_checklist(project):
@@ -98,7 +113,7 @@ def _get_checklist(project):
     return checklist
 
 
-def _serialize(checklist):
+def _serialize(checklist, viewer_email=""):
     project = checklist.project
     registration = StakeholderRegistration.objects.filter(project=project).first()
     people = [
@@ -153,8 +168,13 @@ def _serialize(checklist):
         "migrationRequestId": project.migration_request_id,
         "requestor": project.requestor,
         "phase": "Initiate",
+        "canManageOwners": _can_manage_owners(project, viewer_email, registration),
+        "isMigrationManager": _is_migration_manager(project, viewer_email, registration),
         "revision": checklist.revision,
         "version": checklist.version,
+        "checklistConfirmed": bool(
+            checklist.version and checklist.confirmed_revision == checklist.revision
+        ),
         "updatedAt": checklist.updated_at.isoformat(),
         "updatedBy": checklist.updated_by,
         "items": items,
@@ -255,7 +275,7 @@ def _audit(item, field, old_value, new_value, email, reason=""):
     )
 
 
-def _save_items(checklist, raw_items, email):
+def _save_items(checklist, raw_items, email, can_manage_owners=True):
     if not isinstance(raw_items, list) or len(raw_items) > 200:
         raise ValueError("Items must be a list of at most 200 considerations.")
     normalized_items = [_normalize_item(raw) for raw in raw_items]
@@ -283,6 +303,24 @@ def _save_items(checklist, raw_items, email):
             "evidence_url": item_data["evidenceUrl"],
             "outcome_note": item_data["outcomeNote"],
         }
+        owner_fields = {"owner_role", "owner_user_id", "owner_name", "owner_email"}
+        if not can_manage_owners and any(
+            getattr(item, field) != values[field] for field in owner_fields
+        ):
+            raise PermissionError(
+                "Only the current project's Migration Manager can update consideration owners."
+            )
+        if item_data["status"] == "confirmed" and not (
+            item_data["statusDate"]
+            and (
+                item_data["evidenceUrl"]
+                or item_data["outcomeNote"]
+                or bool(item.evidence_file)
+            )
+        ):
+            raise ValueError(
+                f'{item_data["label"]} needs a date and evidence or an outcome before it can be confirmed.'
+            )
         changed = any(getattr(item, field) != value for field, value in values.items())
         if item.confirmed_at and changed:
             raise ValueError(f"{item.label} is confirmed and frozen. Reopen it with a reason before editing.")
@@ -312,9 +350,14 @@ def people_consultation_checklist(request, project_id):
     with transaction.atomic():
         checklist = _get_checklist(project)
         if request.method == "GET":
-            return Response(_serialize(checklist))
+            return Response(_serialize(checklist, email))
         payload = request.data if isinstance(request.data, dict) else {}
         action = str(payload.get("action") or "save")
+        can_manage_owners = _can_manage_owners(
+            project,
+            email,
+            StakeholderRegistration.objects.filter(project=project).first(),
+        )
         try:
             expected_revision = payload.get("revision")
             if expected_revision is not None and int(expected_revision) != checklist.revision:
@@ -323,7 +366,7 @@ def people_consultation_checklist(request, project_id):
                     status=409,
                 )
             if action == "save":
-                _save_items(checklist, payload.get("items"), email)
+                _save_items(checklist, payload.get("items"), email, can_manage_owners)
             elif action == "add_item":
                 label = _text(payload.get("label"), "Consideration", 255, True)
                 item_type = _text(payload.get("id"), "Item ID", 80, True)
@@ -350,12 +393,19 @@ def people_consultation_checklist(request, project_id):
                             {"error": f'{item["label"]} needs a date and evidence or an outcome before it can be confirmed.'},
                             status=400,
                         )
-                _save_items(checklist, payload.get("items"), email)
+                _save_items(checklist, payload.get("items"), email, can_manage_owners)
                 now = timezone.now()
                 checklist.version += 1
                 checklist.revision += 1
+                checklist.confirmed_revision = checklist.revision
                 checklist.updated_by = email
-                checklist.save(update_fields=["version", "revision", "updated_by", "updated_at"])
+                checklist.save(update_fields=[
+                    "version",
+                    "revision",
+                    "confirmed_revision",
+                    "updated_by",
+                    "updated_at",
+                ])
                 for item in checklist.items.filter(status="confirmed", confirmed_at__isnull=True):
                     item.version = checklist.version
                     item.confirmed_by = email
@@ -381,9 +431,11 @@ def people_consultation_checklist(request, project_id):
                 checklist.save(update_fields=["revision", "updated_by", "updated_at"])
             else:
                 return Response({"error": "Unsupported checklist action."}, status=400)
+        except PermissionError as exc:
+            return Response({"error": str(exc)}, status=403)
         except (TypeError, ValueError) as exc:
             return Response({"error": str(exc)}, status=400)
-    return Response(_serialize(checklist))
+    return Response(_serialize(checklist, email))
 
 
 @api_view(["GET"])
@@ -391,15 +443,21 @@ def search_consultation_people(request, project_id):
     project = _project(project_id)
     if not project:
         return Response({"error": "Project not found."}, status=404)
-    _email, error = _authorize(request, project)
+    email, error = _authorize(request, project)
     if error:
         return error
+    registration = StakeholderRegistration.objects.filter(project=project).first()
+    if not _can_manage_owners(project, email, registration):
+        return Response(
+            {"error": "Only the current project's Migration Manager can assign consideration owners."},
+            status=403,
+        )
     query = str(request.query_params.get("q") or "").strip()
     if len(query) < 2:
         return Response({"error": "Enter at least 2 characters to search."}, status=400)
     matches = UserNameList.objects.filter(
-        display_name__icontains=query
-    ).order_by("display_name", "id")[:20]
+        Q(display_name__icontains=query) | Q(mail__icontains=query)
+    ).exclude(mail="").order_by("display_name", "id")[:20]
     return Response({
         "rows": [
             {"id": str(person.pk), "name": person.display_name, "email": person.mail}
@@ -442,7 +500,7 @@ def upload_consultation_evidence(request, project_id, item_id):
     checklist.revision += 1
     checklist.updated_by = email
     checklist.save(update_fields=["revision", "updated_by", "updated_at"])
-    return Response(_serialize(item.checklist))
+    return Response(_serialize(item.checklist, email))
 
 
 @api_view(["GET"])

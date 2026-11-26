@@ -2,6 +2,16 @@ from django.urls import path
 from api.views.opportunity_task_scope import opportunity_task_scope
 from api.views.business_impact_analysis import business_impact_analysis
 from api.views.learning_capability import download_learning_evidence, learning_capability
+from api.views.lessons_learnt import (
+    lessons_learnt,
+    maintain_lesson_learnt,
+    maintain_lessons_learnt,
+)
+from api.views.bau_controls import (
+    maintain_bau_control,
+    maintain_bau_controls,
+    project_bau_controls,
+)
 from api.views.project_artefacts import project_artefact, resource_projects
 from api.views.people_consultation import (
     download_consultation_evidence,
@@ -53,9 +63,15 @@ from api.views.fpo_catalogue_requests import acknowledge_fpo_catalogue_request, 
 from api.views.gsc_site_requests import submit_gsc_site_request
 
 urlpatterns = [
+    path("bau-controls/", maintain_bau_controls, name="bau-controls-database"),
+    path("bau-controls/<int:agreement_id>/", maintain_bau_control, name="bau-controls-database-record"),
+    path("projects/<int:project_id>/bau-controls/", project_bau_controls, name="project-bau-controls"),
+    path("lessons-learnt/", maintain_lessons_learnt, name="lessons-learnt-database"),
+    path("lessons-learnt/<int:lesson_id>/", maintain_lesson_learnt, name="lessons-learnt-database-record"),
     path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),
     path("projects/<int:project_id>/learning-capability/", learning_capability, name="learning-capability"),
     path("projects/<int:project_id>/learning-capability/evidence/", download_learning_evidence, name="learning-capability-evidence"),
+    path("projects/<int:project_id>/lessons-learnt/", lessons_learnt, name="lessons-learnt"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/", submit_fpo_catalogue_request, name="fpo-catalogue-request-submit"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/<int:request_id>/acknowledge/", acknowledge_fpo_catalogue_request, name="fpo-catalogue-request-acknowledge"),
     path("projects/<int:project_id>/resources/gsc-site-requests/", submit_gsc_site_request, name="gsc-site-request-submit"),

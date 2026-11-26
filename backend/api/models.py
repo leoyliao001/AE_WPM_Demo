@@ -146,6 +146,129 @@ class LearningCapabilityRecord(models.Model):
         db_table = "learning_capability_record"
 
 
+class LessonLearnt(models.Model):
+    TYPE_CHOICES = [
+        ("Repeat", "Repeat"),
+        ("Improve", "Improve"),
+        ("Avoid", "Avoid"),
+        ("Adopt", "Adopt"),
+    ]
+    PHASE_CHOICES = [
+        ("Initiate", "Initiate"),
+        ("Plan", "Plan"),
+        ("Execute", "Execute"),
+        ("Monitor & Control", "Monitor & Control"),
+        ("Close", "Close"),
+    ]
+    ARTEFACT_CHOICES = [
+        ("Opportunity Assessment", "Opportunity Assessment"),
+        ("Scope Statement", "Scope Statement"),
+        ("Business Case", "Business Case"),
+        ("Resources", "Resources"),
+        ("Safety & Resilience", "Safety & Resilience"),
+        ("Gantt", "Gantt"),
+        ("Knowledge Transfer", "Knowledge Transfer"),
+        ("Hypercare", "Hypercare"),
+        ("Sign-off", "Sign-off"),
+        ("Benefit Realisation", "Benefit Realisation"),
+    ]
+    RELEVANCE_CHOICES = [
+        ("This migration", "This migration"),
+        ("Similar migrations", "Similar migrations"),
+        ("All WPM migrations", "All WPM migrations"),
+    ]
+
+    project = models.ForeignKey(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="lessons_learnt",
+    )
+    happened = models.TextField()
+    learned = models.TextField()
+    next_time = models.TextField()
+    lesson_type = models.CharField(max_length=16, choices=TYPE_CHOICES)
+    phase = models.CharField(max_length=32, choices=PHASE_CHOICES)
+    related_artefact = models.CharField(max_length=64, choices=ARTEFACT_CHOICES)
+    relevant_for = models.CharField(max_length=32, choices=RELEVANCE_CHOICES)
+    created_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "lessons_learnt"
+        ordering = ["-created_at", "-id"]
+
+
+class BauControlAgreement(models.Model):
+    REVIEW_CADENCE_CHOICES = [
+        ("Weekly", "Weekly"),
+        ("Bi-weekly", "Bi-weekly"),
+        ("Monthly", "Monthly"),
+        ("Quarterly", "Quarterly"),
+        ("Other", "Other"),
+    ]
+    WORKING_CADENCE_CHOICES = [
+        ("Weekly", "Weekly"),
+        ("Bi-weekly", "Bi-weekly"),
+        ("Monthly", "Monthly"),
+        ("As needed", "As needed"),
+        ("Other", "Other"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("confirmed", "Confirmed"),
+    ]
+
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="bau_control_agreement",
+    )
+    migration_name = models.CharField(max_length=255, blank=True, default="")
+    product = models.CharField(max_length=255, blank=True, default="")
+    area = models.CharField(max_length=255, blank=True, default="")
+    effective_from = models.DateField(null=True, blank=True)
+    area_owner = models.CharField(max_length=255, blank=True, default="")
+    gsc_owner = models.CharField(max_length=255, blank=True, default="")
+    scope_covered = models.TextField(blank=True, default="")
+    kpi_reference = models.CharField(max_length=255, blank=True, default="")
+    reporting_source = models.CharField(max_length=255, blank=True, default="")
+    review_cadence = models.CharField(
+        max_length=16,
+        choices=REVIEW_CADENCE_CHOICES,
+        default="Monthly",
+    )
+    performance_owner = models.CharField(max_length=255, blank=True, default="")
+    bau_forum_channel = models.CharField(max_length=255, blank=True, default="")
+    working_cadence = models.CharField(
+        max_length=16,
+        choices=WORKING_CADENCE_CHOICES,
+        default="Monthly",
+    )
+    area_operational_contact = models.CharField(max_length=255, blank=True, default="")
+    gsc_operational_contact = models.CharField(max_length=255, blank=True, default="")
+    normal_issue_route = models.CharField(max_length=255, blank=True, default="")
+    leadership_route = models.CharField(max_length=255, blank=True, default="")
+    escalation_note = models.TextField(blank=True, default="")
+    area_accepted = models.BooleanField(default=False)
+    area_name_role = models.CharField(max_length=255, blank=True, default="")
+    area_acceptance_date = models.DateField(null=True, blank=True)
+    gsc_accepted = models.BooleanField(default=False)
+    gsc_name_role = models.CharField(max_length=255, blank=True, default="")
+    gsc_acceptance_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="draft")
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    confirmed_by = models.CharField(max_length=254, blank=True, default="")
+    created_by = models.CharField(max_length=254, blank=True, default="")
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "bau_control_agreement"
+        ordering = ["-updated_at", "-id"]
+
+
 class AccessEnablement(models.Model):
     project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="access_enablement")
     systems = models.JSONField(default=list)
@@ -258,6 +381,7 @@ class PeopleConsultationChecklist(models.Model):
     )
     revision = models.PositiveIntegerField(default=0)
     version = models.PositiveIntegerField(default=0)
+    confirmed_revision = models.PositiveIntegerField(default=0)
     updated_by = models.CharField(max_length=254, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -809,6 +933,8 @@ class ProjectAttributesAccess(models.Model):
     business_impact_analysis = models.BooleanField(default=False)
     user_name_list = models.BooleanField(default=False)
     migration_team = models.BooleanField(default=False)
+    lessons_learnt = models.BooleanField(default=False)
+    bau_control_agreement = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
