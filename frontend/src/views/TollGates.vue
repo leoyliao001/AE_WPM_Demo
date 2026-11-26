@@ -316,6 +316,7 @@ const TILE_ROUTES = {
   project_charter: (id) => `/migration-dashboard/${id}/project-charter`,
   resources: (id) => `/migration-dashboard/${id}/resources`,
   access_enablement: (id) => `/migration-dashboard/${id}/access-enablement`,
+  'knowledge-transfer': (id) => `/migration-success-partners/learning-development/${id}`,
   business_impact_analysis: (id) => `/migration-dashboard/${id}/business-impact-analysis`,
   lessons_learnt: (id) => `/migration-dashboard/${id}/lessons-learnt`,
   bau_controls: (id) => `/migration-dashboard/${id}/bau-controls`,
@@ -421,7 +422,7 @@ const ARTEFACT_STAGES = [
     color: '#2d8cff',
     items: [
       { label: 'Stakeholder Registration', source: 'stakeholders' },
-      { label: 'Opportunity Assessment/Task details', source: 'opportunity' },
+      { label: 'Opportunity Assessment', source: 'opportunity' },
       { label: 'Scope Statement', source: 'scope_statement' },
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'project_charter' },
@@ -441,10 +442,10 @@ const ARTEFACT_STAGES = [
     icon: 'mi-map',
     color: '#22b8b0',
     items: [
-      { label: 'Integrated project plan', source: 'gantt' },
-      { label: 'WBS & milestone schedule', source: 'gantt' },
-      { label: 'RAID log & risk plan', source: null },
-      { label: 'RACI & governance calendar', source: null }
+      { label: 'Resources (FTE)', source: 'resources' },
+      { label: 'Knowledge Transfer', source: 'knowledge-transfer' },
+      { label: 'Gantt', source: 'gantt' },
+      { label: 'Baseline & KPIs', source: null }
     ]
   },
   {
@@ -455,10 +456,12 @@ const ARTEFACT_STAGES = [
     icon: 'mi-play-circle',
     color: '#9566ef',
     items: [
-      { label: 'Deliverables / outputs', source: 'volume-transfer' },
-      { label: 'Status updates & MoMs', source: 'knowledge-transfer' },
-      { label: 'Updated RAID & action log', source: 'neo-training' },
-      { label: 'Change requests', source: null }
+      { label: 'Resources (FTE)', source: 'resources' },
+      { label: 'Access and enablement requirements', source: 'access_enablement' },
+      { label: 'Knowledge transfer', source: 'knowledge-transfer' },
+      { label: 'Baseline & KPIs', source: null },
+      { label: 'Safety & Resilience', source: 'business_impact_analysis' },
+      { label: 'Gantt', source: 'gantt' }
     ]
   },
   {
@@ -469,11 +472,10 @@ const ARTEFACT_STAGES = [
     icon: 'mi-chart-bars-vertical',
     color: '#6dac39',
     items: [
+      { label: 'Baseline & KPIs', source: null },
       { label: 'BAU Controls', source: 'bau_controls' },
-      { label: 'Governance / status pack', source: 'hypercare' },
-      { label: 'Dashboards & bowler charts', source: 'hypercare-exit' },
-      { label: 'Change & decision logs', source: null },
-      { label: 'Forecast & variance view', source: null }
+      { label: 'Safety & Resilience', source: 'business_impact_analysis' },
+      { label: 'Gantt', source: 'gantt' }
     ]
   },
   {
