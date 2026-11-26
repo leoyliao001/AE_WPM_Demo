@@ -185,14 +185,18 @@ const HOST_ORIGIN=parent.location.origin,requests=new Map();let requestSeq=0;
 function requestParent(action,payload){return new Promise((resolve,reject)=>{const id=++requestSeq;requests.set(id,{resolve,reject});parent.postMessage({type:"oa-scope-request",id,action,payload},HOST_ORIGIN)})}
 addEventListener("message",event=>{if(event.source!==parent||event.origin!==HOST_ORIGIN||event.data?.type!=="oa-scope-response")return;const pending=requests.get(event.data.id);if(!pending)return;requests.delete(event.data.id);event.data.error?pending.reject(new Error(event.data.error)):pending.resolve(event.data.data)});
 const CATALOGUE_COUNTRIES=[...(window.OA_CONFIG.intake.catalogue_countries?.length?window.OA_CONFIG.intake.catalogue_countries:INTAKE.countries||[])];
+const SELECTED_CATALOGUE_PRODUCTS=new Set((INTAKE.catalogue_products?.length?INTAKE.catalogue_products:INTAKE.products?.length?INTAKE.products:[INTAKE.product]).map(product=>String(product||"").replace(/^General\s+/i,"").trim()).filter(Boolean));
 const baseRender=render;
-const catalogueRows=group=>CAT.map((item,index)=>({id:\`\${group.id}_\${index}\`,...rowFromCat(index),ctry:group.countries.join("; ")}));
+const catalogueRows=group=>CAT.flatMap((item,index)=>SELECTED_CATALOGUE_PRODUCTS.has(String(item[0]||"").trim())?[{id:\`\${group.id}_\${index}\`,...rowFromCat(index),ctry:group.countries.join("; ")}]:[]);
+function filterCatalogueRows(rows){return (rows||[]).filter(row=>SELECTED_CATALOGUE_PRODUCTS.has(String(row.p??row.product??"").trim()))}
 function catalogueGroups(){if(!Array.isArray(S.catGroups))S.catGroups=[];return S.catGroups}
 function usedCatalogueCountries(){return new Set(catalogueGroups().flatMap(group=>group.countries||[]))}
 function activeCatalogueGroup(){return catalogueGroups().find(group=>group.id===S.activeCatGroup)}
 function migrateCatalogueState(){
-  catalogueGroups();
-  if(catalogueGroups().length||!Array.isArray(S.cat)||!S.cat.length)return;
+  const groups=catalogueGroups();
+  if(groups.length){groups.forEach(group=>{group.rows=filterCatalogueRows(group.rows)});return}
+  if(!Array.isArray(S.cat)||!S.cat.length)return;
+  S.cat=filterCatalogueRows(S.cat);
   const countries=[...new Set(S.cat.flatMap(row=>row.ctry&&row.ctry!=="All"?splitC(row.ctry):INTAKE.countries||[]))];
   const group={id:"cg_legacy_1",label:countries.length===1?countries[0]:"Group 1",countries,rows:S.cat};
   S.catGroups=[group];S.activeCatGroup=group.id;
@@ -202,10 +206,13 @@ function normalizeCatalogueGroupLabels(){
   catalogueGroups().forEach((group,index)=>{
     const match=String(group.label||"").match(/^Group\s*(\d+)$/i);
     const number=match?Number(match[1]):index+1;
-    group.label="Group"+number;
+    group.rows=filterCatalogueRows(group.rows);
+    group.label=group.countries?.length===1?group.countries[0]:"Group"+number;
     sequence=Math.max(sequence,number);
   });
   S.catGroupSeq=sequence;
+  if(!activeCatalogueGroup()&&catalogueGroups().length)S.activeCatGroup=catalogueGroups()[0].id;
+  syncActiveCatalogueRows();
 }
 function availableCatalogueCountries(){const used=usedCatalogueCountries();return CATALOGUE_COUNTRIES.filter(country=>!used.has(country))}
 function openCountryAddPicker(anchor,available,callback){
@@ -223,7 +230,7 @@ function commitCatalogueCountries(selected){
   const countries=[...new Set(selected)].filter(country=>availableCatalogueCountries().includes(country));
   if(!countries.length)return toast("Select at least one country");
   const sequence=Number(S.catGroupSeq||0)+1;S.catGroupSeq=sequence;
-  const group={id:\`cg_\${Date.now()}_\${sequence}\`,label:\`Group\${sequence}\`,countries};
+  const group={id:\`cg_\${Date.now()}_\${sequence}\`,label:countries.length===1?countries[0]:\`Group\${sequence}\`,countries};
   group.rows=catalogueRows(group);
   catalogueGroups().push(group);S.activeCatGroup=group.id;syncActiveCatalogueRows();
   $("catCountryBtn").textContent="Add country(s)";
