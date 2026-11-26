@@ -124,11 +124,12 @@ const exploreCards = [
 ]
 
 const hubPrinciples = [
-  { title: 'One lifecycle', description: 'Consistent delivery across every migration type', icon: 'mi-file-arrows-square' },
-  { title: 'One governance model', description: 'Approvals and controls built into the flow', icon: 'mi-shield-check' },
+  { title: 'One lifecycle', description: 'Five phases, five tollgates, every migration type', icon: 'mi-arrow-clockwise' },
+  { title: 'One governance model', description: 'Evidence over calendar: tollgates exit on proof', icon: 'mi-shield-check' },
   { title: 'One source of truth', description: 'Data captured once, reused end-to-end', icon: 'mi-database' },
-  { title: 'One stakeholder network', description: 'Clear ownership and accountability', icon: 'mi-users' },
-  { title: 'One portfolio view', description: 'Real-time progress, risk and value', icon: 'mi-chart-bars-vertical' }
+  { title: 'One owner per process', description: 'Clear L3 accountability', icon: 'mi-user' },
+  { title: 'One partner network', description: 'Every partner engaged at the right phase', icon: 'mi-share' },
+  { title: 'One portfolio view', description: 'Live progress, risk and benefits realised', icon: 'mi-chart-bars-vertical' }
 ]
 
 const go = (route) => router.push(route)
@@ -201,13 +202,13 @@ const go = (route) => router.push(route)
 .card-link { align-items: center; border-radius: 999px; display: inline-flex; flex: 0 0 auto; justify-content: center; min-width: 0; padding: 9px 14px; text-align: center; text-decoration: none; }
 .card-link--unavailable { color: var(--muted); cursor: not-allowed; opacity: .72; }
 .card-link:focus-visible { border-radius: 3px; outline: 3px solid color-mix(in srgb, var(--blue) 35%, white); outline-offset: 2px; }
-.hub-principles { border-top: 1px solid #d6e3e9; display: grid; flex: 0 0 auto; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0 clamp(24px, 2vw, 32px); padding-top: 14px; }
-.hub-principle { align-items: center; background: linear-gradient(145deg, #fff 0%, #f8fbfc 100%); border: 1px solid #e1ebef; border-radius: 10px; box-shadow: 0 3px 10px rgba(18, 50, 75, .045); display: flex; gap: 11px; min-width: 0; padding: 12px; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
-.hub-principle:hover { border-color: #c9e1e9; box-shadow: 0 6px 16px rgba(18, 50, 75, .09); transform: translateY(-2px); }
+.hub-principles { display: grid; flex: 0 0 auto; gap: 12px; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0 12px; }
+.hub-principle { align-items: center; background: #fff; border: 1px solid #dfe8ed; border-radius: 10px; box-shadow: 0 3px 10px rgba(18, 50, 75, .045); box-sizing: border-box; display: flex; gap: 11px; height: 70px; min-width: 0; padding: 6px 12px; transition: border-color .2s ease, box-shadow .2s ease; }
+.hub-principle:hover { border-color: #c9e1e9; box-shadow: 0 6px 16px rgba(18, 50, 75, .09); }
 .hub-principle__icon { align-items: center; background: linear-gradient(145deg, #e6f5fa, #d9eef5); border: 1px solid #d8edf4; border-radius: 9px; color: var(--blue); display: flex; flex: 0 0 34px; height: 34px; justify-content: center; width: 34px; }
 .hub-principle__copy { min-width: 0; }
-.hub-principle h3 { color: var(--navy); font-size: 12px; line-height: 1.2; margin: 0 0 4px; }
-.hub-principle p { color: #60758a; font-size: 10px; line-height: 1.35; margin: 0; }
+.hub-principle h3 { color: var(--navy); font-size: 11px; line-height: 1.15; margin: 0 0 3px; }
+.hub-principle p { color: #60758a; font-size: 9px; line-height: 1.2; margin: 0; }
 @keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 821px) {
   .explore-card--migration { grid-area: 1 / 1 / 3 / 2; }
@@ -243,6 +244,7 @@ const go = (route) => router.push(route)
 }
 @media (prefers-reduced-motion: reduce) { .explore-card { animation: none; } .button:hover, .explore-card:hover { transform: none; } }
 @media (max-width: 820px) { .hero-section { grid-template-columns: 1fr; } .hero-copy { padding: 40px 24px 34px; } .hero-image { clip-path: none; min-height: 230px; } .hero-highlights { gap: 14px 20px; } .explore-grid { grid-auto-columns: min(340px, calc(100vw - 104px)); grid-auto-flow: column; grid-template-columns: none; grid-template-rows: minmax(290px, auto); } .section-heading { align-items: start; grid-template-columns: 1fr; } .section-note { text-align: left; } }
+@media (min-width: 821px) and (max-width: 1100px) { .hub-principles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 820px) { .hub-principles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 821px) and (max-width: 1100px) { .hero-title { font-size: 32px; } .hero-slogan { font-size: 18px; } }
 @media (max-width: 520px) { .hero-title { font-size: 28px; } .hero-slogan { font-size: 18px; margin-left: 0; } .hero-highlights { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hub-principles { grid-template-columns: 1fr; } }
