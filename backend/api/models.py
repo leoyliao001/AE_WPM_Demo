@@ -381,6 +381,7 @@ class PeopleConsultationChecklist(models.Model):
     )
     revision = models.PositiveIntegerField(default=0)
     version = models.PositiveIntegerField(default=0)
+    confirmed_revision = models.PositiveIntegerField(default=0)
     updated_by = models.CharField(max_length=254, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

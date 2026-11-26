@@ -8,19 +8,34 @@
     full-width
   >
     <main class="consultation-page">
-      <div v-if="loading" class="notice" role="status">Loading People Consultation &amp; Compliance…</div>
-      <div v-if="error" class="notice notice--error" role="alert">
-        {{ error }}
-        <button v-if="!record" type="button" class="link-button" @click="load">Retry</button>
+      <div v-if="loading" class="page-state" role="status">
+        <mc-loading-indicator size="medium" />
+        <span>Loading People Consultation &amp; Compliance…</span>
       </div>
-      <div v-if="success" class="notice notice--success" role="status">{{ success }}</div>
+      <mc-notification
+        v-if="error"
+        appearance="error"
+        fit="medium"
+        heading="Unable to update checklist"
+        :body="error"
+        role="alert"
+      >
+        <mc-button v-if="!record" appearance="neutral" variant="outlined" label="Retry" @click="load" />
+      </mc-notification>
+      <mc-notification
+        v-if="success"
+        appearance="success"
+        fit="medium"
+        :body="success"
+        role="status"
+      />
 
       <template v-if="record && !loading">
         <header class="page-hero">
           <div class="hero-row">
             <div>
               <h1>People Consultation &amp; Compliance</h1>
-              <span class="state-chip" :class="`state-chip--${overallStatusKey}`">{{ overallStatus }}</span>
+              <mc-tag :appearance="overallStatusAppearance" fit="small" :label="overallStatus" />
               <p class="project-meta">
                 <strong>{{ record.projectName }}</strong>
                 <span>{{ record.migrationRequestId }}</span>
@@ -30,13 +45,24 @@
               </p>
             </div>
             <div class="toolbar">
-              <button type="button" class="button button--outline" :disabled="busy" @click="exportCsv">Export</button>
-              <button type="button" class="button button--outline" :disabled="busy || !dirty" @click="save('save')">
-                {{ busy === 'save' ? 'Saving…' : 'Save draft' }}
-              </button>
-              <button type="button" class="button button--primary" :disabled="busy" @click="save('confirm')">
-                {{ busy === 'confirm' ? 'Confirming…' : 'Confirm checklist' }}
-              </button>
+              <mc-button appearance="neutral" variant="outlined" fit="small" label="Export" :disabled="Boolean(busy)" @click="exportCsv" />
+              <mc-button
+                appearance="neutral"
+                variant="outlined"
+                fit="small"
+                :label="busy === 'save' ? 'Saving…' : 'Save draft'"
+                :loading="busy === 'save'"
+                :disabled="Boolean(busy) || !dirty"
+                @click="save('save')"
+              />
+              <mc-button
+                appearance="primary"
+                fit="small"
+                :label="busy === 'confirm' ? 'Confirming…' : 'Confirm checklist'"
+                :loading="busy === 'confirm'"
+                :disabled="Boolean(busy)"
+                @click="save('confirm')"
+              />
             </div>
           </div>
         </header>
@@ -90,99 +116,156 @@
                 <tr v-for="(item, index) in record.items" :key="item.id">
                   <td class="row-index">{{ index + 1 }}</td>
                   <td>
-                    <input
+                    <mc-input
                       :id="`consultation-label-${item.id}`"
-                      v-model="item.label"
+                      label="Consideration"
+                      hiddenlabel
+                      :value.prop="item.label"
                       class="consideration-input"
                       :disabled="isFrozen(item)"
                       aria-label="Consideration"
                       maxlength="255"
+                      fit="small"
+                      width="full-width"
+                      @input="item.label = $event.target.value"
                     />
-                    <input
+                    <mc-input
                       v-if="!item.applicable"
-                      v-model="item.naReason"
+                      label="Reason not applicable"
+                      hiddenlabel
+                      :value.prop="item.naReason"
                       class="na-reason"
                       :disabled="isFrozen(item)"
                       aria-label="Reason not applicable"
                       maxlength="500"
                       placeholder="Reason not applicable…"
+                      fit="small"
+                      width="full-width"
+                      @input="item.naReason = $event.target.value"
                     />
                   </td>
                   <td>
-                    <input
-                      v-model="item.ownerRole"
+                    <mc-input
+                      label="Owner role"
+                      hiddenlabel
+                      :value.prop="item.ownerRole"
                       class="owner-role-input"
-                      :disabled="isFrozen(item)"
+                      :disabled="isFrozen(item) || !record.canManageOwners"
                       aria-label="Owner role"
                       maxlength="128"
                       placeholder="Role"
+                      fit="small"
+                      width="full-width"
+                      @input="item.ownerRole = $event.target.value"
                     />
                     <div class="person-picker">
-                      <input
+                      <mc-input
                         :id="`consultation-owner-${item.id}`"
-                        v-model="item.ownerName"
-                        :disabled="isFrozen(item)"
+                        label="Owner name"
+                        hiddenlabel
+                        :value.prop="item.ownerName"
+                        :disabled="isFrozen(item) || !record.canManageOwners"
                         aria-label="Owner name"
                         maxlength="255"
-                        placeholder="Search directory…"
+                        placeholder="Search by name or email…"
                         autocomplete="off"
-                        @input="searchPeople(item)"
+                        fit="small"
+                        width="full-width"
+                        @input="searchPeople(item, $event)"
                       />
-                      <div v-if="activeSearchId === item.id && peopleResults.length" class="person-results">
+                      <div
+                        v-if="activeSearchId === item.id && item.ownerName.trim().length >= 2"
+                        class="person-results"
+                        role="listbox"
+                        aria-label="Owner candidates"
+                      >
+                        <div v-if="peopleSearching" class="person-results-state" role="status">Searching directory…</div>
                         <button
+                          v-else
                           v-for="person in peopleResults"
                           :key="person.id"
                           type="button"
+                          role="option"
                           @click="selectPerson(item, person)"
                         >
                           <strong>{{ person.name }}</strong><small>{{ person.email }}</small>
                         </button>
+                        <div v-if="!peopleSearching && !peopleResults.length" class="person-results-state" role="status">
+                          {{ peopleSearchError || 'No matching people found.' }}
+                        </div>
                       </div>
                     </div>
                     <small v-if="item.ownerEmail" class="owner-email">{{ item.ownerEmail }}</small>
                   </td>
                   <td>
-                    <select
-                      v-model="item.applicable"
+                    <mc-select
+                      label="Applicable"
+                      hiddenlabel
+                      :value.prop="item.applicable ? 'yes' : 'no'"
                       :disabled="isFrozen(item)"
                       aria-label="Applicable"
-                      @change="changeApplicability(item)"
+                      fit="small"
+                      width="full-width"
+                      @optionselected="setApplicability(item, $event)"
                     >
-                      <option :value="true">Yes</option>
-                      <option :value="false">No</option>
-                    </select>
+                      <mc-option value="yes">Yes</mc-option>
+                      <mc-option value="no">No</mc-option>
+                    </mc-select>
                   </td>
                   <td>
-                    <select
-                      v-model="item.status"
+                    <mc-select
+                      label="Status"
+                      hiddenlabel
+                      :value.prop="item.status"
                       :disabled="isFrozen(item) || !item.applicable"
                       :class="`status-select status-select--${item.status}`"
                       aria-label="Status"
+                      fit="small"
+                      width="full-width"
+                      @optionselected="setItemStatus(item, $event)"
                     >
-                      <option value="not_started">Not started</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="confirmed">Confirmed</option>
-                    </select>
+                      <mc-option value="not_started">Not started</mc-option>
+                      <mc-option value="in_progress">In progress</mc-option>
+                      <mc-option v-if="item.status === 'confirmed' || canConfirmItem(item)" value="confirmed">
+                        Confirmed
+                      </mc-option>
+                    </mc-select>
                   </td>
                   <td>
-                    <input
-                      v-model="item.statusDate"
+                    <mc-input
+                      label="Status date"
+                      hiddenlabel
+                      :value.prop="item.statusDate"
                       :disabled="isFrozen(item) || !item.applicable"
                       type="date"
                       aria-label="Status date"
+                      fit="small"
+                      width="full-width"
+                      @input="updateItemField(item, 'statusDate', $event)"
                     />
                   </td>
                   <td class="evidence-cell">
-                    <input
-                      v-model="item.evidenceUrl"
+                    <mc-input
+                      label="Evidence link"
+                      hiddenlabel
+                      :value.prop="item.evidenceUrl"
                       :disabled="isFrozen(item)"
                       type="url"
                       aria-label="Evidence link"
                       maxlength="1000"
                       placeholder="Evidence link (optional)"
+                      fit="small"
+                      width="full-width"
+                      @input="updateItemField(item, 'evidenceUrl', $event)"
                     />
                     <label class="file-link">
-                      {{ item.evidenceFileName || 'Attach file' }}
+                      <mc-button
+                        appearance="neutral"
+                        variant="outlined"
+                        fit="small"
+                        :label="item.evidenceFileName || 'Attach file'"
+                        :disabled="isFrozen(item) || busy"
+                      />
                       <input
                         type="file"
                         accept=".msg,.pdf,.xlsx,.pptx"
@@ -190,13 +273,18 @@
                         @change="uploadFile(item, $event)"
                       />
                     </label>
-                    <textarea
-                      v-model="item.outcomeNote"
+                    <mc-textarea
+                      label="Outcome note"
+                      hiddenlabel
+                      :value.prop="item.outcomeNote"
                       :disabled="isFrozen(item)"
                       aria-label="Outcome note"
                       maxlength="500"
-                      rows="2"
+                      :rows="2"
                       placeholder="Short outcome note…"
+                      fit="small"
+                      width="full-width"
+                      @input="updateItemField(item, 'outcomeNote', $event)"
                     />
                     <a
                       v-if="item.evidenceFileName"
@@ -214,36 +302,65 @@
                     >View evidence</a>
                   </td>
                   <td>
-                    <button
+                    <mc-button
                       v-if="item.confirmedAt"
                       type="button"
-                      class="table-action"
+                      appearance="neutral"
+                      variant="outlined"
+                      fit="small"
+                      label="Reopen"
                       :disabled="busy"
                       @click="reopen(item)"
-                    >Reopen</button>
-                    <button
+                    />
+                    <mc-button
                       v-else-if="!item.ownerName"
                       type="button"
-                      class="table-action"
+                      appearance="primary"
+                      variant="outlined"
+                      fit="small"
+                      label="Assign owner"
+                      :disabled="!record.canManageOwners"
                       @click="focusField(`consultation-owner-${item.id}`)"
-                    >Assign owner</button>
-                    <button
+                    />
+                    <mc-button
                       v-else
                       type="button"
-                      class="table-action"
+                      appearance="neutral"
+                      variant="outlined"
+                      fit="small"
+                      label="Update"
+                      :disabled="!record.canManageOwners"
                       @click="focusField(`consultation-label-${item.id}`)"
-                    >Update</button>
+                    />
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <mc-notification
+            class="owner-permission-note"
+            appearance="info"
+            fit="small"
+          :body="record.isMigrationManager
+            ? 'You are assigned as the current project Migration Manager and can maintain consideration owners.'
+            : record.canManageOwners
+              ? 'You can maintain consideration owners as the project requestor or a Stakeholder Registration administrator.'
+              : 'Consideration owners are maintained by the current project Migration Manager.'"
+          />
           <div v-if="adding" class="add-row-form">
-            <input v-model="newLabel" maxlength="255" placeholder="New consideration name" aria-label="New consideration name" />
-            <button type="button" class="button button--primary" :disabled="busy || !newLabel.trim()" @click="addConsideration">Add</button>
-            <button type="button" class="button button--outline" :disabled="busy" @click="adding = false; newLabel = ''">Cancel</button>
+            <mc-input
+              label="New consideration"
+              :value.prop="newLabel"
+              maxlength="255"
+              placeholder="New consideration name"
+              fit="small"
+              width="full-width"
+              @input="newLabel = $event.target.value"
+            />
+            <mc-button type="button" appearance="primary" fit="small" label="Add" :disabled="Boolean(busy) || !newLabel.trim()" @click="addConsideration" />
+            <mc-button type="button" appearance="neutral" variant="outlined" fit="small" label="Cancel" :disabled="Boolean(busy)" @click="adding = false; newLabel = ''" />
           </div>
-          <button v-else type="button" class="add-link" :disabled="busy" @click="adding = true">+ Add consideration</button>
+          <mc-button v-else type="button" class="add-link" appearance="primary" variant="outlined" fit="small" label="+ Add consideration" :disabled="busy" @click="adding = true" />
           <p class="footnote">Every change is logged with user, date and reason. Confirmed items are frozen as tollgate evidence; re-opening needs a reason.</p>
         </section>
 
@@ -272,6 +389,14 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageShell from '../components/PageShell.vue'
+import '@maersk-global/mds-components-core/mc-button'
+import '@maersk-global/mds-components-core/mc-input'
+import '@maersk-global/mds-components-core/mc-loading-indicator'
+import '@maersk-global/mds-components-core/mc-notification'
+import '@maersk-global/mds-components-core/mc-option'
+import '@maersk-global/mds-components-core/mc-select'
+import '@maersk-global/mds-components-core/mc-tag'
+import '@maersk-global/mds-components-core/mc-textarea'
 
 const route = useRoute()
 const projectId = computed(() => String(route.params.id || ''))
@@ -286,7 +411,10 @@ const adding = ref(false)
 const newLabel = ref('')
 const activeSearchId = ref('')
 const peopleResults = ref([])
+const peopleSearching = ref(false)
+const peopleSearchError = ref('')
 let searchTimer
+let peopleSearchRequest = 0
 
 const content = data => JSON.stringify(data?.items || [])
 const dirty = computed(() => Boolean(record.value) && content(record.value) !== baseline.value)
@@ -294,11 +422,16 @@ const confirmedCount = computed(() => record.value?.items.filter(item => item.st
 const notApplicableCount = computed(() => record.value?.items.filter(item => !item.applicable).length || 0)
 const openCount = computed(() => record.value?.items.filter(item => item.applicable && item.status !== 'confirmed').length || 0)
 const overallStatus = computed(() => {
+  if (record.value?.checklistConfirmed) return 'Confirmed'
   if (record.value?.version && openCount.value === 0) return 'Confirmed'
   if (record.value?.revision) return 'In progress'
   return 'Not started'
 })
-const overallStatusKey = computed(() => overallStatus.value.toLowerCase().replaceAll(' ', '_'))
+const overallStatusAppearance = computed(() => {
+  if (overallStatus.value === 'Confirmed') return 'success'
+  if (overallStatus.value === 'In progress') return 'warning'
+  return 'neutral'
+})
 
 async function load() {
   const id = projectId.value
@@ -322,6 +455,13 @@ async function load() {
 
 async function save(action) {
   if (!record.value || busy.value) return
+  const invalidConfirmed = record.value.items.find(
+    item => item.status === 'confirmed' && !canConfirmItem(item)
+  )
+  if (invalidConfirmed) {
+    error.value = `${invalidConfirmed.label} needs a date and evidence or an outcome before it can be confirmed.`
+    return
+  }
   busy.value = action
   error.value = ''
   success.value = ''
@@ -349,6 +489,33 @@ function changeApplicability(item) {
   } else {
     item.status = 'not_applicable'
     item.statusDate = ''
+  }
+}
+
+function setApplicability(item, event) {
+  const value = event?.detail?.value ?? event?.detail ?? event?.target?.value
+  item.applicable = value === true || value === 'yes'
+  changeApplicability(item)
+}
+
+function canConfirmItem(item) {
+  return Boolean(
+    item.applicable &&
+    item.statusDate &&
+    (item.evidenceFileName || item.evidenceUrl.trim() || item.outcomeNote.trim())
+  )
+}
+
+function setItemStatus(item, event) {
+  const value = event?.detail?.value ?? event?.detail ?? event?.target?.value
+  if (value === 'confirmed' && !canConfirmItem(item)) return
+  item.status = value
+}
+
+function updateItemField(item, field, event) {
+  item[field] = event?.target?.value ?? ''
+  if (item.status === 'confirmed' && !canConfirmItem(item)) {
+    item.status = 'in_progress'
   }
 }
 
@@ -405,12 +572,24 @@ async function uploadFile(item, event) {
   const form = new FormData()
   form.append('file', file)
   form.append('revision', String(record.value.revision))
+  const localItems = record.value.items.map(existing => ({ ...existing }))
   try {
     const { data } = await axios.post(
       `/api/migration-dashboard/projects/${projectId.value}/people-consultation-compliance/evidence/${item.pk}/`,
       form
     )
-    record.value = data
+    const savedItem = data.items.find(existing => existing.id === item.id)
+    record.value = {
+      ...data,
+      items: localItems.map(existing => existing.id === item.id
+        ? {
+            ...existing,
+            evidenceFileName: savedItem.evidenceFileName,
+            evidenceUrlForDownload: savedItem.evidenceUrlForDownload,
+            audit: savedItem.audit
+          }
+        : existing)
+    }
     baseline.value = content(data)
     success.value = 'Evidence uploaded.'
   } catch (caught) {
@@ -420,34 +599,59 @@ async function uploadFile(item, event) {
   }
 }
 
-function searchPeople(item) {
+function searchPeople(item, event) {
+  item.ownerName = event?.target?.value ?? event?.detail?.value ?? ''
+  if (!record.value?.canManageOwners) return
   item.ownerUserId = ''
   item.ownerEmail = ''
   activeSearchId.value = item.id
+  const query = item.ownerName.trim()
+  const requestId = ++peopleSearchRequest
   window.clearTimeout(searchTimer)
-  if (item.ownerName.trim().length < 2) {
+  peopleResults.value = []
+  peopleSearchError.value = ''
+  peopleSearching.value = false
+  if (query.length < 2) {
+    activeSearchId.value = ''
     peopleResults.value = []
     return
   }
+  peopleSearching.value = true
   searchTimer = window.setTimeout(async () => {
     try {
       const { data } = await axios.get(
         `/api/migration-dashboard/projects/${projectId.value}/people-consultation-compliance/people/`,
-        { params: { q: item.ownerName.trim() } }
+        { params: { q: query } }
       )
-      if (activeSearchId.value === item.id) peopleResults.value = data.rows
+      if (
+        requestId === peopleSearchRequest &&
+        activeSearchId.value === item.id &&
+        item.ownerName.trim() === query
+      ) {
+        peopleResults.value = data.rows || []
+      }
     } catch (caught) {
-      error.value = caught.response?.data?.error || 'Unable to search the people directory.'
+      if (requestId === peopleSearchRequest && activeSearchId.value === item.id) {
+        peopleSearchError.value = caught.response?.data?.error || 'Unable to search the people directory.'
+      }
+    } finally {
+      if (requestId === peopleSearchRequest && activeSearchId.value === item.id) {
+        peopleSearching.value = false
+      }
     }
   }, 250)
 }
 
 function selectPerson(item, person) {
+  ++peopleSearchRequest
+  window.clearTimeout(searchTimer)
   item.ownerUserId = person.id
   item.ownerName = person.name
   item.ownerEmail = person.email
   activeSearchId.value = ''
   peopleResults.value = []
+  peopleSearching.value = false
+  peopleSearchError.value = ''
 }
 
 function isFrozen(item) {
@@ -570,6 +774,7 @@ h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -.3px; }
 .person-results button { display: flex; width: 100%; flex-direction: column; gap: 3px; padding: 8px; border: 0; border-bottom: 1px solid #eef0f4; background: #fff; color: var(--ink); text-align: left; cursor: pointer; }
 .person-results button:hover { background: #f3f7ff; }
 .person-results small { color: var(--muted); }
+.person-results-state { padding: 9px 10px; color: var(--muted); font-size: 12px; }
 .consultation-table td:nth-child(4), .consultation-table td:nth-child(5) { min-width: 98px; }
 .status-select { width: 100%; padding: 6px 5px !important; cursor: pointer; }
 .status-select--confirmed { background: #e5f4e9 !important; color: #267343 !important; }

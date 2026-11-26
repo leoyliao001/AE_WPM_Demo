@@ -5,7 +5,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from api.models import MigrationIntakeSubmission
+from api.models import (
+    MigrationIntakeSubmission,
+    MigrationTeam,
+    StakeholderRegistration,
+    UserNameList,
+)
 
 
 class PeopleConsultationTests(TestCase):
@@ -60,6 +65,7 @@ class PeopleConsultationTests(TestCase):
         })
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["version"], 1)
+        self.assertTrue(response.data["checklistConfirmed"])
         confirmed = response.data["items"][0]
         self.assertEqual(confirmed["status"], "confirmed")
         self.assertTrue(confirmed["confirmedAt"])
@@ -80,6 +86,7 @@ class PeopleConsultationTests(TestCase):
         })
         self.assertEqual(reopened.status_code, 200, reopened.data)
         self.assertEqual(reopened.data["items"][0]["status"], "in_progress")
+        self.assertFalse(reopened.data["checklistConfirmed"])
         self.assertEqual(reopened.data["auditLog"][0]["reason"], "Update the consultation evidence")
 
     def test_not_applicable_requires_reason_and_confirmation_requires_evidence(self):
@@ -97,6 +104,81 @@ class PeopleConsultationTests(TestCase):
         })
         self.assertEqual(response.status_code, 400)
         self.assertEqual(self.get_checklist()["version"], 0)
+
+    def test_confirmed_status_requires_date_and_evidence_or_outcome(self):
+        data = self.get_checklist()
+        items = deepcopy(data["items"])
+        items[0].update({"status": "confirmed", "statusDate": "2026-10-08"})
+        response = self.post_checklist({
+            "revision": data["revision"], "action": "save", "items": items,
+        })
+        self.assertEqual(response.status_code, 400)
+
+        items[0]["outcomeNote"] = "HR team briefed."
+        response = self.post_checklist({
+            "revision": data["revision"], "action": "save", "items": items,
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["items"][0]["status"], "confirmed")
+
+    def test_assigned_migration_manager_controls_owner_updates(self):
+        manager = MigrationTeam.objects.create(role="Manager", email="manager@example.com")
+        StakeholderRegistration.objects.create(
+            project=self.project,
+            team_members=[
+                {
+                    "id": f"migration-team-{manager.pk}",
+                    "fullName": "Project Migration Manager",
+                    "email": "manager@example.com",
+                },
+                {"id": "member-1", "fullName": "Team Member", "email": "member@example.com"},
+            ],
+            assignments={
+                "migration_manager": {
+                    "personIds": [f"migration-team-{manager.pk}"],
+                    "lockedAt": "",
+                    "lockedBy": "",
+                }
+            },
+        )
+        data = self.get_checklist()
+        self.assertTrue(data["canManageOwners"])
+        items = deepcopy(data["items"])
+        items[0]["ownerRole"] = "HR Business Partner"
+
+        self.client.credentials(HTTP_X_USER_EMAIL="member@example.com")
+        member_data = self.get_checklist()
+        self.assertFalse(member_data["canManageOwners"])
+        denied = self.post_checklist({
+            "revision": member_data["revision"], "action": "save", "items": items,
+        })
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.credentials(HTTP_X_USER_EMAIL="manager@example.com")
+        manager_data = self.get_checklist()
+        self.assertTrue(manager_data["canManageOwners"])
+        items = deepcopy(manager_data["items"])
+        items[0]["ownerRole"] = "HR Business Partner"
+        allowed = self.post_checklist({
+            "revision": manager_data["revision"], "action": "save", "items": items,
+        })
+        self.assertEqual(allowed.status_code, 200, allowed.data)
+        self.assertEqual(allowed.data["items"][0]["ownerRole"], "HR Business Partner")
+
+    def test_owner_autocomplete_searches_directory_by_name_and_email(self):
+        person = UserNameList.objects.create(
+            display_name="Jordan Example",
+            mail="jordan@example.com",
+        )
+        endpoint = f"{self.url}people/"
+
+        by_name = self.client.get(endpoint, {"q": "Jordan"})
+        self.assertEqual(by_name.status_code, 200, by_name.data)
+        self.assertEqual(by_name.data["rows"][0]["id"], str(person.pk))
+
+        by_email = self.client.get(endpoint, {"q": "example.com"})
+        self.assertEqual(by_email.status_code, 200, by_email.data)
+        self.assertEqual(by_email.data["rows"][0]["email"], "jordan@example.com")
 
     def test_evidence_file_upload_and_download(self):
         temporary = TemporaryDirectory()

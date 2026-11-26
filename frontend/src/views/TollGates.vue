@@ -251,6 +251,7 @@ const accessEnablementState = ref('pending')
 const businessImpactState = ref('pending')
 const lessonsLearntState = ref('pending')
 const bauControlsState = ref('pending')
+const peopleConsultationState = ref('pending')
 const oaHasRows = ref(false)
 const loadingProject = ref(false)
 const projectError = ref('')
@@ -318,6 +319,7 @@ const TILE_ROUTES = {
   business_impact_analysis: (id) => `/migration-dashboard/${id}/business-impact-analysis`,
   lessons_learnt: (id) => `/migration-dashboard/${id}/lessons-learnt`,
   bau_controls: (id) => `/migration-dashboard/${id}/bau-controls`,
+  people_consultation: (id) => `/migration-dashboard/${id}/people-consultation-compliance`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -337,6 +339,7 @@ const milestoneStateById = computed(() => {
     business_impact_analysis: businessImpactState.value,
     lessons_learnt: lessonsLearntState.value,
     bau_controls: bauControlsState.value,
+    people_consultation: peopleConsultationState.value,
     business_case: p.businessCaseNeedsReview || ['needs_review', 'draft', 'returned'].includes(p.businessCaseOnlineStatus)
       ? 'pending'
       : ['submitted', 'approved'].includes(p.businessCaseOnlineStatus) || p.businessCaseSubmissionDate ? 'complete' : 'pending',
@@ -422,7 +425,7 @@ const ARTEFACT_STAGES = [
       { label: 'Scope Statement', source: 'scope_statement' },
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'project_charter' },
-      { label: 'People Consultation & Compliance', source: null },
+      { label: 'People Consultation & Compliance', source: 'people_consultation' },
       { label: 'Resources', source: 'resources' },
       { label: 'Access & Enablement Requirements', source: 'access_enablement' },
       { label: 'Safety & Resilience', source: 'business_impact_analysis' },
@@ -558,19 +561,22 @@ const loadProjectData = async (id) => {
   businessImpactState.value = 'pending'
   lessonsLearntState.value = 'pending'
   bauControlsState.value = 'pending'
+  peopleConsultationState.value = 'pending'
   projectError.value = ''
   if (!id) return
   loadingProject.value = true
   await Promise.all([
     ['resources', resourcesState], ['access-enablement', accessEnablementState],
     ['business-impact-analysis', businessImpactState], ['lessons-learnt', lessonsLearntState],
-    ['bau-controls', bauControlsState],
+    ['bau-controls', bauControlsState], ['people-consultation-compliance', peopleConsultationState],
   ].map(async ([endpoint, state]) => {
     try {
       const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/${endpoint}/`)
       if (String(selectedProjectId.value) === String(id)) {
         if (endpoint === 'lessons-learnt') {
           state.value = data.saved ? 'complete' : 'pending'
+        } else if (endpoint === 'people-consultation-compliance') {
+          state.value = data.checklistConfirmed ? 'complete' : data.revision ? 'active' : 'pending'
         } else if (endpoint === 'bau-controls') {
           state.value = data.agreement?.status === 'confirmed'
             ? 'complete'
