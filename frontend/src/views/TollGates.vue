@@ -250,6 +250,7 @@ const resourcesState = ref('pending')
 const accessEnablementState = ref('pending')
 const businessImpactState = ref('pending')
 const lessonsLearntState = ref('pending')
+const bauControlsState = ref('pending')
 const oaHasRows = ref(false)
 const loadingProject = ref(false)
 const projectError = ref('')
@@ -316,6 +317,7 @@ const TILE_ROUTES = {
   access_enablement: (id) => `/migration-dashboard/${id}/access-enablement`,
   business_impact_analysis: (id) => `/migration-dashboard/${id}/business-impact-analysis`,
   lessons_learnt: (id) => `/migration-dashboard/${id}/lessons-learnt`,
+  bau_controls: (id) => `/migration-dashboard/${id}/bau-controls`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -334,6 +336,7 @@ const milestoneStateById = computed(() => {
     access_enablement: accessEnablementState.value,
     business_impact_analysis: businessImpactState.value,
     lessons_learnt: lessonsLearntState.value,
+    bau_controls: bauControlsState.value,
     business_case: p.businessCaseNeedsReview || ['needs_review', 'draft', 'returned'].includes(p.businessCaseOnlineStatus)
       ? 'pending'
       : ['submitted', 'approved'].includes(p.businessCaseOnlineStatus) || p.businessCaseSubmissionDate ? 'complete' : 'pending',
@@ -463,6 +466,7 @@ const ARTEFACT_STAGES = [
     icon: 'mi-chart-bars-vertical',
     color: '#6dac39',
     items: [
+      { label: 'BAU Controls', source: 'bau_controls' },
       { label: 'Governance / status pack', source: 'hypercare' },
       { label: 'Dashboards & bowler charts', source: 'hypercare-exit' },
       { label: 'Change & decision logs', source: null },
@@ -553,16 +557,28 @@ const loadProjectData = async (id) => {
   accessEnablementState.value = 'pending'
   businessImpactState.value = 'pending'
   lessonsLearntState.value = 'pending'
+  bauControlsState.value = 'pending'
   projectError.value = ''
   if (!id) return
   loadingProject.value = true
   await Promise.all([
     ['resources', resourcesState], ['access-enablement', accessEnablementState],
     ['business-impact-analysis', businessImpactState], ['lessons-learnt', lessonsLearntState],
+    ['bau-controls', bauControlsState],
   ].map(async ([endpoint, state]) => {
     try {
       const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/${endpoint}/`)
-      if (String(selectedProjectId.value) === String(id)) state.value = data.status === 'confirmed' ? 'complete' : data.saved ? 'active' : 'pending'
+      if (String(selectedProjectId.value) === String(id)) {
+        if (endpoint === 'lessons-learnt') {
+          state.value = data.saved ? 'complete' : 'pending'
+        } else if (endpoint === 'bau-controls') {
+          state.value = data.agreement?.status === 'confirmed'
+            ? 'complete'
+            : data.saved ? 'active' : 'pending'
+        } else {
+          state.value = data.status === 'confirmed' ? 'complete' : data.saved ? 'active' : 'pending'
+        }
+      }
     } catch (caught) {
       if (caught.response?.status !== 403) projectError.value = caught.response?.data?.error || 'Unable to load artefact status.'
     }

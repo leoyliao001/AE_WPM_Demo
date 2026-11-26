@@ -45,6 +45,8 @@ import TaaPartnerView from '../views/TaaPartnerView.vue'
 import PeopleConsultationCompliance from '../views/PeopleConsultationCompliance.vue'
 import LessonsLearnt from '../views/LessonsLearnt.vue'
 import LessonsLearntDatabase from '../views/LessonsLearntDatabase.vue'
+import BauControls from '../views/BAUControls.vue'
+import BauControlsDatabase from '../views/BAUControlsDatabase.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -70,7 +72,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/cost-rates-database': 'cost_rates',
   '/user-name-list': 'user_name_list',
   '/migration-team': 'migration_team',
-  '/lessons-learnt-database': 'lessons_learnt'
+  '/lessons-learnt-database': 'lessons_learnt',
+  '/bau-controls-database': 'bau_control_agreement'
 }
 
 const routes = [
@@ -88,6 +91,11 @@ const routes = [
     path: '/migration-dashboard/:id/lessons-learnt',
     name: 'LessonsLearnt',
     component: LessonsLearnt
+  },
+  {
+    path: '/migration-dashboard/:id/bau-controls',
+    name: 'BauControls',
+    component: BauControls
   },
   { path: '/resources', name: 'Resources', component: Resources },
   { path: '/migration-dashboard/:id/resources', name: 'ProjectResources', component: ProjectResources },
@@ -150,6 +158,11 @@ const routes = [
     path: '/lessons-learnt-database',
     name: 'LessonsLearntDatabase',
     component: LessonsLearntDatabase
+  },
+  {
+    path: '/bau-controls-database',
+    name: 'BauControlsDatabase',
+    component: BauControlsDatabase
   },
   { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
   { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },

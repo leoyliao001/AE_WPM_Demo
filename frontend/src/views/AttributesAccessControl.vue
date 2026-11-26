@@ -142,7 +142,8 @@ const YN_KEYS = new Set([
   'business_impact_analysis',
   'user_name_list',
   'migration_team',
-  'lessons_learnt'
+  'lessons_learnt',
+  'bau_control_agreement'
 ])
 
 const ALL_COLUMNS = [
@@ -170,7 +171,8 @@ const ALL_COLUMNS = [
   { key: 'business_impact_analysis', label: 'Safety & Resilience (Y/N)', width: 250 },
   { key: 'user_name_list', label: 'User Name List (Y/N)', width: 170 },
   { key: 'migration_team', label: 'Migration Team (Y/N)', width: 180 },
-  { key: 'lessons_learnt', label: 'Lessons Learnt (Y/N)', width: 180 }
+  { key: 'lessons_learnt', label: 'Lessons Learnt (Y/N)', width: 180 },
+  { key: 'bau_control_agreement', label: 'BAU Controls (Y/N)', width: 180 }
 ]
 
 const ALL_KEYS = ALL_COLUMNS.map((c) => c.key)

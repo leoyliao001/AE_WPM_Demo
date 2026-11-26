@@ -7,6 +7,11 @@ from api.views.lessons_learnt import (
     maintain_lesson_learnt,
     maintain_lessons_learnt,
 )
+from api.views.bau_controls import (
+    maintain_bau_control,
+    maintain_bau_controls,
+    project_bau_controls,
+)
 from api.views.project_artefacts import project_artefact, resource_projects
 from api.views.people_consultation import (
     download_consultation_evidence,
@@ -58,6 +63,9 @@ from api.views.fpo_catalogue_requests import acknowledge_fpo_catalogue_request, 
 from api.views.gsc_site_requests import submit_gsc_site_request
 
 urlpatterns = [
+    path("bau-controls/", maintain_bau_controls, name="bau-controls-database"),
+    path("bau-controls/<int:agreement_id>/", maintain_bau_control, name="bau-controls-database-record"),
+    path("projects/<int:project_id>/bau-controls/", project_bau_controls, name="project-bau-controls"),
     path("lessons-learnt/", maintain_lessons_learnt, name="lessons-learnt-database"),
     path("lessons-learnt/<int:lesson_id>/", maintain_lesson_learnt, name="lessons-learnt-database-record"),
     path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),

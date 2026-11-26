@@ -298,6 +298,16 @@ const allTables = [
     accent: '#0F766E',
     route: '/lessons-learnt-database',
     actionLabel: 'Maintain Lessons Learnt'
+  },
+  {
+    id: 'bau-controls',
+    tableKey: 'bau_control_agreement',
+    title: 'BAU Controls',
+    description: 'Review and maintain project BAU Control Agreements, including ownership and acceptance status.',
+    icon: 'mi-check-circle',
+    accent: '#176b87',
+    route: '/bau-controls-database',
+    actionLabel: 'Maintain BAU Controls'
   }
 ]
 

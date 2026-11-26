@@ -300,6 +300,15 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
   the next most recent entry, if one exists.
 - Run backend migrations before opening the maintenance page.
 
+### BAU Controls
+
+- Each migration project has one BAU Control Agreement. Project teams can save a
+  draft; confirming requires both Area and GSC acceptance and marks the Monitor &
+  Control phase item complete.
+- Users with the `bau_control_agreement` table permission can create, edit, and
+  delete agreements in `/bau-controls-database`, linked from `/project-attributes`.
+- Run backend migrations before opening the project form or maintenance page.
+
 ### Online Business Case
 
 - `/migration-dashboard/:id/business-case` is an online record, not a mandatory
