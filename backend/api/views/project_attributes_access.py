@@ -38,6 +38,7 @@ ALL_FIELDS = [
     ("business_impact_analysis", "Business Impact Analysis (Y/N)"),
     ("user_name_list", "User Name List (Y/N)"),
     ("migration_team", "Migration Team (Y/N)"),
+    ("lessons_learnt", "Lessons Learnt (Y/N)"),
 ]
 
 BOOL_FIELDS = {
@@ -64,6 +65,7 @@ BOOL_FIELDS = {
     "business_impact_analysis",
     "user_name_list",
     "migration_team",
+    "lessons_learnt",
 }
 
 
@@ -100,6 +102,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "business_impact_analysis": "Y",
             "user_name_list": "Y",
             "migration_team": "Y",
+            "lessons_learnt": "Y",
         }
     return {
         "id": item.id,
@@ -127,6 +130,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "business_impact_analysis": _yn(item.business_impact_analysis),
         "user_name_list": _yn(item.user_name_list),
         "migration_team": _yn(item.migration_team),
+        "lessons_learnt": _yn(item.lessons_learnt),
     }
 
 

@@ -72,6 +72,7 @@
               >
                 <button
                   v-if="isSuperAdmin"
+                  ref="adminTrigger"
                   class="nav-link nav-admin__trigger"
                   :class="{ 'nav-link--active': isActive(item) }"
                   type="button"
@@ -92,7 +93,14 @@
                   <mc-icon v-if="item.icon" :icon="item.icon" size="20" />
                   <span>{{ item.label }}</span>
                 </router-link>
-                <nav v-if="isSuperAdmin && adminMenuOpen" class="admin-menu" aria-label="Admin menu" role="menu">
+                <nav
+                  v-if="isSuperAdmin && adminMenuOpen"
+                  ref="adminMenu"
+                  class="admin-menu"
+                  :style="adminMenuStyle"
+                  aria-label="Admin menu"
+                  role="menu"
+                >
                   <router-link
                     v-for="adminItem in adminMenuItems"
                     :key="adminItem.to"
@@ -212,6 +220,9 @@ import { fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 const route = useRoute()
 const isSuperAdmin = ref(false)
 const adminMenuOpen = ref(false)
+const adminTrigger = ref(null)
+const adminMenu = ref(null)
+const adminMenuStyle = ref({})
 const userMenuOpen = ref(false)
 const noticeDialogOpen = ref(false)
 const navScroller = ref(null)
@@ -278,7 +289,8 @@ const databaseNavItem = {
     '/scope-statements-database',
     '/stakeholder-registrations-database',
     '/approval-workflow',
-    '/input-for-approval'
+    '/input-for-approval',
+    '/lessons-learnt-database'
   ]
 }
 
@@ -300,6 +312,7 @@ const updateNavScrollState = () => {
 
   navCanScrollLeft.value = scroller.scrollLeft > 1
   navCanScrollRight.value = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1
+  if (adminMenuOpen.value) nextTick(updateAdminMenuPosition)
 }
 
 const scrollNav = (direction) => {
@@ -316,8 +329,29 @@ const refreshSuperAdmin = async () => {
   isSuperAdmin.value = !!access?.is_super_admin
 }
 
+const updateAdminMenuPosition = () => {
+  const trigger = Array.isArray(adminTrigger.value) ? adminTrigger.value[0] : adminTrigger.value
+  const menu = Array.isArray(adminMenu.value) ? adminMenu.value[0] : adminMenu.value
+  if (!trigger || !menu) return
+
+  const triggerRect = trigger.getBoundingClientRect()
+  const menuWidth = menu.offsetWidth
+  const horizontalPadding = 8
+  const left = Math.max(
+    horizontalPadding,
+    Math.min(triggerRect.right - menuWidth, window.innerWidth - menuWidth - horizontalPadding)
+  )
+
+  adminMenuStyle.value = {
+    left: `${left}px`,
+    top: `${triggerRect.bottom + 6}px`
+  }
+}
+
 const toggleAdminMenu = () => {
-  if (isSuperAdmin.value) adminMenuOpen.value = !adminMenuOpen.value
+  if (!isSuperAdmin.value) return
+  adminMenuOpen.value = !adminMenuOpen.value
+  if (adminMenuOpen.value) nextTick(updateAdminMenuPosition)
 }
 
 const closeAdminMenu = () => {
@@ -706,16 +740,10 @@ watch(topbarNotice, (notice) => {
   box-shadow: 0 4px 14px rgb(20 20 20 / 12%);
   min-width: 220px;
   padding: 4px;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 1001;
-}
-
-.app-nav--scrollable .admin-menu {
   position: fixed;
-  right: 12px;
+  right: auto;
   top: 64px;
+  z-index: 1001;
 }
 
 .admin-menu__item {

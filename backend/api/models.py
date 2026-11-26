@@ -146,6 +146,59 @@ class LearningCapabilityRecord(models.Model):
         db_table = "learning_capability_record"
 
 
+class LessonLearnt(models.Model):
+    TYPE_CHOICES = [
+        ("Repeat", "Repeat"),
+        ("Improve", "Improve"),
+        ("Avoid", "Avoid"),
+        ("Adopt", "Adopt"),
+    ]
+    PHASE_CHOICES = [
+        ("Initiate", "Initiate"),
+        ("Plan", "Plan"),
+        ("Execute", "Execute"),
+        ("Monitor & Control", "Monitor & Control"),
+        ("Close", "Close"),
+    ]
+    ARTEFACT_CHOICES = [
+        ("Opportunity Assessment", "Opportunity Assessment"),
+        ("Scope Statement", "Scope Statement"),
+        ("Business Case", "Business Case"),
+        ("Resources", "Resources"),
+        ("Safety & Resilience", "Safety & Resilience"),
+        ("Gantt", "Gantt"),
+        ("Knowledge Transfer", "Knowledge Transfer"),
+        ("Hypercare", "Hypercare"),
+        ("Sign-off", "Sign-off"),
+        ("Benefit Realisation", "Benefit Realisation"),
+    ]
+    RELEVANCE_CHOICES = [
+        ("This migration", "This migration"),
+        ("Similar migrations", "Similar migrations"),
+        ("All WPM migrations", "All WPM migrations"),
+    ]
+
+    project = models.ForeignKey(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="lessons_learnt",
+    )
+    happened = models.TextField()
+    learned = models.TextField()
+    next_time = models.TextField()
+    lesson_type = models.CharField(max_length=16, choices=TYPE_CHOICES)
+    phase = models.CharField(max_length=32, choices=PHASE_CHOICES)
+    related_artefact = models.CharField(max_length=64, choices=ARTEFACT_CHOICES)
+    relevant_for = models.CharField(max_length=32, choices=RELEVANCE_CHOICES)
+    created_by = models.CharField(max_length=254, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "lessons_learnt"
+        ordering = ["-created_at", "-id"]
+
+
 class AccessEnablement(models.Model):
     project = models.OneToOneField(MigrationIntakeSubmission, on_delete=models.CASCADE, related_name="access_enablement")
     systems = models.JSONField(default=list)
@@ -809,6 +862,7 @@ class ProjectAttributesAccess(models.Model):
     business_impact_analysis = models.BooleanField(default=False)
     user_name_list = models.BooleanField(default=False)
     migration_team = models.BooleanField(default=False)
+    lessons_learnt = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -290,6 +290,16 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
   no submission, approval, approved-version archive or export is enabled. Saving a
   draft shows the Toll Gates item as in progress, not secured.
 
+### Lessons Learnt database
+
+- Project submissions are limited to one lesson per project. Admins with the
+  `lessons_learnt` table permission can browse, add, edit and delete records in
+  `/lessons-learnt-database`, linked from `/project-attributes`.
+- Admins may create multiple records for a project; the project Lessons Learnt
+  page displays the most recently saved record. Deleting the latest entry reveals
+  the next most recent entry, if one exists.
+- Run backend migrations before opening the maintenance page.
+
 ### Online Business Case
 
 - `/migration-dashboard/:id/business-case` is an online record, not a mandatory

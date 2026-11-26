@@ -249,6 +249,7 @@ const scopeStatementState = ref('pending')
 const resourcesState = ref('pending')
 const accessEnablementState = ref('pending')
 const businessImpactState = ref('pending')
+const lessonsLearntState = ref('pending')
 const oaHasRows = ref(false)
 const loadingProject = ref(false)
 const projectError = ref('')
@@ -314,6 +315,7 @@ const TILE_ROUTES = {
   resources: (id) => `/migration-dashboard/${id}/resources`,
   access_enablement: (id) => `/migration-dashboard/${id}/access-enablement`,
   business_impact_analysis: (id) => `/migration-dashboard/${id}/business-impact-analysis`,
+  lessons_learnt: (id) => `/migration-dashboard/${id}/lessons-learnt`,
   approvals: () => '/approval-cycle',
   gantt: (id) => `/migration-dashboard/${id}/gantt`,
 }
@@ -331,6 +333,7 @@ const milestoneStateById = computed(() => {
     resources: resourcesState.value,
     access_enablement: accessEnablementState.value,
     business_impact_analysis: businessImpactState.value,
+    lessons_learnt: lessonsLearntState.value,
     business_case: p.businessCaseNeedsReview || ['needs_review', 'draft', 'returned'].includes(p.businessCaseOnlineStatus)
       ? 'pending'
       : ['submitted', 'approved'].includes(p.businessCaseOnlineStatus) || p.businessCaseSubmissionDate ? 'complete' : 'pending',
@@ -476,7 +479,7 @@ const ARTEFACT_STAGES = [
     items: [
       { label: 'Closure report & sign-off', source: 'sign-off' },
       { label: 'Benefits realisation plan', source: 'capacity-release' },
-      { label: 'Lessons-learned log', source: null },
+      { label: 'Lessons Learnt', source: 'lessons_learnt' },
       { label: 'Handover pack', source: 'golive' }
     ]
   }
@@ -549,12 +552,13 @@ const loadProjectData = async (id) => {
   resourcesState.value = 'pending'
   accessEnablementState.value = 'pending'
   businessImpactState.value = 'pending'
+  lessonsLearntState.value = 'pending'
   projectError.value = ''
   if (!id) return
   loadingProject.value = true
   await Promise.all([
     ['resources', resourcesState], ['access-enablement', accessEnablementState],
-    ['business-impact-analysis', businessImpactState],
+    ['business-impact-analysis', businessImpactState], ['lessons-learnt', lessonsLearntState],
   ].map(async ([endpoint, state]) => {
     try {
       const { data } = await axios.get(`/api/migration-dashboard/projects/${id}/${endpoint}/`)

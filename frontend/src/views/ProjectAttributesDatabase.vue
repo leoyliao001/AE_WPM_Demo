@@ -288,6 +288,16 @@ const allTables = [
     accent: '#176b87',
     route: '/migration-team',
     actionLabel: 'Maintain Migration Team'
+  },
+  {
+    id: 'lessons-learnt',
+    tableKey: 'lessons_learnt',
+    title: 'Lessons Learnt',
+    description: 'Create, review, edit and delete Lessons Learnt records linked to migration projects.',
+    icon: 'mi-file',
+    accent: '#0F766E',
+    route: '/lessons-learnt-database',
+    actionLabel: 'Maintain Lessons Learnt'
   }
 ]
 

@@ -43,6 +43,8 @@ import LearningCapabilityReadiness from '../views/LearningCapabilityReadiness.vu
 import LearningCapabilityProject from '../views/LearningCapabilityProject.vue'
 import TaaPartnerView from '../views/TaaPartnerView.vue'
 import PeopleConsultationCompliance from '../views/PeopleConsultationCompliance.vue'
+import LessonsLearnt from '../views/LessonsLearnt.vue'
+import LessonsLearntDatabase from '../views/LessonsLearntDatabase.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -67,7 +69,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/business-cases-database': 'business_case',
   '/cost-rates-database': 'cost_rates',
   '/user-name-list': 'user_name_list',
-  '/migration-team': 'migration_team'
+  '/migration-team': 'migration_team',
+  '/lessons-learnt-database': 'lessons_learnt'
 }
 
 const routes = [
@@ -80,6 +83,11 @@ const routes = [
     path: '/migration-dashboard/:id/people-consultation-compliance',
     name: 'PeopleConsultationCompliance',
     component: PeopleConsultationCompliance
+  },
+  {
+    path: '/migration-dashboard/:id/lessons-learnt',
+    name: 'LessonsLearnt',
+    component: LessonsLearnt
   },
   { path: '/resources', name: 'Resources', component: Resources },
   { path: '/migration-dashboard/:id/resources', name: 'ProjectResources', component: ProjectResources },
@@ -137,6 +145,11 @@ const routes = [
     path: '/project-attributes',
     name: 'ProjectAttributesDatabase',
     component: ProjectAttributesDatabase
+  },
+  {
+    path: '/lessons-learnt-database',
+    name: 'LessonsLearntDatabase',
+    component: LessonsLearntDatabase
   },
   { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
   { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },
