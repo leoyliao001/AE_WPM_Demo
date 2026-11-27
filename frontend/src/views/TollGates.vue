@@ -427,7 +427,7 @@ const ARTEFACT_STAGES = [
       { label: 'Business Case', source: 'business_case' },
       { label: 'Project Charter', source: 'project_charter' },
       { label: 'People Consultation & Compliance', source: 'people_consultation' },
-      { label: 'Resources', source: 'resources' },
+      { label: 'Resources (FTE)', source: 'resources' },
       { label: 'Access & Enablement Requirements', source: 'access_enablement' },
       { label: 'Safety & Resilience', source: 'business_impact_analysis' },
       { label: 'Approvals', source: 'approvals' },
@@ -486,8 +486,6 @@ const ARTEFACT_STAGES = [
     icon: 'mi-check-circle',
     color: '#2d8cff',
     items: [
-      { label: 'Closure report & sign-off', source: 'sign-off' },
-      { label: 'Benefits realisation plan', source: 'capacity-release' },
       { label: 'Lessons Learnt', source: 'lessons_learnt' },
       { label: 'Handover pack', source: 'golive' }
     ]
