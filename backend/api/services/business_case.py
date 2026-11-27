@@ -78,7 +78,12 @@ def _calculate_financials(intake, scope, inputs):
     sites = intake["custom_location_strategies"] if intake["location_strategy_custom"] else intake["default_location_strategies"]
     if len(countries) != 1 or len(sites) != 1:
         errors.append("Exactly one source country and one destination GSC site are required. Multi-location FTE allocation is not yet captured.")
-    if not scope_ready(scope):
+    if scope.get("reviewRequired"):
+        errors.append(
+            "The previously submitted Scope Statement is out of date because the Intake source data changed. "
+            "Reopen it, review the updated information and resubmit Scope before submitting the Business Case."
+        )
+    elif not scope_ready(scope):
         errors.append("Submit Scope with all four job levels locked and a matching final FTE total.")
     try:
         year = date.fromisoformat(intake["target_start_date"]).year

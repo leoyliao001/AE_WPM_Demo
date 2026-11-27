@@ -106,7 +106,7 @@ const exploreCards = [
   {
     layout: 'migration',
     title: 'Migration Hub',
-    description: 'Run your migration through every phase and tollgate: plans, RAID, readiness and evidence in one place.',
+    description: 'Run your Migration through every phase and tollgate.',
     tags: ['Intake', 'Project plan', 'RAID', 'Readiness'],
     actions: [{ label: 'My Migrations', route: '/project-dashboard' }],
     icon: 'mi-file-arrows-square',

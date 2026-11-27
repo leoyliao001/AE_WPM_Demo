@@ -107,6 +107,14 @@
         <h3 class="bc-input-title">Cost inputs &amp; adjustments</h3>
         <BusinessCaseFinancialInputs class="bc-no-print" :inputs="financialInputs" :disabled="!editable || blocked" />
         <dl class="bc-summary bc-print-only"><div><dt>One-time cost (USD)</dt><dd>{{ financialInputs.oneTimeCost || 'Not provided' }}</dd></div><div><dt>Adjustment (USD)</dt><dd>{{ financialInputs.adjustment }}</dd></div><div><dt>Adjustment reason</dt><dd>{{ financialInputs.adjustmentReason || 'Not provided' }}</dd></div></dl>
+        <BusinessCaseMissingRates
+          :errors="record.financials?.errors || []"
+          :can-manage="canManageCostRates"
+          :access-checked="costRatesAccessChecked"
+          :disabled="blocked"
+          :has-unsaved-changes="dirty"
+          @saved="refreshAfterRateSave"
+        />
         <BusinessCaseFinancials :financials="record.financials" :stale="dirty" />
       </section>
 
@@ -142,15 +150,17 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageShell from '../components/PageShell.vue'
 import BusinessCaseDetails from '../components/BusinessCaseDetails.vue'
 import BusinessCaseFinancialInputs from '../components/BusinessCaseFinancialInputs.vue'
 import BusinessCaseFinancials from '../components/BusinessCaseFinancials.vue'
+import BusinessCaseMissingRates from '../components/BusinessCaseMissingRates.vue'
 import BusinessCaseSavedSnapshot from '../components/BusinessCaseSavedSnapshot.vue'
 import { businessCaseDetailFields as detailFields, useBusinessCase } from '../composables/useBusinessCase.js'
 import { useUnsavedChanges } from '../composables/useUnsavedChanges.js'
+import { canAccessAttributesTable, fetchMyAttributesAccess } from '../utils/attributesAccess.js'
 import '../styles/businessCase.css'
 import '@maersk-global/mds-components-core/mc-button'
 import '@maersk-global/mds-components-core/mc-tag'
@@ -172,6 +182,8 @@ const editIntake = ref(false)
 const intakeDraft = ref({})
 const intakeBaseline = ref('')
 const revisionReason = ref('')
+const canManageCostRates = ref(false)
+const costRatesAccessChecked = ref(false)
 const blocked = computed(() => loading.value || pending.value)
 const editable = computed(() => !!record.value?.canEdit)
 const dirty = computed(() => ownedDirty.value || (editIntake.value && JSON.stringify(intakeDraft.value) !== intakeBaseline.value) || !!revisionReason.value.trim())
@@ -197,7 +209,9 @@ const submissionBlockers = computed(() => {
     return blockers
   }
   if (!editable.value) blockers.push('You do not have permission to submit this Business Case.')
-  if (current.sourceChanged || current.reviewRequired || scope.reviewRequired) {
+  if (scope.reviewRequired) {
+    blockers.push('The previously submitted Scope Statement is out of date because the Intake source data changed. Reopen it, review the updated information and resubmit Scope before submitting the Business Case.')
+  } else if (current.sourceChanged || current.reviewRequired) {
     blockers.push('Review and save the changed Intake and Scope source data before submitting.')
   }
   if (dirty.value) blockers.push('Save the current Business Case changes first.')
@@ -349,10 +363,19 @@ function sourceValue(value) {
 }
 const date = value => value ? new Date(value).toLocaleString() : '—'
 const fileSize = value => value === null || value === undefined ? 'Unknown size' : `${Number(value).toLocaleString()} bytes`
+async function loadCostRatesAccess() {
+  const access = await fetchMyAttributesAccess()
+  canManageCostRates.value = canAccessAttributesTable(access, 'cost_rates')
+  costRatesAccessChecked.value = true
+}
+async function refreshAfterRateSave() {
+  await load(route.params.id, { preserve: true })
+}
 function printPage() {
   document.querySelectorAll('.bc-rate-basis').forEach(element => { element.open = true })
   window.print()
 }
+onMounted(loadCostRatesAccess)
 watch(() => route.params.id, loadProject, { immediate: true })
 </script>
 

@@ -334,6 +334,17 @@ class OnlineBusinessCaseTests(TestCase):
         self.assertEqual(self.client.get(self.url).data["status"], "needs_review")
         self.assertFalse(self.client.get(self.url).data["financials"]["ready"])
 
+    def test_scope_review_error_explains_changed_intake_source(self):
+        self.scope.review_required = True
+        self.scope.save(update_fields=["review_required"])
+
+        response = self.save()
+
+        self.assertIn(
+            "The previously submitted Scope Statement is out of date because the Intake source data changed.",
+            response.data["financials"]["errors"],
+        )
+
     def test_revise_requires_reason_resets_workflow_and_preserves_history(self):
         self.rates()
         self.save(action="submit")

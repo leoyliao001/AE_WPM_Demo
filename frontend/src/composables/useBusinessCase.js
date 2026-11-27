@@ -36,12 +36,12 @@ export function useBusinessCase() {
       ? `${message} Your changes are retained. Copy them before reloading the latest record and reviewing the conflict.`
       : message
   }
-  async function load(projectId) {
+  async function load(projectId, { preserve = false } = {}) {
     if (pending.value || loading.value) return false
     loading.value = true
     error.value = ''
     success.value = ''
-    record.value = null
+    if (!preserve) record.value = null
     try {
       const { data } = await axios.get(`/api/migration-dashboard/projects/${projectId}/business-case/`)
       apply(data)
