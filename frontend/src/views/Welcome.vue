@@ -9,7 +9,7 @@
             From decision to delivered value, one governed lifecycle.
           </p>
           <div class="hero-actions">
-            <button type="button" class="button button--primary" @click="go('/migration-intake')">
+            <button type="button" class="card-link" @click="go('/migration-intake')">
               Start a Migration <span aria-hidden="true">&#8594;</span>
             </button>
           </div>
