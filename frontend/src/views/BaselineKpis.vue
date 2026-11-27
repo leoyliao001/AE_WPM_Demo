@@ -24,9 +24,9 @@
           </div>
           <div class="bk-metrics">
             <article><span>TOTAL COHORTS</span><strong>{{ record.cohorts.length }}</strong></article>
-            <article><span>SETUP COMPLETE</span><strong>{{ setupCount }}</strong></article>
-            <article><span>WEEKLY RESULTS</span><strong>{{ weeklyResultCount }}</strong></article>
-            <article><span>PROJECT LOCATION</span><strong>{{ record.region }} · {{ record.areas.join(', ') || 'No area' }}</strong></article>
+            <article><span>SUBMITTED</span><strong>{{ setupCount }}</strong></article>
+            <article><span>DRAFT</span><strong>{{ weeklyResultCount }}</strong></article>
+            <article><span>PROJECT LOCATION</span><strong>—</strong></article>
           </div>
         </header>
 
@@ -378,7 +378,7 @@
                 <mc-button
                   v-if="canEditWeekly(cohort)"
                   appearance="primary"
-                  label="Save weekly results"
+                  label="Submit weekly results"
                   :disabled="busy"
                   @click="saveWeekly(cohort)"
                 />

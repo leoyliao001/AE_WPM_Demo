@@ -950,6 +950,7 @@ class ProjectAttributesAccess(models.Model):
     migration_team = models.BooleanField(default=False)
     lessons_learnt = models.BooleanField(default=False)
     bau_control_agreement = models.BooleanField(default=False)
+    baseline_kpis = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

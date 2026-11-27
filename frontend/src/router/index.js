@@ -48,6 +48,7 @@ import LessonsLearnt from '../views/LessonsLearnt.vue'
 import LessonsLearntDatabase from '../views/LessonsLearntDatabase.vue'
 import BauControls from '../views/BAUControls.vue'
 import BauControlsDatabase from '../views/BAUControlsDatabase.vue'
+import BaselineKpisDatabase from '../views/BaselineKpisDatabase.vue'
 import {
   canAccessAttributesTable,
   fetchMyAttributesAccess
@@ -74,7 +75,8 @@ const ATTRIBUTE_ROUTE_KEYS = {
   '/user-name-list': 'user_name_list',
   '/migration-team': 'migration_team',
   '/lessons-learnt-database': 'lessons_learnt',
-  '/bau-controls-database': 'bau_control_agreement'
+  '/bau-controls-database': 'bau_control_agreement',
+  '/baseline-kpis-database': 'baseline_kpis'
 }
 
 const routes = [
@@ -165,6 +167,11 @@ const routes = [
     path: '/bau-controls-database',
     name: 'BauControlsDatabase',
     component: BauControlsDatabase
+  },
+  {
+    path: '/baseline-kpis-database',
+    name: 'BaselineKpisDatabase',
+    component: BaselineKpisDatabase
   },
   { path: '/product-ownership', name: 'ProductOwnership', component: ProductOwnership },
   { path: '/gsc-site-mapping', name: 'GscSiteMapping', component: GscSiteMapping },

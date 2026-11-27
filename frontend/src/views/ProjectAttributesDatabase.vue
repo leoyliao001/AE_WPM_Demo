@@ -308,6 +308,16 @@ const allTables = [
     accent: '#176b87',
     route: '/bau-controls-database',
     actionLabel: 'Maintain BAU Controls'
+  },
+  {
+    id: 'baseline-kpis',
+    tableKey: 'baseline_kpis',
+    title: 'Baseline & KPIs',
+    description: 'View, edit, create and delete project Baseline & KPI records by maintaining the complete stored state JSON.',
+    icon: 'mi-chart-line',
+    accent: '#6B4EFF',
+    route: '/baseline-kpis-database',
+    actionLabel: 'Maintain Baseline & KPIs'
   }
 ]
 

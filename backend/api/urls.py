@@ -18,6 +18,7 @@ urlpatterns = [
     path("input-for-approval/", include("api.routes.approval_input")),
     path("approval-cycle/", include("api.routes.approval_cycle")),
     path("project-attributes-access/", include("api.routes.project_attributes_access")),
+    path("baseline-kpis-admin/", include("api.routes.baseline_kpis_admin")),
     path("project-gantt-attributes/", include("api.routes.project_gantt_attributes")),
     path("bpm-rofo/", include("api.routes.bpm_rofo")),
     path("bpm-actual/", include("api.routes.bpm_actual")),

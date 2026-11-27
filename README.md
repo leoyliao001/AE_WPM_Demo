@@ -328,6 +328,16 @@ Frontend URL: **http://localhost:3002** — open this in your browser.
   delete agreements in `/bau-controls-database`, linked from `/project-attributes`.
 - Run backend migrations before opening the project form or maintenance page.
 
+### Baseline & KPIs database
+
+- Users with the `baseline_kpis` table permission can create, view, edit and delete
+  project Baseline & KPI records in `/baseline-kpis-database`, linked from
+  `/project-attributes`.
+- The maintenance page edits the complete `state` JSON for each project. Existing
+  records use revision checks to reject stale saves; deleting a record does not
+  delete the migration project.
+- Run backend migrations before opening the maintenance page.
+
 ### Online Business Case
 
 - `/migration-dashboard/:id/business-case` is an online record, not a mandatory

@@ -40,6 +40,7 @@ ALL_FIELDS = [
     ("migration_team", "Migration Team (Y/N)"),
     ("lessons_learnt", "Lessons Learnt (Y/N)"),
     ("bau_control_agreement", "BAU Controls (Y/N)"),
+    ("baseline_kpis", "Baseline & KPIs (Y/N)"),
 ]
 
 BOOL_FIELDS = {
@@ -68,6 +69,7 @@ BOOL_FIELDS = {
     "migration_team",
     "lessons_learnt",
     "bau_control_agreement",
+    "baseline_kpis",
 }
 
 
@@ -106,6 +108,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
             "migration_team": "Y",
             "lessons_learnt": "Y",
             "bau_control_agreement": "Y",
+            "baseline_kpis": "Y",
         }
     return {
         "id": item.id,
@@ -135,6 +138,7 @@ def _serialize_row(item: ProjectAttributesAccess) -> dict:
         "migration_team": _yn(item.migration_team),
         "lessons_learnt": _yn(item.lessons_learnt),
         "bau_control_agreement": _yn(item.bau_control_agreement),
+        "baseline_kpis": _yn(item.baseline_kpis),
     }
 
 
@@ -173,6 +177,7 @@ def my_attributes_access(request):
                     "migration_team": False,
                     "lessons_learnt": False,
                     "bau_control_agreement": False,
+                    "baseline_kpis": False,
                 },
             }
         )
