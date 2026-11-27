@@ -36,6 +36,7 @@ import ProjectCharter from '../views/ProjectCharter.vue'
 import ProjectChartersDatabase from '../views/ProjectChartersDatabase.vue'
 import Resources from '../views/Resources.vue'
 import ProjectResources from '../views/ProjectResources.vue'
+import BaselineKpis from '../views/BaselineKpis.vue'
 import AccessEnablement from '../views/AccessEnablement.vue'
 import BusinessImpactAnalysis from '../views/BusinessImpactAnalysis.vue'
 import MigrationSuccessPartnersHub from '../views/MigrationSuccessPartnersHub.vue'
@@ -99,6 +100,7 @@ const routes = [
   },
   { path: '/resources', name: 'Resources', component: Resources },
   { path: '/migration-dashboard/:id/resources', name: 'ProjectResources', component: ProjectResources },
+  { path: '/migration-dashboard/:id/baseline-kpis', name: 'BaselineKpis', component: BaselineKpis },
   { path: '/migration-dashboard/:id/access-enablement', name: 'AccessEnablement', component: AccessEnablement },
   { path: '/business-cases-database', name: 'BusinessCasesDatabase', component: BusinessCasesDatabase },
   { path: '/cost-rates-database', name: 'CostRatesDatabase', component: CostRatesDatabase },

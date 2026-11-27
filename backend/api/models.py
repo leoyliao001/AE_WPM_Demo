@@ -146,6 +146,21 @@ class LearningCapabilityRecord(models.Model):
         db_table = "learning_capability_record"
 
 
+class BaselineKpiRecord(models.Model):
+    project = models.OneToOneField(
+        MigrationIntakeSubmission,
+        on_delete=models.CASCADE,
+        related_name="baseline_kpis",
+    )
+    state = models.JSONField(default=dict)
+    revision = models.PositiveIntegerField(default=0)
+    updated_by = models.CharField(max_length=254, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "baseline_kpi_record"
+
+
 class LessonLearnt(models.Model):
     TYPE_CHOICES = [
         ("Repeat", "Repeat"),

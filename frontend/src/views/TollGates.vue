@@ -315,6 +315,7 @@ const TILE_ROUTES = {
   stakeholders: (id) => `/migration-dashboard/${id}/stakeholder-registration`,
   project_charter: (id) => `/migration-dashboard/${id}/project-charter`,
   resources: (id) => `/migration-dashboard/${id}/resources`,
+  baseline_kpis: (id) => `/migration-dashboard/${id}/baseline-kpis`,
   access_enablement: (id) => `/migration-dashboard/${id}/access-enablement`,
   'knowledge-transfer': (id) => `/migration-success-partners/learning-development/${id}`,
   business_impact_analysis: (id) => `/migration-dashboard/${id}/business-impact-analysis`,
@@ -472,7 +473,7 @@ const ARTEFACT_STAGES = [
     icon: 'mi-chart-bars-vertical',
     color: '#6dac39',
     items: [
-      { label: 'Baseline & KPIs', source: null },
+      { label: 'Baseline & KPIs', source: 'baseline_kpis' },
       { label: 'BAU Controls', source: 'bau_controls' },
       { label: 'Safety & Resilience', source: 'business_impact_analysis' },
       { label: 'Gantt', source: 'gantt' }

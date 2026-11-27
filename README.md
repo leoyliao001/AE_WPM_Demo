@@ -151,6 +151,25 @@ stored in SQL Server. Only the Migration Manager assigned in Stakeholder
 Registration or a Platform Super Admin can save L&D records. TAA Resources
 continues to use the existing project `ProjectResources` database record.
 
+Baseline & KPIs is stored per project in SQL Server (`baseline_kpi_record`).
+Migration `0081_baselinekpirecord` creates its persistence table. KPI setup is
+limited to the assigned Area POC, Area SME, Migration Manager, or Super Admin.
+The Process dropdown contains selected L3 values from the project's active
+Opportunity Assessment scoping method and supports selecting multiple L3
+values per KPI.
+Saving a completed setup locks its KPI definition fields; only the assigned
+Migration Manager or a Super Admin can unlock them, and each required unlock
+reason is retained in the record. Weekly results remain editable for assigned
+GSC SMEs, GSC Leaders, or Migration Managers while the setup is locked.
+Additional Comments (up to 500 characters per KPI) are persisted in the same
+record. These values use the existing JSON state and do not require a schema
+migration. Hypercare extensions remain limited to assigned GSC SMEs, GSC
+Leaders, or Migration Managers. Apply pending migrations using the SQL Server
+procedure above after deploying code that includes a migration. Migration
+`0082_remove_weekly_kpi_comments` removes legacy weekly comment entries from
+the record's JSON state; weekly results no longer store corrective-action
+comments.
+
 If the migration command reports a historical migration-record or schema
 inconsistency, inspect the database before making manual changes. The
 repository helper [`repair_and_migrate_mssql.py`](backend/scripts/repair_and_migrate_mssql.py)

@@ -13,6 +13,7 @@ from api.views.bau_controls import (
     project_bau_controls,
 )
 from api.views.project_artefacts import project_artefact, resource_projects
+from api.views.baseline_kpis import baseline_kpis
 from api.views.people_consultation import (
     download_consultation_evidence,
     people_consultation_checklist,
@@ -70,6 +71,7 @@ urlpatterns = [
     path("lessons-learnt/<int:lesson_id>/", maintain_lesson_learnt, name="lessons-learnt-database-record"),
     path("projects/<int:project_id>/opportunity-assessment/task-scope/", opportunity_task_scope, name="opportunity-task-scope"),
     path("projects/<int:project_id>/learning-capability/", learning_capability, name="learning-capability"),
+    path("projects/<int:project_id>/baseline-kpis/", baseline_kpis, name="baseline-kpis"),
     path("projects/<int:project_id>/learning-capability/evidence/", download_learning_evidence, name="learning-capability-evidence"),
     path("projects/<int:project_id>/lessons-learnt/", lessons_learnt, name="lessons-learnt"),
     path("projects/<int:project_id>/opportunity-assessment/catalogue-requests/", submit_fpo_catalogue_request, name="fpo-catalogue-request-submit"),
